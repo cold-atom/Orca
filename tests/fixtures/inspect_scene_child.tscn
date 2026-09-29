@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[node name="ReusableChild" type="Node2D"]
+
+[node name="Label" type="Label" parent="."]
+text = "Instanced child"

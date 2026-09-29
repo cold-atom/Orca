@@ -1,0 +1,590 @@
+[gd_scene load_steps=22 format=3 uid="uid://co17vbggd108t"]
+
+[ext_resource type="Script" path="res://addons/orca/scripts/chat_window.gd" id="1_abcd1"]
+[ext_resource type="Texture2D" path="res://addons/orca/assets/orca.svg" id="2_logo"]
+[ext_resource type="Texture2D" path="res://addons/orca/assets/settings.svg" id="3_settings"]
+[ext_resource type="Texture2D" path="res://addons/orca/assets/send-alt.svg" id="5_send"]
+[ext_resource type="Texture2D" path="res://addons/orca/assets/history.svg" id="7_history"]
+[ext_resource type="Texture2D" path="res://addons/orca/assets/new_session.svg" id="8_new_session"]
+[ext_resource type="Texture2D" path="res://addons/orca/assets/image.svg" id="9_image"]
+[ext_resource type="Script" path="res://addons/orca/scripts/icon_button.gd" id="10_icon_button"]
+[ext_resource type="Texture2D" path="res://addons/orca/assets/check.svg" id="11_check"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxMode"]
+bg_color = Color(0.13, 0.14, 0.155, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.26, 0.29, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 4.0
+content_margin_top = 1.0
+content_margin_right = 4.0
+content_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxModeHover"]
+bg_color = Color(0.2, 0.22, 0.25, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.36, 0.39, 0.43, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 4.0
+content_margin_top = 1.0
+content_margin_right = 4.0
+content_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxModePressed"]
+bg_color = Color(0.12, 0.14, 0.16, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.31, 0.52, 0.65, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 4.0
+content_margin_top = 1.0
+content_margin_right = 4.0
+content_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxModel"]
+bg_color = Color(0.105, 0.112, 0.125, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.22, 0.25, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 6.0
+content_margin_top = 1.0
+content_margin_right = 6.0
+content_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxComposer"]
+bg_color = Color(0.09, 0.096, 0.106, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.27, 0.3, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 11.0
+content_margin_top = 9.0
+content_margin_right = 9.0
+content_margin_bottom = 9.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxInput"]
+bg_color = Color(0.075, 0.082, 0.092, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+content_margin_left = 2.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxOverlayDismiss"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxModeMenu"]
+bg_color = Color(0.095, 0.105, 0.12, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.23, 0.35, 0.43, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxModeOptionNormal"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxModeOptionHover"]
+bg_color = Color(0.35, 0.39, 0.44, 0.16)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxModeOptionPressed"]
+bg_color = Color(0.35, 0.39, 0.44, 0.24)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+
+
+[node name="Orca" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_abcd1")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="Header" type="VBoxContainer" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="TopRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer/Header"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="MarginContainer/VBoxContainer/Header/TopRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.86, 0.89, 1)
+theme_override_font_sizes/font_size = 12
+text = "ORCA"
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="MarginContainer/VBoxContainer/Header/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NewSessionButton" type="TextureButton" parent="MarginContainer/VBoxContainer/Header/TopRow"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+tooltip_text = "New session"
+texture_normal = ExtResource("8_new_session")
+ignore_texture_size = true
+stretch_mode = 5
+script = ExtResource("10_icon_button")
+
+[node name="HistoryButton" type="TextureButton" parent="MarginContainer/VBoxContainer/Header/TopRow"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+tooltip_text = "Conversation history"
+texture_normal = ExtResource("7_history")
+ignore_texture_size = true
+stretch_mode = 5
+script = ExtResource("10_icon_button")
+
+[node name="SettingsButton" type="TextureButton" parent="MarginContainer/VBoxContainer/Header/TopRow"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+tooltip_text = "Orca settings"
+texture_normal = ExtResource("3_settings")
+ignore_texture_size = true
+stretch_mode = 5
+script = ExtResource("10_icon_button")
+
+[node name="MetricsRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer/Header"]
+visible = false
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ContextLabel" type="Label" parent="MarginContainer/VBoxContainer/Header/MetricsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Session context usage"
+theme_override_colors/font_color = Color(0.58, 0.61, 0.66, 1)
+theme_override_font_sizes/font_size = 11
+text = "Context 0"
+vertical_alignment = 1
+text_overrun_behavior = 3
+clip_text = true
+
+[node name="CostLabel" type="Label" parent="MarginContainer/VBoxContainer/Header/MetricsRow"]
+layout_mode = 2
+size_flags_horizontal = 8
+tooltip_text = "Session cost"
+theme_override_colors/font_color = Color(0.58, 0.61, 0.66, 1)
+theme_override_font_sizes/font_size = 11
+text = "Cost $0.0000"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer"]
+visible = false
+layout_mode = 2
+
+[node name="ChatScroll" type="ScrollContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ChatFeed" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ChatScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="EmptyState" type="CenterContainer" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed"]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Content" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState"]
+custom_minimum_size = Vector2(270, 0)
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 14
+
+[node name="Logo" type="TextureRect" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content"]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+texture = ExtResource("2_logo")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="Title" type="Label" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.87, 0.9, 1)
+theme_override_font_sizes/font_size = 23
+text = "Work with Orca"
+horizontal_alignment = 1
+
+[node name="Description" type="Label" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.52, 0.55, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+text = "Plan, create, and debug your Godot project\nwithout leaving the editor."
+horizontal_alignment = 1
+
+[node name="ModeHint" type="Label" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.39, 0.42, 0.47, 1)
+theme_override_font_sizes/font_size = 15
+text = "Choose Plan for analysis or Work for reviewed changes."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Composer" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxComposer")
+
+[node name="ComposerContent" type="VBoxContainer" parent="MarginContainer/VBoxContainer/Composer"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PromptInput" type="TextEdit" parent="MarginContainer/VBoxContainer/Composer/ComposerContent"]
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+theme_override_colors/font_placeholder_color = Color(0.45, 0.48, 0.53, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxInput")
+theme_override_styles/focus = SubResource("StyleBoxInput")
+placeholder_text = "Describe what you want to build or fix..."
+wrap_mode = 1
+
+[node name="ComposerActions" type="HBoxContainer" parent="MarginContainer/VBoxContainer/Composer/ComposerContent"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="ModeSelector" type="Control" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions"]
+custom_minimum_size = Vector2(104, 24)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="ModeButton" type="Button" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/ModeSelector"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+tooltip_text = "Work mode: Explore, run the game, and propose reviewed project changes"
+theme_override_font_sizes/font_size = 1
+theme_override_styles/normal = SubResource("StyleBoxMode")
+theme_override_styles/hover = SubResource("StyleBoxModeHover")
+theme_override_styles/pressed = SubResource("StyleBoxModePressed")
+theme_override_styles/disabled = SubResource("StyleBoxMode")
+theme_override_styles/focus = SubResource("StyleBoxModePressed")
+flat = false
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/ModeSelector"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.9, 0.72, 1)
+theme_override_font_sizes/font_size = 11
+text = "Work"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ModelLabel" type="Button" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions"]
+custom_minimum_size = Vector2(104, 24)
+layout_mode = 2
+tooltip_text = "Current model: gpt-4o\nClick to configure"
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.64, 0.67, 0.72, 1)
+theme_override_colors/font_hover_color = Color(0.78, 0.81, 0.86, 1)
+theme_override_colors/font_pressed_color = Color(0.78, 0.81, 0.86, 1)
+theme_override_colors/font_focus_color = Color(0.78, 0.81, 0.86, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxModel")
+theme_override_styles/hover = SubResource("StyleBoxModeHover")
+theme_override_styles/pressed = SubResource("StyleBoxModePressed")
+theme_override_styles/disabled = SubResource("StyleBoxModel")
+theme_override_styles/focus = SubResource("StyleBoxModePressed")
+text = "gpt-4o"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+clip_text = true
+
+[node name="ActionSpacer" type="Control" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ImageButton" type="TextureButton" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+tooltip_text = "Image context (coming soon)"
+disabled = true
+texture_normal = ExtResource("9_image")
+ignore_texture_size = true
+stretch_mode = 5
+script = ExtResource("10_icon_button")
+
+[node name="SendButton" type="Button" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions"]
+custom_minimum_size = Vector2(42, 34)
+layout_mode = 2
+tooltip_text = "Send message"
+theme_override_styles/normal = SubResource("StyleBoxOverlayDismiss")
+theme_override_styles/hover = SubResource("StyleBoxOverlayDismiss")
+theme_override_styles/pressed = SubResource("StyleBoxOverlayDismiss")
+theme_override_styles/disabled = SubResource("StyleBoxOverlayDismiss")
+theme_override_styles/focus = SubResource("StyleBoxOverlayDismiss")
+script = ExtResource("10_icon_button")
+
+[node name="Icon" type="TextureRect" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/SendButton"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -13.0
+offset_top = -13.0
+offset_right = 13.0
+offset_bottom = 13.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("5_send")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ModeOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DismissButton" type="Button" parent="ModeOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxOverlayDismiss")
+theme_override_styles/hover = SubResource("StyleBoxOverlayDismiss")
+theme_override_styles/pressed = SubResource("StyleBoxOverlayDismiss")
+
+[node name="ModeMenu" type="PanelContainer" parent="ModeOverlay"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 0
+offset_right = 300.0
+offset_bottom = 220.0
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxModeMenu")
+
+[node name="MenuMargin" type="MarginContainer" parent="ModeOverlay/ModeMenu"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="ModeOverlay/ModeMenu/MenuMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Heading" type="Label" parent="ModeOverlay/ModeMenu/MenuMargin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.9, 0.93, 1)
+text = "Choose an agent mode"
+
+[node name="Help" type="Label" parent="ModeOverlay/ModeMenu/MenuMargin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.54, 0.6, 1)
+text = "Plan is read-only. Work can run the game and propose reviewed changes."
+autowrap_mode = 2
+
+[node name="Separator" type="HSeparator" parent="ModeOverlay/ModeMenu/MenuMargin/Content"]
+custom_minimum_size = Vector2(0, 7)
+layout_mode = 2
+
+[node name="BuildOption" type="PanelContainer" parent="ModeOverlay/ModeMenu/MenuMargin/Content"]
+layout_mode = 2
+
+[node name="SelectButton" type="Button" parent="ModeOverlay/ModeMenu/MenuMargin/Content/BuildOption"]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxModeOptionNormal")
+theme_override_styles/hover = SubResource("StyleBoxModeOptionHover")
+theme_override_styles/pressed = SubResource("StyleBoxModeOptionPressed")
+theme_override_styles/focus = SubResource("StyleBoxModeOptionHover")
+
+[node name="RowMargin" type="MarginContainer" parent="ModeOverlay/ModeMenu/MenuMargin/Content/BuildOption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="Row" type="HBoxContainer" parent="ModeOverlay/ModeMenu/MenuMargin/Content/BuildOption/RowMargin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 9
+
+[node name="Icon" type="TextureRect" parent="ModeOverlay/ModeMenu/MenuMargin/Content/BuildOption/RowMargin/Row"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Text" type="VBoxContainer" parent="ModeOverlay/ModeMenu/MenuMargin/Content/BuildOption/RowMargin/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="ModeOverlay/ModeMenu/MenuMargin/Content/BuildOption/RowMargin/Row/Text"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.57, 0.84, 0.63, 1)
+text = "Work"
+
+[node name="Description" type="Label" parent="ModeOverlay/ModeMenu/MenuMargin/Content/BuildOption/RowMargin/Row/Text"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.5, 0.55, 0.6, 1)
+text = "Inspect, run, and propose reviewed edits"
+text_overrun_behavior = 3
+clip_text = true
+
+[node name="Check" type="TextureRect" parent="ModeOverlay/ModeMenu/MenuMargin/Content/BuildOption/RowMargin/Row"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("11_check")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PlanOption" type="PanelContainer" parent="ModeOverlay/ModeMenu/MenuMargin/Content"]
+layout_mode = 2
+
+[node name="SelectButton" type="Button" parent="ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption"]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxModeOptionNormal")
+theme_override_styles/hover = SubResource("StyleBoxModeOptionHover")
+theme_override_styles/pressed = SubResource("StyleBoxModeOptionPressed")
+theme_override_styles/focus = SubResource("StyleBoxModeOptionHover")
+
+[node name="RowMargin" type="MarginContainer" parent="ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="Row" type="HBoxContainer" parent="ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption/RowMargin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 9
+
+[node name="Icon" type="TextureRect" parent="ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption/RowMargin/Row"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Text" type="VBoxContainer" parent="ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption/RowMargin/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption/RowMargin/Row/Text"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.94, 0.64, 0.35, 1)
+text = "Plan"
+
+[node name="Description" type="Label" parent="ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption/RowMargin/Row/Text"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.5, 0.55, 0.6, 1)
+text = "Analyze without changing files"
+text_overrun_behavior = 3
+clip_text = true
+
+[node name="Check" type="TextureRect" parent="ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption/RowMargin/Row"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("11_check")
+expand_mode = 1
+stretch_mode = 5

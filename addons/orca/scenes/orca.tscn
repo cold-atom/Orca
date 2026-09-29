@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3 uid="uid://cudg400mi1c4d"]
+
+[ext_resource type="Texture2D" path="res://addons/orca/assets/orca.svg" id="1_j0238"]
+[ext_resource type="Script" uid="uid://dx1imtingph6i" path="res://addons/orca/scenes/open_close.gd" id="2_qv4cc"]
+
+[node name="Control" type="Control"]
+custom_minimum_size = Vector2(24, 24)
+
+[node name="TextureButton" type="TextureButton" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture_normal = ExtResource("1_j0238")
+ignore_texture_size = true
+stretch_mode = 5
+script = ExtResource("2_qv4cc")

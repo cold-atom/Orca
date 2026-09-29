@@ -1,0 +1,25 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://tests/fixtures/inspect_scene_child.tscn" id="1_child"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fixture"]
+size = Vector2(24, 48)
+
+[node name="FixtureRoot" type="Node2D"]
+position = Vector2(12, 24)
+metadata/description = "SceneState inspection fixture"
+metadata/settings = {"enabled": true, "values": [1, 2, 3]}
+
+[node name="Player" type="CharacterBody2D" parent="." groups=["actors"]]
+collision_layer = 2
+metadata/target = NodePath("../Timer")
+
+[node name="Collision" type="CollisionShape2D" parent="Player"]
+shape = SubResource("RectangleShape2D_fixture")
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 0.5
+
+[node name="ChildInstance" parent="." instance=ExtResource("1_child")]
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout" binds=[42]]

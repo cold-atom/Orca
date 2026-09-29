@@ -1,0 +1,8 @@
+# Normalize EOL for all files that Git considers text files.
+* text=auto eol=lf
+
+# Asset Library export packaging:
+# keep only the installable addon directory in generated archives.
+/** export-ignore
+/addons !export-ignore
+/addons/** !export-ignore

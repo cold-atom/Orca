@@ -1,0 +1,103 @@
+extends SceneTree
+
+const ModelCatalogService = preload("res://addons/orca/scripts/model_catalog_service.gd")
+const ModelMetadata = preload("res://addons/orca/scripts/model_metadata.gd")
+const ProviderModelService = preload("res://addons/orca/scripts/provider_model_service.gd")
+const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
+
+var _failures := PackedStringArray()
+
+
+func _init() -> void:
+	_test_registry()
+	_test_gemini_provider()
+	_test_xai_provider()
+	_test_metadata_mapping()
+	if _failures.is_empty():
+		print("provider_test: PASS")
+		quit(0)
+		return
+	for failure in _failures:
+		printerr("provider_test: ", failure)
+	quit(1)
+
+
+func _test_registry() -> void:
+	_expect("gemini" in ProviderRegistry.PROVIDER_IDS, "Gemini should be registered")
+	_expect("xai" in ProviderRegistry.PROVIDER_IDS, "xAI should be registered")
+	_expect(ProviderRegistry.get_provider("gemini").definition().get("id") == "gemini", "Gemini should resolve to its adapter")
+	_expect(ProviderRegistry.get_provider("xai").definition().get("id") == "xai", "xAI should resolve to its adapter")
+	_expect(ProviderRegistry.infer_provider("https://generativelanguage.googleapis.com/v1beta/openai/") == "gemini", "Gemini's canonical URL should be inferred")
+	_expect(ProviderRegistry.infer_provider("https://api.x.ai/v1/") == "xai", "xAI's canonical URL should be inferred")
+
+
+func _test_gemini_provider() -> void:
+	var provider = ProviderRegistry.get_provider("gemini")
+	var config := {"base_url": provider.definition()["base_url"]}
+	_expect(provider.chat_url(config) == "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "Gemini should use the OpenAI-compatible chat endpoint")
+	_expect(provider.models_url(config) == "https://generativelanguage.googleapis.com/v1beta/models", "Gemini should use the native model-list endpoint")
+	_expect("Authorization: Bearer secret" in provider.request_headers("secret"), "Gemini chat should use bearer authentication")
+	_expect("x-goog-api-key: secret" in provider.model_headers("secret"), "Gemini model discovery should use Google's API-key header")
+	var body := {}
+	provider.apply_chat_options(body, "high")
+	_expect(body.get("reasoning_effort") == "high", "Gemini reasoning effort should use the compatibility field")
+	var models: Array[Dictionary] = provider.normalize_models({"models": [
+		{"name": "models/gemini-2.5-flash", "displayName": "Gemini 2.5 Flash", "inputTokenLimit": 1048576, "supportedGenerationMethods": ["generateContent"]},
+		{"name": "models/text-embedding-004", "displayName": "Embedding", "supportedGenerationMethods": ["embedContent"]},
+		{"name": "models/imagen-4", "displayName": "Imagen", "supportedGenerationMethods": ["generateContent"]}
+	]})
+	_expect(models.size() == 1, "Gemini discovery should retain only compatible text-generation models")
+	if models.size() == 1:
+		_expect(models[0].get("id") == "gemini-2.5-flash", "Gemini discovery should strip the native models/ prefix")
+		_expect(models[0].get("context_window") == 1048576, "Gemini discovery should retain the input token limit")
+		_expect("high" in models[0].get("efforts", PackedStringArray()), "Gemini thinking models should expose reasoning effort")
+
+
+func _test_xai_provider() -> void:
+	var provider = ProviderRegistry.get_provider("xai")
+	var config := {"base_url": provider.definition()["base_url"]}
+	_expect(provider.chat_url(config) == "https://api.x.ai/v1/chat/completions", "xAI should use its Chat Completions endpoint")
+	_expect(provider.models_url(config) == "https://api.x.ai/v1/models", "xAI should use its models endpoint")
+	_expect("Authorization: Bearer secret" in provider.request_headers("secret"), "xAI should use bearer authentication")
+	var body := {}
+	provider.apply_chat_options(body, "xhigh")
+	_expect(body.get("reasoning_effort") == "xhigh", "xAI reasoning effort should use the documented request field")
+	var sanitized: Array = provider.sanitize_messages([{"role": "assistant", "reasoning_content": "keep", "reasoning": "drop", "reasoning_details": []}])
+	_expect(sanitized[0].get("reasoning_content") == "keep", "xAI should preserve reasoning_content for continuation")
+	_expect(not sanitized[0].has("reasoning") and not sanitized[0].has("reasoning_details"), "xAI should remove unrelated reasoning formats")
+	var models: Array[Dictionary] = provider.normalize_models({"data": [
+		{
+			"id": "grok-420-reasoning",
+			"context_length": 256000,
+			"prompt_text_token_price": 20000,
+			"completion_text_token_price": 80000,
+			"capabilities": {"reasoning_effort": ["low", "high", "xhigh"], "default_reasoning_effort": "high"}
+		},
+		{"id": "grok-imagine-image", "image_price": 200000000}
+	]})
+	_expect(models.size() == 1, "xAI discovery should exclude generation-only media models")
+	if models.size() == 1:
+		_expect(models[0].get("context_window") == 256000, "xAI discovery should map context_length")
+		_expect(is_equal_approx(float(models[0].get("input_per_million")), 2.0), "xAI input pricing should convert to dollars per million tokens")
+		_expect(is_equal_approx(float(models[0].get("output_per_million")), 8.0), "xAI output pricing should convert to dollars per million tokens")
+		_expect(models[0].get("default_effort") == "high", "xAI discovery should retain the default reasoning effort")
+
+
+func _test_metadata_mapping() -> void:
+	_expect(ModelMetadata.infer_provider("https://generativelanguage.googleapis.com/v1beta/openai") == "google", "Gemini should map to the models.dev google namespace")
+	_expect(ModelMetadata.infer_provider("https://api.x.ai/v1") == "xai", "xAI should map to the models.dev xai namespace")
+	var catalog_service = ModelCatalogService.new()
+	_expect(catalog_service._provider_url("xai") == "https://api.x.ai", "xAI should have a canonical metadata URL")
+	catalog_service.free()
+	var model_service = ProviderModelService.new()
+	var models: Array[Dictionary] = [{"id": "gemini-orca-test", "context_window": 123456, "input_per_million": -1.0, "output_per_million": -1.0}]
+	model_service._merge_public_metadata("gemini", models, "https://generativelanguage.googleapis.com/v1beta/openai")
+	var resolved := ModelMetadata.resolve("gemini-orca-test", "https://generativelanguage.googleapis.com/v1beta/openai")
+	_expect(resolved.get("context_window") == 123456, "Gemini discovery metadata should be cached under its catalog namespace")
+	ModelMetadata.remove_runtime_metadata("google", "gemini-orca-test")
+	model_service.free()
+
+
+func _expect(condition: bool, message: String) -> void:
+	if not condition:
+		_failures.append(message)

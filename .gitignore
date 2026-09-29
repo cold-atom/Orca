@@ -1,0 +1,25 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+*.import
+
+# Test artifacts that can remain after interrupted runs
+.orca_game_process_test_*/
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+export_credentials.cfg
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Internal handoff notes
+HANDOVER.md
+
+# Release and local tooling output
+.ci/
+.orca_tmp_*
+.orca_backup_*

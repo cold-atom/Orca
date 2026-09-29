@@ -1,0 +1,72 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  godot-4-7-2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GODOT_VERSION: 4.7.2
+      GODOT_BIN: ${{ github.workspace }}/.ci/Godot_v4.7.2-stable_linux.x86_64
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Godot
+        shell: bash
+        run: |
+          mkdir -p .ci
+          curl --fail --location --retry 3 --output .ci/godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q .ci/godot.zip -d .ci
+          chmod +x "$GODOT_BIN"
+
+      - name: Run unit and component tests
+        shell: bash
+        run: |
+          "$GODOT_BIN" --headless --path . --script res://tests/api_client_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/provider_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/context_budget_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/patch_utils_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/tools_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/session_store_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/history_view_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/settings_view_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/chat_window_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/tool_activity_group_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/task_list_panel_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/scene_inspector_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/project_settings_inspector_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/input_map_proposal_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/main_scene_proposal_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/project_settings_proposal_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/scene_proposal_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/game_process_service_test.gd
+
+      - name: Run local transport integration
+        shell: bash
+        run: |
+          python3 tests/http_test_server.py &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          "$GODOT_BIN" --headless --path . --script res://tests/api_client_integration_test.gd
+          wait "$server_pid"
+          trap - EXIT
+
+      - name: Initialize editor and plugin
+        shell: bash
+        run: "$GODOT_BIN" --headless --editor --path . --quit
+
+      - name: Check replacement artifact hygiene
+        shell: bash
+        run: |
+          if find . -type f \( -name '.orca_tmp_*' -o -name '.orca_backup_*' \) -print -quit | grep -q .; then
+            echo "Orca replacement artifacts remain after tests."
+            exit 1
+          fi
