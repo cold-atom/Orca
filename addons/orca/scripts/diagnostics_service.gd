@@ -8,8 +8,15 @@ static var _records_mutex := Mutex.new()
 static var _next_sequence := 1
 
 class CaptureLogger extends Logger:
+	const DIAGNOSTICS_SCRIPT_PATH := "res://addons/orca/scripts/diagnostics_service.gd"
+
+	func _record_diagnostic(record: Dictionary) -> void:
+		var diagnostics_script = load(DIAGNOSTICS_SCRIPT_PATH)
+		if diagnostics_script != null:
+			diagnostics_script._record(record)
+
 	func _log_error(function, file, line, code, rationale, editor_notify, error_type, script_backtraces) -> void:
-		OrcaDiagnosticsService._record({
+		_record_diagnostic({
 			"origin": "editor",
 			"severity": "error",
 			"file": str(file),
@@ -21,7 +28,7 @@ class CaptureLogger extends Logger:
 
 	func _log_message(message, is_stderr) -> void:
 		if is_stderr:
-			OrcaDiagnosticsService._record({
+			_record_diagnostic({
 				"origin": "editor",
 				"severity": "error",
 				"file": "",
