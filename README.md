@@ -1,16 +1,25 @@
-<p align="center">
-  <img src="docs/assets/brand/orca.png" alt="Orca logo" width="132">
+<div align="center">
+
+<img src="docs/assets/brand/orca.png" alt="Orca logo" width="132">
+
+# Orca
+
+**A safety-first AI development assistant agent for the Godot editor.**
+
+<p>
+  <a href="https://github.com/cold-atom/Orca/releases/latest"><img src="https://img.shields.io/github/v/release/cold-atom/Orca?style=for-the-badge&label=Latest&color=111111&labelColor=000000" alt="Latest release"></a>
+  <a href="https://github.com/cold-atom/Orca/releases"><img src="https://img.shields.io/github/downloads/cold-atom/Orca/total?style=for-the-badge&color=111111&labelColor=000000" alt="Release downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-111111?style=for-the-badge&labelColor=000000" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Godot-4.7.2-111111?style=for-the-badge&labelColor=000000" alt="Godot 4.7.2">
 </p>
 
-<h1 align="center">Orca</h1>
+<a href="https://github.com/cold-atom/Orca/releases"><b>Download</b></a> &nbsp;|&nbsp;
+<a href="#install">Install</a> &nbsp;|&nbsp;
+<a href="#highlights">Highlights</a> &nbsp;|&nbsp;
+<a href="CONTRIBUTING.md">Contributing</a> &nbsp;|&nbsp;
+<a href="SECURITY.md">Security</a>
 
-<p align="center">
-  <strong>A safety-first AI development assistant agent for the Godot editor.</strong>
-</p>
-
-<p align="center">
-  Godot 4.7.2 &middot; MIT License &middot; Review-first project changes
-</p>
+</div>
 
 Orca helps developers inspect projects, understand editor context, propose Godot-aware changes, validate them, and apply them only after explicit review.
 
