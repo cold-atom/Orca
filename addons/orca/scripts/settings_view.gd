@@ -7,6 +7,7 @@ signal settings_saved(provider_id: String, model: String)
 const Config = preload("res://addons/orca/scripts/config.gd")
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
 const ProviderModelService = preload("res://addons/orca/scripts/provider_model_service.gd")
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const PLUGIN_CONFIG_PATH := "res://addons/orca/plugin.cfg"
 const ABOUT_LOGO_PATH := "res://addons/orca/assets/orca.svg"
 const SUPPORTED_GODOT_VERSION := "4.7.2"
@@ -84,13 +85,13 @@ func _build_ui() -> void:
 	add_theme_stylebox_override("panel", background)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
+	margin.add_theme_constant_override("margin_left", UiMetrics.scaled_int(14))
+	margin.add_theme_constant_override("margin_top", UiMetrics.scaled_int(12))
+	margin.add_theme_constant_override("margin_right", UiMetrics.scaled_int(14))
+	margin.add_theme_constant_override("margin_bottom", UiMetrics.scaled_int(12))
 	add_child(margin)
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UiMetrics.scaled_int(10))
 	margin.add_child(root)
 
 	var header := HBoxContainer.new()
@@ -102,13 +103,13 @@ func _build_ui() -> void:
 	header.add_child(title)
 	done_button = Button.new()
 	done_button.text = "Done"
-	done_button.custom_minimum_size = Vector2(72, 34)
+	done_button.custom_minimum_size = UiMetrics.scaled_vector(Vector2(72, 34))
 	done_button.pressed.connect(_on_done_pressed)
 	header.add_child(done_button)
 	root.add_child(HSeparator.new())
 
 	var tab_row := HBoxContainer.new()
-	tab_row.add_theme_constant_override("separation", 6)
+	tab_row.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	root.add_child(tab_row)
 	var tab_group := ButtonGroup.new()
 	tab_group.allow_unpress = false
@@ -127,7 +128,7 @@ func _build_ui() -> void:
 	root.add_child(settings_scroll)
 	var content := VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 7)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(7))
 	settings_scroll.add_child(content)
 
 	var section := Label.new()
@@ -224,7 +225,7 @@ func _section_tab(text: String, group: ButtonGroup) -> Button:
 	button.toggle_mode = true
 	button.button_group = group
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.custom_minimum_size = Vector2(0, 34)
+	button.custom_minimum_size = Vector2(0, UiMetrics.scaled(34))
 	return button
 
 
@@ -248,7 +249,7 @@ func _build_about_view() -> ScrollContainer:
 	var content := VBoxContainer.new()
 	content.name = "AboutContent"
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 10)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(10))
 	scroll.add_child(content)
 
 	var logo_center := CenterContainer.new()
@@ -256,7 +257,7 @@ func _build_about_view() -> ScrollContainer:
 	var logo := TextureRect.new()
 	logo.name = "AboutLogo"
 	logo.texture = _about_logo_texture()
-	logo.custom_minimum_size = Vector2(72, 72)
+	logo.custom_minimum_size = UiMetrics.scaled_vector(Vector2(72, 72))
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	logo_center.add_child(logo)
@@ -329,7 +330,8 @@ func _about_logo_texture() -> Texture2D:
 	var loaded := load(ABOUT_LOGO_PATH)
 	if loaded is Texture2D:
 		return loaded
-	var image := Image.create(72, 72, false, Image.FORMAT_RGBA8)
+	var fallback_size := UiMetrics.scaled_int(72)
+	var image := Image.create(fallback_size, fallback_size, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0.2, 0.62, 0.9, 1.0))
 	return ImageTexture.create_from_image(image)
 

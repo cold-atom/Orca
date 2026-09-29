@@ -1,6 +1,8 @@
 @tool
 extends PanelContainer
 
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
 
@@ -19,12 +21,12 @@ func _ready() -> void:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.085, 0.095, 0.11, 1)
 	style.border_color = Color(0.48, 0.38, 0.22, 1)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(7)
-	style.set_content_margin_all(8)
+	style.set_border_width_all(UiMetrics.scaled_int(1))
+	style.set_corner_radius_all(UiMetrics.scaled_int(7))
+	style.set_content_margin_all(UiMetrics.scaled(8))
 	add_theme_stylebox_override("panel", style)
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 7)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(7))
 	add_child(content)
 	var header := HBoxContainer.new()
 	content.add_child(header)
@@ -38,7 +40,7 @@ func _ready() -> void:
 	_validation_label.add_theme_color_override("font_color", Color(0.48, 0.78, 0.58))
 	content.add_child(_validation_label)
 	_review = VBoxContainer.new()
-	_review.add_theme_constant_override("separation", 5)
+	_review.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
 	content.add_child(_review)
 	var navigation := HBoxContainer.new()
 	content.add_child(navigation)
@@ -49,7 +51,7 @@ func _ready() -> void:
 	navigation.add_child(open_button)
 	var actions := HBoxContainer.new()
 	actions.alignment = BoxContainer.ALIGNMENT_END
-	actions.add_theme_constant_override("separation", 6)
+	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(actions)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL

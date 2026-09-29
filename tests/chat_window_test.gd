@@ -5,6 +5,7 @@ const ChatWindowScene = preload("res://addons/orca/scenes/chat_window.tscn")
 const TaskListPanel = preload("res://addons/orca/scripts/task_list_panel.gd")
 const ChangeCard = preload("res://addons/orca/scripts/change_card.gd")
 const DiffUtils = preload("res://addons/orca/scripts/diff_utils.gd")
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 
 class FakeAgent:
 	extends RefCounted
@@ -39,6 +40,8 @@ func _run() -> void:
 	view._has_session_content = false
 	view._clear_chat_feed()
 	await process_frame
+	_test_ui_scale_math()
+	await _test_compact_composer(view)
 	await _test_final_rendering(view)
 	await process_frame
 	await process_frame
@@ -103,6 +106,39 @@ func _test_block_parser() -> void:
 	var unmatched := ChatWindow._split_final_message_blocks("Before\n```gdscript\nprint(1)")
 	_expect(unmatched.size() == 1 and unmatched[0].get("type") == "text", "unmatched fences should remain literal prose")
 	_expect(unmatched[0].get("text") == "Before\n```gdscript\nprint(1)", "unmatched fence text should not be lost")
+
+
+func _test_ui_scale_math() -> void:
+	_expect(UiMetrics.scaled(10, 1.0) == 10.0, "100% UI metrics should preserve authored dimensions")
+	_expect(UiMetrics.scaled(10, 1.25) == 13.0, "fractional editor scaling should round authored dimensions")
+	_expect(UiMetrics.scaled_vector(Vector2(24, 28), 2.0) == Vector2(48, 56), "200% UI metrics should scale both dimensions once")
+
+
+func _test_compact_composer(view) -> void:
+	view.prompt_input.text = ""
+	view._sync_prompt_height()
+	await process_frame
+	var line_height: float = view.prompt_input.get_line_height()
+	var style_height: float = view.prompt_input.get_theme_stylebox("normal").get_minimum_size().y
+	var expected_minimum: float = ChatWindow.PROMPT_MIN_LINES * line_height + style_height
+	_expect(is_equal_approx(view.prompt_input.custom_minimum_size.y, ceilf(expected_minimum)), "an empty composer should use the configured compact line count")
+	_expect(view.prompt_input.custom_minimum_size.y < 110.0, "an empty composer must not retain the old fixed 110 px floor at 100% scale")
+	var image_button := view.get_node("MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/ImageButton") as BaseButton
+	_expect(not image_button.visible, "the unavailable image action should not reserve narrow composer width")
+	var actions := view.get_node("MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions") as HBoxContainer
+	var actions_rect := actions.get_global_rect()
+	for child in actions.get_children():
+		if child is Control and child.visible:
+			_expect(actions_rect.encloses(child.get_global_rect()), "visible composer actions should remain inside the narrow action row")
+	view.prompt_input.text = "line\n".repeat(20)
+	view._sync_prompt_height()
+	var expected_maximum: float = minf(
+		ChatWindow.PROMPT_MAX_LINES * line_height + style_height,
+		maxf(expected_minimum, view.size.y * ChatWindow.PROMPT_MAX_DOCK_RATIO)
+	)
+	_expect(view.prompt_input.custom_minimum_size.y <= ceilf(expected_maximum), "a long prompt should remain bounded by line count and dock height")
+	view.prompt_input.text = ""
+	view._sync_prompt_height()
 
 
 func _test_final_rendering(view) -> void:

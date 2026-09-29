@@ -4,6 +4,7 @@ extends PanelContainer
 signal open_requested(filepath: String, line: int, column: int)
 
 const ToolActivityCard = preload("res://addons/orca/scripts/tool_activity_card.gd")
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 
 var _header_button: Button
 var _status_label: Label
@@ -23,18 +24,18 @@ func _ready() -> void:
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.075, 0.082, 0.095, 0.92)
 	panel_style.border_color = Color(0.22, 0.25, 0.29, 1)
-	panel_style.set_border_width_all(1)
-	panel_style.set_corner_radius_all(7)
-	panel_style.set_content_margin_all(6)
+	panel_style.set_border_width_all(UiMetrics.scaled_int(1))
+	panel_style.set_corner_radius_all(UiMetrics.scaled_int(7))
+	panel_style.set_content_margin_all(UiMetrics.scaled(6))
 	add_theme_stylebox_override("panel", panel_style)
 
 	var content := VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 5)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
 	add_child(content)
 	var header := HBoxContainer.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_theme_constant_override("separation", 6)
+	header.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(header)
 
 	var label_font_size := 13
@@ -61,7 +62,7 @@ func _ready() -> void:
 	_body = VBoxContainer.new()
 	_body.set_meta("orca_tool_group_body", true)
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_body.add_theme_constant_override("separation", 5)
+	_body.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
 	_body.visible = false
 	content.add_child(_body)
 	_update_header()

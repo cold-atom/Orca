@@ -1,6 +1,8 @@
 @tool
 extends PanelContainer
 
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
 
@@ -22,13 +24,13 @@ func _ready() -> void:
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.085, 0.095, 0.11, 1)
 	panel_style.border_color = Color(0.26, 0.3, 0.35, 1)
-	panel_style.set_border_width_all(1)
-	panel_style.set_corner_radius_all(7)
-	panel_style.set_content_margin_all(8)
+	panel_style.set_border_width_all(UiMetrics.scaled_int(1))
+	panel_style.set_corner_radius_all(UiMetrics.scaled_int(7))
+	panel_style.set_content_margin_all(UiMetrics.scaled(8))
 	add_theme_stylebox_override("panel", panel_style)
 
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 7)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(7))
 	add_child(content)
 	var label_font_size := 13
 	var meta_font_size := 11
@@ -59,26 +61,30 @@ func _ready() -> void:
 	_diff_label.fit_content = false
 	_diff_label.selection_enabled = true
 	_diff_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_diff_label.custom_minimum_size = Vector2(0, 70)
+	_diff_label.custom_minimum_size = Vector2(0, UiMetrics.scaled(70))
 	content.add_child(_diff_label)
 
-	var actions := HBoxContainer.new()
-	actions.alignment = BoxContainer.ALIGNMENT_END
-	actions.add_theme_constant_override("separation", 6)
-	content.add_child(actions)
+	var navigation := HBoxContainer.new()
+	navigation.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
+	content.add_child(navigation)
 
 	var expand_button := Button.new()
 	expand_button.text = "Expand Diff"
 	expand_button.flat = true
 	expand_button.add_theme_font_size_override("font_size", label_font_size)
 	expand_button.pressed.connect(_show_expanded_diff)
-	actions.add_child(expand_button)
+	navigation.add_child(expand_button)
 	_open_button = Button.new()
 	_open_button.text = "Open File"
 	_open_button.flat = true
 	_open_button.add_theme_font_size_override("font_size", label_font_size)
 	_open_button.pressed.connect(_open_changed_file)
-	actions.add_child(_open_button)
+	navigation.add_child(_open_button)
+
+	var actions := HBoxContainer.new()
+	actions.alignment = BoxContainer.ALIGNMENT_END
+	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
+	content.add_child(actions)
 
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -167,8 +173,16 @@ func _format_unified_diff(operations: Array) -> String:
 func _show_expanded_diff() -> void:
 	var dialog := Window.new()
 	dialog.title = "Review Changes · " + str(_proposal.get("filepath", ""))
-	dialog.min_size = Vector2i(760, 480)
-	dialog.size = Vector2i(1050, 700)
+	var available := get_window().size
+	var maximum := Vector2i(maxi(1, int(available.x * 0.9)), maxi(1, int(available.y * 0.9)))
+	dialog.min_size = Vector2i(
+		mini(UiMetrics.scaled_int(760), maximum.x),
+		mini(UiMetrics.scaled_int(480), maximum.y)
+	)
+	dialog.size = Vector2i(
+		mini(UiMetrics.scaled_int(1050), maximum.x),
+		mini(UiMetrics.scaled_int(700), maximum.y)
+	)
 	dialog.transient = true
 	dialog.exclusive = true
 	dialog.close_requested.connect(dialog.queue_free)
@@ -176,14 +190,18 @@ func _show_expanded_diff() -> void:
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.add_theme_constant_override("margin_left", UiMetrics.scaled_int(10))
+	margin.add_theme_constant_override("margin_top", UiMetrics.scaled_int(10))
+	margin.add_theme_constant_override("margin_right", UiMetrics.scaled_int(10))
+	margin.add_theme_constant_override("margin_bottom", UiMetrics.scaled_int(10))
 	dialog.add_child(margin)
 	var layout := VBoxContainer.new()
 	margin.add_child(layout)
-	var panes := HSplitContainer.new()
+	var panes: SplitContainer
+	if dialog.size.x >= UiMetrics.scaled(800):
+		panes = HSplitContainer.new()
+	else:
+		panes = VSplitContainer.new()
 	panes.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(panes)
 	var old_edit := _create_code_pane(panes, "Previous", str(_proposal.get("old_content", "")))

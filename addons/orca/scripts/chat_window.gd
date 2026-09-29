@@ -18,8 +18,10 @@ const ModelCatalogService = preload("res://addons/orca/scripts/model_catalog_ser
 const SettingsView = preload("res://addons/orca/scripts/settings_view.gd")
 const SessionStore = preload("res://addons/orca/scripts/session_store.gd")
 const HistoryView = preload("res://addons/orca/scripts/history_view.gd")
-const PROMPT_MIN_HEIGHT := 110.0
-const PROMPT_MAX_HEIGHT := 132.0
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const PROMPT_MIN_LINES := 2
+const PROMPT_MAX_LINES := 7
+const PROMPT_MAX_DOCK_RATIO := 0.28
 const CODE_MIN_VISIBLE_LINES := 2
 const CODE_MAX_VISIBLE_LINES := 14
 const WORKING_SQUARE_COUNT := 5
@@ -39,14 +41,24 @@ const GROUPABLE_TOOL_NAMES := {
 
 @onready var chat_scroll: ScrollContainer = $MarginContainer/VBoxContainer/ChatScroll
 @onready var main_content: Control = $MarginContainer
+@onready var main_margin: MarginContainer = $MarginContainer
+@onready var header: VBoxContainer = $MarginContainer/VBoxContainer/Header
+@onready var header_top_row: HBoxContainer = $MarginContainer/VBoxContainer/Header/TopRow
 @onready var chat_feed: VBoxContainer = $MarginContainer/VBoxContainer/ChatScroll/ChatFeed
 @onready var empty_state: Control = $MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState
+@onready var empty_content: VBoxContainer = $MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content
+@onready var empty_logo: TextureRect = $MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content/Logo
+@onready var empty_description: Label = $MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content/Description
+@onready var empty_mode_hint: Label = $MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content/ModeHint
 @onready var composer: PanelContainer = $MarginContainer/VBoxContainer/Composer
+@onready var composer_content: VBoxContainer = $MarginContainer/VBoxContainer/Composer/ComposerContent
+@onready var composer_actions: HBoxContainer = $MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions
 @onready var prompt_input: TextEdit = $MarginContainer/VBoxContainer/Composer/ComposerContent/PromptInput
 @onready var mode_selector: Control = $MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/ModeSelector
 @onready var mode_button: Button = $MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/ModeSelector/ModeButton
 @onready var mode_label: Label = $MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/ModeSelector/Label
 @onready var model_label: Button = $MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/ModelLabel
+@onready var image_button: BaseButton = $MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/ImageButton
 @onready var send_button: BaseButton = $MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/SendButton
 @onready var send_icon_view: TextureRect = $MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions/SendButton/Icon
 @onready var settings_button: BaseButton = $MarginContainer/VBoxContainer/Header/TopRow/SettingsButton
@@ -129,6 +141,7 @@ func _ready() -> void:
 		editor_font_size = 13
 	_body_font_size = maxi(editor_font_size + 1, 13)
 	_meta_font_size = maxi(editor_font_size, 11)
+	_apply_scaled_geometry()
 	_setup_visual_theme(editor_theme)
 	task_list_panel = TaskListPanel.new()
 	var main_column := chat_scroll.get_parent()
@@ -140,6 +153,8 @@ func _ready() -> void:
 	model_label.add_theme_font_size_override("font_size", maxi(_meta_font_size - 1, 11))
 	context_label.add_theme_font_size_override("font_size", maxi(_meta_font_size - 1, 11))
 	cost_label.add_theme_font_size_override("font_size", maxi(_meta_font_size - 1, 11))
+	empty_description.add_theme_font_size_override("font_size", _body_font_size + 2)
+	empty_mode_hint.add_theme_font_size_override("font_size", _body_font_size + 1)
 	_sync_model_ui()
 	mode_selector.custom_minimum_size = model_label.get_combined_minimum_size()
 	send_button.pressed.connect(_on_send_button_pressed)
@@ -237,8 +252,8 @@ func _setup_visual_theme(editor_theme: Theme) -> void:
 	var menu_style := StyleBoxFlat.new()
 	menu_style.bg_color = base_color.darkened(0.3)
 	menu_style.border_color = Color(accent_color.r, accent_color.g, accent_color.b, 0.65)
-	menu_style.set_border_width_all(1)
-	menu_style.set_corner_radius_all(8)
+	menu_style.set_border_width_all(UiMetrics.scaled_int(1))
+	menu_style.set_corner_radius_all(UiMetrics.scaled_int(8))
 	mode_menu.add_theme_stylebox_override("panel", menu_style)
 	header_title.add_theme_font_size_override("font_size", _meta_font_size + 1)
 	empty_title.add_theme_font_size_override("font_size", _body_font_size + 10)
@@ -254,13 +269,91 @@ func _make_composer_style(background: Color, border: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = background
 	style.border_color = border
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(10)
-	style.content_margin_left = 11
-	style.content_margin_top = 9
-	style.content_margin_right = 9
-	style.content_margin_bottom = 9
+	style.set_border_width_all(UiMetrics.scaled_int(1))
+	style.set_corner_radius_all(UiMetrics.scaled_int(10))
+	style.content_margin_left = UiMetrics.scaled(11)
+	style.content_margin_top = UiMetrics.scaled(9)
+	style.content_margin_right = UiMetrics.scaled(9)
+	style.content_margin_bottom = UiMetrics.scaled(9)
 	return style
+
+
+func _apply_scaled_geometry() -> void:
+	main_margin.add_theme_constant_override("margin_left", UiMetrics.scaled_int(10))
+	main_margin.add_theme_constant_override("margin_top", UiMetrics.scaled_int(8))
+	main_margin.add_theme_constant_override("margin_right", UiMetrics.scaled_int(10))
+	main_margin.add_theme_constant_override("margin_bottom", UiMetrics.scaled_int(10))
+	header.custom_minimum_size.y = UiMetrics.scaled(52)
+	header.add_theme_constant_override("separation", UiMetrics.scaled_int(1))
+	header_top_row.custom_minimum_size.y = UiMetrics.scaled(30)
+	header_top_row.add_theme_constant_override("separation", UiMetrics.scaled_int(12))
+	metrics_row.custom_minimum_size.y = UiMetrics.scaled(20)
+	chat_feed.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
+	empty_content.add_theme_constant_override("separation", UiMetrics.scaled_int(14))
+	empty_logo.custom_minimum_size = UiMetrics.scaled_vector(Vector2(60, 60))
+	composer_content.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
+	composer_actions.custom_minimum_size.y = UiMetrics.scaled(30)
+	composer_actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
+	mode_selector.custom_minimum_size = UiMetrics.scaled_vector(Vector2(82, 24))
+	model_label.custom_minimum_size = UiMetrics.scaled_vector(Vector2(82, 24))
+	image_button.hide()
+	for button in [new_session_button, history_button, settings_button]:
+		button.custom_minimum_size = UiMetrics.scaled_vector(Vector2(28, 28))
+	send_button.custom_minimum_size = UiMetrics.scaled_vector(Vector2(42, 34))
+	send_icon_view.offset_left = -UiMetrics.scaled(13)
+	send_icon_view.offset_top = -UiMetrics.scaled(13)
+	send_icon_view.offset_right = UiMetrics.scaled(13)
+	send_icon_view.offset_bottom = UiMetrics.scaled(13)
+	mode_menu.custom_minimum_size.x = UiMetrics.scaled(260)
+	_scale_local_styleboxes(mode_button, ["normal", "hover", "pressed", "disabled", "focus"])
+	_scale_local_styleboxes(model_label, ["normal", "hover", "pressed", "disabled", "focus"])
+	_scale_local_styleboxes(prompt_input, ["normal", "focus"])
+	_scale_local_styleboxes(build_mode_button, ["hover", "pressed", "focus"])
+	_scale_local_styleboxes(plan_mode_button, ["hover", "pressed", "focus"])
+	var menu_margin := $ModeOverlay/ModeMenu/MenuMargin as MarginContainer
+	_set_scaled_margins(menu_margin, 10, 10, 10, 10)
+	var menu_content := $ModeOverlay/ModeMenu/MenuMargin/Content as VBoxContainer
+	menu_content.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
+	menu_content.get_node("Separator").custom_minimum_size.y = UiMetrics.scaled(7)
+	for panel in [build_mode_panel, plan_mode_panel]:
+		var row_margin := panel.get_node("RowMargin") as MarginContainer
+		_set_scaled_margins(row_margin, 8, 5, 8, 5)
+		var row := row_margin.get_node("Row") as HBoxContainer
+		row.add_theme_constant_override("separation", UiMetrics.scaled_int(9))
+		row.get_node("Icon").custom_minimum_size = UiMetrics.scaled_vector(Vector2(20, 20))
+		row.get_node("Check").custom_minimum_size = UiMetrics.scaled_vector(Vector2(16, 16))
+
+
+func _set_scaled_margins(container: MarginContainer, left: float, top: float, right: float, bottom: float) -> void:
+	container.add_theme_constant_override("margin_left", UiMetrics.scaled_int(left))
+	container.add_theme_constant_override("margin_top", UiMetrics.scaled_int(top))
+	container.add_theme_constant_override("margin_right", UiMetrics.scaled_int(right))
+	container.add_theme_constant_override("margin_bottom", UiMetrics.scaled_int(bottom))
+
+
+func _scale_local_styleboxes(control: Control, names: Array[String]) -> void:
+	for style_name in names:
+		var source := control.get_theme_stylebox(style_name)
+		if not source is StyleBoxFlat:
+			continue
+		var style := (source as StyleBoxFlat).duplicate() as StyleBoxFlat
+		style.border_width_left = UiMetrics.scaled_int(style.border_width_left) if style.border_width_left > 0 else 0
+		style.border_width_top = UiMetrics.scaled_int(style.border_width_top) if style.border_width_top > 0 else 0
+		style.border_width_right = UiMetrics.scaled_int(style.border_width_right) if style.border_width_right > 0 else 0
+		style.border_width_bottom = UiMetrics.scaled_int(style.border_width_bottom) if style.border_width_bottom > 0 else 0
+		style.corner_radius_top_left = UiMetrics.scaled_int(style.corner_radius_top_left) if style.corner_radius_top_left > 0 else 0
+		style.corner_radius_top_right = UiMetrics.scaled_int(style.corner_radius_top_right) if style.corner_radius_top_right > 0 else 0
+		style.corner_radius_bottom_right = UiMetrics.scaled_int(style.corner_radius_bottom_right) if style.corner_radius_bottom_right > 0 else 0
+		style.corner_radius_bottom_left = UiMetrics.scaled_int(style.corner_radius_bottom_left) if style.corner_radius_bottom_left > 0 else 0
+		if style.content_margin_left >= 0:
+			style.content_margin_left = UiMetrics.scaled(style.content_margin_left)
+		if style.content_margin_top >= 0:
+			style.content_margin_top = UiMetrics.scaled(style.content_margin_top)
+		if style.content_margin_right >= 0:
+			style.content_margin_right = UiMetrics.scaled(style.content_margin_right)
+		if style.content_margin_bottom >= 0:
+			style.content_margin_bottom = UiMetrics.scaled(style.content_margin_bottom)
+		control.add_theme_stylebox_override(style_name, style)
 
 
 func _on_prompt_focus_changed(focused: bool) -> void:
@@ -290,8 +383,13 @@ func _sync_prompt_height() -> void:
 	for line in range(prompt_input.get_line_count()):
 		visual_lines += 1 + prompt_input.get_line_wrap_count(line)
 	var input_style := prompt_input.get_theme_stylebox("normal")
-	var content_height := visual_lines * prompt_input.get_line_height() + input_style.get_minimum_size().y
-	prompt_input.custom_minimum_size.y = clampf(ceilf(content_height), PROMPT_MIN_HEIGHT, PROMPT_MAX_HEIGHT)
+	var line_height := maxf(prompt_input.get_line_height(), _body_font_size + UiMetrics.scaled(3))
+	var style_height := input_style.get_minimum_size().y
+	var content_height := visual_lines * line_height + style_height
+	var minimum_height := PROMPT_MIN_LINES * line_height + style_height
+	var line_maximum := PROMPT_MAX_LINES * line_height + style_height
+	var dock_maximum := maxf(minimum_height, size.y * PROMPT_MAX_DOCK_RATIO)
+	prompt_input.custom_minimum_size.y = clampf(ceilf(content_height), ceilf(minimum_height), ceilf(minf(line_maximum, dock_maximum)))
 
 
 func _on_prompt_gui_input(event: InputEvent) -> void:
@@ -705,14 +803,15 @@ func _position_mode_menu() -> void:
 	if not mode_overlay.visible:
 		return
 	var menu_minimum := mode_menu.get_combined_minimum_size()
-	var menu_width := minf(maxf(menu_minimum.x, composer.size.x), size.x - 8.0)
+	var edge_gap := UiMetrics.scaled(4)
+	var menu_width := minf(maxf(menu_minimum.x, composer.size.x), size.x - edge_gap * 2.0)
 	mode_menu.size = Vector2(menu_width, menu_minimum.y)
 	var local_button_position := mode_selector.global_position - global_position
 	var local_composer_position := composer.global_position - global_position
-	var menu_x := clampf(local_composer_position.x, 4.0, maxf(4.0, size.x - menu_width - 4.0))
-	var menu_y := local_button_position.y - mode_menu.size.y - 4.0
-	if menu_y < 4.0:
-		menu_y = local_button_position.y + mode_selector.size.y + 4.0
+	var menu_x := clampf(local_composer_position.x, edge_gap, maxf(edge_gap, size.x - menu_width - edge_gap))
+	var menu_y := local_button_position.y - mode_menu.size.y - edge_gap
+	if menu_y < edge_gap:
+		menu_y = local_button_position.y + mode_selector.size.y + edge_gap
 	mode_menu.position = Vector2(menu_x, menu_y)
 
 
@@ -750,7 +849,7 @@ func _sync_mode_ui(mode: int) -> void:
 			var selected_style := StyleBoxFlat.new()
 			var selected_color: Color = btn.get_meta("accent_color")
 			selected_style.bg_color = Color(selected_color.r, selected_color.g, selected_color.b, 0.12)
-			selected_style.set_corner_radius_all(6)
+			selected_style.set_corner_radius_all(UiMetrics.scaled_int(6))
 			panel.add_theme_stylebox_override("panel", selected_style)
 		else:
 			panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
@@ -1219,8 +1318,8 @@ func _add_message(sender: String, message: String, color: Color, kind: String) -
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var style := StyleBoxFlat.new()
 	style.bg_color = _message_background(kind)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(8)
+	style.set_corner_radius_all(UiMetrics.scaled_int(6))
+	style.set_content_margin_all(UiMetrics.scaled(8))
 	panel.add_theme_stylebox_override("panel", style)
 	chat_feed.add_child(panel)
 
@@ -1233,7 +1332,7 @@ func _add_message(sender: String, message: String, color: Color, kind: String) -
 	label.custom_minimum_size = Vector2(0, 1)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_font_size_override("normal_font_size", _body_font_size)
-	label.add_theme_constant_override("line_separation", 4)
+	label.add_theme_constant_override("line_separation", UiMetrics.scaled_int(4))
 	panel.add_child(label)
 	label.resized.connect(_queue_message_label_fit.bind(label))
 	_update_message_label(label, sender, message, color)
@@ -1270,7 +1369,7 @@ func _finalize_assistant_message(label: RichTextLabel, sender: String, message: 
 	label.queue_free()
 	var content := VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 8)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
 	panel.add_child(content)
 	if not sender.is_empty():
 		var heading := _create_message_text_label()
@@ -1298,7 +1397,7 @@ func _create_message_text_label() -> RichTextLabel:
 	label.custom_minimum_size = Vector2(0, 1)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_font_size_override("normal_font_size", _body_font_size)
-	label.add_theme_constant_override("line_separation", 4)
+	label.add_theme_constant_override("line_separation", UiMetrics.scaled_int(4))
 	label.resized.connect(_queue_message_label_fit.bind(label))
 	return label
 
@@ -1310,15 +1409,15 @@ func _add_code_block(parent: VBoxContainer, language: String, code: String) -> v
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.045, 0.05, 0.06, 0.9)
 	style.border_color = Color(0.2, 0.22, 0.25, 0.8)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(7)
+	style.set_border_width_all(UiMetrics.scaled_int(1))
+	style.set_corner_radius_all(UiMetrics.scaled_int(6))
+	style.set_content_margin_all(UiMetrics.scaled(7))
 	card.add_theme_stylebox_override("panel", style)
 	parent.add_child(card)
 
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 4)
+	column.add_theme_constant_override("separation", UiMetrics.scaled_int(4))
 	card.add_child(column)
 	var header := HBoxContainer.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1434,15 +1533,15 @@ func _show_working_indicator(status: String) -> void:
 	panel_style.bg_color = _message_background("status")
 	var accent := _assistant_color()
 	panel_style.border_color = Color(accent.r, accent.g, accent.b, 0.28)
-	panel_style.set_border_width_all(1)
-	panel_style.set_corner_radius_all(6)
-	panel_style.set_content_margin_all(8)
+	panel_style.set_border_width_all(UiMetrics.scaled_int(1))
+	panel_style.set_corner_radius_all(UiMetrics.scaled_int(6))
+	panel_style.set_content_margin_all(UiMetrics.scaled(8))
 	panel.add_theme_stylebox_override("panel", panel_style)
 	chat_feed.add_child(panel)
 
 	var content := VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 5)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
 	panel.add_child(content)
 	var heading := _create_message_text_label()
 	heading.text = "[b][color=#%s]Orca:[/color][/b]" % accent.to_html(false)
@@ -1452,7 +1551,7 @@ func _show_working_indicator(status: String) -> void:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UiMetrics.scaled_int(10))
 	content.add_child(row)
 	_working_status_label = Label.new()
 	_working_status_label.set_meta("orca_working_status", true)
@@ -1464,18 +1563,19 @@ func _show_working_indicator(status: String) -> void:
 	var square_row := HBoxContainer.new()
 	square_row.set_meta("orca_working_squares", true)
 	square_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	square_row.add_theme_constant_override("separation", 4)
+	square_row.add_theme_constant_override("separation", UiMetrics.scaled_int(4))
 	row.add_child(square_row)
 	_working_squares.clear()
 	for index in range(WORKING_SQUARE_COUNT):
 		var square := Panel.new()
 		square.set_meta("orca_working_square", index)
-		square.custom_minimum_size = Vector2(7, 7)
+		var square_size := UiMetrics.scaled(7)
+		square.custom_minimum_size = Vector2(square_size, square_size)
 		square.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		square.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		square.pivot_offset = Vector2(3.5, 3.5)
+		square.pivot_offset = Vector2.ONE * square_size * 0.5
 		var square_style := StyleBoxFlat.new()
-		square_style.set_corner_radius_all(1)
+		square_style.set_corner_radius_all(UiMetrics.scaled_int(1))
 		square.add_theme_stylebox_override("panel", square_style)
 		square_row.add_child(square)
 		_working_squares.append(square)

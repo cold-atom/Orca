@@ -252,13 +252,12 @@ size_flags_vertical = 3
 theme_override_constants/separation = 8
 
 [node name="EmptyState" type="CenterContainer" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed"]
-custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_vertical = 3
 
 [node name="Content" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState"]
-custom_minimum_size = Vector2(270, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 alignment = 1
 theme_override_constants/separation = 14
 
@@ -280,14 +279,13 @@ horizontal_alignment = 1
 [node name="Description" type="Label" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.52, 0.55, 0.6, 1)
-theme_override_font_sizes/font_size = 16
-text = "Plan, create, and debug your Godot project\nwithout leaving the editor."
+text = "Plan, create, and debug your Godot project without leaving the editor."
 horizontal_alignment = 1
+autowrap_mode = 2
 
 [node name="ModeHint" type="Label" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.39, 0.42, 0.47, 1)
-theme_override_font_sizes/font_size = 15
 text = "Choose Plan for analysis or Work for reviewed changes."
 horizontal_alignment = 1
 autowrap_mode = 2
@@ -301,7 +299,6 @@ layout_mode = 2
 theme_override_constants/separation = 6
 
 [node name="PromptInput" type="TextEdit" parent="MarginContainer/VBoxContainer/Composer/ComposerContent"]
-custom_minimum_size = Vector2(0, 110)
 layout_mode = 2
 theme_override_colors/font_placeholder_color = Color(0.45, 0.48, 0.53, 1)
 theme_override_font_sizes/font_size = 13
@@ -317,7 +314,7 @@ alignment = 1
 theme_override_constants/separation = 6
 
 [node name="ModeSelector" type="Control" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions"]
-custom_minimum_size = Vector2(104, 24)
+custom_minimum_size = Vector2(82, 24)
 layout_mode = 2
 size_flags_vertical = 4
 
@@ -352,7 +349,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="ModelLabel" type="Button" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions"]
-custom_minimum_size = Vector2(104, 24)
+custom_minimum_size = Vector2(82, 24)
 layout_mode = 2
 tooltip_text = "Current model: gpt-4o\nClick to configure"
 mouse_default_cursor_shape = 2
@@ -376,6 +373,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="ImageButton" type="TextureButton" parent="MarginContainer/VBoxContainer/Composer/ComposerContent/ComposerActions"]
+visible = false
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 tooltip_text = "Image context (coming soon)"

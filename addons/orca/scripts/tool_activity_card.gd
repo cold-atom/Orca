@@ -1,6 +1,8 @@
 @tool
 extends PanelContainer
 
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+
 signal open_requested(filepath: String, line: int, column: int)
 
 var _header_button: Button
@@ -20,17 +22,17 @@ func _ready() -> void:
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.09, 0.1, 0.115, 0.9)
 	panel_style.border_color = Color(0.2, 0.22, 0.25, 1)
-	panel_style.set_border_width_all(1)
-	panel_style.set_corner_radius_all(6)
-	panel_style.set_content_margin_all(6)
+	panel_style.set_border_width_all(UiMetrics.scaled_int(1))
+	panel_style.set_corner_radius_all(UiMetrics.scaled_int(6))
+	panel_style.set_content_margin_all(UiMetrics.scaled(6))
 	add_theme_stylebox_override("panel", panel_style)
 
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 4)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(4))
 	add_child(content)
 
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 6)
+	header.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(header)
 
 	_header_button = Button.new()
@@ -65,7 +67,7 @@ func _ready() -> void:
 	header.add_child(_open_button)
 
 	_details = TextEdit.new()
-	_details.custom_minimum_size = Vector2(0, 150)
+	_details.custom_minimum_size = Vector2(0, UiMetrics.scaled(150))
 	_details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_details.editable = false
 	_details.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY

@@ -38,6 +38,7 @@ jobs:
           "$GODOT_BIN" --headless --path . --script res://tests/session_store_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/history_view_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/settings_view_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/logo_asset_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/chat_window_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/tool_activity_group_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/task_list_panel_test.gd

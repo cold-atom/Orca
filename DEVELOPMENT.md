@@ -32,8 +32,8 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - Toolbar toggle and right-side dock.
 - Responsive structured chat feed rather than one monolithic text label.
 - Completed assistant responses render fenced code as bounded, selectable blocks with language labels, Copy actions, and native GDScript highlighting in the editor.
-- Editor-scaled dock typography, including the composer and settings page.
-- Compact focus-aware composer, branded empty state, descriptive Plan/Work selector, and a current-model shortcut into model settings.
+- Editor-scaled typography and custom geometry across the dock, settings, history, activity, task, and review surfaces.
+- Compact line-height-driven composer, transparent branded empty state, descriptive Plan/Work selector, and a current-model shortcut into model settings.
 - Transient five-square working states remain visible from submission until actual text or tool activity, distinguish initial thinking from post-tool response preparation, and reuse mode-aware animation for runtime observation and assessment.
 - Active turns use multi-frame feed following so newly inserted or late-resizing working, response, tool, and review cards remain at the visible bottom; sequential approvals automatically advance to the next pending card.
 - Two-row compact header that keeps session context usage and cost visible at narrow dock widths.
@@ -134,6 +134,7 @@ Work is the default. Mode switching is blocked while a turn or edit approval is 
 ```text
 EditorPlugin (orca.gd)
   -> ChatWindow
+       -> UiMetrics (effective editor-scale conversion for authored geometry)
        -> structured message/activity/change feed
        -> ChangeCard / InputMapChangeCard / MainSceneChangeCard / ProjectSettingsChangeCard / SceneChangeCard
        -> ToolActivityGroup -> ToolActivityCard children
@@ -530,9 +531,11 @@ Do not describe the current credential storage or execution model as fully secur
 ## UI Conventions
 
 - Preserve Godot's editor visual language and scaling.
+- Use `ui_metrics.gd` for plugin-authored pixel dimensions. Values obtained from the editor theme, including fonts and `EditorIcons`, are already scaled and must not be multiplied again.
+- Recompute scaled dimensions from immutable base values; never multiply a control's current dimensions during repeated notifications.
 - Keep incomplete streamed text lightweight and literal; create rich code controls only after a response or tool preface is complete.
 - Prompt text derives from the editor theme rather than a fixed physical size.
-- The composer uses the editor accent color for focus and keeps its action rail usable at the 300 px minimum dock width.
+- The composer uses the editor accent color for focus, derives its height from visible line metrics, and keeps its action rail usable at the 300 px-equivalent minimum dock width.
 - Use orange for Plan assistant headings and green for Work headings.
 - Mode choices pair those accents with explicit capability descriptions; color is not the only indicator.
 - Keep custom dock menus inside the dock's `Control` tree so positioning and sizing use the same editor-scaled coordinate system.
@@ -561,7 +564,9 @@ A committed automated suite exists under `tests/`:
 - `session_store_test.gd` verifies project isolation, schema redaction, backup recovery, retention, truncation, deletion cleanup, and controller state restoration.
 - `history_view_test.gd` verifies that the History page remains within the 300 px minimum dock width.
 - `settings_view_test.gd` verifies Provider/About tab switching, version metadata, branding, compatibility, license presentation, and the 300 px dock-width constraint.
-- `chat_window_test.gd` verifies working-state animation, first-token transitions, delayed-layout auto-follow, sequential review navigation, fenced-code parsing, BBCode isolation, exact code preservation, expanded previous/proposed diff content and safe line highlighting, bounded code-block layout, streaming-to-final transitions, tool-preface handling, restoration rules, structured review cards, and the 300 px dock-width constraint.
+- `chat_window_test.gd` verifies editor-scale conversion math, compact line-based composer sizing, narrow action containment, working-state animation, first-token transitions, delayed-layout auto-follow, sequential review navigation, fenced-code parsing, BBCode isolation, exact code preservation, expanded previous/proposed diff content and safe line highlighting, bounded code-block layout, streaming-to-final transitions, tool-preface handling, restoration rules, structured review cards, and the 300 px dock-width constraint.
+- `editor_ui_scale_test.gd` runs in editor mode and verifies that dock margins, branding, composer controls, and prompt sizing use Godot's effective editor scale without double-scaling theme fonts.
+- `logo_asset_test.gd` verifies that the Orca mark has no opaque white tile and retains transparent corners after import.
 - `tool_activity_group_test.gd` verifies aggregate status and duration, expansion, append closure, forwarded navigation, and the 300 px width constraint.
 - `task_list_panel_test.gd` verifies status presentation, bounded height, collapse/expand behavior, clearing, and the 300 px width constraint.
 - `scene_inspector_test.gd` verifies saved hierarchy, serialized properties, groups, instances, signal connections, JSON-safe Variant summaries, structural-only reads, bounds, invalid targets, and navigation metadata.
@@ -591,6 +596,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 | Usage | Usage-only SSE event, cached tokens, multi-round totals, provider cost, catalog fallback, unavailable usage. |
 | Metadata | Fresh/stale cache, offline fallback, unknown provider/model, response-size limit. |
 | Providers | Legacy migration, per-provider credentials, switching, custom endpoint preservation, Gemini/xAI model discovery, discovery errors. |
+| UI scaling | 100%, 125%, 150%, and 200% editor scale after restart; 300 px-equivalent narrow dock; 1280x720 short display; dark and light themes. |
 | Reasoning | Capability-driven effort, provider body mapping, DeepSeek/xAI content continuity, OpenRouter detail reconstruction, Gemini thought signatures, and bounds. |
 | Modes | Plan read-only, Work patch access, Plan-to-Work switch, mode locked while busy. |
 | Reads | Valid range, default range, invalid range, empty file, oversized file, binary file. |
@@ -957,6 +963,14 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Declared Orca plugin version 1.0.0 and its user-facing description.
 - Added MIT licensing, public installation and safety documentation, contributor and security guidance, a release changelog, and Godot-specific Git ignores.
 - Recorded third-party SVG asset provenance as a release blocker until each source license and attribution requirement is verified.
+
+### 2026-09-29: Responsive Editor Scaling
+
+- Added one effective editor-scale policy for plugin-authored geometry while preserving Godot's already-scaled theme fonts and editor icons.
+- Replaced the fixed-height composer with compact line-height-driven growth, removed unavailable image-action width, and corrected the 300 px-equivalent action-row budget.
+- Scaled shell, settings, history, activity, task, and review-card geometry; bounded expanded diffs to the available editor window and stacked panes when narrow.
+- Reworked the Orca mark as a transparent high-resolution SVG that remains visible on dark and light backgrounds.
+- Added compact-composer, narrow-action, scale-conversion, editor-integration, and logo-transparency regression coverage.
 
 ## Handoff Checklist
 

@@ -4,6 +4,7 @@ extends EditorPlugin
 const SceneProposal = preload("res://addons/orca/scripts/scene_proposal.gd")
 const DiagnosticsService = preload("res://addons/orca/scripts/diagnostics_service.gd")
 const GameProcessService = preload("res://addons/orca/scripts/game_process_service.gd")
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 
 var toolbar
 var chat_window
@@ -33,9 +34,10 @@ func _enter_tree():
 	
 	toolbar = preload("res://addons/orca/scenes/orca.tscn").instantiate()
 	chat_window = preload("res://addons/orca/scenes/chat_window.tscn").instantiate()
+	toolbar.custom_minimum_size = UiMetrics.scaled_vector(Vector2(24, 24))
 	chat_window.diagnostics_service = diagnostics_service
 	chat_window.game_process_service = game_process_service
-	chat_window.set_custom_minimum_size(Vector2(300, 0)) # Ensure minimum width
+	chat_window.set_custom_minimum_size(Vector2(UiMetrics.scaled(300), 0))
 	
 	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, toolbar)
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, chat_window)

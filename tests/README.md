@@ -56,6 +56,18 @@ Run provider/About tab switching, release metadata, and narrow settings-layout c
 "$GODOT_BIN" --headless --path . --script res://tests/settings_view_test.gd
 ```
 
+Run transparent, background-free logo asset checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/logo_asset_test.gd
+```
+
+Run the editor-scale integration check using the active editor display scale:
+
+```bash
+"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+```
+
 Run working-state animation, first-token lifecycle, active-turn auto-follow, sequential review navigation, finalized assistant code-block, expanded diff, streaming-finalization, restoration, structured review-card, and narrow-layout checks:
 
 ```bash

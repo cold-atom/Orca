@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const MAX_VISIBLE_HEIGHT := 160.0
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 
 var _header_button: Button
 var _scroll: ScrollContainer
@@ -17,13 +18,13 @@ func _ready() -> void:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.075, 0.082, 0.095, 0.96)
 	style.border_color = Color(0.23, 0.27, 0.32, 1)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(7)
-	style.set_content_margin_all(6)
+	style.set_border_width_all(UiMetrics.scaled_int(1))
+	style.set_corner_radius_all(UiMetrics.scaled_int(7))
+	style.set_content_margin_all(UiMetrics.scaled(6))
 	add_theme_stylebox_override("panel", style)
 	var content := VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 5)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
 	add_child(content)
 	var font_size := 13
 	if Engine.is_editor_hint():
@@ -45,7 +46,7 @@ func _ready() -> void:
 	content.add_child(_scroll)
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 3)
+	_list.add_theme_constant_override("separation", UiMetrics.scaled_int(3))
 	_scroll.add_child(_list)
 	_update_header()
 
@@ -83,7 +84,7 @@ func _rebuild() -> void:
 	for task in _tasks:
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_theme_constant_override("separation", 6)
+		row.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 		var status := str(task.get("status", "pending"))
 		var marker := Label.new()
 		marker.text = _status_marker(status)
@@ -99,7 +100,10 @@ func _rebuild() -> void:
 		text.add_theme_color_override("font_color", Color(0.72, 0.74, 0.78) if status in ["completed", "cancelled"] else Color(0.86, 0.88, 0.92))
 		row.add_child(text)
 		_list.add_child(row)
-	_scroll.custom_minimum_size.y = minf(MAX_VISIBLE_HEIGHT, maxf(28.0, _tasks.size() * 25.0))
+	_scroll.custom_minimum_size.y = minf(
+		UiMetrics.scaled(MAX_VISIBLE_HEIGHT),
+		maxf(UiMetrics.scaled(28), _list.get_combined_minimum_size().y)
+	)
 	_scroll.visible = _expanded and not _tasks.is_empty()
 	_update_header()
 

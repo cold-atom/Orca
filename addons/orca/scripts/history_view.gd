@@ -1,6 +1,8 @@
 @tool
 extends PanelContainer
 
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+
 signal done_requested
 signal session_requested(session_id: String)
 signal delete_requested(session_id: String)
@@ -35,17 +37,17 @@ func _build_ui() -> void:
 	add_theme_stylebox_override("panel", style)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.add_theme_constant_override("margin_left", UiMetrics.scaled_int(10))
+	margin.add_theme_constant_override("margin_top", UiMetrics.scaled_int(8))
+	margin.add_theme_constant_override("margin_right", UiMetrics.scaled_int(10))
+	margin.add_theme_constant_override("margin_bottom", UiMetrics.scaled_int(10))
 	add_child(margin)
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 8)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
 	margin.add_child(content)
 
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 6)
+	header.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(header)
 	var title := Label.new()
 	title.text = "HISTORY"
@@ -88,7 +90,7 @@ func _build_ui() -> void:
 	content.add_child(scroll)
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 8)
+	_list.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
 	scroll.add_child(_list)
 	_empty_label = Label.new()
 	_empty_label.text = "No saved conversations yet."
@@ -109,14 +111,14 @@ func _add_session_row(summary: Dictionary, current_session_id: String) -> void:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.095, 0.105, 0.12, 1)
 	style.border_color = Color(0.22, 0.24, 0.27, 1)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(7)
-	style.set_content_margin_all(9)
+	style.set_border_width_all(UiMetrics.scaled_int(1))
+	style.set_corner_radius_all(UiMetrics.scaled_int(7))
+	style.set_content_margin_all(UiMetrics.scaled(9))
 	panel.add_theme_stylebox_override("panel", style)
 	_list.add_child(panel)
 
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 5)
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
 	panel.add_child(content)
 	var heading := HBoxContainer.new()
 	content.add_child(heading)
@@ -127,6 +129,8 @@ func _add_session_row(summary: Dictionary, current_session_id: String) -> void:
 	heading.add_child(title)
 	var time_label := Label.new()
 	time_label.text = _format_timestamp(float(summary.get("updated_at", 0.0)))
+	time_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	time_label.clip_text = true
 	time_label.add_theme_color_override("font_color", Color(0.5, 0.53, 0.58))
 	heading.add_child(time_label)
 
@@ -139,7 +143,7 @@ func _add_session_row(summary: Dictionary, current_session_id: String) -> void:
 	content.add_child(preview)
 
 	var footer := HBoxContainer.new()
-	footer.add_theme_constant_override("separation", 7)
+	footer.add_theme_constant_override("separation", UiMetrics.scaled_int(7))
 	content.add_child(footer)
 	var mode_name := "Work" if int(summary.get("mode", 1)) == 1 else "Plan"
 	var detail := Label.new()
