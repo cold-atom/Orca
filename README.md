@@ -5,7 +5,7 @@
 <h1 align="center">Orca</h1>
 
 <p align="center">
-  <strong>A safety-first AI development assistant for the Godot editor.</strong>
+  <strong>A safety-first AI development assistant agent for the Godot editor.</strong>
 </p>
 
 <p align="center">
