@@ -8,6 +8,7 @@ const Config = preload("res://addons/orca/scripts/config.gd")
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
 const ProviderModelService = preload("res://addons/orca/scripts/provider_model_service.gd")
 const PLUGIN_CONFIG_PATH := "res://addons/orca/plugin.cfg"
+const ABOUT_LOGO_PATH := "res://addons/orca/assets/orca.svg"
 const SUPPORTED_GODOT_VERSION := "4.7.2"
 
 var provider_selector: OptionButton
@@ -254,7 +255,7 @@ func _build_about_view() -> ScrollContainer:
 	content.add_child(logo_center)
 	var logo := TextureRect.new()
 	logo.name = "AboutLogo"
-	logo.texture = load("res://addons/orca/assets/orca.svg")
+	logo.texture = _about_logo_texture()
 	logo.custom_minimum_size = Vector2(72, 72)
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -322,6 +323,15 @@ func _plugin_version() -> String:
 	if plugin_config.load(PLUGIN_CONFIG_PATH) != OK:
 		return "Unknown"
 	return str(plugin_config.get_value("plugin", "version", "Unknown")).strip_edges()
+
+
+func _about_logo_texture() -> Texture2D:
+	var loaded := load(ABOUT_LOGO_PATH)
+	if loaded is Texture2D:
+		return loaded
+	var image := Image.create(72, 72, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.2, 0.62, 0.9, 1.0))
+	return ImageTexture.create_from_image(image)
 
 
 func _field_label(text: String) -> Label:
