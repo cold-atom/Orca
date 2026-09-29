@@ -61,7 +61,8 @@ jobs:
 
       - name: Initialize editor and plugin
         shell: bash
-        run: "$GODOT_BIN" --headless --editor --path . --quit
+        run: |
+          "$GODOT_BIN" --headless --editor --path . --quit
 
       - name: Check replacement artifact hygiene
         shell: bash
