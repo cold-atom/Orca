@@ -26,6 +26,11 @@ jobs:
           unzip -q .ci/godot.zip -d .ci
           chmod +x "$GODOT_BIN"
 
+      - name: Import project assets
+        shell: bash
+        run: |
+          "$GODOT_BIN" --headless --editor --path . --import
+
       - name: Run unit and component tests
         shell: bash
         run: |
