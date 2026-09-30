@@ -15,6 +15,7 @@
 
 <a href="https://github.com/cold-atom/Orca/releases"><b>Download</b></a> &nbsp;|&nbsp;
 <a href="#install">Install</a> &nbsp;|&nbsp;
+<a href="#demo">Demo</a> &nbsp;|&nbsp;
 <a href="#highlights">Highlights</a> &nbsp;|&nbsp;
 <a href="CONTRIBUTING.md">Contributing</a> &nbsp;|&nbsp;
 <a href="SECURITY.md">Security</a>
@@ -22,6 +23,12 @@
 </div>
 
 Orca helps developers inspect projects, understand editor context, propose Godot-aware changes, validate them, and apply them only after explicit review.
+
+## Demo
+
+[![Watch the Orca demo](https://img.youtube.com/vi/JZJ4gUgwPHw/maxresdefault.jpg)](https://www.youtube.com/watch?v=JZJ4gUgwPHw)
+
+Watch Orca inspect a Godot project, propose reviewed changes, and validate the result.
 
 ## Status
 
