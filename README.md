@@ -4,7 +4,7 @@
 
 # Orca
 
-**A safety-first AI development assistant agent for the Godot editor.**
+**A safety first AI development agent for the Godot editor.**
 
 <p>
   <a href="https://github.com/cold-atom/Orca/releases/latest"><img src="https://img.shields.io/github/v/release/cold-atom/Orca?style=for-the-badge&label=Latest&color=111111&labelColor=000000" alt="Latest release"></a>
