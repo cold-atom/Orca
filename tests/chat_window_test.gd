@@ -137,8 +137,12 @@ func _test_compact_composer(view) -> void:
 		maxf(expected_minimum, view.size.y * ChatWindow.PROMPT_MAX_DOCK_RATIO)
 	)
 	_expect(view.prompt_input.custom_minimum_size.y <= ceilf(expected_maximum), "a long prompt should remain bounded by line count and dock height")
-	view.prompt_input.text = ""
-	view._sync_prompt_height()
+	var expanded_height: float = view.prompt_input.custom_minimum_size.y
+	view._clear_prompt_input()
+	await process_frame
+	_expect(view.prompt_input.text.is_empty(), "programmatic prompt clearing should remove submitted text")
+	_expect(view.prompt_input.custom_minimum_size.y < expanded_height, "programmatic prompt clearing should shrink an expanded composer without another keystroke")
+	_expect(is_equal_approx(view.prompt_input.custom_minimum_size.y, ceilf(expected_minimum)), "programmatic prompt clearing should restore the compact composer height")
 
 
 func _test_final_rendering(view) -> void:

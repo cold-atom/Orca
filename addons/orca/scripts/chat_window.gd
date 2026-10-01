@@ -392,6 +392,11 @@ func _sync_prompt_height() -> void:
 	prompt_input.custom_minimum_size.y = clampf(ceilf(content_height), ceilf(minimum_height), ceilf(minf(line_maximum, dock_maximum)))
 
 
+func _clear_prompt_input() -> void:
+	prompt_input.text = ""
+	_queue_prompt_height_sync()
+
+
 func _on_prompt_gui_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER):
 		if event.shift_pressed:
@@ -411,7 +416,7 @@ func _on_send_button_pressed() -> void:
 	var text := prompt_input.text.strip_edges()
 	if text.is_empty():
 		return
-	prompt_input.text = ""
+	_clear_prompt_input()
 	_has_session_content = true
 	_sync_metrics_visibility()
 	_add_message("User", text, Color.LIGHT_SKY_BLUE, "user")
@@ -913,7 +918,7 @@ func _start_new_session() -> void:
 	_clear_chat_feed()
 	if task_list_panel != null:
 		task_list_panel.clear()
-	prompt_input.text = ""
+	_clear_prompt_input()
 	prompt_input.editable = true
 	prompt_input.placeholder_text = "Describe what you want to build or fix..."
 	_has_session_content = false
