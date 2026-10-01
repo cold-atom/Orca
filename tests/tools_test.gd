@@ -3,6 +3,8 @@ extends SceneTree
 const Tools = preload("res://addons/orca/scripts/tools.gd")
 const TaskUtils = preload("res://addons/orca/scripts/task_utils.gd")
 const DIAGNOSTIC_SCRIPT_PATH := "res://tests/fixtures/game_process_child.gd"
+const FUNCTION_FIXTURE := "res://tests/fixtures/gdscript_function_reader_fixture.gd"
+const DEPENDENCY_FIXTURE := "res://tests/fixtures/dependency_inspector_root.tres"
 
 class FakeGameProcessService:
 	extends RefCounted
@@ -37,6 +39,7 @@ func _run() -> void:
 	var fixture_absolute := ProjectSettings.globalize_path(_fixture_path)
 	_expect(DirAccess.make_dir_recursive_absolute(fixture_absolute) == OK, "fixture directory should be created")
 	_test_tool_permissions()
+	_test_read_only_intelligence_tools()
 	_test_task_tool()
 	_test_path_boundaries()
 	_test_symlink_boundary(fixture_absolute)
@@ -58,6 +61,8 @@ func _test_tool_permissions() -> void:
 	_expect(plan_names.count("update_tasks") == 1, "Plan tool definitions should include update_tasks exactly once")
 	_expect(plan_names.count("inspect_scene") == 1, "Plan tool definitions should include inspect_scene exactly once")
 	_expect(plan_names.count("inspect_project_settings") == 1, "Plan tool definitions should include inspect_project_settings exactly once")
+	for tool_name in ["read_project_skill", "inspect_godot_api", "read_gdscript_function", "discover_dependencies"]:
+		_expect(plan_names.count(tool_name) == 1, "Plan tool definitions should include read-only intelligence tool " + tool_name + " exactly once")
 	_expect(plan_names.count("observe_game_run") == 1 and plan_names.count("verify_game_run") == 1, "Plan should expose read-only run observation and verification")
 	var work_names := _tool_names(Tools.get_tool_definitions(true))
 	_expect(work_names.count("apply_patch") == 1, "Work tool definitions should include apply_patch exactly once")
@@ -82,7 +87,15 @@ func _test_tool_permissions() -> void:
 	_expect(work_names.count("update_tasks") == 1, "Work tool definitions should include update_tasks exactly once")
 	_expect(work_names.count("inspect_scene") == 1, "Work tool definitions should include inspect_scene exactly once")
 	_expect(work_names.count("inspect_project_settings") == 1, "Work tool definitions should include inspect_project_settings exactly once")
+	for tool_name in ["read_project_skill", "inspect_godot_api", "read_gdscript_function", "discover_dependencies"]:
+		_expect(work_names.count(tool_name) == 1, "Work tool definitions should include read-only intelligence tool " + tool_name + " exactly once")
+		var parameters: Dictionary = _tool_definition(Tools.get_tool_definitions(true), tool_name).get("function", {}).get("parameters", {})
+		_expect(parameters.get("additionalProperties") == false, tool_name + " should reject unknown schema fields")
 	_expect(work_names.count("observe_game_run") == 1 and work_names.count("verify_game_run") == 1, "Work should expose read-only run observation and verification")
+	var dependency_parameters: Dictionary = _tool_definition(Tools.get_tool_definitions(false), "discover_dependencies").get("function", {}).get("parameters", {})
+	_expect(dependency_parameters.get("required", []) == ["filepath", "direction"], "dependency limits should be optional in the schema")
+	var api_properties: Dictionary = _tool_definition(Tools.get_tool_definitions(false), "inspect_godot_api").get("function", {}).get("parameters", {}).get("properties", {})
+	_expect(api_properties.keys() == ["class_name", "member_name", "member_kind", "include_inherited"], "Godot API schema should mirror the service arguments")
 	var direct: Dictionary = Tools.execute_tool("apply_patch", {})
 	_expect(not direct.get("success", true), "apply_patch must not execute through the generic dispatcher")
 	_expect(str(direct.get("content", "")).contains("reviewed"), "direct apply_patch denial should explain the review requirement")
@@ -104,6 +117,39 @@ func _test_tool_permissions() -> void:
 	_expect(run_result.get("success", false) and fake_run.last_verification == criteria, "run tools should pass only declarative verification metadata to the process service")
 	_expect(not Tools.execute_tool("run_current_scene", {"executable": "/bin/sh"}, fake_run).get("success", true), "run tools must reject arbitrary process arguments")
 	_expect(not Tools.execute_tool("observe_game_run", {"run_id": 4, "timeout": 10}, fake_run).get("success", true), "observation tools must reject waiting or timeout arguments")
+
+
+func _test_read_only_intelligence_tools() -> void:
+	var skills_root := "res://skills"
+	var skill_directory := skills_root.path_join("orca-tools-test")
+	var created_skills_root := not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(skills_root))
+	_expect(DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(skill_directory)) == OK, "tool skill fixture directory should be created")
+	_write(skill_directory.path_join("SKILL.md"), "---\nname: Tools Fixture\ndescription: Tool integration fixture\n---\nUse bounded reads.\n")
+	var skill := Tools.execute_tool("read_project_skill", {"name": "Tools Fixture"})
+	_expect(skill.get("success", false) and skill.get("outcome") == "completed", "read_project_skill should execute as a read-only tool")
+	_expect(str(skill.get("content", "")).contains("BEGIN PROJECT SKILL BODY"), "project skill content should retain its safety wrapper")
+	_expect(skill.get("data", {}).get("open_path") == skill_directory.path_join("SKILL.md"), "project skill results should include bounded navigation")
+	_expect(not Tools.execute_tool("read_project_skill", {"name": "tools fixture"}).get("success", true), "project skill names should match exactly")
+	_expect(not Tools.execute_tool("read_project_skill", {"name": "Tools Fixture", "extra": true}).get("success", true), "project skill execution should reject unknown fields")
+	_remove_tree(ProjectSettings.globalize_path(skill_directory))
+	if created_skills_root:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(skills_root))
+
+	var api := Tools.execute_tool("inspect_godot_api", {"class_name": "Node", "member_name": "add_child", "member_kind": "method"})
+	_expect(api.get("success", false) and api.get("outcome") == "completed", "inspect_godot_api should execute in the generic read-only dispatcher")
+	_expect(api.get("data", {}).get("help_topic") == "class_method:Node:add_child", "exact API inspection should expose bounded member help navigation")
+	_expect(not Tools.execute_tool("inspect_godot_api", {"class_name": "Node", "extra": true}).get("success", true), "Godot API execution should reject unknown fields")
+
+	var function_result := Tools.execute_tool("read_gdscript_function", {"filepath": FUNCTION_FIXTURE, "function_name": "documented"})
+	_expect(function_result.get("success", false) and function_result.get("data", {}).get("source_kind") == "disk", "function reads should use saved disk source when no unsaved open snapshot is available")
+	_expect(str(function_result.get("data", {}).get("disk_sha256", "")).length() == 64, "saved function reads should retain a disk hash")
+	_expect(function_result.get("data", {}).get("open_path") == FUNCTION_FIXTURE and int(function_result.get("data", {}).get("open_line", 0)) > 0, "function reads should include bounded source navigation")
+	_expect(not Tools.execute_tool("read_gdscript_function", {"filepath": FUNCTION_FIXTURE, "function_name": "documented", "extra": true}).get("success", true), "function execution should reject unknown fields")
+
+	var dependencies := Tools.execute_tool("discover_dependencies", {"filepath": DEPENDENCY_FIXTURE, "direction": "forward"})
+	_expect(dependencies.get("success", false) and dependencies.get("data", {}).get("max_depth") == 1 and dependencies.get("data", {}).get("max_results") == 100, "dependency execution should apply optional defaults")
+	_expect(dependencies.get("data", {}).get("open_path") == DEPENDENCY_FIXTURE, "dependency results should include bounded target navigation")
+	_expect(not Tools.execute_tool("discover_dependencies", {"filepath": DEPENDENCY_FIXTURE, "direction": "forward", "extra": true}).get("success", true), "dependency execution should reject unknown fields")
 
 
 func _test_task_tool() -> void:

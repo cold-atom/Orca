@@ -32,7 +32,7 @@ Watch Orca inspect a Godot project, propose reviewed changes, and validate the r
 
 ## Status
 
-This is Orca 1.0.0. The supported Godot version is **4.7.2**.
+This is Orca 1.1.0. The supported Godot version is **4.7.2**.
 
 Orca is designed to assist with development work, not to replace source control, code review, backups, or normal project testing.
 
@@ -42,6 +42,9 @@ Orca is designed to assist with development work, not to replace source control,
 - Work mode can propose changes, but file and structured project changes require explicit approval.
 - Proposed file edits are hash-bound, validated, conflict-checked, and can be reverted while their in-memory checkpoint remains valid.
 - Orca can inspect saved scenes and selected project settings through bounded Godot-aware tools.
+- A bounded root `res://AGENTS.md` and project-skill catalog can guide each request without becoming durable session history; skill bodies load only when the model explicitly calls `read_project_skill`.
+- Read-only Godot Intelligence tools can reflect `ClassDB` signatures, open safe editor Help topics, read one focused GDScript function including exact unsaved editor source, and discover bounded serialized resource dependencies.
+- Repetitive or no-progress tool activity triggers one final no-tools response request before the existing hard tool limits.
 - It can propose reviewed Input Map, main-scene, selected display-setting, and constrained scene changes.
 - Orca can launch one bounded process that it owns, capture limited stdout/stderr evidence, and evaluate narrow startup or exit criteria.
 - Conversations are stored locally per project and can be restored safely.
@@ -70,6 +73,8 @@ Orca supports OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, and custom OpenA
 
 Before submitting a request, make sure you trust the selected provider and endpoint. Prompts, relevant editor context, and project content returned by Orca's tools may be sent to that provider so it can answer your request. Authenticated model discovery sends the selected provider's API key to that provider. Public model metadata is requested from `models.dev` without API keys, prompts, or project content.
 
+When present, root `res://AGENTS.md` content and the `name`, `description`, slug, and path metadata of valid `res://skills/<slug>/SKILL.md` files are automatically included in private request-scoped model context. A selected skill body is sent only after an explicit `read_project_skill` call. These inputs are project guidance, cannot override Orca's permissions or approval rules, and are removed from stored continuation history after the turn.
+
 API credentials are saved through Godot Editor Settings. Session history is stored locally as plaintext JSON under Godot's `user://` storage. Neither mechanism is an OS credential vault or encrypted secret store. See [SECURITY.md](SECURITY.md) for security reporting and operational limits.
 
 ## Important Limits
@@ -79,6 +84,8 @@ API credentials are saved through Godot Editor Settings. Session history is stor
 - Structured scene operations deliberately support a constrained set of nodes, values, dependencies, and signals.
 - Script attach/detach has an explicit Trust and Prepare step because Godot may execute project code while building a candidate. This is informed consent, not sandboxing.
 - Custom OpenAI-compatible providers may not expose complete model or capability metadata.
+- Godot API inspection exposes reflected signatures and safe Open Docs navigation, not scraped class-reference prose. Dependency discovery covers saved serialized `ResourceLoader` relationships, not dynamic `load()` calls or runtime-created resources.
+- Progressive tool-schema disclosure is deferred; the current eligible tool schema remains sent with requests.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for the full safety model, test coverage, and known limitations.
 

@@ -10,6 +10,8 @@ const MAX_EVENTS := 300
 const MAX_CONTINUATION_MESSAGES := 120
 const MAX_MESSAGE_CHARS := 65536
 const MAX_SUMMARY_CHARS := 4096
+const MAX_HELP_TOPIC_CHARS := 256
+const HELP_TOPIC_PREFIXES := ["class_name", "class_method", "class_property", "class_signal", "class_constant", "class_enum"]
 
 var _project_root: String
 var _project_hash: String
@@ -224,13 +226,16 @@ func _sanitize_event(raw) -> Dictionary:
 		"tool":
 			event["id"] = _bounded_text(str(raw.get("id", "")), 160)
 			event["name"] = _bounded_text(str(raw.get("name", "")), 80)
-			event["arguments"] = _sanitize_tool_arguments(raw.get("arguments", {}))
+			event["arguments"] = _sanitize_tool_arguments(raw.get("arguments", {}), str(event["name"]))
 			event["outcome"] = _bounded_text(str(raw.get("outcome", "completed")), 32)
 			event["summary"] = _bounded_text(str(raw.get("summary", "")), MAX_SUMMARY_CHARS)
 			event["duration_ms"] = maxi(0, int(raw.get("duration_ms", 0)))
 			event["open_path"] = _bounded_text(str(raw.get("open_path", "")), 512)
 			event["open_line"] = maxi(1, int(raw.get("open_line", 1)))
 			event["open_column"] = maxi(1, int(raw.get("open_column", 1)))
+			var help_topic := str(raw.get("help_topic", ""))
+			if _is_safe_help_topic(help_topic):
+				event["help_topic"] = help_topic
 			return event
 		"change":
 			for field in ["id", "filepath", "kind", "summary", "status", "validation_message"]:
@@ -242,19 +247,73 @@ func _sanitize_event(raw) -> Dictionary:
 	return {}
 
 
-func _sanitize_tool_arguments(raw) -> Dictionary:
+func _sanitize_tool_arguments(raw, tool_name: String = "") -> Dictionary:
 	if typeof(raw) != TYPE_DICTIONARY:
 		return {}
 	var result := {}
-	for key in ["filepath", "path", "scene_path", "setting_path", "query", "file_glob", "start_line", "end_line", "case_sensitive", "max_results", "include_properties", "max_nodes", "max_properties_per_node"]:
+	if tool_name == "read_project_skill":
+		if typeof(raw.get("name")) == TYPE_STRING:
+			result["name"] = _bounded_text(str(raw["name"]), 128)
+		return result
+	if tool_name == "inspect_godot_api":
+		for key in ["class_name", "member_name"]:
+			if typeof(raw.get(key)) == TYPE_STRING:
+				result[key] = _bounded_text(str(raw[key]), 256)
+		if typeof(raw.get("member_kind")) == TYPE_STRING and str(raw["member_kind"]) in ["auto", "method", "property", "signal", "constant", "enum"]:
+			result["member_kind"] = raw["member_kind"]
+		if typeof(raw.get("include_inherited")) == TYPE_BOOL:
+			result["include_inherited"] = raw["include_inherited"]
+		return result
+	if tool_name == "read_gdscript_function":
+		if typeof(raw.get("filepath")) == TYPE_STRING:
+			result["filepath"] = _bounded_text(str(raw["filepath"]), 512)
+		if typeof(raw.get("function_name")) == TYPE_STRING:
+			result["function_name"] = _bounded_text(str(raw["function_name"]), 128)
+		if typeof(raw.get("start_line_hint")) in [TYPE_INT, TYPE_FLOAT]:
+			result["start_line_hint"] = maxi(1, int(raw["start_line_hint"]))
+		if typeof(raw.get("include_documentation")) == TYPE_BOOL:
+			result["include_documentation"] = raw["include_documentation"]
+		return result
+	if tool_name == "discover_dependencies":
+		if typeof(raw.get("filepath")) == TYPE_STRING:
+			result["filepath"] = _bounded_text(str(raw["filepath"]), 512)
+		if typeof(raw.get("direction")) == TYPE_STRING and str(raw["direction"]) in ["forward", "reverse"]:
+			result["direction"] = raw["direction"]
+		if typeof(raw.get("max_depth")) in [TYPE_INT, TYPE_FLOAT]:
+			result["max_depth"] = clampi(int(raw["max_depth"]), 1, 3)
+		if typeof(raw.get("max_results")) in [TYPE_INT, TYPE_FLOAT]:
+			result["max_results"] = clampi(int(raw["max_results"]), 1, 100)
+		return result
+	var keys := ["filepath", "path", "scene_path", "setting_path", "query", "file_glob", "start_line", "end_line", "case_sensitive", "max_results", "include_properties", "max_nodes", "max_properties_per_node"]
+	for key in keys:
 		if not raw.has(key):
 			continue
 		var value = raw[key]
 		if typeof(value) == TYPE_STRING:
-			result[key] = _bounded_text(value, 512)
+			var limit := 512
+			if key == "name" or key == "function_name":
+				limit = 128
+			elif key in ["class_name", "member_name", "member_kind", "direction"]:
+				limit = 256
+			result[key] = _bounded_text(value, limit)
 		elif typeof(value) in [TYPE_INT, TYPE_FLOAT, TYPE_BOOL]:
 			result[key] = value
 	return result
+
+
+func _is_safe_help_topic(topic: String) -> bool:
+	if topic.is_empty() or topic.length() > MAX_HELP_TOPIC_CHARS or topic.contains("\n") or topic.contains("\r") or topic.contains("\t"):
+		return false
+	var parts := topic.split(":", true)
+	if parts.is_empty() or parts[0] not in HELP_TOPIC_PREFIXES:
+		return false
+	var expected_parts := 2 if parts[0] == "class_name" else 3
+	if parts.size() != expected_parts:
+		return false
+	for index in range(1, parts.size()):
+		if str(parts[index]).is_empty():
+			return false
+	return true
 
 
 func _sanitize_continuation(raw) -> Array:

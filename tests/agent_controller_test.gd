@@ -73,6 +73,7 @@ class FakeTools:
 	var promote_calls := 0
 	var apply_calls := 0
 	var execute_calls := 0
+	var changing_results := false
 
 	func get_tool_definitions(include_edit_tools: bool = true) -> Array:
 		var definitions := [
@@ -113,7 +114,8 @@ class FakeTools:
 			if not validation.get("success", false):
 				return {"success": false, "content": "Error: " + str(validation.get("error", "invalid")), "outcome": "failed", "data": {}}
 			return {"success": true, "content": "updated", "outcome": "completed", "data": {"tasks": validation.get("tasks", [])}}
-		return {"success": true, "content": "executed " + tool_name, "outcome": "completed", "data": {}}
+		var suffix := " " + str(execute_calls) if changing_results else ""
+		return {"success": true, "content": "executed " + tool_name + suffix, "outcome": "completed", "data": {}}
 
 	func prepare_file_patch(change_id: String, filepath: String, _base_hash: String, edits: Array) -> Dictionary:
 		prepare_calls += 1
@@ -237,6 +239,25 @@ class FakeTools:
 		return revert_file_edit(proposal)
 
 
+class GuidanceController:
+	extends AgentController
+	var instruction_result := {"success": true, "found": true, "wrapped_content": "WRAPPED EXACT GUIDANCE"}
+	var skill_result := {
+		"success": true,
+		"skills": [{"name": "Fixture Skill", "description": "Catalog description", "slug": "fixture", "path": "res://skills/fixture/SKILL.md", "body": "SECRET SKILL BODY", "wrapped_body": "SECRET WRAPPER"}],
+		"directory_count": 1,
+		"scanned_directory_count": 1,
+		"truncated": false,
+		"skipped": []
+	}
+
+	func _load_project_instructions() -> Dictionary:
+		return instruction_result.duplicate(true)
+
+	func _discover_project_skills() -> Dictionary:
+		return skill_result.duplicate(true)
+
+
 var _failures := PackedStringArray()
 
 
@@ -262,6 +283,10 @@ func _run() -> void:
 	await _test_game_process_permissions()
 	await _test_bounded_run_observation()
 	await _test_tool_call_count_bound()
+	await _test_project_guidance_context()
+	await _test_loop_guard_duplicate_denial()
+	await _test_loop_guard_cycle_final_response()
+	await _test_loop_guard_cancellation_and_progress()
 	await _test_context_budget_integration()
 	await _test_plan_revert_denial()
 	_finish()
@@ -741,6 +766,117 @@ func _test_tool_call_count_bound() -> void:
 	await _free_controller(controller)
 
 
+func _test_project_guidance_context() -> void:
+	var controller := GuidanceController.new()
+	get_root().add_child(controller)
+	await process_frame
+	controller.api_client = FakeApiClient.new()
+	controller.tools_script = FakeTools.new()
+	controller._tasks.assign([{"content": "Fixture task", "status": "pending"}])
+	controller._add_turn_context()
+	var context := str(controller.message_history[-1].get("content", ""))
+	_expect(context.contains("WRAPPED EXACT GUIDANCE"), "turn context should include the service's exact wrapped AGENTS content")
+	_expect(context.contains("Fixture Skill") and context.contains("Catalog description"), "turn context should include bounded skill catalog metadata")
+	_expect(not context.contains("SECRET SKILL BODY") and not context.contains("SECRET WRAPPER") and not context.contains("wrapped_body"), "turn context must redact skill bodies and non-catalog fields")
+	_expect(context.contains("CURRENT GODOT EDITOR CONTEXT") and context.contains("CURRENT ORCA TASK CHECKLIST"), "guidance should share the single existing editor/task context message")
+	_expect(controller._context_message_index == controller.message_history.size() - 1, "guidance should use one tracked request-scoped message")
+	controller._clear_turn_context()
+	_expect(not JSON.stringify(controller.message_history).contains("WRAPPED EXACT GUIDANCE"), "request-scoped guidance should be removed when a turn ends")
+	controller.instruction_result = {"success": false, "error": "root failed\n" + "x".repeat(1000)}
+	controller.skill_result = {"success": false, "error": "catalog failed"}
+	controller._add_turn_context()
+	context = str(controller.message_history[-1].get("content", ""))
+	_expect(context.contains("PROJECT GUIDANCE WARNING: root failed") and context.contains("PROJECT SKILL CATALOG WARNING: catalog failed"), "guidance service errors should become request context warnings instead of aborting")
+	_expect(not context.contains("\nxxxxxxxx"), "guidance warnings should be normalized and bounded")
+	controller._is_running = true
+	controller._finish_cancelled()
+	_expect(controller._context_message_index == -1 and not JSON.stringify(controller.message_history).contains("root failed"), "cancellation should remove guidance and reset its index")
+	controller._add_turn_context()
+	controller._is_running = true
+	controller._on_api_request_failed({"message": "fixture failure"})
+	_expect(controller._context_message_index == -1 and controller._tool_loop_guard == null, "request failure should remove guidance and reset loop state")
+	await _free_controller(controller)
+
+
+func _test_loop_guard_duplicate_denial() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var tools: FakeTools = fixture["tools"]
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	for index in range(3):
+		await controller._on_api_request_completed(_tool_response([{"id": "duplicate_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://same.gd\"}"}}]))
+	_expect(api.requests.size() == 3, "three duplicate rounds should issue two normal continuations and exactly one forced final request")
+	_expect(api.requests[-1].get("tools", [1]).is_empty(), "the loop guard's final request must expose tools=[]")
+	_expect(controller._loop_final_request and controller._loop_notice_message_index >= 0, "duplicate detection should append one tracked request-scoped loop notice")
+	await controller._on_api_request_completed(_tool_response([
+		{"id": "denied_a", "type": "function", "function": {"name": "read_file", "arguments": "{}"}},
+		{"id": "denied_b", "type": "function", "function": {"name": "read_file", "arguments": "{}"}}
+	]))
+	_expect(tools.execute_calls == 3, "tool calls emitted after the no-tools request must not execute")
+	_expect(_tool_result_count(controller.message_history, "denied_a") == 1 and _tool_result_count(controller.message_history, "denied_b") == 1, "every denied final-request call should receive exactly one matching result")
+	_expect(_protocol_is_valid(controller.message_history), "denied final-request calls should leave protocol-valid history")
+	_expect(not controller.is_busy() and controller._loop_notice_message_index == -1, "denial should terminate safely and clear request-scoped loop state")
+	await _free_controller(controller)
+
+
+func _test_loop_guard_cycle_final_response() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	for round_index in range(3):
+		await controller._on_api_request_completed(_tool_response([
+			{"id": "cycle_a_%d" % round_index, "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://a.gd\"}"}},
+			{"id": "cycle_b_%d" % round_index, "type": "function", "function": {"name": "inspect_scene", "arguments": "{\"scene_path\":\"res://b.tscn\"}"}}
+		]))
+	_expect(api.requests.size() == 3 and api.requests[-1].get("tools", [1]).is_empty(), "an alternating cycle should also issue exactly one no-tools final request")
+	await controller._on_api_request_completed({"choices": [{"message": {"role": "assistant", "content": "Stopped safely."}}]})
+	_expect(not controller.is_busy() and not JSON.stringify(controller.message_history).contains(AgentController.LOOP_FINAL_NOTICE), "a valid forced-final answer should finish and remove the loop notice")
+	await _free_controller(controller)
+
+
+func _test_loop_guard_cancellation_and_progress() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	for index in range(3):
+		await controller._on_api_request_completed(_tool_response([{"id": "cancel_loop_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
+	api.requesting = true
+	controller.cancel_current_request()
+	controller._on_api_request_cancelled()
+	_expect(api.cancelled and not controller.is_busy() and controller._tool_loop_guard == null and not controller._loop_final_request, "cancelling the forced-final request should reset every loop-guard field")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	var tools: FakeTools = fixture["tools"]
+	tools.changing_results = true
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	for index in range(4):
+		await controller._on_api_request_completed(_tool_response([{"id": "changing_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
+	_expect(api.requests.size() == 4 and not api.requests[-1].get("tools", []).is_empty(), "changed results for the same stable call should count as progress and avoid false loop finalization")
+	_expect(not controller._loop_final_request, "stable result changes should keep the normal tool loop active")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	for index in range(4):
+		await controller._on_api_request_completed(_tool_response([{"id": "distinct_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": JSON.stringify({"filepath": "res://file_%d.gd" % index})}}]))
+	_expect(api.requests.size() == 4 and not api.requests[-1].get("tools", []).is_empty(), "distinct tool evidence should count as progress and avoid no-progress finalization")
+	_expect(not controller._loop_final_request, "new stable tool invocations should keep the normal tool loop active")
+	await _free_controller(controller)
+
+
 func _test_context_budget_integration() -> void:
 	var fixture := await _new_controller()
 	var controller = fixture["controller"]
@@ -751,9 +887,13 @@ func _test_context_budget_integration() -> void:
 		{"role": "user", "content": "old " + "x".repeat(9000)},
 		{"role": "assistant", "content": "old answer"},
 		{"role": "system", "content": "CURRENT GODOT EDITOR CONTEXT FOR THIS TURN:\nfixture"},
-		{"role": "user", "content": "current request"}
+		{"role": "user", "content": "current request"},
+		{"role": "system", "content": "ORCA GAME RUN OBSERVATION FOR THIS TURN:\nfixture"},
+		{"role": "system", "content": AgentController.LOOP_FINAL_NOTICE}
 	]
 	controller._context_message_index = 3
+	controller._runtime_context_message_index = 5
+	controller._loop_notice_message_index = 6
 	controller._turn_provider_config = {"provider": "openai", "base_url": "https://api.openai.com/v1", "model": "orca-budget-test", "api_key": "test"}
 	controller._is_running = true
 	_expect(controller._send_current_request(), "the controller should send a request after safe compaction")
@@ -763,6 +903,8 @@ func _test_context_budget_integration() -> void:
 		_expect(sent.any(func(message): return message.get("content") == ContextBudget.COMPACTION_NOTICE), "the controller should send the compaction notice")
 		_expect(not sent.any(func(message): return str(message.get("content", "")).begins_with("old ")), "the controller should omit the oldest completed turn")
 		_expect(controller._context_message_index >= 0 and str(controller.message_history[controller._context_message_index].get("content", "")).contains("CURRENT GODOT EDITOR CONTEXT"), "compaction should remap the request-scoped context index")
+		_expect(controller._runtime_context_message_index >= 0 and str(controller.message_history[controller._runtime_context_message_index].get("content", "")).contains("ORCA GAME RUN OBSERVATION"), "compaction should remap runtime context safely")
+		_expect(controller._loop_notice_message_index >= 0 and str(controller.message_history[controller._loop_notice_message_index].get("content", "")) == AgentController.LOOP_FINAL_NOTICE, "compaction should remap the loop notice safely")
 		var continuation: Array = controller.snapshot_session_state().get("continuation", [])
 		_expect(not continuation.any(func(message): return str(message.get("content", "")).begins_with("old ")), "session continuation should persist only retained model context")
 		_expect(not continuation.any(func(message): return message.get("content") == ContextBudget.COMPACTION_NOTICE), "the internal compaction notice should not enter persisted user/assistant continuation")

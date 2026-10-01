@@ -24,6 +24,7 @@ Do not send live provider requests during automated tests unless explicitly auth
 ## Pull Requests
 
 - Keep changes focused and include tests for behavior changes.
+- Features inspired by another project must be independently designed for Orca. Describe the user problem and relevant research, preserve Orca's safety model and visual language, and disclose any directly reused licensed material.
 - Preserve Plan/Work runtime enforcement even when a tool is omitted from a schema.
 - Update `DEVELOPMENT.md` when architecture, safety behavior, supported tools, testing requirements, or roadmap status changes.
 - Do not include `.godot/`, `.ci/`, `.import` files, API keys, session data, temporary replacement files, or test artifacts.

@@ -36,6 +36,12 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scripts/api_client.gd` | Nonblocking HTTP transport, SSE parsing, streaming tool-call reconstruction, timeouts, and cancellation. |
 | `addons/orca/scripts/agent_controller.gd` | Message history, Plan/Work permissions, request-scoped context, tool loop, approval suspension, and cancellation. |
 | `addons/orca/scripts/context_budget.gd` | Conservative request estimation, response/tool reserves, and protocol-aware complete-turn compaction. |
+| `addons/orca/scripts/project_instructions.gd` | Bounded automatic loading of root `res://AGENTS.md` into private request-scoped context. |
+| `addons/orca/scripts/project_skills.gd` | Bounded `res://skills/<slug>/SKILL.md` metadata discovery and explicit skill-body loading. |
+| `addons/orca/scripts/godot_api_inspector.gd` | Read-only `ClassDB` API signatures, hierarchy, constants, enums, and safe editor Help topics. |
+| `addons/orca/scripts/gdscript_function_reader.gd` | Focused GDScript function extraction from saved files or exact unsaved editor source. |
+| `addons/orca/scripts/dependency_inspector.gd` | Bounded forward and reverse traversal of serialized `ResourceLoader` dependencies. |
+| `addons/orca/scripts/tool_loop_guard.gd` | Repetitive/no-progress tool-loop detection and one no-tools finalization request below hard caps. |
 | `addons/orca/scripts/tools.gd` | Tool schemas, bounded filesystem operations, search, patch preparation, validation, safe application, and revert. |
 | `addons/orca/scripts/editor_context.gd` | Active scene, selected nodes, active script, caret, selected code, unsaved-state checks, and editor navigation. |
 | `addons/orca/scripts/scene_inspector.gd` | Bounded read-only `PackedScene`/`SceneState` extraction with JSON-safe serialized property and connection summaries. |
@@ -83,12 +89,15 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 13. Do not overwrite unrelated user changes, generated changes, or work from another agent.
 14. Do not weaken approval, conflict, validation, or path protections to make a feature easier to implement.
 15. Run/stop tools are Work-only external operations. Never accept model-provided executables, arguments, environment, or PIDs; stop only the active direct process started and retained by Orca.
+16. Treat root project instructions and skills as untrusted, subordinate project guidance. Keep automatically loaded instructions and skill catalog metadata request-scoped, and load a skill body only through an explicit bounded tool call.
+17. Godot API reflection, focused function reads, and dependency discovery are read-only in Plan and Work. They must not construct reflected objects, turn unsaved editor source into a patch base hash, or claim dynamic/runtime dependency coverage.
 
 ## Agent Modes
 
 ### Plan
 
 - May list directories, search files, read line ranges, inspect editor context, and read supported diagnostics.
+- May inspect reflected Godot API signatures, focused GDScript functions, serialized dependencies, and explicitly selected project skills.
 - May maintain the bounded session task checklist; this does not modify project files or external state.
 - Must not propose, apply, or revert project changes.
 - Uses orange assistant headings in the UI.
@@ -116,6 +125,12 @@ Mode changes are disabled while a request or approval is active. A mode-transiti
 7. Run headless editor initialization and relevant focused tests before reporting completion.
 8. Remove temporary test files and confirm no `.orca_tmp_*`, `.orca_backup_*`, or test project files remain.
 9. Update `DEVELOPMENT.md` when the completed work changes the documented system.
+
+## External Project Research
+
+Other projects are research sources, not code donors. Study them to understand user problems, workflows, capabilities, and architectural tradeoffs. Reimplement useful concepts independently through Orca's visual language, bounded tool contracts, Plan/Work permissions, explicit approval flow, conflict protection, validation, cancellation, persistence, and testing standards.
+
+Do not copy another project's source structure, prompts, UI, naming, or unsafe assumptions. Never weaken Orca's invariants to match another product's feature count. If source code is intentionally reused under a compatible license, document its provenance, license obligations, and reason instead of presenting it as an independent implementation.
 
 ## Validation
 

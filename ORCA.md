@@ -29,29 +29,35 @@ The project is currently a functional, foundational Godot Editor Plugin located 
    - Provides specific capabilities to the AI:
       - `list_directory`: Lists all folders and files inside a specified `res://` directory.
       - `read_file`: Reads bounded, numbered line ranges and returns a content hash.
-       - `search_files`: Recursively searches project text files with bounded output.
-       - `inspect_scene`: Reads bounded saved scene hierarchy, serialized properties, instances, groups, and signal connections through `PackedScene`/`SceneState` without instantiating nodes.
-       - `inspect_project_settings`: Reads a bounded configuration overview or one allowlisted typed ProjectSettings value without modifying the project.
-       - `get_editor_context`: Reads the active scene, selected nodes, active script, caret, and selected code.
+      - `search_files`: Recursively searches project text files with bounded output.
+      - `inspect_scene`: Reads bounded saved scene hierarchy, serialized properties, instances, groups, and signal connections through `PackedScene`/`SceneState` without instantiating nodes.
+      - `inspect_project_settings`: Reads a bounded configuration overview or one allowlisted typed ProjectSettings value without modifying the project.
+      - `read_project_skill`: Loads one exact bounded skill body selected from request-scoped metadata discovered at `res://skills/<slug>/SKILL.md`.
+      - `inspect_godot_api`: Reflects bounded `ClassDB` signatures, types, inheritance, constants, and enums and provides safe Open Docs navigation without scraping prose.
+      - `read_gdscript_function`: Returns one focused function from saved source or the exact unsaved source exposed by the script editor; unsaved source never provides a patch base hash.
+      - `discover_dependencies`: Traverses bounded forward dependencies or reverse dependents from saved serialized `ResourceLoader` metadata without loading or instantiating resources.
+      - `get_editor_context`: Reads the active scene, selected nodes, active script, caret, and selected code.
       - `get_diagnostics`: Reports Orca validation errors, observed editor errors, and play state.
-       - `apply_patch`: Proposes targeted line edits for explicit review and approval.
-       - `propose_input_map_changes`: Proposes typed Input Map action and event changes through a dedicated structured review card.
-       - `propose_main_scene_change`: Proposes a validated saved scene as the project launch scene with path/UID normalization and guarded revert.
-       - `propose_project_settings_changes`: Proposes an atomic typed batch of allowlisted viewport and stretch settings.
-       - `propose_scene_changes`: Proposes reviewed typed-root creation, node/property/structure changes, two-stage dependency-free script attach/detach, dependency-free child instances, and bindless signal changes.
-       - `run_current_scene` / `run_main_scene`: Start one saved scene in a bounded nonblocking process owned by Orca.
-       - `stop_game`: Stops only the active direct process started by Orca.
-       - `observe_game_run`: Reads bounded evidence for an exact Orca run without waiting or changing process state.
-       - `verify_game_run`: Evaluates immutable pre-launch startup or expected-exit criteria with explicit passed, failed, pending, inconclusive, or unverified results.
-    - **Built-in Safety:** Canonical path and symlink checks keep access inside the project and protect Orca's own plugin directory. Writes use conflict checks, validation, diff review, temporary-file replacement, and reversible checkpoints. Game runs accept no arbitrary commands or PIDs and are bounded to one Orca-owned direct process.
+      - `apply_patch`: Proposes targeted line edits for explicit review and approval.
+      - `propose_input_map_changes`: Proposes typed Input Map action and event changes through a dedicated structured review card.
+      - `propose_main_scene_change`: Proposes a validated saved scene as the project launch scene with path/UID normalization and guarded revert.
+      - `propose_project_settings_changes`: Proposes an atomic typed batch of allowlisted viewport and stretch settings.
+      - `propose_scene_changes`: Proposes reviewed typed-root creation, node/property/structure changes, two-stage dependency-free script attach/detach, dependency-free child instances, and bindless signal changes.
+      - `run_current_scene` / `run_main_scene`: Start one saved scene in a bounded nonblocking process owned by Orca.
+      - `stop_game`: Stops only the active direct process started by Orca.
+      - `observe_game_run`: Reads bounded evidence for an exact Orca run without waiting or changing process state.
+      - `verify_game_run`: Evaluates immutable pre-launch startup or expected-exit criteria with explicit passed, failed, pending, inconclusive, or unverified results.
+   - **Built-in Safety:** Canonical path and symlink checks keep access inside the project and protect Orca's own plugin directory. Writes use conflict checks, validation, diff review, temporary-file replacement, and reversible checkpoints. Game runs accept no arbitrary commands or PIDs and are bounded to one Orca-owned direct process.
+   - **Project Guidance:** Orca automatically loads a bounded root `res://AGENTS.md` and bounded skill catalog metadata into private request-scoped context. Guidance is subordinate to Orca's permissions and safety rules, removed after the turn, and skill bodies require an explicit read-only tool call.
 5. **Agent Modes and Review**
    - Plan mode exposes only read-only tools.
    - Work mode can propose patches, but every change requires explicit user approval.
-    - Consecutive read-only activity is grouped with aggregate status and duration while retaining each call's details and navigation.
-    - Unified diffs, expanded side-by-side review, and file navigation make agent work visible.
-    - Completed responses render fenced code in bounded selectable blocks with language labels, Copy actions, and native GDScript highlighting.
-    - A mode-colored five-square working indicator shows initial thinking, post-tool response preparation, and runtime observation without creating empty assistant messages during first-token delays.
-    - Active turns automatically follow late-sizing response, tool, and review cards so the newest activity and sequential approvals remain visible.
+   - Consecutive read-only activity is grouped with aggregate status and duration while retaining each call's details and navigation.
+   - Unified diffs, expanded side-by-side review, and file navigation make agent work visible.
+   - Completed responses render fenced code in bounded selectable blocks with language labels, Copy actions, and native GDScript highlighting.
+   - A mode-colored five-square working indicator shows initial thinking, post-tool response preparation, and runtime observation without creating empty assistant messages during first-token delays.
+   - Active turns automatically follow late-sizing response, tool, and review cards so the newest activity and sequential approvals remain visible.
+   - Repeated identical calls/results, alternating cycles, repeated rounds, or sustained no-progress rounds trigger one final provider request with tools disabled; existing hard round and call caps remain in place.
 6. **Sessions and Usage**
    - Conversations are automatically saved in bounded, project-scoped local history and the most recent session is restored when the editor reopens.
    - The History page can open, continue, or delete prior sessions. Interrupted or truncated sessions remain safely view-only.
@@ -70,11 +76,13 @@ The project is currently a functional, foundational Godot Editor Plugin located 
 We are building a truly autonomous copilot for game development in Godot, similar to GitHub Copilot or Roo Code (formerly Cline), but deeply integrated into the Godot ecosystem. The goal is to move beyond simple chat interfaces to an AI agent that understands the full context of a Godot project.
 
 ### Future Goals
-- **Expanded Toolset:** Adding capabilities to query the local Godot class reference, manipulate the Scene Tree, instantiate nodes, and configure properties automatically.
+- **Expanded Toolset:** Broaden current reflected Godot API lookup and constrained scene/configuration capabilities without weakening review boundaries.
 - **Deeper Context Awareness:** Scene-tree inspection, node properties, and project symbol indexing.
 - **Structured Godot Operations:** Reviewed Input Map, project configuration, and scene-tree proposals built on bounded typed inspection.
 - **Debugging Assistant:** Bounded automatic post-launch observation, conservative runtime diagnostics, reviewed fixes, explicit reruns, and scoped startup/exit verification without claiming visual gameplay correctness.
 - **Local-First Focus:** Ensuring the plugin works flawlessly with locally-hosted, fast open-source models (like Llama 3 or Qwen) for privacy-conscious developers.
 - **Robustness:** Refining error handling for complex edge cases (e.g., massive files, connection timeouts) and creating better syntax parsing.
+
+Progressive tool-schema disclosure remains a future optimization; Orca 1.1.0 does not implement it.
 
 Orca aims to be an essential sidekick for Godot developers, handling boilerplate code, exploring unfamiliar APIs, and accelerating the game development workflow securely and efficiently.

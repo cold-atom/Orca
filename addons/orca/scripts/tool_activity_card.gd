@@ -4,17 +4,23 @@ extends PanelContainer
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 
 signal open_requested(filepath: String, line: int, column: int)
+signal help_requested(topic: String)
+
+const MAX_HELP_TOPIC_CHARS := 256
+const HELP_TOPIC_PREFIXES := ["class_name", "class_method", "class_property", "class_signal", "class_constant", "class_enum"]
 
 var _header_button: Button
 var _status_label: Label
 var _details: TextEdit
 var _open_button: Button
+var _help_button: Button
 var _expanded := false
 var _tool_name := ""
 var _target := ""
 var _open_path := ""
 var _open_line := 1
 var _open_column := 1
+var _help_topic := ""
 
 
 func _ready() -> void:
@@ -66,6 +72,14 @@ func _ready() -> void:
 	_open_button.pressed.connect(func(): open_requested.emit(_open_path, _open_line, _open_column))
 	header.add_child(_open_button)
 
+	_help_button = Button.new()
+	_help_button.text = "Open Docs"
+	_help_button.flat = true
+	_help_button.add_theme_font_size_override("font_size", label_font_size)
+	_help_button.visible = false
+	_help_button.pressed.connect(func(): help_requested.emit(_help_topic))
+	header.add_child(_help_button)
+
 	_details = TextEdit.new()
 	_details.custom_minimum_size = Vector2(0, UiMetrics.scaled(150))
 	_details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -79,6 +93,8 @@ func _ready() -> void:
 func configure(tool_name: String, arguments: Dictionary) -> void:
 	_tool_name = tool_name
 	_target = _target_from_arguments(arguments)
+	_help_topic = ""
+	_help_button.visible = false
 	if arguments.has("filepath"):
 		_open_path = str(arguments["filepath"])
 		_open_line = maxi(1, int(arguments.get("start_line", 1)))
@@ -96,6 +112,10 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 		_open_line = maxi(1, int(data.get("open_line", 1)))
 		_open_column = maxi(1, int(data.get("open_column", 1)))
 		_open_button.visible = not _open_path.is_empty()
+	var help_topic := str(data.get("help_topic", ""))
+	if is_safe_help_topic(help_topic):
+		_help_topic = help_topic
+		_help_button.visible = true
 	_status_label.text = outcome.to_upper() + " · " + _format_duration(duration_ms)
 	_status_label.add_theme_color_override(
 		"font_color",
@@ -131,6 +151,14 @@ func _display_name(tool_name: String) -> String:
 			return "Inspect scene"
 		"inspect_project_settings":
 			return "Inspect project settings"
+		"read_project_skill":
+			return "Read project skill"
+		"inspect_godot_api":
+			return "Inspect Godot API"
+		"read_gdscript_function":
+			return "Read GDScript function"
+		"discover_dependencies":
+			return "Discover dependencies"
 		"get_editor_context":
 			return "Inspect editor context"
 		"get_diagnostics":
@@ -162,6 +190,20 @@ func _display_name(tool_name: String) -> String:
 
 
 func _target_from_arguments(arguments: Dictionary) -> String:
+	if _tool_name == "read_project_skill":
+		return str(arguments.get("name", ""))
+	if _tool_name == "inspect_godot_api":
+		var api_target := str(arguments.get("class_name", ""))
+		var member := str(arguments.get("member_name", ""))
+		return api_target + ("." + member if not member.is_empty() else "")
+	if _tool_name == "read_gdscript_function":
+		var function_path := str(arguments.get("filepath", ""))
+		var function_name := str(arguments.get("function_name", ""))
+		return function_path + (" :: " + function_name if not function_name.is_empty() else "")
+	if _tool_name == "discover_dependencies":
+		var dependency_path := str(arguments.get("filepath", ""))
+		var direction := str(arguments.get("direction", ""))
+		return dependency_path + (" · " + direction if not direction.is_empty() else "")
 	if arguments.has("scene_path"):
 		return str(arguments["scene_path"])
 	if arguments.has("setting_path") and not str(arguments["setting_path"]).is_empty():
@@ -173,6 +215,21 @@ func _target_from_arguments(arguments: Dictionary) -> String:
 	if arguments.has("path"):
 		return str(arguments["path"])
 	return ""
+
+
+static func is_safe_help_topic(topic: String) -> bool:
+	if topic.is_empty() or topic.length() > MAX_HELP_TOPIC_CHARS or topic.contains("\n") or topic.contains("\r") or topic.contains("\t"):
+		return false
+	var parts := topic.split(":", true)
+	if parts.is_empty() or parts[0] not in HELP_TOPIC_PREFIXES:
+		return false
+	var expected_parts := 2 if parts[0] == "class_name" else 3
+	if parts.size() != expected_parts:
+		return false
+	for index in range(1, parts.size()):
+		if str(parts[index]).is_empty():
+			return false
+	return true
 
 
 func _format_duration(duration_ms: int) -> String:

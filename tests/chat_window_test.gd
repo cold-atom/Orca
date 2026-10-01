@@ -57,6 +57,8 @@ func _run() -> void:
 	_test_live_tool_grouping(view)
 	await process_frame
 	await process_frame
+	await _test_intelligence_tool_activity(view)
+	await process_frame
 	await _test_restored_tool_grouping(view)
 	await process_frame
 	_test_task_panel_integration(view)
@@ -348,6 +350,43 @@ func _test_restored_tool_grouping(view) -> void:
 		_expect(groups[1].call_count() == 1 and groups[1].aggregate_outcome() == "interrupted", "restored running activity should become interrupted")
 	var last: Node = view.chat_feed.get_child(view.chat_feed.get_child_count() - 1)
 	_expect(not last.has_meta("orca_tool_group"), "restored apply_patch activity must remain standalone")
+
+
+func _test_intelligence_tool_activity(view) -> void:
+	view._session = {"events": []}
+	view._clear_chat_feed()
+	await process_frame
+	view._on_tool_execution_started("skill_1", "read_project_skill", {"name": "Godot Gameplay", "body": "private skill body", "sha256": "private hash"})
+	view._on_tool_execution_completed("skill_1", "read_project_skill", {"content": "private skill body", "outcome": "completed", "data": {"body": "private skill body", "sha256": "private hash"}}, 4)
+	view._on_tool_execution_started("api_1", "inspect_godot_api", {"class_name": "Node", "member_name": "add_child", "member_kind": "method", "include_inherited": true, "report": "private report"})
+	view._on_tool_execution_completed("api_1", "inspect_godot_api", {"content": "private API report", "outcome": "completed", "data": {"help_topic": "class_method:Node:add_child", "report": "private report"}}, 5)
+	view._on_tool_execution_started("function_1", "read_gdscript_function", {"filepath": "res://player.gd", "function_name": "move", "start_line_hint": 8, "include_documentation": false, "disk_sha256": "private hash"})
+	view._on_tool_execution_completed("function_1", "read_gdscript_function", {"content": "private function body", "outcome": "completed", "data": {"open_path": "res://player.gd", "open_line": 9, "disk_sha256": "private hash"}}, 6)
+	view._on_tool_execution_started("deps_1", "discover_dependencies", {"filepath": "res://main.tscn", "direction": "reverse", "max_depth": 3, "max_results": 50, "graph": "private graph"})
+	view._on_tool_execution_completed("deps_1", "discover_dependencies", {"content": "private dependency graph", "outcome": "completed", "data": {"graph": "private graph"}}, 7)
+	var groups := _collect_nodes(view.chat_feed, "orca_tool_group")
+	_expect(groups.size() == 1 and groups[0].call_count() == 4, "all Orca 1.1 intelligence reads should join consecutive activity groups")
+	var events: Array = view._session.get("events", [])
+	var persisted := JSON.stringify(events)
+	_expect(events.size() == 4 and events[0].get("arguments") == {"name": "Godot Gameplay"}, "skill activity should persist only its bounded name")
+	_expect(events[1].get("arguments", {}).get("class_name") == "Node" and events[1].get("help_topic") == "class_method:Node:add_child", "API activity should persist its safe query and help topic")
+	_expect(events[2].get("arguments", {}).get("function_name") == "move" and events[2].get("open_path") == "res://player.gd", "function activity should retain bounded query and file navigation metadata")
+	_expect(events[3].get("arguments", {}).get("direction") == "reverse" and events[3].get("arguments", {}).get("max_results") == 50, "dependency activity should retain only its bounded query controls")
+	_expect(not persisted.contains("private skill body") and not persisted.contains("private API report") and not persisted.contains("private function body") and not persisted.contains("private dependency graph") and not persisted.contains("private hash") and not persisted.contains("private report"), "intelligence activity must redact bodies, reports, graphs, and hashes")
+	var api_card = groups[0].get_card("api_1")
+	_expect(api_card != null and api_card._help_button.visible, "live API execution metadata should show Open Docs")
+	groups[0].set_expanded(true)
+	await process_frame
+	_expect(groups[0].get_combined_minimum_size().x <= 300.0, "intelligence activity must remain usable at narrow dock widths")
+
+	view._clear_chat_feed()
+	await process_frame
+	view._render_session_event(events[1])
+	view._close_active_tool_group()
+	var restored_groups := _collect_nodes(view.chat_feed, "orca_tool_group")
+	var restored_card = restored_groups[0].get_card("api_1") if restored_groups.size() == 1 else null
+	_expect(restored_card != null and restored_card._help_button.visible, "restored API activity should reconstruct Open Docs metadata")
+	view._on_help_requested("https://example.invalid/docs")
 
 
 func _test_task_panel_integration(view) -> void:

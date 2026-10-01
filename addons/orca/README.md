@@ -2,7 +2,7 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory is the complete installable Orca 1.0.0 addon for Godot 4.7.2.
+This directory is the complete installable Orca 1.1.0 addon for Godot 4.7.2.
 
 ## Install
 
@@ -17,6 +17,8 @@ This directory is the complete installable Orca 1.0.0 addon for Godot 4.7.2.
 - Work mode can prepare changes, but every model-requested project change requires explicit approval.
 - File proposals use content hashes, validation, stale-state checks, and guarded revert data.
 - Project access, tool output, network inactivity, and Orca-owned game processes are bounded.
+- Root project instructions and skill catalog metadata are request-scoped guidance; skill bodies load only through the read-only `read_project_skill` tool.
+- Godot API reflection, focused GDScript function reads, and serialized dependency discovery are read-only in Plan and Work.
 
 Always review proposed changes and use source control. Orca does not replace code review, backups, or project testing.
 
@@ -25,6 +27,8 @@ Always review proposed changes and use source control. Orca does not replace cod
 Orca supports OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, and custom OpenAI-compatible endpoints through its current Chat Completions transport.
 
 Prompts, relevant editor context, and project content returned by Orca's tools may be sent to the selected provider. API credentials are saved through Godot Editor Settings, and project-scoped session history is stored as plaintext JSON under Godot's `user://` storage. Neither is an encrypted OS credential store.
+
+If present, `res://AGENTS.md` and skill catalog metadata from `res://skills/<slug>/SKILL.md` are automatically sent as private request context. A skill body is sent only after an explicit tool call. Request-scoped guidance is not retained in resumable conversation history.
 
 ## License
 

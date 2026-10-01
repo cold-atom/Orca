@@ -17,7 +17,6 @@ static func capture() -> Dictionary:
 		"open_scenes": Array(EditorInterface.get_open_scenes()),
 		"unsaved_scenes": Array(EditorInterface.get_unsaved_scenes())
 	}
-
 	var scene_root := EditorInterface.get_edited_scene_root()
 	if scene_root != null:
 		context["active_scene"] = {
@@ -83,6 +82,18 @@ static func has_unsaved_file(filepath: String) -> bool:
 
 static func is_scene_open(filepath: String) -> bool:
 	return Engine.is_editor_hint() and filepath in EditorInterface.get_open_scenes()
+
+
+static func get_unsaved_open_script(filepath: String) -> Dictionary:
+	if not Engine.is_editor_hint() or filepath.is_empty():
+		return {}
+	var script_editor := EditorInterface.get_script_editor()
+	if filepath not in script_editor.get_unsaved_files():
+		return {}
+	for open_script in script_editor.get_open_scripts():
+		if open_script is Script and open_script.resource_path == filepath:
+			return {"filepath": filepath, "source": open_script.source_code}
+	return {}
 
 
 static func open_file(filepath: String, line: int = 1, column: int = 1) -> bool:

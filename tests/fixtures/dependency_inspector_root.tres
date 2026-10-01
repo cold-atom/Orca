@@ -1,0 +1,8 @@
+[gd_resource type="Resource" format=3 uid="uid://c1q6v8k3m5uaw"]
+
+[ext_resource type="Resource" uid="uid://b2r7w9m4n6x1y" path="res://tests/fixtures/dependency_inspector_branch_a.tres" id="1_a"]
+[ext_resource type="Resource" uid="uid://d3s8x1n5p7y2z" path="res://tests/fixtures/dependency_inspector_branch_b.tres" id="2_b"]
+
+[resource]
+metadata/branch_a = ExtResource("1_a")
+metadata/branch_b = ExtResource("2_b")

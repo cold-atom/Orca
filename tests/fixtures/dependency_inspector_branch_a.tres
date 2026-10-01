@@ -1,0 +1,6 @@
+[gd_resource type="Resource" format=3 uid="uid://b2r7xam4n6x1y"]
+
+[ext_resource type="Resource" uid="uid://e4t9y2p6q8z3a" path="res://tests/fixtures/dependency_inspector_leaf.tres" id="1_leaf"]
+
+[resource]
+metadata/leaf = ExtResource("1_leaf")

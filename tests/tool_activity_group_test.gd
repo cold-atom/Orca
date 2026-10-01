@@ -57,6 +57,32 @@ func _run() -> void:
 	await process_frame
 	_expect(settings_group.get_combined_minimum_size().x <= 300.0, "project settings groups should remain within 300 px")
 	settings_group.queue_free()
+	var intelligence_group = ToolActivityGroup.new()
+	get_root().add_child(intelligence_group)
+	await process_frame
+	var help_topics := []
+	intelligence_group.help_requested.connect(func(topic: String): help_topics.append(topic))
+	var api_card = intelligence_group.add_tool("api_1", "inspect_godot_api", {"class_name": "Node", "member_name": "add_child", "member_kind": "method", "include_inherited": true})
+	_expect(intelligence_group._header_button.text.contains("Inspect Godot API"), "Godot API inspection should have an Orca-native grouped label")
+	_expect(intelligence_group._header_button.text.contains("Node.add_child"), "Godot API inspection should retain a concise class/member target")
+	intelligence_group.complete_tool("api_1", {"content": "private API report", "outcome": "completed", "data": {"help_topic": "class_method:Node:add_child"}}, 15)
+	_expect(api_card._help_button.visible and api_card._help_button.text == "Open Docs", "safe API help metadata should expose Open Docs")
+	api_card._help_button.pressed.emit()
+	_expect(help_topics == ["class_method:Node:add_child"], "help navigation should be forwarded through the activity group")
+	intelligence_group.set_expanded(true)
+	api_card._toggle_details()
+	await process_frame
+	_expect(intelligence_group.get_combined_minimum_size().x <= 300.0, "expanded intelligence activity and Open Docs must fit a 300 px dock")
+	intelligence_group.queue_free()
+	var invalid_help_group = ToolActivityGroup.new()
+	get_root().add_child(invalid_help_group)
+	await process_frame
+	var invalid_card = invalid_help_group.add_tool("api_bad", "inspect_godot_api", {"class_name": "Node"})
+	invalid_help_group.complete_tool("api_bad", {"content": "report", "outcome": "completed", "data": {"help_topic": "https://example.invalid/docs"}}, 5)
+	_expect(not invalid_card._help_button.visible, "unrecognized help topic prefixes must not expose navigation")
+	invalid_help_group.complete_tool("api_bad", {"content": "report", "outcome": "completed", "data": {"help_topic": "class_name:" + "N".repeat(300)}}, 5)
+	_expect(not invalid_card._help_button.visible, "oversized help topics must not expose navigation")
+	invalid_help_group.queue_free()
 	await process_frame
 	_finish()
 

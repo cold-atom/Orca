@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-09-29
+Last updated: 2026-10-01
 
 ## Purpose
 
@@ -62,6 +62,17 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - Completed conversations, bounded activity summaries, changed-file summaries, mode, and usage are persisted per project.
 - History can restore and continue valid sessions; interrupted, tainted, or truncated sessions are view-only.
 - New Session archives the current transcript and restores the empty state while preserving mode, settings, and already-applied files.
+- Each turn automatically receives a bounded root `res://AGENTS.md` and bounded project-skill catalog metadata when present. Both are private request-scoped system context and are removed from stored continuation history after the turn.
+- Repetitive tool activity is detected below the hard caps. Orca makes one final provider request with tools disabled; tool calls returned from that final request are denied without execution while preserving protocol-valid results.
+
+### Godot Intelligence
+
+- `res://AGENTS.md` is loaded automatically from the project root only, capped at 32 KiB and 400 lines, rejected on invalid UTF-8, NUL bytes, or symbolic-link traversal, and wrapped as untrusted guidance subordinate to system, user, mode, approval, and runtime safety rules.
+- Immediate `res://skills/<slug>/SKILL.md` entries contribute only bounded `name`, `description`, slug, and path metadata automatically. A skill body is loaded only through `read_project_skill` using the exact discovered name and is wrapped as non-recursive, non-executable project guidance.
+- `inspect_godot_api` reflects `ClassDB` and registered global-class metadata into bounded signatures, type records, hierarchy, properties, signals, constants, and enums. It produces validated Help topics for the editor's public `goto_help()` path but does not scrape documentation prose, load scripts, construct reflected objects, or instantiate scenes.
+- `read_gdscript_function` performs bounded lexical extraction of one named function, optional adjacent documentation/annotations, nested-class scope, and one-based navigation. For the exact open unsaved script it uses public editor source and marks it `editor`; that source never carries a disk SHA-256 or becomes a patch base.
+- `discover_dependencies` traverses deterministic breadth-first forward dependencies or reverse dependents from `ResourceLoader.get_dependencies()`. It reports saved serialized relationships only and does not load or instantiate resources.
+- All four model-callable intelligence tools are read-only and available in Plan and Work.
 
 ### Modes
 
@@ -94,6 +105,10 @@ Work is the default. Mode switching is blocked while a turn or edit approval is 
 | `search_files` | Plan, Work | Recursively searches bounded project text files and returns path/line/column matches. |
 | `inspect_scene` | Plan, Work | Reads bounded saved `PackedScene`/`SceneState` hierarchy, serialized properties, instances, groups, and signal connections without node instantiation. |
 | `inspect_project_settings` | Plan, Work | Reads a bounded overview or one allowlisted typed ProjectSettings value with active feature overrides. |
+| `read_project_skill` | Plan, Work | Loads one exact bounded skill body selected from the request-scoped project skill catalog. |
+| `inspect_godot_api` | Plan, Work | Reflects bounded `ClassDB` signatures and safe editor Help topics without object construction or prose scraping. |
+| `read_gdscript_function` | Plan, Work | Reads one bounded function from saved source or the exact unsaved editor source for that open script. |
+| `discover_dependencies` | Plan, Work | Traverses bounded saved serialized dependencies or reverse dependents without resource loading. |
 | `get_editor_context` | Plan, Work | Captures active scene, selected nodes, active script, caret, selected code, and open/unsaved state. |
 | `get_diagnostics` | Plan, Work | Reports Orca validation records, observed editor-process errors, and play state. |
 | `update_tasks` | Plan, Work | Atomically replaces bounded session task metadata without modifying project files. |
@@ -118,6 +133,9 @@ Work is the default. Mode switching is blocked while a turn or edit approval is 
 - Search and read output are bounded.
 - Scene inspection accepts saved `.tscn` files up to 2 MB, rejects unsaved editor state, and never instantiates scene nodes.
 - Project settings inspection uses fixed summary categories, allowlists explicit paths, blocks sensitive-looking names, and caps valid JSON output at 64 KB.
+- Automatic project instructions and skill metadata are bounded and request-scoped. Skill bodies require an explicit exact-name read and are never recursively loaded merely because their text references another file.
+- Focused script reads enforce canonical `.gd` project paths, symlink and Orca-directory rejection, a 2 MiB source limit, and separate bounded output. Unsaved editor source deliberately omits a disk hash.
+- Dependency discovery enforces canonical existing project resources, symlink and Orca-directory rejection, bounded graph traversal, and whole JSON output.
 - Input Map proposals target only `res://project.godot`, require its current SHA-256, preserve unrelated bytes, and compare affected disk/live actions before review and apply.
 - Main-scene proposals validate a saved `.tscn`, normalize path/UID identity, preserve unrelated project bytes, and synchronize the live ProjectSettings value.
 - Low-risk ProjectSettings proposals use an exact six-path allowlist, strict scalar types, conservative dimension caps, and affected live/disk equality.
@@ -151,10 +169,16 @@ EditorPlugin (orca.gd)
              -> ProviderRegistry
                     -> OpenAI / Gemini / xAI / DeepSeek / OpenRouter / Custom adapters
              -> ContextBudget (request estimate, reserves, complete-turn compaction)
+             -> ProjectInstructions (request-scoped root guidance)
+             -> ProjectSkills (request-scoped catalog and explicit body reads)
+             -> ToolLoopGuard (repetition/no-progress finalization)
              -> Tools
                     -> EditorContext
                     -> SceneInspector
                     -> ProjectSettingsInspector
+                    -> GodotApiInspector
+                    -> GDScriptFunctionReader
+                    -> DependencyInspector
                     -> InputMapProposal
                     -> MainSceneProposal
                     -> ProjectSettingsProposal
@@ -174,6 +198,7 @@ EditorPlugin (orca.gd)
 User submits prompt
 -> AgentController snapshots the selected provider profile
 -> AgentController captures request-scoped editor context
+-> AgentController loads bounded root project instructions and skill catalog metadata
 -> user message and temporary context are sent to APIClient
 -> APIClient streams SSE deltas
 -> ChatWindow updates one assistant card
@@ -184,7 +209,7 @@ User submits prompt
 -> temporary editor context is removed from stored history
 ```
 
-The request-scoped context remains available through all tool rounds in one turn but does not pollute later turns with stale state.
+The request-scoped context, including project instructions and skill catalog metadata, remains available through all tool rounds in one turn but does not pollute later turns with stale state. Skill bodies are not included automatically; `read_project_skill` returns one selected body as a normal bounded tool result.
 The provider snapshot is also retained through all tool rounds so settings changes cannot mix endpoints or models inside one protocol turn.
 
 Before each provider request, `context_budget.gd` resolves the request-scoped model's known context window, preferring the provider-reported model identity during a tool continuation, and estimates the serialized messages and tool schemas conservatively from UTF-8 bytes plus structural overhead. It reserves bounded capacity for a final answer and, while tools are exposed, for a later tool result. If necessary it replaces the oldest contiguous completed turns with one system notice. Historical tool rounds are removable only when the assistant call, every matching tool result, and the terminal assistant response are complete. The active user turn, provider reasoning continuation, temporary editor context, and runtime observation remain protected. Unknown custom-model limits continue without speculative blocking; an oversized protected request for a known limit fails before transport.
@@ -229,6 +254,8 @@ Assistant emits tool call
 ```
 
 Tool UI metadata is intentionally kept separate from model-facing content.
+
+After each completed tool batch, `tool_loop_guard.gd` fingerprints normalized calls, arguments, outcomes, and results together with a controller progress epoch. It triggers after three identical call/results, an `ABABAB` call cycle, three identical complete rounds, or four rounds without observed progress. The controller then appends a bounded notice and sends exactly one request with no tool schema. Any tool calls in that response receive matching denied tool results and end the turn. This early finalization supplements rather than replaces the hard limits of 12 tool rounds and 16 calls in one provider response.
 
 ### Reviewed Change Lifecycle
 
@@ -356,6 +383,75 @@ The overview reports selected application values, main scene, display/window set
 Hard limits include 64 input actions, 12 events per action, 64 autoloads, 4,096 scanned property records, 16 entries per summarized collection, three levels of Variant recursion, 256 characters per string, and 64 KB of valid JSON output. Truncation preserves whole JSON and reports reasons.
 
 The tool is read-only in Plan and Work, never enters approval, and can navigate to `project.godot`. Sessions persist only the optional setting path and navigation summary, never returned setting values. It does not enumerate arbitrary settings, inspect editor settings, or reveal disallowed custom configuration paths.
+
+### Automatic Project Instructions
+
+At the start of each turn, Orca checks only the project-root `res://AGENTS.md`. Missing instructions are optional and do not fail the request. Valid content is wrapped with its SHA-256 and explicit precedence language, appended to private request-scoped system context, retained through that turn's tool rounds, and removed before resumable history is stored.
+
+Hard limits and rejection rules:
+
+- Exact fixed path only; no ancestor or nested instruction discovery.
+- Maximum 32 KiB and 400 lines.
+- Valid UTF-8 text with no NUL bytes.
+- Any symbolic-link component is rejected.
+- Project guidance cannot authorize tool access, execution, mutation, disclosure, or weaker safety behavior.
+
+### `read_project_skill`
+
+Project skill discovery scans only immediate directories matching the lowercase slug grammar under `res://skills/`. Each valid entry must use `res://skills/<slug>/SKILL.md` with bounded YAML-like frontmatter containing one `name` and `description`. Automatic request context receives catalog metadata only: name, description, slug, and path. It does not receive skill bodies.
+
+Input:
+
+- `name`: Exact case-sensitive discovered name, 1-64 characters. Duplicate exact names fail rather than selecting one.
+
+Hard limits:
+
+- At most 64 immediate directories scanned and 32 skills returned, in deterministic slug order.
+- Frontmatter must close within 8 KiB and 80 lines.
+- Description maximum: 240 characters.
+- Body maximum: 32 KiB and 400 lines; complete skill file maximum is 40 KiB.
+- Invalid UTF-8, NUL bytes, invalid slugs/frontmatter, symbolic links, missing exact names, and ambiguous names are rejected.
+
+The returned body is wrapped as subordinate, non-recursive, non-executable project guidance. References in a skill are plain text and do not cause automatic file reads or command execution. The tool is read-only in Plan and Work; only bounded target/navigation metadata persists, not the body.
+
+### `inspect_godot_api`
+
+Input:
+
+- `class_name`: Required native `ClassDB` class or registered global class name, maximum 256 characters.
+- `member_name`: Optional exact member name; omit for a class overview.
+- `member_kind`: Optional `auto`, `method`, `property`, `signal`, `constant`, or `enum`; default `auto`.
+- `include_inherited`: Optional boolean, default `true`.
+
+The tool reports engine version, native hierarchy, reflected declaring class, method/signal signatures and arguments, property types/getters/setters, integer constants, enums, and registered global-class metadata. A global script class exposes its registration and native base metadata but does not claim unloaded script-declared members. Successful results include a validated `class_*` Help topic used by the activity card's Open Docs action and `EditorInterface.get_script_editor().goto_help()`.
+
+Hard limits include 80 overview members, 16 exact matches, 16 hierarchy levels, 32 arguments per method/signal, 256 characters per string, and 64 KiB of whole JSON output. The tool uses reflection only: it does not construct objects, instantiate scenes, load project scripts, scrape `EditorHelp`, or return class-reference prose. It is read-only in Plan and Work.
+
+### `read_gdscript_function`
+
+Input:
+
+- `filepath`: Canonical existing `res://` path ending in `.gd`.
+- `function_name`: Valid GDScript identifier, maximum 128 characters.
+- `start_line_hint`: Optional positive one-based line to resolve duplicate names.
+- `include_documentation`: Optional boolean, default `true`, for adjacent `##` documentation and annotations.
+
+The reader masks comments and string contents while locating declarations, multiline signatures, indentation boundaries, static functions, and nested class scope, then returns exact selected source with one-based navigation. Duplicate names fail with bounded candidate summaries unless the line hint selects one uniquely. This is focused lexical extraction, not semantic symbol resolution.
+
+Saved source includes a disk SHA-256. If the exact script is open and unsaved, Orca instead reads its public `ScriptEditor` source, labels the result `source_kind: editor`, and deliberately omits `disk_sha256`; that content cannot authorize or seed a patch. Hard limits are 2 MiB source, 300 returned lines, 96 KiB returned text, and 20 candidate summaries. Canonical path, `.gd`, project boundary, symbolic-link, Orca-directory, UTF-8, and NUL checks apply. The tool is read-only in Plan and Work.
+
+### `discover_dependencies`
+
+Input:
+
+- `filepath`: Canonical existing saved project resource.
+- `direction`: Required `forward` or `reverse`.
+- `max_depth`: Optional, clamped to 1-3; default `1`.
+- `max_results`: Optional, clamped to 1-100; default `100`.
+
+Forward traversal follows serialized `ResourceLoader.get_dependencies()` relationships breadth-first. Reverse traversal builds a bounded project index, then reports direct and transitive dependents in deterministic breadth-first order while preserving real source-to-dependency edge direction. UID descriptors are resolved when registered, with canonical `res://` fallbacks where available.
+
+Hard limits include 3 traversal levels, 100 returned nodes, 200 graph edges, 500 scanned files, 256 scanned directories, 100 indexed graph nodes, 200 indexed serialized edges, approximately 2.5 seconds for reverse scanning, and 96 KiB of whole JSON output. `.godot`, symbolic links, Orca's addon, unsafe/unresolved dependencies, and missing/noncanonical targets are excluded or rejected with truncation reasons. The tool does not load or instantiate resources and cannot discover dynamic `load()` calls, arbitrary code references, runtime-created resources, or unsaved editor state. It is read-only in Plan and Work.
 
 ### `get_editor_context`
 
@@ -516,6 +612,10 @@ Run calls may include one optional bounded `verification` object. Initial kinds 
 - Authenticated provider model-discovery endpoints receive that provider's API key; Gemini discovery uses Google's `x-goog-api-key` header.
 - Orca requests public model metadata from `models.dev` without sending the API key, prompts, file contents, or project context.
 - Project context and file contents may be sent to the configured model provider.
+- When present, root `res://AGENTS.md` content and bounded project-skill catalog metadata are automatically sent to the configured provider with each turn. A skill body is sent only after an explicit `read_project_skill` call. These values remain private request context/tool results and are not persisted in resumable session continuation or raw activity output.
+- Project instructions and skills are untrusted input. Wrapping and prompt precedence are defense in depth; runtime mode, approval, path, execution, and disclosure checks remain the security boundary.
+- Unsaved editor source returned by `read_gdscript_function` has no disk hash and cannot be used as an `apply_patch` base. It may still be sent to the selected provider as tool output.
+- `inspect_godot_api` uses reflection and safe Help topics rather than prose scraping or object construction. `discover_dependencies` reads serialized dependency metadata without loading resources, but its reverse scan still enumerates bounded project resource paths on the editor thread.
 - Orca currently has no trusted-host confirmation, privacy consent flow, or host allowlist.
 - GDScript `reload()` is a compiler/loader validation mechanism, not a sandbox. Trusted generated source may reach tool-script static initialization.
 - `PackedScene` loading for inspection is read-only and does not instantiate nodes, but referenced resources and scripts may still be loaded by Godot; dependency loading is not a sandbox or independently size-bounded.
@@ -571,6 +671,12 @@ A committed automated suite exists under `tests/`:
 - `task_list_panel_test.gd` verifies status presentation, bounded height, collapse/expand behavior, clearing, and the 300 px width constraint.
 - `scene_inspector_test.gd` verifies saved hierarchy, serialized properties, groups, instances, signal connections, JSON-safe Variant summaries, structural-only reads, bounds, invalid targets, and navigation metadata.
 - `project_settings_inspector_test.gd` verifies bounded overviews, explicit typed values, feature overrides, input actions, output limits, allowlists, privacy rejections, and navigation metadata.
+- `project_instructions_test.gd` verifies optional root loading, exact content/hash metadata, safety wrapping, byte/line/NUL bounds, and symlink rejection.
+- `project_skills_test.gd` verifies deterministic immediate-directory metadata discovery, exact-name body loading, frontmatter/slug/body bounds, non-recursive safety wrapping, truncation, and symlink rejection.
+- `godot_api_inspector_test.gd` verifies reflected class/member kinds, inheritance, signatures, global-class metadata, limits, Help-topic formats, failures, and absence of construction or private Help scraping.
+- `gdscript_function_reader_test.gd` verifies saved and unsaved source provenance, documentation and annotation inclusion, multiline signatures, nested classes, ambiguity hints, CRLF preservation, output bounds, path protection, and absent hashes for editor source.
+- `dependency_inspector_test.gd` verifies deterministic forward/reverse breadth-first serialized graphs, depths, UID fallback normalization, scan/result/output bounds, and invalid/protected targets.
+- `tool_loop_guard_test.gd` verifies identical successful and failed calls, alternating cycles, repeated rounds, changing results, progress resets, no-progress thresholds, and stable canonical fingerprints.
 - `input_map_proposal_test.gd` verifies typed event validation, exact unrelated-byte preservation, no-op and stale guards, immutable reviewed hashes, affected live/disk consistency, application, synchronization, and guarded revert.
 - `main_scene_proposal_test.gd` verifies path and PackedScene validation, path/UID semantics, exact unrelated-content preservation, no-op and stale guards, private hash binding, live synchronization, application, and guarded revert.
 - `project_settings_proposal_test.gd` verifies the exact allowlist, strict types/ranges/enums, built-in defaults, atomic batches, exact preservation, complete-delta integrity, stale/live conflicts, synchronization, application, and guarded revert.
@@ -598,7 +704,10 @@ Expected result: project scan, plugin initialization, and editor layout complete
 | Providers | Legacy migration, per-provider credentials, switching, custom endpoint preservation, Gemini/xAI model discovery, discovery errors. |
 | UI scaling | 100%, 125%, 150%, and 200% editor scale after restart; 300 px-equivalent narrow dock; 1280x720 short display; dark and light themes. |
 | Reasoning | Capability-driven effort, provider body mapping, DeepSeek/xAI content continuity, OpenRouter detail reconstruction, Gemini thought signatures, and bounds. |
-| Modes | Plan read-only, Work patch access, Plan-to-Work switch, mode locked while busy. |
+| Modes | Plan read-only, Work patch access, Plan-to-Work switch, mode locked while busy; intelligence tools available read-only in both modes. |
+| Project guidance | Missing/valid/oversized/symlinked root instructions; bounded skill catalog; exact skill selection; request cleanup; no automatic body loading. |
+| Godot intelligence | Class/member reflection and Open Docs; saved/unsaved focused functions; forward/reverse saved dependencies; truncation and protected paths. |
+| Tool-loop guard | Identical calls/results, alternating cycles, repeated rounds, no-progress rounds, one no-tools final request, denial of further calls, hard-cap fallback. |
 | Reads | Valid range, default range, invalid range, empty file, oversized file, binary file. |
 | Search | Match, no match, glob, case sensitivity, result limit, timeout, skipped plugin path. |
 | Scene inspection | Saved hierarchy, properties on/off, node/property truncation, child instances, signal connections, malformed/missing/oversized targets, unsaved scene rejection. |
@@ -633,6 +742,12 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Pending approval state is not persisted; task checklists are persisted independently.
 - Saved `.tscn` inspection reports serialized scene state, not all Inspector defaults, unsaved live-tree changes, runtime-generated nodes, or recursively expanded inherited/instanced scenes.
 - Search is literal text search rather than a symbol or semantic index.
+- Root project instructions are limited to one fixed `res://AGENTS.md`; nested or ancestor instruction inheritance is not implemented.
+- Skills use a deliberately small frontmatter format, immediate directories only, exact-name loading, and no recursive reference resolution. Skill bodies are not automatically selected or summarized.
+- `inspect_godot_api` exposes reflected signatures and safe editor Help navigation, not class-reference prose, examples, tutorials, annotations/default argument values unavailable from `ClassDB`, or script-declared members from unloaded global classes.
+- `read_gdscript_function` is an indentation-aware lexical extractor, not a parser, semantic index, call hierarchy, or reference search. Only the exact open unsaved script can use editor source.
+- Dependency discovery reports only saved serialized references known to `ResourceLoader`; dynamic `load()` calls, arbitrary code references, runtime objects, unsaved state, and complete project-wide graphs beyond hard bounds are unavailable.
+- Progressive tool-schema disclosure is deferred. Orca still sends the full mode-eligible schema on each request, so Godot Intelligence adds schema cost despite bounded outputs.
 - Structured ProjectSettings reads intentionally cover selected low-risk families rather than arbitrary custom settings or EditorSettings.
 
 ### Editing
@@ -668,7 +783,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Keyless local endpoint configuration is not first-class.
 - Credentials are not stored in an OS credential manager.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata declares version 1.0.0 and a concise description. Public release documentation and an MIT license are present, but release packaging, broader compatibility coverage, and third-party asset license verification remain incomplete.
+- Plugin metadata declares version 1.1.0 and a concise description. Public release documentation and an MIT license are present, but release packaging, broader compatibility coverage, and third-party asset license verification remain incomplete.
 
 ## Roadmap
 
@@ -685,8 +800,9 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Add bounded live current-scene inspection for unsaved editor state where public APIs permit it.
 - Broaden current structural, value, script, instance, and signal contracts only through dedicated safety review.
 - Expand structured Godot scene operations and add further settings only through dedicated risk review.
-- Add Godot class-reference and documentation lookup.
+- Expand reflected Godot API metadata only where public stable APIs provide trustworthy additional detail; prose scraping remains excluded.
 - Add project symbol indexing and reference search.
+- Add progressive tool-schema disclosure only after provider compatibility, context budgeting, restoration, and deterministic tool-availability behavior are designed and tested.
 - Expand semantic validation beyond the structured scene path to remaining raw `.tscn` and `.tres` patch proposals.
 - Expand verification beyond text/process evidence only when a bounded visual or input-observation capability exists.
 
@@ -715,6 +831,38 @@ Expected result: project scan, plugin initialization, and editor layout complete
 
 ## Decision Log
 
+### External Project Research
+
+Decision: other projects may be studied to identify user problems, workflows, capabilities, and architectural tradeoffs, but they are research sources rather than code donors by default. Useful concepts must be independently designed for Orca's visual language and rebuilt through its bounded tool contracts, Plan/Work permissions, explicit approval, conflict detection, validation, cancellation, persistence, and testing architecture.
+
+Read-only ideas should remain Plan-safe where appropriate. Any project mutation must still produce an immutable reviewed proposal, and any external-state operation must preserve Orca's ownership and boundedness rules. Research must not be used to justify copying another project's prompts, UI, naming, source structure, or weaker safety assumptions, and Orca's invariants must never be relaxed to match another product's feature count.
+
+Direct source reuse is exceptional rather than the default. When compatible licensed material is intentionally reused, its provenance, license and attribution obligations, reason for reuse, and integration implications must be documented explicitly.
+
+### Request-Scoped Project Guidance
+
+Decision: automatically load only the bounded root `res://AGENTS.md` and bounded skill catalog metadata. Treat both as untrusted project guidance beneath higher-priority instructions and runtime controls, keep them through one turn's tool rounds, and remove them from resumable history. Do not automatically load skill bodies; require an explicit exact-name `read_project_skill` call and do not recursively follow references from its text.
+
+### Reflected Godot API Information
+
+Decision: expose stable `ClassDB` signatures and registered global-class metadata plus validated public editor Help topics. Do not construct reflected objects, load project scripts to discover members, or scrape prose from private Help controls. Open Docs delegates to Godot's own Help UI; the model receives reflected metadata, not the documentation page text.
+
+### Unsaved Focused Source
+
+Decision: a focused function read may use the exact unsaved source publicly exposed for the matching open script because it is read-only context. Such a result must identify editor provenance and omit a disk SHA-256, so it can never be confused with the saved base required for a patch.
+
+### Serialized Dependency Discovery
+
+Decision: use bounded `ResourceLoader.get_dependencies()` traversal for saved resource relationships. Reverse lookup may build a bounded project index, but results must explicitly exclude dynamic code loads, runtime-created resources, unsaved state, and completeness beyond scan limits.
+
+### Tool-Loop Finalization
+
+Decision: detect stable repeated or no-progress activity before the existing hard caps and permit one no-tools request so the model can report partial findings and a safe next step. Further tool calls from that request are denied with protocol-valid results. Keep the 12-round and 16-calls-per-response limits as independent hard failures.
+
+### Progressive Schema Disclosure
+
+Decision: progressive tool-schema disclosure is deferred. Version 1.1.0 continues sending the complete schema eligible for the active mode; future disclosure must preserve deterministic availability, Plan/Work boundaries, context budgeting, provider compatibility, and protocol-valid continuation.
+
 ### Plan And Work Names
 
 Decision: Plan is strictly read-only; Work can inspect, debug, and propose approved changes. Work remains the default because approval still protects every mutation. The internal `BUILD` identifier is retained to preserve stored session compatibility.
@@ -740,6 +888,16 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-10-01: Orca 1.1.0 Godot Intelligence
+
+- Added automatic bounded root project instructions and bounded project-skill catalog metadata as private request-scoped guidance, with explicit exact-name skill-body loading and no recursive execution semantics.
+- Added read-only Plan/Work tools for reflected Godot API signatures and Help topics, focused saved or unsaved GDScript functions, and bounded serialized forward/reverse dependencies.
+- Added early repeated/no-progress tool-loop detection and one no-tools finalization request beneath existing hard caps.
+- Preserved path, symlink, Orca-directory, output, privacy, and protocol boundaries; unsaved editor source never supplies a patch hash, API reflection never constructs objects, and dependency discovery never loads resources.
+- Registered six permanent suites in CI and documented contracts, hard limits, security, testing, and known limitations.
+- Included the post-1.0 responsive scaling, compact composer, transparent branding, expanded-diff sizing, active-turn auto-follow, and sequential approval visibility fixes in 1.1.0.
+- Deferred progressive tool-schema disclosure rather than claiming it as implemented.
 
 ### 2026-09-29: In-Dock About Page
 

@@ -34,6 +34,10 @@ const GROUPABLE_TOOL_NAMES := {
 	"search_files": true,
 	"inspect_scene": true,
 	"inspect_project_settings": true,
+	"read_project_skill": true,
+	"inspect_godot_api": true,
+	"read_gdscript_function": true,
+	"discover_dependencies": true,
 	"get_editor_context": true,
 	"get_diagnostics": true,
 	"observe_game_run": true
@@ -454,13 +458,14 @@ func _on_tool_execution_started(call_id: String, tool_name: String, arguments: D
 		chat_feed.add_child(card)
 		card.configure(tool_name, arguments)
 		card.open_requested.connect(_on_open_file_requested)
+		card.help_requested.connect(_on_help_requested)
 	_tool_cards[call_id] = card
 	var event := {
 		"type": "tool",
 		"timestamp": Time.get_unix_time_from_system(),
 		"id": call_id,
 		"name": tool_name,
-		"arguments": _safe_tool_arguments(arguments),
+		"arguments": _safe_tool_arguments(arguments, tool_name),
 		"outcome": "running",
 		"summary": "Running",
 		"duration_ms": 0
@@ -649,6 +654,12 @@ func _on_change_action_requested(change_id: String, action: String) -> void:
 func _on_open_file_requested(filepath: String, line: int, column: int) -> void:
 	if not EditorContext.open_file(filepath, line, column):
 		_add_message("System Error", "Could not open " + filepath, Color.INDIAN_RED, "error")
+
+
+func _on_help_requested(topic: String) -> void:
+	if not ToolActivityCard.is_safe_help_topic(topic) or not Engine.is_editor_hint():
+		return
+	EditorInterface.get_script_editor().goto_help(topic)
 
 
 func _on_agent_message_received(_role: String, content: String) -> void:
@@ -1083,9 +1094,43 @@ func _message_event(sender: String, text: String, kind: String, completion: Stri
 	}
 
 
-func _safe_tool_arguments(arguments: Dictionary) -> Dictionary:
+func _safe_tool_arguments(arguments: Dictionary, tool_name: String = "") -> Dictionary:
 	var result := {}
-	for key in ["filepath", "path", "scene_path", "setting_path", "query", "file_glob", "start_line", "end_line", "case_sensitive", "max_results", "include_properties", "max_nodes", "max_properties_per_node"]:
+	if tool_name == "read_project_skill":
+		if typeof(arguments.get("name")) == TYPE_STRING:
+			result["name"] = str(arguments["name"]).left(128)
+		return result
+	if tool_name == "inspect_godot_api":
+		for key in ["class_name", "member_name"]:
+			if typeof(arguments.get(key)) == TYPE_STRING:
+				result[key] = str(arguments[key]).left(256)
+		if typeof(arguments.get("member_kind")) == TYPE_STRING and str(arguments["member_kind"]) in ["auto", "method", "property", "signal", "constant", "enum"]:
+			result["member_kind"] = arguments["member_kind"]
+		if typeof(arguments.get("include_inherited")) == TYPE_BOOL:
+			result["include_inherited"] = arguments["include_inherited"]
+		return result
+	if tool_name == "read_gdscript_function":
+		if typeof(arguments.get("filepath")) == TYPE_STRING:
+			result["filepath"] = str(arguments["filepath"]).left(512)
+		if typeof(arguments.get("function_name")) == TYPE_STRING:
+			result["function_name"] = str(arguments["function_name"]).left(128)
+		if typeof(arguments.get("start_line_hint")) == TYPE_INT:
+			result["start_line_hint"] = maxi(1, int(arguments["start_line_hint"]))
+		if typeof(arguments.get("include_documentation")) == TYPE_BOOL:
+			result["include_documentation"] = arguments["include_documentation"]
+		return result
+	if tool_name == "discover_dependencies":
+		if typeof(arguments.get("filepath")) == TYPE_STRING:
+			result["filepath"] = str(arguments["filepath"]).left(512)
+		if typeof(arguments.get("direction")) == TYPE_STRING and str(arguments["direction"]) in ["forward", "reverse"]:
+			result["direction"] = arguments["direction"]
+		if typeof(arguments.get("max_depth")) == TYPE_INT:
+			result["max_depth"] = clampi(int(arguments["max_depth"]), 1, 3)
+		if typeof(arguments.get("max_results")) == TYPE_INT:
+			result["max_results"] = clampi(int(arguments["max_results"]), 1, 100)
+		return result
+	var keys := ["filepath", "path", "scene_path", "setting_path", "query", "file_glob", "start_line", "end_line", "case_sensitive", "max_results", "include_properties", "max_nodes", "max_properties_per_node"]
+	for key in keys:
 		if arguments.has(key):
 			result[key] = arguments[key]
 	return result
@@ -1113,6 +1158,9 @@ func _update_tool_event(call_id: String, execution: Dictionary, duration_ms: int
 		event["open_path"] = str(data.get("open_path", ""))
 		event["open_line"] = maxi(1, int(data.get("open_line", 1)))
 		event["open_column"] = maxi(1, int(data.get("open_column", 1)))
+	var help_topic := str(data.get("help_topic", ""))
+	if ToolActivityCard.is_safe_help_topic(help_topic):
+		event["help_topic"] = help_topic
 	events[index] = event
 	_session["events"] = events
 
@@ -1188,12 +1236,15 @@ func _render_session_event(event: Dictionary) -> void:
 				chat_feed.add_child(card)
 				card.configure(tool_name, event.get("arguments", {}))
 				card.open_requested.connect(_on_open_file_requested)
+				card.help_requested.connect(_on_help_requested)
 			var outcome := str(event.get("outcome", "interrupted"))
 			if outcome == "running":
 				outcome = "interrupted"
 			var data := {}
 			if not str(event.get("open_path", "")).is_empty():
 				data = {"open_path": str(event.get("open_path", "")), "open_line": int(event.get("open_line", 1)), "open_column": int(event.get("open_column", 1))}
+			if ToolActivityCard.is_safe_help_topic(str(event.get("help_topic", ""))):
+				data["help_topic"] = str(event.get("help_topic", ""))
 			var execution := {"content": str(event.get("summary", "")), "outcome": outcome, "data": data}
 			if _tool_groups_by_call_id.has(call_id):
 				_tool_groups_by_call_id[call_id].complete_tool(call_id, execution, int(event.get("duration_ms", 0)))
@@ -1220,6 +1271,7 @@ func _add_grouped_tool_card(call_id: String, tool_name: String, arguments: Dicti
 		_active_tool_group = ToolActivityGroup.new()
 		chat_feed.add_child(_active_tool_group)
 		_active_tool_group.open_requested.connect(_on_open_file_requested)
+		_active_tool_group.help_requested.connect(_on_help_requested)
 	var card = _active_tool_group.add_tool(call_id, tool_name, arguments)
 	_tool_groups_by_call_id[call_id] = _active_tool_group
 	return card

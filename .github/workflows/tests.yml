@@ -49,6 +49,12 @@ jobs:
           "$GODOT_BIN" --headless --path . --script res://tests/task_list_panel_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/scene_inspector_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/project_settings_inspector_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/project_instructions_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/project_skills_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/godot_api_inspector_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/gdscript_function_reader_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/dependency_inspector_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/tool_loop_guard_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/input_map_proposal_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/main_scene_proposal_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/project_settings_proposal_test.gd

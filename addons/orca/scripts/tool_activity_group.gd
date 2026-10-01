@@ -2,6 +2,7 @@
 extends PanelContainer
 
 signal open_requested(filepath: String, line: int, column: int)
+signal help_requested(topic: String)
 
 const ToolActivityCard = preload("res://addons/orca/scripts/tool_activity_card.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
@@ -75,6 +76,7 @@ func add_tool(call_id: String, tool_name: String, arguments: Dictionary):
 	_body.add_child(card)
 	card.configure(tool_name, arguments)
 	card.open_requested.connect(func(path: String, line: int, column: int): open_requested.emit(path, line, column))
+	card.help_requested.connect(func(topic: String): help_requested.emit(topic))
 	_cards[call_id] = card
 	_tool_names[call_id] = tool_name
 	_targets[call_id] = _target_from_arguments(arguments)
@@ -182,6 +184,14 @@ func _group_title() -> String:
 				title = "Inspect scene" if count == 1 else "Inspect scenes"
 			"inspect_project_settings":
 				title = "Inspect project settings"
+			"read_project_skill":
+				title = "Read project skill" if count == 1 else "Read project skills"
+			"inspect_godot_api":
+				title = "Inspect Godot API"
+			"read_gdscript_function":
+				title = "Read GDScript function" if count == 1 else "Read GDScript functions"
+			"discover_dependencies":
+				title = "Discover dependencies"
 			"get_editor_context":
 				title = "Inspect editor context"
 			"get_diagnostics":
@@ -196,6 +206,16 @@ func _group_title() -> String:
 
 
 func _target_from_arguments(arguments: Dictionary) -> String:
+	if arguments.has("class_name"):
+		var api_target := str(arguments["class_name"])
+		var member := str(arguments.get("member_name", ""))
+		return api_target + ("." + member if not member.is_empty() else "")
+	if arguments.has("function_name"):
+		return str(arguments.get("filepath", "")) + " :: " + str(arguments["function_name"])
+	if arguments.has("name"):
+		return str(arguments["name"])
+	if arguments.has("direction") and arguments.has("filepath"):
+		return str(arguments["filepath"]) + " · " + str(arguments["direction"])
 	if arguments.has("scene_path"):
 		return str(arguments["scene_path"])
 	if arguments.has("setting_path") and not str(arguments["setting_path"]).is_empty():

@@ -98,6 +98,42 @@ Run bounded ProjectSettings overview, explicit typed value, input action, privac
 "$GODOT_BIN" --headless --path . --script res://tests/project_settings_inspector_test.gd
 ```
 
+Run root project-instruction loading, bounds, wrapping, and symlink-rejection checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/project_instructions_test.gd
+```
+
+Run project-skill catalog, frontmatter, exact on-demand loading, bounds, and symlink-rejection checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/project_skills_test.gd
+```
+
+Run reflected ClassDB class/member signature, inheritance, bound, and Help-topic checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/godot_api_inspector_test.gd
+```
+
+Run focused GDScript function extraction, unsaved editor-source provenance, ambiguity, and output-bound checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/gdscript_function_reader_test.gd
+```
+
+Run serialized forward/reverse resource dependency traversal, ordering, limit, and rejection checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/dependency_inspector_test.gd
+```
+
+Run repeated-call, alternating-cycle, repeated-round, and no-progress tool-loop guard checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/tool_loop_guard_test.gd
+```
+
 Run typed Input Map proposal, validation, application, live synchronization, and guarded revert checks:
 
 ```bash

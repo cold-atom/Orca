@@ -25,7 +25,11 @@ func _run() -> void:
 		{"type": "change", "id": "input_1", "filepath": "res://project.godot", "kind": "input_map", "summary": "Input Map: jump", "status": "applied", "old_hash": "old-input", "new_hash": "new-input", "review": [{"action": "jump", "secret": "must-not-persist"}], "old_content": "must-not-persist"},
 		{"type": "change", "id": "main_1", "filepath": "res://project.godot", "kind": "main_scene", "summary": "Main scene: res://main.tscn", "status": "applied", "old_hash": "must-not-persist", "new_hash": "must-not-persist", "new_value": "must-not-persist"},
 		{"type": "change", "id": "settings_1", "filepath": "res://project.godot", "kind": "project_settings", "summary": "Project settings: Viewport width", "status": "applied", "values": {"display/window/size/viewport_width": "must-not-persist"}, "changes": ["must-not-persist"]},
-		{"type": "tool", "id": "verify_1", "name": "verify_game_run", "arguments": {"run_id": 9, "verification": {"claim": "must-not-persist", "required_stdout": ["must-not-persist"]}}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "raw_data": {"stdout": "must-not-persist", "criteria_id": "must-not-persist"}}
+		{"type": "tool", "id": "verify_1", "name": "verify_game_run", "arguments": {"run_id": 9, "verification": {"claim": "must-not-persist", "required_stdout": ["must-not-persist"]}}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "raw_data": {"stdout": "must-not-persist", "criteria_id": "must-not-persist"}},
+		{"type": "tool", "id": "skill_1", "name": "read_project_skill", "arguments": {"name": "Gameplay", "body": "must-not-persist", "sha256": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "report": "must-not-persist"},
+		{"type": "tool", "id": "api_1", "name": "inspect_godot_api", "arguments": {"class_name": "Node", "member_name": "add_child", "member_kind": "method", "include_inherited": true, "report": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "help_topic": "class_method:Node:add_child", "graph": "must-not-persist"},
+		{"type": "tool", "id": "function_1", "name": "read_gdscript_function", "arguments": {"filepath": "res://player.gd", "function_name": "move", "start_line_hint": 8, "include_documentation": false, "body": "must-not-persist", "disk_sha256": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2},
+		{"type": "tool", "id": "deps_1", "name": "discover_dependencies", "arguments": {"filepath": "res://main.tscn", "direction": "reverse", "max_depth": 99, "max_results": 999, "graph": "must-not-persist", "hash": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "help_topic": "https://example.invalid"}
 	]
 	session["continuation"] = [
 		{"role": "user", "content": "Build a test", "reasoning_content": "must-not-persist"},
@@ -63,6 +67,14 @@ func _run() -> void:
 	_expect(not loaded.get("events", [])[5].has("values") and not loaded.get("events", [])[5].has("changes"), "ProjectSettings values and operations must not persist")
 	_expect(loaded.get("events", [])[6].get("name") == "verify_game_run" and loaded.get("events", [])[6].get("arguments", {}).is_empty(), "runtime run IDs and verification criteria must not persist")
 	_expect(not loaded.get("events", [])[6].has("raw_data"), "runtime evidence and criteria IDs must not persist")
+	_expect(loaded.get("events", [])[7].get("arguments") == {"name": "Gameplay"}, "project skill activity should retain only the bounded skill name")
+	_expect(loaded.get("events", [])[8].get("arguments") == {"class_name": "Node", "member_name": "add_child", "member_kind": "method", "include_inherited": true}, "Godot API activity should retain only its bounded query")
+	_expect(loaded.get("events", [])[8].get("help_topic") == "class_method:Node:add_child", "safe Godot help topics should persist")
+	var function_arguments: Dictionary = loaded.get("events", [])[9].get("arguments", {})
+	_expect(function_arguments.size() == 4 and function_arguments.get("filepath") == "res://player.gd" and function_arguments.get("function_name") == "move" and int(function_arguments.get("start_line_hint", 0)) == 8 and function_arguments.get("include_documentation") == false, "function activity should retain only its bounded lookup arguments")
+	var dependency_arguments: Dictionary = loaded.get("events", [])[10].get("arguments", {})
+	_expect(dependency_arguments.size() == 4 and dependency_arguments.get("filepath") == "res://main.tscn" and dependency_arguments.get("direction") == "reverse" and int(dependency_arguments.get("max_depth", 0)) == 3 and int(dependency_arguments.get("max_results", 0)) == 100, "dependency activity should retain bounded target, direction, depth, and result count")
+	_expect(not loaded.get("events", [])[10].has("help_topic"), "unsafe help topic prefixes must not persist")
 	_expect(loaded.get("tasks", []).size() == 4, "sanitized task state should persist")
 	_expect(not loaded.get("tasks", [])[0].has("secret"), "unknown task fields must not persist")
 	_expect(loaded.get("tasks", [])[2].get("status") == "pending", "only one persisted task may remain in progress")
