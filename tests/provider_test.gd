@@ -10,6 +10,7 @@ var _failures := PackedStringArray()
 
 func _init() -> void:
 	_test_registry()
+	_test_deepseek_provider()
 	_test_gemini_provider()
 	_test_xai_provider()
 	_test_metadata_mapping()
@@ -29,6 +30,22 @@ func _test_registry() -> void:
 	_expect(ProviderRegistry.get_provider("xai").definition().get("id") == "xai", "xAI should resolve to its adapter")
 	_expect(ProviderRegistry.infer_provider("https://generativelanguage.googleapis.com/v1beta/openai/") == "gemini", "Gemini's canonical URL should be inferred")
 	_expect(ProviderRegistry.infer_provider("https://api.x.ai/v1/") == "xai", "xAI's canonical URL should be inferred")
+
+
+func _test_deepseek_provider() -> void:
+	var provider = ProviderRegistry.get_provider("deepseek")
+	var default_body := {}
+	provider.apply_chat_options(default_body, "default")
+	_expect(default_body.get("max_tokens") == 8192, "DeepSeek default thinking should have a bounded output budget aligned with Orca's minimum known-context reserve")
+	_expect(not default_body.has("thinking"), "DeepSeek provider default should not override the thinking toggle")
+	var high_body := {}
+	provider.apply_chat_options(high_body, "high")
+	_expect(high_body.get("thinking", {}).get("type") == "enabled", "DeepSeek explicit reasoning should enable thinking")
+	_expect(high_body.get("reasoning_effort") == "high" and high_body.get("max_tokens") == 8192, "DeepSeek reasoning should retain its effort and bounded output budget")
+	var off_body := {}
+	provider.apply_chat_options(off_body, "off")
+	_expect(off_body.get("thinking", {}).get("type") == "disabled", "DeepSeek off should disable thinking")
+	_expect(off_body.get("max_tokens") == 8192 and not off_body.has("reasoning_effort"), "DeepSeek non-thinking output should remain bounded without reasoning effort")
 
 
 func _test_gemini_provider() -> void:

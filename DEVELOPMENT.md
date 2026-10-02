@@ -60,7 +60,7 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - Transport failures retain structured category, phase, HTTP status, byte count, retryability, and partial-response metadata through the controller boundary.
 - Failed partial responses are marked incomplete in the transcript and are not committed to model history.
 - Completed conversations, bounded activity summaries, changed-file summaries, mode, and usage are persisted per project.
-- History can restore and continue valid sessions; interrupted, tainted, or truncated sessions are view-only.
+- History can restore and continue valid sessions and sanitized recovery checkpoints; unsafe, cancelled, dirty, or truncated sessions are view-only.
 - New Session archives the current transcript and restores the empty state while preserving mode, settings, and already-applied files.
 - Each turn automatically receives a bounded root `res://AGENTS.md` and bounded project-skill catalog metadata when present. Both are private request-scoped system context and are removed from stored continuation history after the turn.
 - Repetitive tool activity is detected below the hard caps. Orca makes one final provider request with tools disabled; tool calls returned from that final request are denied without execution while preserving protocol-valid results.
@@ -218,7 +218,7 @@ Compaction changes only model continuation history. The visible session transcri
 
 ### Streaming Lifecycle
 
-`api_client.gd` uses a nonblocking `HTTPClient` state machine. It parses SSE lines at byte boundaries so a UTF-8 code point split across transport chunks is not corrupted. Successful SSE bytes are counted but not retained as a duplicate raw response; only bounded JSON and HTTP error bodies are buffered. It accumulates separately bounded assistant content, provider reasoning, reasoning details, tool-call arguments, and opaque tool-call metadata, then emits a response shaped like a completed Chat Completions response for the controller.
+`api_client.gd` uses a nonblocking `HTTPClient` state machine. It parses SSE lines at byte boundaries so a UTF-8 code point split across transport chunks is not corrupted. Successful SSE bytes are counted but not retained as a duplicate raw response; only bounded JSON and HTTP error bodies are buffered. The raw transport allowance is 16 MiB so token-level JSON/SSE framing does not prematurely reject otherwise bounded model output. It accumulates separately bounded assistant content, provider reasoning, reasoning details, tool-call arguments, and opaque tool-call metadata, then emits a response shaped like a completed Chat Completions response for the controller.
 
 The transport supports:
 
@@ -242,6 +242,8 @@ Each completed HTTP request contributes its reported input, output, and cached t
 
 `provider_registry.gd` is the extension point for provider support. Each adapter defines its canonical endpoint, key help URL, model-list normalization, request headers, reasoning request shape, and provider-specific reasoning-history sanitation. Native non-Chat-Completions providers still require separate transport adapters.
 
+DeepSeek thinking is enabled at high effort by provider default and otherwise permits output far beyond Orca's response reserve. The DeepSeek adapter therefore sends an 8,192-token maximum for both thinking and non-thinking requests, aligned with the minimum final-answer reserve for its known 64K fallback context. This bounds cost and latency while leaving the user's selected reasoning effort intact.
+
 ### Tool Lifecycle
 
 ```text
@@ -255,7 +257,7 @@ Assistant emits tool call
 
 Tool UI metadata is intentionally kept separate from model-facing content.
 
-After each completed tool batch, `tool_loop_guard.gd` fingerprints normalized calls, arguments, outcomes, and results together with a controller progress epoch. It triggers after three identical call/results, an `ABABAB` call cycle, three identical complete rounds, or four rounds without observed progress. The controller then appends a bounded notice and sends exactly one request with no tool schema. Any tool calls in that response receive matching denied tool results and end the turn. This early finalization supplements rather than replaces the hard limits of 12 tool rounds and 16 calls in one provider response.
+After each completed tool batch, `tool_loop_guard.gd` fingerprints normalized calls, arguments, outcomes, and results together with a controller progress epoch. It triggers after three identical call/results, an `ABABAB` call cycle, three identical complete rounds, or four rounds without observed progress. The controller then appends a bounded notice and sends exactly one request with no tool schema. Reaching the 12-round execution boundary uses the same finalization path instead of failing an otherwise successful turn. Any tool calls in that response receive matching denied tool results and end the turn without execution. The independent 16-call limit for one provider response remains authoritative.
 
 ### Reviewed Change Lifecycle
 
@@ -279,7 +281,7 @@ Plan runtime checks reject every reviewed mutation independently of schema expos
 
 The active session is checkpointed after user submission, tool completion, edit resolution, normalized failure/cancellation, completed assistant response, session switching, and plugin teardown. The most recent active session is restored on startup. New Session saves the current conversation before rebuilding controller and feed state; the transition aborts if persistence fails. Starting a blank session clears the persisted active-session pointer until the first prompt is saved.
 
-Restoration regenerates the current system prompt and uses only bounded user and visible assistant messages for model continuation. Historical tool and change records are display summaries and are never replayed. Pending approvals, raw file contents, request-scoped editor context, API credentials, hidden reasoning, and revert checkpoints are not persisted. A session interrupted after tool execution, or truncated to satisfy storage bounds, is view-only because safely reconstructing its tool protocol is not possible.
+Restoration regenerates the current system prompt and uses only bounded user and visible assistant messages for model continuation. Historical tool and change records are display summaries and are never replayed. After a provider failure, complete active-turn tool protocol is validated and collapsed into a bounded local assistant checkpoint containing only tool names and normalized outcomes; prior calls are never replayed automatically. The model-continuation checkpoint excludes raw file contents, call IDs, arguments, tool results, request-scoped editor context, API credentials, hidden reasoning, approval payloads, and revert checkpoints. The separate activity log keeps only its existing bounded display metadata. Unsafe, cancelled, dirty, malformed, or truncated turns remain view-only.
 
 Task state is stored separately from tool protocol. `update_tasks` replaces the complete list atomically, accepts at most 20 items of 240 characters each, permits at most one `in_progress` item, and never requires approval because it cannot mutate project files. Current tasks are added only to request-scoped model context, restored with the session, and cleared for a new session. Invalid live updates fail without changing prior state; stored data is defensively sanitized.
 
@@ -660,11 +662,11 @@ A committed automated suite exists under `tests/`:
 - `api_client_integration_test.gd` uses `http_test_server.py` on `127.0.0.1` to verify successful SSE, Gemini thought-signature reconstruction, xAI reasoning requests, mid-stream disconnect metadata, aggregate response limits, buffer cleanup, and unexpected content types.
 - `patch_utils_test.gd` verifies replacement, insertion, deletion, append, empty-file creation, multiple edits, overlap rejection, and LF/CRLF preservation.
 - `tools_test.gd` verifies Plan/Work tool-schema separation, direct-mutation denial, project and plugin path boundaries, symbolic-link rejection, immutable proposals, base hashes, stale application and revert guards, safe application, and new/existing-file revert behavior.
-- `agent_controller_test.gd` verifies Plan/Work schema and runtime enforcement, mode locking, explicit approval and rejection, cancellation while awaiting approval, skipped remaining calls, and matching protocol-valid tool results.
-- `session_store_test.gd` verifies project isolation, schema redaction, backup recovery, retention, truncation, deletion cleanup, and controller state restoration.
+- `agent_controller_test.gd` verifies Plan/Work schema and runtime enforcement, request-scoped project guidance, mode locking, explicit approval and rejection, cancellation while awaiting approval, skipped remaining calls, tool-loop finalization, recoverable provider failures, applied-change non-replay, unsafe-protocol refusal, and matching protocol-valid tool results.
+- `session_store_test.gd` verifies project isolation, recovery-checkpoint persistence, schema redaction, backup recovery, retention, truncation, deletion cleanup, and controller state restoration.
 - `history_view_test.gd` verifies that the History page remains within the 300 px minimum dock width.
 - `settings_view_test.gd` verifies Provider/About tab switching, version metadata, branding, compatibility, license presentation, and the 300 px dock-width constraint.
-- `chat_window_test.gd` verifies editor-scale conversion math, compact line-based composer sizing, narrow action containment, working-state animation, first-token transitions, delayed-layout auto-follow, sequential review navigation, fenced-code parsing, BBCode isolation, exact code preservation, expanded previous/proposed diff content and safe line highlighting, bounded code-block layout, streaming-to-final transitions, tool-preface handling, restoration rules, structured review cards, and the 300 px dock-width constraint.
+- `chat_window_test.gd` verifies editor-scale conversion math, compact line-based composer sizing, narrow action containment, working-state animation, first-token transitions, delayed-layout auto-follow, sequential review navigation, fenced-code parsing, BBCode isolation, exact code preservation, expanded previous/proposed diff content and safe line highlighting, bounded code-block layout, streaming-to-final transitions, tool-preface handling, recoverable/unsafe interruption composer state, restoration rules, structured review cards, and the 300 px dock-width constraint.
 - `editor_ui_scale_test.gd` runs in editor mode and verifies that dock margins, branding, composer controls, and prompt sizing use Godot's effective editor scale without double-scaling theme fonts.
 - `logo_asset_test.gd` verifies that the Orca mark has no opaque white tile and retains transparent corners after import.
 - `tool_activity_group_test.gd` verifies aggregate status and duration, expansion, append closure, forwarded navigation, and the 300 px width constraint.
@@ -737,7 +739,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 
 ### Agent And Context
 
-- Resumable persisted history contains user and visible assistant messages rather than historical tool-call protocol details. Sessions interrupted after tool execution are therefore view-only.
+- Resumable persisted history contains user and visible assistant messages rather than historical tool-call protocol details. Complete failed tool turns may be replaced by sanitized recovery checkpoints; unsafe or crash-interrupted turns remain view-only.
 - Context budgeting uses a conservative byte-based estimate rather than a provider tokenizer. Unknown custom-model limits cannot be enforced automatically, and compaction omits old complete turns rather than generating a potentially lossy model summary.
 - Pending approval state is not persisted; task checklists are persisted independently.
 - Saved `.tscn` inspection reports serialized scene state, not all Inspector defaults, unsaved live-tree changes, runtime-generated nodes, or recursively expanded inherited/instanced scenes.
@@ -783,7 +785,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Keyless local endpoint configuration is not first-class.
 - Credentials are not stored in an OS credential manager.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata declares version 1.1.0 and a concise description. Public release documentation and an MIT license are present, but release packaging, broader compatibility coverage, and third-party asset license verification remain incomplete.
+- Plugin metadata declares version 1.1.1 and a concise description. Public release documentation and an MIT license are present, but release packaging, broader compatibility coverage, and third-party asset license verification remain incomplete.
 
 ## Roadmap
 
@@ -861,7 +863,7 @@ Decision: detect stable repeated or no-progress activity before the existing har
 
 ### Progressive Schema Disclosure
 
-Decision: progressive tool-schema disclosure is deferred. Version 1.1.0 continues sending the complete schema eligible for the active mode; future disclosure must preserve deterministic availability, Plan/Work boundaries, context budgeting, provider compatibility, and protocol-valid continuation.
+Decision: progressive tool-schema disclosure is deferred. Version 1.1.1 continues sending the complete schema eligible for the active mode; future disclosure must preserve deterministic availability, Plan/Work boundaries, context budgeting, provider compatibility, and protocol-valid continuation.
 
 ### Plan And Work Names
 
@@ -1129,6 +1131,13 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Scaled shell, settings, history, activity, task, and review-card geometry; bounded expanded diffs to the available editor window and stacked panes when narrow.
 - Reworked the Orca mark as a transparent high-resolution SVG that remains visible on dark and light backgrounds.
 - Added compact-composer, narrow-action, scale-conversion, editor-integration, and logo-transparency regression coverage.
+
+### 2026-10-02: DeepSeek Stream Budget Alignment
+
+- Bounded DeepSeek responses to 8,192 generated tokens, aligned with Orca's minimum known-context final-answer reserve, instead of inheriting the provider's substantially larger defaults.
+- Raised the raw streamed transport allowance to 16 MiB while retaining tighter limits for accumulated assistant text, reasoning, tool arguments, metadata, SSE lines, and SSE events.
+- Added provider-option coverage and a localhost regression proving that valid framing-heavy streams above the former 4 MiB threshold complete while oversized streams remain bounded.
+- Restored the documented controller integration for repetitive/no-progress tool-loop detection and made the 12-round boundary request one tool-free summary instead of raising a system error after completed work.
 
 ## Handoff Checklist
 

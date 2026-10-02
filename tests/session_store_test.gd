@@ -33,7 +33,7 @@ func _run() -> void:
 	]
 	session["continuation"] = [
 		{"role": "user", "content": "Build a test", "reasoning_content": "must-not-persist"},
-		{"role": "assistant", "content": "Finished"}
+		{"role": "assistant", "content": "ORCA RECOVERY CHECKPOINT:\n- apply_patch: applied\nContinue from current project state.", "tool_calls": [{"id": "must-not-persist"}]}
 	]
 	session["usage"] = {"model": "deepseek-chat", "input_tokens": 100, "output_tokens": 20, "cached_tokens": 10, "context_tokens": 120, "cost_usd": 0.002, "cost_available": true, "cost_complete": true, "usage_complete": true, "completed_requests": 1}
 	session["tasks"] = [
@@ -48,6 +48,8 @@ func _run() -> void:
 	_expect(not loaded.is_empty(), "a saved session should load")
 	_expect(not loaded.has("api_key"), "credentials must not be persisted")
 	_expect(not loaded.get("continuation", [])[0].has("reasoning_content"), "hidden reasoning must not be persisted")
+	_expect(str(loaded.get("continuation", [])[1].get("content", "")).begins_with("ORCA RECOVERY CHECKPOINT"), "a sanitized plain-assistant recovery checkpoint should survive persistence")
+	_expect(not loaded.get("continuation", [])[1].has("tool_calls"), "recovery continuation must never persist replayable tool calls")
 	_expect(not loaded.get("events", [])[1].get("arguments", {}).has("edits"), "patch source must not be persisted in tool arguments")
 	_expect(loaded.get("events", [])[1].get("arguments", {}).get("query") == "Player", "bounded search queries should persist for restored activity labels")
 	_expect(loaded.get("events", [])[1].get("arguments", {}).get("scene_path") == "res://main.tscn", "bounded scene paths should persist for restored activity labels")

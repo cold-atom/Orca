@@ -31,7 +31,7 @@ Orca is designed to reduce accidental project changes, not to sandbox arbitrary 
 - Project instructions and skill files reject symbolic-link traversal and enforce UTF-8, byte, line, and metadata bounds. These controls limit exposure and editor work but do not make model providers trusted.
 - `inspect_godot_api` reflects public `ClassDB` metadata and creates validated editor Help topics without constructing reflected objects or scraping documentation prose.
 - Unsaved source returned by `read_gdscript_function` is read-only editor context and never supplies a disk hash for patching. Serialized dependency discovery does not load or instantiate resources and does not claim dynamic or runtime references.
-- Repetitive tool activity receives one no-tools finalization request; attempts to call tools again are denied. The independent hard limits of 12 tool rounds and 16 calls per provider response remain authoritative.
+- Repetitive tool activity and the 12-round execution boundary receive one no-tools finalization request; attempts to call tools again are denied without execution. The independent limit of 16 calls per provider response remains authoritative.
 - Loading or validating Godot scenes and scripts is not a security sandbox. Script preparation has an explicit trust step, but Godot may execute project code during candidate construction.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for the full documented threat model and limitations.

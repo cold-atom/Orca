@@ -1,6 +1,9 @@
 @tool
 extends "res://addons/orca/scripts/providers/provider_base.gd"
 
+const THINKING_MAX_TOKENS := 8192
+const NON_THINKING_MAX_TOKENS := 8192
+
 
 func definition() -> Dictionary:
 	return {
@@ -17,9 +20,14 @@ func definition() -> Dictionary:
 func apply_chat_options(body: Dictionary, effort: String) -> void:
 	if effort == "off":
 		body["thinking"] = {"type": "disabled"}
+		body["max_tokens"] = NON_THINKING_MAX_TOKENS
 	elif not effort.is_empty() and effort != "default":
 		body["thinking"] = {"type": "enabled"}
 		body["reasoning_effort"] = effort
+		body["max_tokens"] = THINKING_MAX_TOKENS
+	else:
+		# DeepSeek defaults to high-effort thinking and a much larger output budget.
+		body["max_tokens"] = THINKING_MAX_TOKENS
 
 
 func sanitize_messages(messages: Array) -> Array:

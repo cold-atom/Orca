@@ -2,6 +2,20 @@
 
 All notable changes to Orca are documented in this file.
 
+## 1.1.1 - 2026-10-02
+
+### Fixed
+
+- Recovered provider failures after complete tool rounds through bounded, sanitized, non-replayable checkpoints instead of making the conversation permanently view-only.
+- Activated repetitive/no-progress tool-loop detection in the controller and changed the 12-round boundary from a system error into one tool-free finalization request.
+- Raised the raw SSE transport allowance to accommodate provider framing while retaining strict accumulated-content limits, and bounded DeepSeek thinking output to 8,192 tokens.
+- Connected bounded root project instructions and project-skill catalog metadata to the request-scoped controller context as originally documented for 1.1.0.
+
+### Security And Privacy
+
+- Recovery never automatically retries tools, and its model-continuation checkpoint never persists hidden reasoning, raw tool output, call IDs, arguments, source content, hashes, process identifiers, or approval payloads. The separate visible activity log retains only its existing bounded display metadata.
+- Incomplete, malformed, cancelled, pending-approval, dirty, and truncated turns remain non-resumable when Orca cannot prove complete tool protocol.
+
 ## 1.1.0 - 2026-10-01
 
 ### Added

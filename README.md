@@ -32,7 +32,7 @@ Watch Orca inspect a Godot project, propose reviewed changes, and validate the r
 
 ## Status
 
-This is Orca 1.1.0. The supported Godot version is **4.7.2**.
+This is Orca 1.1.1. The supported Godot version is **4.7.2**.
 
 Orca is designed to assist with development work, not to replace source control, code review, backups, or normal project testing.
 

@@ -26,10 +26,14 @@ func _run() -> void:
 	_expect(disconnect.get("error", {}).get("partial_response") == true, "a truncated stream should report partial output")
 	_expect(disconnect.get("buffers_cleared") == true, "failure cleanup should release stream buffers")
 
+	var framed := await _request("framed")
+	_expect(framed.get("kind") == "completed", "a valid stream with more than 4 MiB of provider framing should complete")
+	_expect(framed.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content") == "framed ok", "framing-heavy streams should retain their assistant content")
+
 	var oversized := await _request("oversized")
 	_expect(oversized.get("kind") == "failed", "an oversized SSE stream should fail")
 	_expect(oversized.get("error", {}).get("category") == "response_limit", "an oversized stream should report the response limit category")
-	_expect(int(oversized.get("error", {}).get("bytes_received", 0)) > 4 * 1024 * 1024, "an oversized stream should report received bytes")
+	_expect(int(oversized.get("error", {}).get("bytes_received", 0)) > ApiClient.MAX_RESPONSE_BYTES, "an oversized stream should report received bytes")
 	_expect(oversized.get("buffers_cleared") == true, "size-limit cleanup should release stream buffers")
 
 	var unexpected := await _request("unexpected")

@@ -287,6 +287,10 @@ func _run() -> void:
 	await _test_loop_guard_duplicate_denial()
 	await _test_loop_guard_cycle_final_response()
 	await _test_loop_guard_cancellation_and_progress()
+	await _test_tool_round_cap_finalization()
+	await _test_recoverable_provider_failure()
+	await _test_applied_change_recovery_does_not_replay()
+	await _test_incomplete_protocol_refuses_recovery()
 	await _test_context_budget_integration()
 	await _test_plan_revert_denial()
 	_finish()
@@ -874,6 +878,93 @@ func _test_loop_guard_cancellation_and_progress() -> void:
 		await controller._on_api_request_completed(_tool_response([{"id": "distinct_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": JSON.stringify({"filepath": "res://file_%d.gd" % index})}}]))
 	_expect(api.requests.size() == 4 and not api.requests[-1].get("tools", []).is_empty(), "distinct tool evidence should count as progress and avoid no-progress finalization")
 	_expect(not controller._loop_final_request, "new stable tool invocations should keep the normal tool loop active")
+	await _free_controller(controller)
+
+
+func _test_tool_round_cap_finalization() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var errors := []
+	controller.error_occurred.connect(func(message: String): errors.append(message))
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	for index in range(AgentController.MAX_TOOL_ROUNDS):
+		await controller._on_api_request_completed(_tool_response([{
+			"id": "bounded_%d" % index,
+			"type": "function",
+			"function": {"name": "read_file", "arguments": JSON.stringify({"filepath": "res://bounded_%d.gd" % index})}
+		}]))
+	_expect(api.requests.size() == AgentController.MAX_TOOL_ROUNDS, "the hard tool-round boundary should request one final response instead of failing")
+	_expect(api.requests[-1].get("tools", [1]).is_empty(), "the hard tool-round boundary must remove the tool schema")
+	_expect(errors.is_empty() and controller.is_busy(), "reaching the tool-round boundary should remain active while awaiting the final response")
+	await controller._on_api_request_completed({"choices": [{"message": {"role": "assistant", "content": "Bounded summary."}}]})
+	_expect(not controller.is_busy() and errors.is_empty(), "a final answer at the tool-round boundary should complete without a system error")
+	await _free_controller(controller)
+
+
+func _test_recoverable_provider_failure() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var tools: FakeTools = fixture["tools"]
+	var errors := []
+	controller.error_occurred.connect(func(message: String): errors.append(message))
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller.message_history.append({"role": "user", "content": "Inspect safely"})
+	await controller._on_api_request_completed(_tool_response([{
+		"id": "recover_read",
+		"type": "function",
+		"function": {"name": "read_file", "arguments": "{\"filepath\":\"res://secret.gd\"}"}
+	}]))
+	_expect(api.requests.size() == 1 and tools.execute_calls == 1, "a completed recovery fixture tool should issue one follow-up")
+	controller._current_stream_content = "private partial provider output"
+	controller._on_api_request_failed({"message": "fixture disconnect", "partial_response": true})
+	_expect(controller.last_failure_was_checkpointed(), "a complete tool round should become a recoverable checkpoint after provider failure")
+	_expect(not controller.is_busy() and errors.size() == 1 and str(errors[0]).contains("You can continue"), "recoverable provider failure should finish idle with continuation guidance")
+	var serialized := JSON.stringify(controller.message_history)
+	_expect(serialized.contains(AgentController.RECOVERY_CHECKPOINT_HEADING), "recovery history should contain the local checkpoint")
+	_expect(not serialized.contains("recover_read") and not serialized.contains("executed read_file") and not serialized.contains("private partial provider output"), "recovery history must omit call IDs, raw results, and partial provider output")
+	_expect(not serialized.contains("tool_calls") and not serialized.contains("\"role\":\"tool\""), "recovery history must collapse replayable tool protocol")
+	var snapshot: Dictionary = controller.snapshot_session_state()
+	_expect(snapshot.get("continuation", []).size() == 2 and str(snapshot.get("continuation", [])[1].get("content", "")).contains(AgentController.RECOVERY_CHECKPOINT_HEADING), "the sanitized checkpoint should survive ordinary continuation snapshots")
+	await _free_controller(controller)
+
+
+func _test_incomplete_protocol_refuses_recovery() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller._tool_rounds = 1
+	controller._turn_tool_receipts.append({"name": "apply_patch", "outcome": "applied"})
+	controller.message_history.append({"role": "user", "content": "Unsafe fixture"})
+	controller.message_history.append({"role": "assistant", "content": "", "tool_calls": [{"id": "missing_result", "type": "function", "function": {"name": "apply_patch", "arguments": "{}"}}]})
+	controller._finish_request_error("fixture malformed history")
+	_expect(not controller.last_failure_was_checkpointed(), "a tool call without its exact result must refuse recovery")
+	_expect(JSON.stringify(controller.message_history).contains("missing_result"), "unsafe protocol should remain in memory for inspection rather than being misrepresented as recovered")
+	await _free_controller(controller)
+
+
+func _test_applied_change_recovery_does_not_replay() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var tools: FakeTools = fixture["tools"]
+	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true))
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller.message_history.append({"role": "user", "content": "Apply once"})
+	await controller._on_api_request_completed(_tool_response([_patch_call("recover_patch")]))
+	_expect(tools.apply_calls == 1, "the recovery fixture should apply its approved change exactly once")
+	controller._on_api_request_failed({"message": "disconnect after apply"})
+	_expect(controller.last_failure_was_checkpointed(), "an applied change with a complete tool result should be recoverable")
+	_expect(tools.apply_calls == 1, "building a recovery checkpoint must never replay an applied change")
+	var serialized := JSON.stringify(controller.message_history)
+	_expect(serialized.contains("apply_patch: applied") and not serialized.contains("new-hash") and not serialized.contains("new\\n"), "applied-change recovery should retain only a bounded outcome without proposal data")
 	await _free_controller(controller)
 
 

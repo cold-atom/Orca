@@ -2,7 +2,7 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory is the complete installable Orca 1.1.0 addon for Godot 4.7.2.
+This directory is the complete installable Orca 1.1.1 addon for Godot 4.7.2.
 
 ## Install
 
@@ -19,6 +19,7 @@ This directory is the complete installable Orca 1.1.0 addon for Godot 4.7.2.
 - Project access, tool output, network inactivity, and Orca-owned game processes are bounded.
 - Root project instructions and skill catalog metadata are request-scoped guidance; skill bodies load only through the read-only `read_project_skill` tool.
 - Godot API reflection, focused GDScript function reads, and serialized dependency discovery are read-only in Plan and Work.
+- Provider failures after complete tool rounds are collapsed into sanitized recovery checkpoints, allowing the conversation to continue without replaying prior actions.
 
 Always review proposed changes and use source control. Orca does not replace code review, backups, or project testing.
 

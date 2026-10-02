@@ -22,7 +22,7 @@ func _run() -> void:
 	await process_frame
 	_expect(not view.settings_scroll.visible and view.about_scroll.visible, "the About tab should replace provider settings")
 	_expect(view.about_tab_button.button_pressed, "the About tab should show its selected state")
-	_expect(view.about_version_label.text == "Version 1.1.0", "the About page should read the release version from plugin.cfg")
+	_expect(view.about_version_label.text == "Version 1.1.1", "the About page should read the release version from plugin.cfg")
 	var compatibility := view.find_child("AboutCompatibility", true, false) as Label
 	var license := view.find_child("AboutLicense", true, false) as Label
 	var logo := view.find_child("AboutLogo", true, false) as TextureRect

@@ -11,7 +11,7 @@ signal stream_delta(content: String)
 
 const CONNECT_TIMEOUT_MS := 30000
 const INACTIVITY_TIMEOUT_MS := 60000
-const MAX_RESPONSE_BYTES := 4 * 1024 * 1024
+const MAX_RESPONSE_BYTES := 16 * 1024 * 1024
 const MAX_SSE_LINE_BYTES := 1024 * 1024
 const MAX_SSE_EVENT_BYTES := 1024 * 1024
 const MAX_ASSISTANT_CONTENT_BYTES := 2 * 1024 * 1024
@@ -232,11 +232,11 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 				_raw_response.append_array(chunk)
 				var buffered_limit := MAX_ERROR_BODY_BYTES if response_code != HTTPClient.RESPONSE_OK else MAX_RESPONSE_BYTES
 				if _raw_response.size() > buffered_limit:
-					var message := "HTTP %d returned an error body larger than the %d KiB safety limit." % [response_code, MAX_ERROR_BODY_BYTES / 1024] if response_code != HTTPClient.RESPONSE_OK else "The JSON response exceeded the 4 MiB safety limit."
+					var message := "HTTP %d returned an error body larger than the %d KiB safety limit." % [response_code, MAX_ERROR_BODY_BYTES / 1024] if response_code != HTTPClient.RESPONSE_OK else "The JSON response exceeded the %s safety limit." % _format_bytes(MAX_RESPONSE_BYTES)
 					_fail_request(request_id, message, "response_limit", false)
 					return
 			if _response_bytes_received > MAX_RESPONSE_BYTES:
-				_fail_request(request_id, "The streamed response exceeded the 4 MiB aggregate safety limit (%s received). Hidden reasoning and tool arguments count toward this limit." % _format_bytes(_response_bytes_received), "response_limit", false)
+				_fail_request(request_id, "The raw streamed response exceeded the %s aggregate transport limit (%s received). SSE framing, hidden reasoning, and tool arguments count toward this limit." % [_format_bytes(MAX_RESPONSE_BYTES), _format_bytes(_response_bytes_received)], "response_limit", false)
 				return
 
 		var status := _http_client.get_status()

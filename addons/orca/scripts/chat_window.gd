@@ -421,6 +421,7 @@ func _on_send_button_pressed() -> void:
 	if text.is_empty():
 		return
 	_clear_prompt_input()
+	prompt_input.placeholder_text = "Describe what you want to build or fix..."
 	_has_session_content = true
 	_sync_metrics_visibility()
 	_add_message("User", text, Color.LIGHT_SKY_BLUE, "user")
@@ -677,6 +678,7 @@ func _on_agent_message_received(_role: String, content: String) -> void:
 		_append_session_event(_message_event("Orca", content, "assistant", "complete"))
 	_session["clean"] = true
 	_session["resumable"] = not _session_resume_tainted
+	prompt_input.placeholder_text = "Describe what you want to build or fix..."
 	_turn_had_tools = false
 	_save_current_session()
 	_scroll_to_bottom()
@@ -685,6 +687,7 @@ func _on_agent_message_received(_role: String, content: String) -> void:
 func _on_agent_error_occurred(message: String) -> void:
 	_set_request_active(false)
 	_remove_transient_card()
+	var recovered: bool = _turn_had_tools and agent_controller != null and agent_controller.has_method("last_failure_was_checkpointed") and bool(agent_controller.last_failure_was_checkpointed())
 	var partial_content := _stream_content
 	if _stream_label != null and is_instance_valid(_stream_label):
 		if _stream_content.is_empty():
@@ -693,21 +696,25 @@ func _on_agent_error_occurred(message: String) -> void:
 			_update_message_label(_stream_label, "Orca (incomplete)", _stream_content, Color(0.78, 0.64, 0.36))
 	_stream_label = null
 	_stream_content = ""
-	_add_message("System Error", message, Color.INDIAN_RED, "error")
+	_add_message("Recovery Ready" if recovered else "System Error", message, Color(0.78, 0.64, 0.36) if recovered else Color.INDIAN_RED, "status" if recovered else "error")
 	if not partial_content.is_empty():
 		_append_session_event(_message_event("Orca (incomplete)", partial_content, "assistant", "incomplete"))
-	_append_session_event(_message_event("System Error", message, "error", "complete"))
+	_append_session_event(_message_event("Recovery Ready" if recovered else "System Error", message, "status" if recovered else "error", "complete"))
 	_session["clean"] = true
 	if _turn_had_tools:
-		_session_resume_tainted = true
-		_session["resumable"] = false
-		_session_resumable = false
-		prompt_input.editable = false
-		prompt_input.placeholder_text = "Start a new chat to continue after this interrupted tool turn"
-		_sync_send_availability()
+		_set_interrupted_turn_resumability(recovered)
 	_turn_had_tools = false
 	_save_current_session()
 	print("Orca Error: ", message)
+
+
+func _set_interrupted_turn_resumability(recovered: bool) -> void:
+	_session_resume_tainted = not recovered
+	_session["resumable"] = recovered
+	_session_resumable = recovered
+	prompt_input.editable = recovered
+	prompt_input.placeholder_text = "Continue from the recovery checkpoint..." if recovered else "Start a new chat to continue after this interrupted tool turn"
+	_sync_send_availability()
 
 
 func _on_message_stream_started() -> void:

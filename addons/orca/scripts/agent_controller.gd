@@ -39,7 +39,14 @@ const EditorContext = preload("res://addons/orca/scripts/editor_context.gd")
 const Config = preload("res://addons/orca/scripts/config.gd")
 const ContextBudget = preload("res://addons/orca/scripts/context_budget.gd")
 const ModelMetadata = preload("res://addons/orca/scripts/model_metadata.gd")
+const ProjectInstructions = preload("res://addons/orca/scripts/project_instructions.gd")
+const ProjectSkills = preload("res://addons/orca/scripts/project_skills.gd")
 const TaskUtils = preload("res://addons/orca/scripts/task_utils.gd")
+const ToolLoopGuardScript = preload("res://addons/orca/scripts/tool_loop_guard.gd")
+const LOOP_FINAL_NOTICE := "ORCA TOOL LOOP NOTICE: Stop using tools for this turn. Give the user a concise final response that summarizes completed work, unresolved items, and the safest next step. Do not request or describe additional tool calls."
+const RECOVERY_CHECKPOINT_HEADING := "ORCA RECOVERY CHECKPOINT"
+const MAX_RECOVERY_RECEIPTS := MAX_TOOL_ROUNDS * MAX_TOOL_CALLS_PER_RESPONSE
+const MAX_GUIDANCE_WARNING_CHARS := 240
 
 enum AgentMode {
 	PLAN,
@@ -84,6 +91,13 @@ var _restored_cost_estimated := false
 var _restored_context_limit := 0
 var _turn_provider_config: Dictionary = {}
 var _tasks: Array[Dictionary] = []
+var _tool_loop_guard
+var _tool_progress_epoch := 0
+var _tool_progress_fingerprints: Dictionary = {}
+var _loop_final_request := false
+var _loop_notice_message_index := -1
+var _turn_tool_receipts: Array[Dictionary] = []
+var _last_failure_checkpointed := false
 
 func _ready() -> void:
 	api_client = preload("res://addons/orca/scripts/api_client.gd").new()
@@ -113,6 +127,8 @@ func send_user_message(text: String) -> void:
 	_is_running = true
 	_cancel_requested = false
 	_tool_rounds = 0
+	_reset_turn_loop_state()
+	_reset_turn_recovery_state()
 	_run_attempts = 0
 	_baseline_criteria_id = ""
 	_baseline_criteria_initialized = false
@@ -127,16 +143,54 @@ func send_user_message(text: String) -> void:
 	_send_current_request()
 
 func _add_turn_context() -> void:
+	var sections := PackedStringArray()
+	var instruction_result := _load_project_instructions()
+	if bool(instruction_result.get("success", false)):
+		if bool(instruction_result.get("found", false)) and not str(instruction_result.get("wrapped_content", "")).is_empty():
+			sections.append(str(instruction_result["wrapped_content"]))
+	else:
+		sections.append("PROJECT GUIDANCE WARNING: " + _bounded_context_warning(str(instruction_result.get("error", "Project instructions could not be loaded."))))
+	var skill_result := _discover_project_skills()
+	if bool(skill_result.get("success", false)):
+		var catalog: Array[Dictionary] = []
+		for raw_skill in skill_result.get("skills", []):
+			if typeof(raw_skill) != TYPE_DICTIONARY:
+				continue
+			var skill: Dictionary = raw_skill
+			catalog.append({
+				"name": str(skill.get("name", "")),
+				"description": str(skill.get("description", "")),
+				"slug": str(skill.get("slug", "")),
+				"path": str(skill.get("path", "")),
+			})
+		if not catalog.is_empty():
+			sections.append("AVAILABLE PROJECT SKILLS (metadata only; use read_project_skill with one exact name to load a body):\n" + JSON.stringify(catalog, "  "))
+	else:
+		sections.append("PROJECT SKILL CATALOG WARNING: " + _bounded_context_warning(str(skill_result.get("error", "Project skills could not be discovered."))))
 	var editor_context := EditorContext.capture()
 	if not editor_context.is_empty() or not _tasks.is_empty():
+		sections.append("CURRENT GODOT EDITOR CONTEXT FOR THIS TURN:\n" + EditorContext.format_for_model(editor_context))
+	if not _tasks.is_empty():
+		sections.append("CURRENT ORCA TASK CHECKLIST:\n" + JSON.stringify(_tasks, "  "))
+	if not sections.is_empty():
 		_context_message_index = message_history.size()
-		var context := "CURRENT GODOT EDITOR CONTEXT FOR THIS TURN:\n" + EditorContext.format_for_model(editor_context)
-		if not _tasks.is_empty():
-			context += "\n\nCURRENT ORCA TASK CHECKLIST:\n" + JSON.stringify(_tasks, "  ")
 		message_history.append({
 			"role": "system",
-			"content": context
+			"content": "\n\n".join(sections)
 		})
+
+
+func _load_project_instructions() -> Dictionary:
+	return ProjectInstructions.load_project_instructions()
+
+
+func _discover_project_skills() -> Dictionary:
+	return ProjectSkills.discover_skills()
+
+
+func _bounded_context_warning(message: String) -> String:
+	var normalized := " ".join(message.replace("\r", "\n").replace("\t", " ").split("\n", false)).strip_edges()
+	return normalized.left(MAX_GUIDANCE_WARNING_CHARS)
 
 func is_busy() -> bool:
 	return _is_running
@@ -151,6 +205,8 @@ func start_new_session() -> bool:
 	_context_message_index = -1
 	_runtime_context_message_index = -1
 	_tool_rounds = 0
+	_reset_turn_loop_state()
+	_reset_turn_recovery_state()
 	_run_attempts = 0
 	_baseline_criteria_id = ""
 	_baseline_criteria_initialized = false
@@ -201,6 +257,8 @@ func restore_session_state(mode: int, continuation: Array, usage: Dictionary, ta
 	_context_message_index = -1
 	_runtime_context_message_index = -1
 	_tool_rounds = 0
+	_reset_turn_loop_state()
+	_reset_turn_recovery_state()
 	_run_attempts = 0
 	_baseline_criteria_id = ""
 	_baseline_criteria_initialized = false
@@ -324,29 +382,29 @@ func _on_api_request_completed(response: Dictionary) -> void:
 		
 		if message.has("tool_calls") and typeof(message.tool_calls) == TYPE_ARRAY and not message.tool_calls.is_empty():
 			if message.tool_calls.size() > MAX_TOOL_CALLS_PER_RESPONSE:
-				_clear_turn_context()
-				_set_running(false)
-				workflow_state_changed.emit("idle", {})
-				error_occurred.emit("The provider returned more than %d tool calls in one response." % MAX_TOOL_CALLS_PER_RESPONSE)
+				_finish_request_error("The provider returned more than %d tool calls in one response." % MAX_TOOL_CALLS_PER_RESPONSE)
+				return
+			if _loop_final_request:
+				_finish_denied_loop_calls(assistant_message, message.tool_calls)
 				return
 			_tool_rounds += 1
 			if _tool_rounds > MAX_TOOL_ROUNDS:
-				_clear_turn_context()
-				_set_running(false)
-				workflow_state_changed.emit("idle", {})
-				error_occurred.emit("The agent exceeded the maximum of %d tool rounds." % MAX_TOOL_ROUNDS)
+				_finish_denied_loop_calls(assistant_message, message.tool_calls)
 				return
 			assistant_message["tool_calls"] = message.tool_calls
 			message_history.append(assistant_message)
+			var round_results: Array = []
 
 			for tool_index in range(message.tool_calls.size()):
 				var tool_call: Dictionary = message.tool_calls[tool_index]
 				var tool_result: Dictionary = await _execute_tool_call(tool_call)
+				round_results.append(tool_result)
 				message_history.append({
 					"role": "tool",
 					"tool_call_id": tool_result["call_id"],
 					"content": tool_result["result"]
 				})
+				_record_recovery_receipt(tool_result)
 				if _cancel_requested:
 					for remaining_index in range(tool_index + 1, message.tool_calls.size()):
 						var remaining_call: Dictionary = message.tool_calls[remaining_index]
@@ -362,20 +420,26 @@ func _on_api_request_completed(response: Dictionary) -> void:
 				var observed := await _begin_bounded_run_observation()
 				if not observed or not _is_running or _cancel_requested:
 					return
-			_send_current_request()
+			if _tool_loop_guard == null:
+				_reset_turn_loop_state()
+			_record_tool_progress(round_results)
+			var loop_result: Dictionary = _tool_loop_guard.record_round(round_results, _tool_progress_epoch)
+			if bool(loop_result.get("triggered", false)) or _tool_rounds >= MAX_TOOL_ROUNDS:
+				_begin_loop_finalization()
+			else:
+				_send_current_request()
 		else:
 			message_history.append(assistant_message)
 			var content = assistant_message.get("content", "")
 			if typeof(content) != TYPE_STRING:
 				content = str(content)
 			_clear_turn_context()
+			_reset_turn_recovery_state()
 			_set_running(false)
 			workflow_state_changed.emit("idle", {})
 			message_received.emit("assistant", content)
 	else:
-		_clear_turn_context()
-		_set_running(false)
-		error_occurred.emit("Unexpected API response format.")
+		_finish_request_error("Unexpected API response format.")
 
 func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
 	var call_id := str(tool_call.get("id", "tool_" + str(Time.get_ticks_usec())))
@@ -468,7 +532,7 @@ func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
 		execution["content"] = result
 		execution["outcome"] = outcome
 	tool_execution_completed.emit(call_id, function_name, execution, Time.get_ticks_msec() - started_at)
-	return {"call_id": call_id, "name": function_name, "result": result, "outcome": outcome, "execution": execution}
+	return {"call_id": call_id, "name": function_name, "arguments": arguments, "result": result, "outcome": outcome, "execution": execution}
 
 
 func _begin_bounded_run_observation() -> bool:
@@ -525,6 +589,152 @@ func _proposal_for_review(proposal: Dictionary) -> Dictionary:
 		review_copy.erase("new_content")
 	return review_copy
 
+func _reset_turn_loop_state() -> void:
+	_tool_loop_guard = ToolLoopGuardScript.new()
+	_tool_progress_epoch = 0
+	_tool_progress_fingerprints.clear()
+	_loop_final_request = false
+	_loop_notice_message_index = -1
+
+
+func _clear_turn_loop_state() -> void:
+	_tool_loop_guard = null
+	_tool_progress_epoch = 0
+	_tool_progress_fingerprints.clear()
+	_loop_final_request = false
+	_loop_notice_message_index = -1
+
+
+func _reset_turn_recovery_state() -> void:
+	_turn_tool_receipts.clear()
+	_last_failure_checkpointed = false
+
+
+func last_failure_was_checkpointed() -> bool:
+	return _last_failure_checkpointed
+
+
+func _record_recovery_receipt(tool_result: Dictionary) -> void:
+	if _turn_tool_receipts.size() >= MAX_RECOVERY_RECEIPTS:
+		return
+	_turn_tool_receipts.append({
+		"name": str(tool_result.get("name", "unknown")).left(80),
+		"outcome": str(tool_result.get("outcome", "completed")).left(32),
+	})
+
+
+func _checkpoint_failed_tool_turn() -> bool:
+	if _turn_tool_receipts.is_empty() or not _pending_change_id.is_empty():
+		return false
+	var user_index := -1
+	for index in range(message_history.size() - 1, 0, -1):
+		if typeof(message_history[index]) == TYPE_DICTIONARY and str(message_history[index].get("role", "")) == "user":
+			user_index = index
+			break
+	if user_index < 0 or not _active_tool_protocol_is_complete(user_index + 1):
+		return false
+	for index in range(message_history.size() - 1, user_index, -1):
+		message_history.remove_at(index)
+	message_history.append({"role": "assistant", "content": _format_recovery_checkpoint()})
+	return true
+
+
+func _active_tool_protocol_is_complete(start: int) -> bool:
+	if start < 0 or start >= message_history.size():
+		return false
+	var cursor := start
+	var batch_count := 0
+	var all_call_ids: Dictionary = {}
+	while cursor < message_history.size():
+		var assistant = message_history[cursor]
+		if typeof(assistant) != TYPE_DICTIONARY or str(assistant.get("role", "")) != "assistant":
+			return false
+		var calls = assistant.get("tool_calls", [])
+		if typeof(calls) != TYPE_ARRAY or calls.is_empty():
+			return false
+		var expected_ids: Dictionary = {}
+		for call_value in calls:
+			if typeof(call_value) != TYPE_DICTIONARY:
+				return false
+			var call: Dictionary = call_value
+			var call_id := str(call.get("id", "")).strip_edges()
+			var function = call.get("function", {})
+			if call_id.is_empty() or expected_ids.has(call_id) or all_call_ids.has(call_id) or typeof(function) != TYPE_DICTIONARY or str(function.get("name", "")).strip_edges().is_empty():
+				return false
+			expected_ids[call_id] = true
+			all_call_ids[call_id] = true
+		cursor += 1
+		var seen_results: Dictionary = {}
+		for _result_index in range(calls.size()):
+			if cursor >= message_history.size():
+				return false
+			var tool_message = message_history[cursor]
+			if typeof(tool_message) != TYPE_DICTIONARY or str(tool_message.get("role", "")) != "tool":
+				return false
+			var result_id := str(tool_message.get("tool_call_id", "")).strip_edges()
+			if not expected_ids.has(result_id) or seen_results.has(result_id) or typeof(tool_message.get("content")) != TYPE_STRING:
+				return false
+			seen_results[result_id] = true
+			cursor += 1
+		if seen_results.size() != expected_ids.size():
+			return false
+		batch_count += 1
+	return batch_count > 0
+
+
+func _format_recovery_checkpoint() -> String:
+	var lines := PackedStringArray([
+		RECOVERY_CHECKPOINT_HEADING + ":",
+		"The provider response was interrupted after these tool actions completed. This is local historical state; do not replay these actions automatically.",
+	])
+	for receipt in _turn_tool_receipts:
+		lines.append("- %s: %s" % [str(receipt.get("name", "unknown")), str(receipt.get("outcome", "completed"))])
+	lines.append("Continue from the current project state. Re-inspect live state and obtain normal approval before any new mutation or external operation.")
+	return "\n".join(lines)
+
+
+func _record_tool_progress(round_results: Array) -> void:
+	for result_value in round_results:
+		var result: Dictionary = result_value if result_value is Dictionary else {}
+		var fingerprint := ToolLoopGuardScript.fingerprint({
+			"arguments": result.get("arguments", {}),
+			"name": result.get("name", ""),
+			"outcome": result.get("outcome", ""),
+			"result": result.get("result", ""),
+		})
+		if not _tool_progress_fingerprints.has(fingerprint):
+			_tool_progress_fingerprints[fingerprint] = true
+			_tool_progress_epoch += 1
+
+
+func _begin_loop_finalization() -> void:
+	if _loop_final_request:
+		return
+	_loop_final_request = true
+	_loop_notice_message_index = message_history.size()
+	message_history.append({"role": "system", "content": LOOP_FINAL_NOTICE})
+	_send_current_request()
+
+
+func _finish_denied_loop_calls(assistant_message: Dictionary, tool_calls: Array) -> void:
+	assistant_message["tool_calls"] = tool_calls
+	message_history.append(assistant_message)
+	for tool_call_value in tool_calls:
+		var tool_call: Dictionary = tool_call_value if tool_call_value is Dictionary else {}
+		message_history.append({
+			"role": "tool",
+			"tool_call_id": str(tool_call.get("id", "")),
+			"content": "The tool call was denied because Orca reached the tool-loop safety limit. No action was executed."
+		})
+	var final_content := "Orca stopped requesting tools after reaching the tool-loop safety limit. Completed actions were kept; send a new request for any unfinished work."
+	message_history.append({"role": "assistant", "content": final_content})
+	_clear_turn_context()
+	_reset_turn_recovery_state()
+	_set_running(false)
+	workflow_state_changed.emit("idle", {})
+	message_received.emit("assistant", final_content)
+
+
 func _on_api_request_failed(error: Dictionary) -> void:
 	var error_message := str(error.get("message", "The API request failed."))
 	var phase := str(error.get("phase", ""))
@@ -538,16 +748,10 @@ func _on_api_request_failed(error: Dictionary) -> void:
 	var user_message := error_message
 	if bool(error.get("partial_response", false)):
 		user_message += "\n\nThe incomplete provider response was not added to the model's conversation history."
-	if _tool_rounds > 0:
-		user_message += "\n\nCompleted tool actions were kept. Orca will not run them again automatically."
 	if bool(error.get("retryable", false)):
 		user_message += "\n\nThis failure may be temporary; you can retry after checking the provider connection."
 	_current_stream_content = ""
-	_turn_provider_config.clear()
-	_clear_turn_context()
-	_set_running(false)
-	workflow_state_changed.emit("idle", {})
-	error_occurred.emit(user_message)
+	_finish_request_error(user_message)
 
 func _on_api_request_cancelled() -> void:
 	if api_client.last_request_may_have_usage():
@@ -581,17 +785,14 @@ func _set_running(value: bool) -> void:
 
 
 func _send_current_request() -> bool:
-	var definitions := _get_tool_definitions()
+	var definitions := [] if _loop_final_request else _get_tool_definitions()
 	var model := str(_turn_provider_config.get("model", ""))
 	var api_url := str(_turn_provider_config.get("base_url", ""))
 	var effective_model := _last_usage_model if _tool_rounds > 0 and not _last_usage_model.is_empty() else model
 	var metadata := ModelMetadata.resolve(effective_model, api_url, model)
 	var prepared := ContextBudget.prepare(message_history, definitions, int(metadata.get("context_window", 0)))
 	if not prepared.get("success", false):
-		_clear_turn_context()
-		_set_running(false)
-		workflow_state_changed.emit("idle", {})
-		error_occurred.emit("Orca could not send the request safely: " + str(prepared.get("error", "The context budget was exceeded.")))
+		_finish_request_error("Orca could not send the request safely: " + str(prepared.get("error", "The context budget was exceeded.")))
 		return false
 	if prepared.get("compacted", false):
 		_remap_context_indices(int(prepared.get("removed_start", -1)), int(prepared.get("removed_count", 0)), int(prepared.get("inserted_count", 0)))
@@ -605,7 +806,7 @@ func _remap_context_indices(removed_start: int, removed_count: int, inserted_cou
 	if removed_start < 0 or removed_count <= 0:
 		return
 	var removed_end := removed_start + removed_count
-	for field in ["_context_message_index", "_runtime_context_message_index"]:
+	for field in ["_context_message_index", "_runtime_context_message_index", "_loop_notice_message_index"]:
 		var index: int = get(field)
 		if index >= removed_end:
 			set(field, index - removed_count + inserted_count)
@@ -631,12 +832,26 @@ func _finish_cancelled() -> void:
 	_pending_run_observation.clear()
 	_current_stream_content = ""
 	_clear_turn_context()
+	_reset_turn_recovery_state()
 	_set_running(false)
 	workflow_state_changed.emit("cancelled", {})
 	request_cancelled.emit()
 
+
+func _finish_request_error(message: String) -> void:
+	_clear_turn_context()
+	_last_failure_checkpointed = _checkpoint_failed_tool_turn()
+	var rendered := message
+	if _last_failure_checkpointed:
+		rendered += "\n\nCompleted tool actions were saved in a sanitized recovery checkpoint. They will not be replayed automatically. You can continue in this conversation."
+	elif _tool_rounds > 0:
+		rendered += "\n\nCompleted tool actions were kept, but Orca could not prove that the interrupted turn is safe to resume. Start a new conversation to avoid repeating side effects."
+	_set_running(false)
+	workflow_state_changed.emit("idle", {})
+	error_occurred.emit(rendered)
+
 func _clear_turn_context() -> void:
-	var indices := [_context_message_index, _runtime_context_message_index]
+	var indices := [_context_message_index, _runtime_context_message_index, _loop_notice_message_index]
 	indices.sort()
 	indices.reverse()
 	for index in indices:
@@ -645,6 +860,7 @@ func _clear_turn_context() -> void:
 	_context_message_index = -1
 	_runtime_context_message_index = -1
 	_pending_run_observation.clear()
+	_clear_turn_loop_state()
 
 
 func _reset_session_usage() -> void:

@@ -53,6 +53,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_test_restoration_completion_rules(view)
+	_test_interrupted_turn_resumability(view)
 	await process_frame
 	_test_live_tool_grouping(view)
 	await process_frame
@@ -302,6 +303,16 @@ func _test_restoration_completion_rules(view) -> void:
 	view._render_session_event({"type": "message", "sender": "Orca (incomplete)", "text": text, "kind": "assistant", "mode": 1, "completion": "incomplete"})
 	var incomplete_panel: Node = view.chat_feed.get_child(view.chat_feed.get_child_count() - 1)
 	_expect(_collect_nodes(incomplete_panel, "orca_code_editor").is_empty(), "incomplete restored messages should remain literal text")
+
+
+func _test_interrupted_turn_resumability(view) -> void:
+	view._session = {"resumable": false}
+	view._set_interrupted_turn_resumability(true)
+	_expect(view._session_resumable and not view._session_resume_tainted, "a validated recovery checkpoint should keep the conversation resumable")
+	_expect(view.prompt_input.editable and view.prompt_input.placeholder_text.contains("recovery checkpoint"), "recoverable interruption should keep the composer available with recovery guidance")
+	view._set_interrupted_turn_resumability(false)
+	_expect(not view._session_resumable and view._session_resume_tainted, "an unsafe interrupted tool turn should remain tainted")
+	_expect(not view.prompt_input.editable and view.prompt_input.placeholder_text.contains("Start a new chat"), "unsafe interruption should keep the composer locked")
 
 
 func _test_live_tool_grouping(view) -> void:

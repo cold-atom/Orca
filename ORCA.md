@@ -57,10 +57,10 @@ The project is currently a functional, foundational Godot Editor Plugin located 
    - Completed responses render fenced code in bounded selectable blocks with language labels, Copy actions, and native GDScript highlighting.
    - A mode-colored five-square working indicator shows initial thinking, post-tool response preparation, and runtime observation without creating empty assistant messages during first-token delays.
    - Active turns automatically follow late-sizing response, tool, and review cards so the newest activity and sequential approvals remain visible.
-   - Repeated identical calls/results, alternating cycles, repeated rounds, or sustained no-progress rounds trigger one final provider request with tools disabled; existing hard round and call caps remain in place.
+   - Repeated identical calls/results, alternating cycles, repeated rounds, sustained no-progress rounds, or the 12-round boundary trigger one final provider request with tools disabled.
 6. **Sessions and Usage**
    - Conversations are automatically saved in bounded, project-scoped local history and the most recent session is restored when the editor reopens.
-   - The History page can open, continue, or delete prior sessions. Interrupted or truncated sessions remain safely view-only.
+   - The History page can open, continue, or delete prior sessions. Provider failures after complete tool rounds use sanitized, non-replayable recovery checkpoints; unsafe, cancelled, dirty, or truncated sessions remain view-only.
    - The header New Session action archives the current conversation and restores the empty state without undoing already-applied project changes.
     - Provider-reported token usage is accumulated across all model requests in a session, including tool follow-up rounds.
     - The header shows current context use and session cost when model metadata is available.
@@ -83,6 +83,6 @@ We are building a truly autonomous copilot for game development in Godot, simila
 - **Local-First Focus:** Ensuring the plugin works flawlessly with locally-hosted, fast open-source models (like Llama 3 or Qwen) for privacy-conscious developers.
 - **Robustness:** Refining error handling for complex edge cases (e.g., massive files, connection timeouts) and creating better syntax parsing.
 
-Progressive tool-schema disclosure remains a future optimization; Orca 1.1.0 does not implement it.
+Progressive tool-schema disclosure remains a future optimization; Orca 1.1.1 does not implement it.
 
 Orca aims to be an essential sidekick for Godot developers, handling boilerplate code, exploring unfamiliar APIs, and accelerating the game development workflow securely and efficiently.

@@ -5,7 +5,7 @@ import json
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    requests_remaining = 6
+    requests_remaining = 7
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", "0"))
@@ -27,7 +27,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.close_connection = True
             elif self.path.startswith("/oversized/"):
                 chunk = b": padding padding padding padding padding padding padding padding\n"
-                body = chunk * ((4 * 1024 * 1024 // len(chunk)) + 100)
+                body = chunk * ((16 * 1024 * 1024 // len(chunk)) + 100)
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
                 self.send_header("Content-Length", str(len(body)))
@@ -35,6 +35,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(body)
                 self.wfile.flush()
+            elif self.path.startswith("/framed/"):
+                chunk = b": provider framing that carries no accumulated response content\n"
+                padding = chunk * ((5 * 1024 * 1024 // len(chunk)) + 1)
+                self._send_sse([
+                    padding,
+                    b'data: {"choices":[{"delta":{"content":"framed ok"},"finish_reason":"stop"}]}\n\n',
+                    b"data: [DONE]\n\n",
+                ])
             elif self.path == "/gemini/chat/completions":
                 body = json.loads(request_body)
                 if (

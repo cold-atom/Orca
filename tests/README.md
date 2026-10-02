@@ -32,13 +32,13 @@ Run filesystem path, proposal, conflict, application, and revert safety checks:
 "$GODOT_BIN" --headless --path . --script res://tests/tools_test.gd
 ```
 
-Run Plan/Work permission, approval, rejection, and cancellation protocol checks:
+Run Plan/Work permission, approval, rejection, cancellation, guidance, tool-loop, and recoverable-interruption protocol checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
 ```
 
-Run project-scoped session persistence, retention, redaction, and controller restoration checks:
+Run project-scoped session persistence, recovery-checkpoint retention, redaction, and controller restoration checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/session_store_test.gd
@@ -68,7 +68,7 @@ Run the editor-scale integration check using the active editor display scale:
 "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
 ```
 
-Run working-state animation, first-token lifecycle, active-turn auto-follow, sequential review navigation, finalized assistant code-block, expanded diff, streaming-finalization, restoration, structured review-card, and narrow-layout checks:
+Run working-state animation, first-token lifecycle, active-turn auto-follow, sequential review navigation, finalized assistant code-block, expanded diff, streaming-finalization, recoverable-interruption UI, restoration, structured review-card, and narrow-layout checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/chat_window_test.gd
@@ -176,4 +176,4 @@ Then run the integration test in another terminal:
 "$GODOT_BIN" --headless --path . --script res://tests/api_client_integration_test.gd
 ```
 
-The local server accepts six requests and exits. It receives only the synthetic test key and prompt defined in the integration runner, and it accepts no network traffic from outside `127.0.0.1`.
+The local server accepts seven requests and exits. It receives only the synthetic test key and prompt defined in the integration runner, and it accepts no network traffic from outside `127.0.0.1`.
