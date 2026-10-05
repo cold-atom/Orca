@@ -25,6 +25,7 @@ The project is currently a functional, foundational Godot Editor Plugin located 
    - Handles streamed `HTTPClient` communication with OpenAI-compatible APIs, including OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, and compatible local servers.
    - Streams text and tool calls incrementally and supports cancellation.
    - Uses request-scoped provider profiles so one turn cannot switch endpoint, model, or reasoning configuration during tool follow-ups.
+   - Strictly normalizes editable endpoints, allows loopback directly, requires exact-origin confirmation for LAN/remote destinations, and refuses provider redirects.
 4. **Autonomous Tools (`tools.gd`)**
    - Provides specific capabilities to the AI:
       - `list_directory`: Lists all folders and files inside a specified `res://` directory.
@@ -68,8 +69,9 @@ The project is currently a functional, foundational Godot Editor Plugin located 
      - Orca prefers provider-reported cost, then automatically resolves public model context and pricing metadata from a cached `models.dev` catalog with built-in offline fallbacks.
     - Multi-step work can maintain a bounded persistent checklist with pending, active, completed, blocked, and cancelled states.
 7. **Configuration (`config.gd`, `settings_view.gd`)**
-   - Provides an in-dock settings page for OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, and custom OpenAI-compatible endpoints.
-   - Stores separate API key, model, and reasoning-effort selections per provider and discovers models from provider APIs.
+   - Provides an in-dock settings page for OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, Local OpenAI-compatible, and custom OpenAI-compatible endpoints.
+   - Stores separate API key, endpoint, model, and reasoning-effort selections per provider and discovers bounded model lists from provider APIs. Editable profiles start in Chat mode; one isolated synthetic function-call probe and a separate user opt-in can enable tools only for the exact matching compatibility binding.
+   - Uses Ollama `/api/tags` and LM Studio `/api/v1/models` metadata to hide known embedding models, with a conservative name fallback and unrestricted manual Model ID override.
    - Integrates with Godot's Editor Settings for persistence. Editor Settings is not an encrypted OS credential store.
 
 ## What We Are Building (The Vision)
@@ -83,6 +85,6 @@ We are building a truly autonomous copilot for game development in Godot, simila
 - **Local-First Focus:** Ensuring the plugin works flawlessly with locally-hosted, fast open-source models (like Llama 3 or Qwen) for privacy-conscious developers.
 - **Robustness:** Refining error handling for complex edge cases (e.g., massive files, connection timeouts) and creating better syntax parsing.
 
-Progressive tool-schema disclosure remains a future optimization; Orca 1.1.1 does not implement it.
+Progressive tool-schema disclosure remains a future optimization; Orca 1.2.0 does not implement it.
 
 Orca aims to be an essential sidekick for Godot developers, handling boilerplate code, exploring unfamiliar APIs, and accelerating the game development workflow securely and efficiently.

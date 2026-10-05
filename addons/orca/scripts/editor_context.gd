@@ -90,9 +90,13 @@ static func get_unsaved_open_script(filepath: String) -> Dictionary:
 	var script_editor := EditorInterface.get_script_editor()
 	if filepath not in script_editor.get_unsaved_files():
 		return {}
-	for open_script in script_editor.get_open_scripts():
-		if open_script is Script and open_script.resource_path == filepath:
-			return {"filepath": filepath, "source": open_script.source_code}
+	var current_script := script_editor.get_current_script()
+	if current_script == null or current_script.resource_path != filepath:
+		return {}
+	var current_editor := script_editor.get_current_editor()
+	var code_edit: CodeEdit = current_editor.get_base_editor() as CodeEdit if current_editor != null else null
+	if code_edit != null:
+		return {"filepath": filepath, "source": code_edit.text}
 	return {}
 
 

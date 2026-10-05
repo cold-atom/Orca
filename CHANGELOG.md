@@ -2,6 +2,50 @@
 
 All notable changes to Orca are documented in this file.
 
+## Unreleased
+
+## 1.2.0 - 2026-10-05
+
+### Added
+
+- Added first-class Ollama, LM Studio, and Local OpenAI-compatible profiles with editable conventional endpoints, optional bearer authentication, explicit keyless model discovery, and manual Model ID fallback.
+- Added native Ollama `/api/tags` and LM Studio `/api/v1/models` discovery with bounded model metadata and filtering for models identified as embeddings.
+- Added strict endpoint normalization, loopback/LAN/remote disclosure, exact-origin confirmation, and generated-endpoint validation for editable profiles and provider origin overrides.
+- Added an isolated project-free two-step function-call compatibility probe and separate Agent-tool opt-in bound to the exact provider, origin, endpoints, model, reasoning configuration, and probe version.
+- Added permanent Godot 4.7.2 editor integration coverage for dirty scripts and scenes, exact unsaved source, diagnostics logging, editor scaling, and plugin enable/disable/re-enable ownership.
+
+### Changed
+
+- Local and editable profiles now start in Chat mode and expose Agent tools only after a matching compatibility pass and explicit user enablement.
+- Provider discovery now uses bounded endpoint- and credential-aware caches; the normalized cache format was advanced to v3 for native local-provider metadata and stronger sanitation.
+- Unsaved focused GDScript reads now use the exact current editor text, while reviewed file paths are canonicalized before editor-state, hash, revert, and write checks.
+- Diagnostics services now share one reference-counted Godot logger, preserve warning severity, deep-copy caller records, and bound retained fields.
+
+### Fixed
+
+- Fixed normalized path aliases and dirty editor buffers bypassing reviewed edit or revert protections.
+- Fixed duplicate diagnostics and resource loading from logger callbacks during plugin reload and fallback-service ownership.
+- Fixed native Ollama and LM Studio discovery exposing known embedding-only models while preserving unrestricted manual Model ID override.
+- Fixed stale discovery-request ownership and programmatic model selection clearing or replacing the active local model list.
+- Added bounded plain provider-error extraction and detection when a local endpoint silently serves a different model; Orca now returns `model_mismatch` before emitting assistant text.
+- Fixed editable-provider Settings controls widening narrow docks and clipping the Done, About, and model actions.
+
+### Security And Privacy
+
+- Editable non-loopback endpoints require confirmation bound to normalized scheme, host, and effective port; endpoint drift invalidates prior confirmation.
+- Chat and discovery reauthorize endpoint trust before credential headers are constructed and reject provider redirects.
+- Compatibility probes contain no project instructions, skills, editor context, task list, session history, project path, or real Orca tool schema.
+- Compatibility passes persist only bounded binding metadata, start disabled, and are recomputed from each request snapshot before schema exposure and runtime execution.
+- Probe requests and post-tool continuations cannot silently retry with altered stream options, preventing completed tool activity from being replayed.
+
+### Known Limits
+
+- Orca does not bundle inference, install or download models, or manage Ollama or LM Studio processes.
+- A successful compatibility probe verifies one narrow synthetic exchange; it does not guarantee planning quality or reliable Agent behavior on real projects.
+- The tested `qwen2.5-coder:3b` Ollama model supported Chat but failed the first probe step, and the tested `llama-3.2-3b-instruct` LM Studio model supported Chat but repeated the tool call in the second probe step.
+- Generic compatible servers may expose incomplete metadata. Conservative embedding-name filtering and manual Model ID override remain available.
+- Progressive tool-schema disclosure remains deferred, and runtime verification still cannot establish visual or gameplay correctness.
+
 ## 1.1.1 - 2026-10-02
 
 ### Fixed

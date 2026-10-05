@@ -1,6 +1,13 @@
 @tool
 extends RefCounted
 
+const MAX_DISCOVERED_MODELS := 200
+const MAX_DISCOVERY_ITEMS := 1000
+const MAX_MODEL_ID_CHARS := 256
+const MAX_MODEL_NAME_CHARS := 256
+const MAX_MODEL_EFFORTS := 8
+const MAX_MODEL_EFFORT_ITEMS := 64
+const MAX_MODEL_EFFORT_CHARS := 32
 
 func definition() -> Dictionary:
 	return {}
@@ -17,16 +24,21 @@ func models_url(config: Dictionary) -> String:
 
 
 func request_headers(api_key: String) -> PackedStringArray:
-	return PackedStringArray([
+	var headers := PackedStringArray([
 		"Content-Type: application/json",
 		"Accept: text/event-stream",
-		"Accept-Encoding: identity",
-		"Authorization: Bearer " + api_key
+		"Accept-Encoding: identity"
 	])
+	if not api_key.strip_edges().is_empty():
+		headers.append("Authorization: Bearer " + api_key)
+	return headers
 
 
 func model_headers(api_key: String) -> PackedStringArray:
-	return PackedStringArray(["Authorization: Bearer " + api_key, "Accept: application/json"])
+	var headers := PackedStringArray(["Accept: application/json"])
+	if not api_key.strip_edges().is_empty():
+		headers.append("Authorization: Bearer " + api_key)
+	return headers
 
 
 func apply_chat_options(body: Dictionary, effort: String) -> void:
@@ -37,12 +49,19 @@ func normalize_models(response) -> Array[Dictionary]:
 	var models: Array[Dictionary] = []
 	if typeof(response) != TYPE_DICTIONARY or typeof(response.get("data")) != TYPE_ARRAY:
 		return models
-	for item in response["data"]:
-		if typeof(item) != TYPE_DICTIONARY or str(item.get("id", "")).is_empty():
+	var source_models: Array = response["data"]
+	for item_index in range(mini(source_models.size(), MAX_DISCOVERY_ITEMS)):
+		if models.size() >= MAX_DISCOVERED_MODELS:
+			break
+		var item = source_models[item_index]
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var model_id := str(item.get("id", "")).strip_edges()
+		if model_id.is_empty() or model_id.length() > MAX_MODEL_ID_CHARS:
 			continue
 		models.append({
-			"id": str(item["id"]),
-			"name": str(item.get("name", item["id"])),
+			"id": model_id,
+			"name": str(item.get("name", model_id)).strip_edges().left(MAX_MODEL_NAME_CHARS),
 			"context_window": int(item.get("context_window", 0)),
 			"input_per_million": -1.0,
 			"output_per_million": -1.0,
@@ -64,12 +83,23 @@ func sanitize_messages(messages: Array) -> Array:
 
 
 func _normalize_efforts(item: Dictionary) -> PackedStringArray:
+	var normalized := PackedStringArray()
 	var effort = item.get("effort", {})
 	if typeof(effort) == TYPE_DICTIONARY and typeof(effort.get("supported_levels")) == TYPE_ARRAY:
-		return PackedStringArray(effort["supported_levels"])
-	return PackedStringArray()
+		var levels: Array = effort["supported_levels"]
+		for level_index in range(mini(levels.size(), MAX_MODEL_EFFORT_ITEMS)):
+			if normalized.size() >= MAX_MODEL_EFFORTS:
+				break
+			var level = levels[level_index]
+			var value := str(level).strip_edges()
+			if not value.is_empty() and value.length() <= MAX_MODEL_EFFORT_CHARS and value not in normalized:
+				normalized.append(value)
+	return normalized
 
 
 func _default_effort(item: Dictionary) -> String:
 	var effort = item.get("effort", {})
-	return str(effort.get("default_level", "")) if typeof(effort) == TYPE_DICTIONARY else ""
+	if typeof(effort) != TYPE_DICTIONARY:
+		return ""
+	var value := str(effort.get("default_level", "")).strip_edges()
+	return value if value.length() <= MAX_MODEL_EFFORT_CHARS else ""

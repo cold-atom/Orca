@@ -51,6 +51,17 @@ func _run() -> void:
 	_expect(xai.get("kind") == "completed", "xAI-compatible SSE should complete")
 	_expect(xai.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content") == "grok ok", "xAI-compatible content should be reconstructed")
 
+	var local := await _request("local", "ollama", "local-model", "default", false, "")
+	_expect(local.get("kind") == "completed", "a keyless local OpenAI-compatible request should complete")
+	_expect(local.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content") == "local ok", "keyless local content should use the shared SSE transport")
+
+	var embedding_error := await _request("embedding-error", "lmstudio", "embedding-model", "default", false, "")
+	_expect(embedding_error.get("kind") == "failed" and embedding_error.get("error", {}).get("category") == "http", "embedding chat rejection should remain an HTTP failure")
+	_expect(str(embedding_error.get("error", {}).get("message", "")).contains("does not support chat") and not str(embedding_error.get("error", {}).get("message", "")).contains("{\"error\""), "embedding rejection should be plain guidance rather than raw JSON")
+
+	var mismatch := await _request("model-mismatch", "lmstudio", "embedding-model", "default", false, "")
+	_expect(mismatch.get("kind") == "failed" and mismatch.get("error", {}).get("category") == "model_mismatch", "local model substitution should fail instead of presenting another model's response: " + str(mismatch))
+
 	if _failures.is_empty():
 		print("api_client_integration_test: PASS")
 		quit(0)
@@ -60,7 +71,7 @@ func _run() -> void:
 	quit(1)
 
 
-func _request(scenario: String, provider: String = "custom", model: String = "test-model", effort: String = "default", include_tools: bool = false) -> Dictionary:
+func _request(scenario: String, provider: String = "custom", model: String = "test-model", effort: String = "default", include_tools: bool = false, api_key: String = "local-test-key") -> Dictionary:
 	var client = ApiClient.new()
 	get_root().add_child(client)
 	var result: Dictionary = {}
@@ -78,9 +89,10 @@ func _request(scenario: String, provider: String = "custom", model: String = "te
 		{
 			"provider": provider,
 			"base_url": TEST_BASE_URL + "/" + scenario,
-			"api_key": "local-test-key",
+			"api_key": api_key,
 			"model": model,
-			"reasoning_effort": effort
+			"reasoning_effort": effort,
+			"confirmed_origin": "http://127.0.0.1:18473"
 		}
 	)
 	var deadline := Time.get_ticks_msec() + 10000

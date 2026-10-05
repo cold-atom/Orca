@@ -42,6 +42,8 @@ const ModelMetadata = preload("res://addons/orca/scripts/model_metadata.gd")
 const ProjectInstructions = preload("res://addons/orca/scripts/project_instructions.gd")
 const ProjectSkills = preload("res://addons/orca/scripts/project_skills.gd")
 const TaskUtils = preload("res://addons/orca/scripts/task_utils.gd")
+const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
+const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const ToolLoopGuardScript = preload("res://addons/orca/scripts/tool_loop_guard.gd")
 const LOOP_FINAL_NOTICE := "ORCA TOOL LOOP NOTICE: Stop using tools for this turn. Give the user a concise final response that summarizes completed work, unresolved items, and the safest next step. Do not request or describe additional tool calls."
 const RECOVERY_CHECKPOINT_HEADING := "ORCA RECOVERY CHECKPOINT"
@@ -144,6 +146,8 @@ func send_user_message(text: String) -> void:
 
 func _add_turn_context() -> void:
 	var sections := PackedStringArray()
+	if not _turn_allows_tools():
+		sections.append("LOCAL CHAT MODE: Project tools are disabled for this provider until this exact endpoint and model pass Orca's future Agent compatibility flow. Answer conversationally and do not request or claim tool actions.")
 	var instruction_result := _load_project_instructions()
 	if bool(instruction_result.get("success", false)):
 		if bool(instruction_result.get("found", false)) and not str(instruction_result.get("wrapped_content", "")).is_empty():
@@ -451,18 +455,22 @@ func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
 	var outcome := "completed"
 	var execution: Dictionary = {}
 	var started_at := Time.get_ticks_msec()
+	if not _turn_allows_tools():
+		result = "Error: Tools are disabled for this local provider. Continue in Chat mode without requesting project actions."
+		outcome = "failed"
 
 	var json := JSON.new()
-	if json.parse(arguments_str) != OK:
-		result = "Error: Tool arguments were not valid JSON."
-		outcome = "failed"
-	else:
-		var parsed_arguments = json.get_data()
-		if typeof(parsed_arguments) != TYPE_DICTIONARY:
-			result = "Error: Tool arguments must be a JSON object."
+	if result.is_empty():
+		if json.parse(arguments_str) != OK:
+			result = "Error: Tool arguments were not valid JSON."
 			outcome = "failed"
 		else:
-			arguments = parsed_arguments
+			var parsed_arguments = json.get_data()
+			if typeof(parsed_arguments) != TYPE_DICTIONARY:
+				result = "Error: Tool arguments must be a JSON object."
+				outcome = "failed"
+			else:
+				arguments = parsed_arguments
 
 	tool_execution_started.emit(call_id, function_name, arguments)
 	if result.is_empty() and function_name in ["run_current_scene", "run_main_scene"]:
@@ -798,7 +806,7 @@ func _send_current_request() -> bool:
 		_remap_context_indices(int(prepared.get("removed_start", -1)), int(prepared.get("removed_count", 0)), int(prepared.get("inserted_count", 0)))
 		message_history = prepared.get("messages", []).duplicate(true)
 	workflow_state_changed.emit("thinking", {"follow_up": _tool_rounds > 0})
-	api_client.send_chat_completion(message_history, definitions, _turn_provider_config)
+	api_client.send_chat_completion(message_history, definitions, _turn_provider_config, {"allow_stream_options_retry": _tool_rounds == 0})
 	return true
 
 
@@ -814,7 +822,25 @@ func _remap_context_indices(removed_start: int, removed_count: int, inserted_cou
 			set(field, -1)
 
 func _get_tool_definitions() -> Array:
+	if not _turn_allows_tools():
+		return []
 	return tools_script.get_tool_definitions(_mode == AgentMode.BUILD)
+
+
+func _turn_allows_tools() -> bool:
+	if _turn_provider_config.is_empty():
+		return true
+	var provider = ProviderRegistry.get_provider(str(_turn_provider_config.get("provider", "custom")))
+	var definition: Dictionary = provider.definition()
+	if not bool(definition.get("agent_tools", true)):
+		return bool(Config.agent_compatibility_status(str(_turn_provider_config.get("provider", "custom")), _turn_provider_config).get("enabled", false))
+	var configured := EndpointPolicy.inspect_base_url(str(_turn_provider_config.get("base_url", "")))
+	var canonical := EndpointPolicy.inspect_base_url(str(definition.get("base_url", "")))
+	if not configured.get("success", false) or not canonical.get("success", false):
+		return false
+	if bool(definition.get("custom_url", false)) or str(configured.get("origin", "")) != str(canonical.get("origin", "")):
+		return bool(Config.agent_compatibility_status(str(_turn_provider_config.get("provider", "custom")), _turn_provider_config).get("enabled", false))
+	return true
 
 func _get_system_prompt() -> String:
 	var shared := "You are Orca, an AI game-development assistant integrated into the Godot editor. Use project tools proactively to understand the user's Godot project. Prefer inspect_scene over raw file reads when understanding saved .tscn structure; it reports saved serialized state, does not include unsaved or runtime-generated nodes, and does not recursively expand scene instances. Prefer inspect_project_settings over reading project.godot when understanding project configuration; omit setting_path for the bounded overview or provide one exact non-sensitive path. Be concise, explain important decisions, and never claim a tool action succeeded unless its result confirms success. For genuinely multi-step work, maintain the session checklist with update_tasks; provide the complete desired list, keep at most one item in_progress, and do not use it for trivial one-step requests."

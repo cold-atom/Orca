@@ -32,7 +32,7 @@ Watch Orca inspect a Godot project, propose reviewed changes, and validate the r
 
 ## Status
 
-This is Orca 1.1.1. The supported Godot version is **4.7.2**.
+This is Orca 1.2.0. The supported Godot version is **4.7.2**.
 
 Orca is designed to assist with development work, not to replace source control, code review, backups, or normal project testing.
 
@@ -55,7 +55,7 @@ Orca is designed to assist with development work, not to replace source control,
 2. Extract its `addons/orca/` directory into your Godot project's `addons/` directory.
 3. Open the project in Godot 4.7.2.
 4. Enable **Orca** in **Project > Project Settings > Plugins**.
-5. Open the Orca dock, select a provider, add your API key, choose a model, and start a session.
+5. Open the Orca dock, select a provider, add an API key when required, choose a model, and start a session.
 
 For development setup and test commands, see [DEVELOPMENT.md](DEVELOPMENT.md) and [tests/README.md](tests/README.md).
 
@@ -69,9 +69,13 @@ Always review a proposal before applying it. Orca rejects stale proposals and pr
 
 ## Providers And Data
 
-Orca supports OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, and custom OpenAI-compatible endpoints through its current Chat Completions transport.
+Orca supports OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, Local OpenAI-compatible, and custom OpenAI-compatible endpoints through its current Chat Completions transport. Local and editable profiles start in Chat mode. A project-free two-step function-call probe must pass for the exact provider, origin, model, request configuration, and probe version before the user can separately enable Agent tools.
+
+Ollama and LM Studio discovery uses their native model-list APIs to hide models explicitly identified as embeddings. Generic compatible lists use a conservative `embed` name filter. The manual Model ID field remains available as an override, and Orca reports plain chat-capability or local model-substitution errors instead of raw provider JSON.
 
 Before submitting a request, make sure you trust the selected provider and endpoint. Prompts, relevant editor context, and project content returned by Orca's tools may be sent to that provider so it can answer your request. Authenticated model discovery sends the selected provider's API key to that provider. Public model metadata is requested from `models.dev` without API keys, prompts, or project content.
+
+Editable LAN and remote endpoints require confirmation for their exact scheme, host, and port. Orca identifies unencrypted non-loopback HTTP connections and does not follow provider chat or model-discovery redirects. Confirmation does not prove that a server is trustworthy or prevent that server from forwarding received data.
 
 When present, root `res://AGENTS.md` content and the `name`, `description`, slug, and path metadata of valid `res://skills/<slug>/SKILL.md` files are automatically included in private request-scoped model context. A selected skill body is sent only after an explicit `read_project_skill` call. These inputs are project guidance, cannot override Orca's permissions or approval rules, and are removed from stored continuation history after the turn.
 

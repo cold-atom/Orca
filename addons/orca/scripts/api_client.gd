@@ -2,6 +2,7 @@
 extends Node
 
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
+const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 
 signal request_completed(response: Dictionary)
 signal request_failed(error: Dictionary)
@@ -20,6 +21,7 @@ const MAX_TOOL_ARGUMENT_BYTES := 2 * 1024 * 1024
 const MAX_TOOL_METADATA_BYTES := 1024 * 1024
 const MAX_REASONING_DETAILS_BYTES := 2 * 1024 * 1024
 const MAX_ERROR_BODY_BYTES := 64 * 1024
+const MAX_PROVIDER_ERROR_CHARS := 2048
 const MAX_REASONING_DETAILS := 256
 const MAX_TOOL_CALLS_PER_RESPONSE := 16
 const CONNECT_RETRY_DELAY_SECONDS := 0.5
@@ -72,16 +74,22 @@ func last_request_may_have_usage() -> bool:
 	return _request_may_have_usage
 
 
-func send_chat_completion(messages: Array, tools: Array = [], provider_config: Dictionary = {}) -> void:
+func send_chat_completion(messages: Array, tools: Array = [], provider_config: Dictionary = {}, request_options: Dictionary = {}) -> void:
 	if _is_requesting:
 		request_failed.emit(_make_error("A request is already in progress.", "state", false))
 		return
 	_request_may_have_usage = false
 
 	var request_config: Dictionary = _config.get_active_provider_config() if provider_config.is_empty() else provider_config.duplicate(true)
-	var provider = ProviderRegistry.get_provider(str(request_config.get("provider", "custom")))
-	var api_key = str(request_config.get("api_key", ""))
-	if api_key.is_empty():
+	var provider_id := str(request_config.get("provider", "custom"))
+	var authorization := EndpointPolicy.authorize_profile(provider_id, request_config)
+	if not authorization.get("success", false):
+		request_failed.emit(_make_error(str(authorization.get("error", "Endpoint is not authorized.")), "configuration", false))
+		return
+	request_config = authorization.get("config", request_config)
+	var provider = ProviderRegistry.get_provider(provider_id)
+	var api_key = str(request_config.get("api_key", "")).strip_edges()
+	if api_key.is_empty() and not bool(provider.definition().get("auth_optional", false)):
 		request_failed.emit(_make_error("API Key is missing. Please set it in Settings.", "configuration", false))
 		return
 	if str(request_config.get("model", "")).is_empty():
@@ -89,6 +97,10 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 		return
 
 	var url = provider.chat_url(request_config)
+	var generated_endpoint := EndpointPolicy.validate_generated_endpoint(url, str(authorization.get("origin", "")))
+	if not generated_endpoint.get("success", false):
+		request_failed.emit(_make_error(str(generated_endpoint.get("error", "Invalid API endpoint.")), "configuration", false))
+		return
 	_configured_api_url = url
 
 	var endpoint := _parse_url(url)
@@ -114,7 +126,7 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 	_is_requesting = true
 	_cancel_requested = false
 	_request_serial += 1
-	_perform_request(_request_serial, endpoint, provider.request_headers(api_key), body, true, MAX_CONNECT_RETRIES)
+	_perform_request(_request_serial, endpoint, provider.request_headers(api_key), body, bool(request_options.get("allow_stream_options_retry", true)), MAX_CONNECT_RETRIES)
 
 
 func cancel_request() -> void:
@@ -226,7 +238,7 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 					if _stream_error.is_empty():
 						_complete_stream(request_id)
 					else:
-						_fail_request(request_id, _stream_error, "response_limit" if _stream_error.contains("limit") else "malformed_response", false)
+						_fail_request(request_id, _stream_error, _stream_error_category(), false)
 					return
 			else:
 				_raw_response.append_array(chunk)
@@ -261,9 +273,7 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 			body.erase("stream_options")
 			await _perform_request(request_id, endpoint, base_headers, body, false, MAX_CONNECT_RETRIES)
 			return
-		var error_message := "HTTP Error " + str(response_code)
-		if not error_body.is_empty():
-			error_message += ": " + error_body
+		var error_message := _format_http_error(response_code, error_body)
 		_fail_request(request_id, error_message, "http", response_code in [408, 425, 429, 500, 502, 503, 504])
 		return
 
@@ -279,7 +289,7 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 		if _stream_error.is_empty():
 			_complete_stream(request_id)
 		else:
-			_fail_request(request_id, _stream_error, "response_limit" if _stream_error.contains("limit") else "malformed_response", false)
+			_fail_request(request_id, _stream_error, _stream_error_category(), false)
 		return
 	if _received_sse_event and _finish_reason != null:
 		_complete_stream(request_id)
@@ -357,6 +367,11 @@ func _dispatch_sse_event() -> void:
 		return
 	if data.has("model"):
 		_request_model = str(data["model"])
+		var model_error := _local_model_mismatch_error(_request_model)
+		if not model_error.is_empty():
+			_stream_error = model_error
+			_stream_done = true
+			return
 	if data.has("usage"):
 		var normalized_usage := _normalize_usage(data["usage"])
 		if not normalized_usage.is_empty():
@@ -544,6 +559,10 @@ func _complete_stream(request_id: int) -> void:
 	}
 	if not _stream_usage.is_empty():
 		response["usage"] = _stream_usage.duplicate(true)
+	var model_error := _local_model_mismatch_error(_request_model)
+	if not model_error.is_empty():
+		_fail_request(request_id, model_error, "model_mismatch", false)
+		return
 	_finish_request(request_id)
 	request_completed.emit(response)
 
@@ -564,6 +583,10 @@ func _complete_json_response(request_id: int) -> void:
 	data["requested_model"] = _configured_request_model
 	data["requested_api_url"] = _configured_api_url
 	data["requested_provider"] = _configured_provider
+	var model_error := _local_model_mismatch_error(str(data.get("model", "")))
+	if not model_error.is_empty():
+		_fail_request(request_id, model_error, "model_mismatch", false)
+		return
 	_finish_request(request_id)
 	request_completed.emit(data)
 
@@ -762,38 +785,51 @@ func _normalize_usage(raw_usage) -> Dictionary:
 
 
 func _parse_url(url: String) -> Dictionary:
-	var scheme_separator := url.find("://")
-	if scheme_separator == -1:
-		return {}
-	var scheme := url.substr(0, scheme_separator).to_lower()
-	if scheme != "http" and scheme != "https":
-		return {}
+	var inspected := EndpointPolicy.inspect_endpoint(url)
+	return inspected if inspected.get("success", false) else {}
 
-	var remainder := url.substr(scheme_separator + 3)
-	var path_start := remainder.find("/")
-	var authority := remainder if path_start == -1 else remainder.substr(0, path_start)
-	var target := "/" if path_start == -1 else remainder.substr(path_start)
-	var host := authority
-	var port := 443 if scheme == "https" else 80
 
-	if authority.begins_with("["):
-		var bracket_end := authority.find("]")
-		if bracket_end == -1:
-			return {}
-		host = authority.substr(1, bracket_end - 1)
-		if authority.length() > bracket_end + 1:
-			if authority[bracket_end + 1] != ":":
-				return {}
-			port = int(authority.substr(bracket_end + 2))
-	else:
-		var port_separator := authority.rfind(":")
-		if port_separator != -1:
-			host = authority.substr(0, port_separator)
-			port = int(authority.substr(port_separator + 1))
+func _format_http_error(response_code: int, error_body: String) -> String:
+	var provider_message := ""
+	var parsed = JSON.parse_string(error_body) if error_body.begins_with("{") else null
+	if typeof(parsed) == TYPE_DICTIONARY:
+		var error = parsed.get("error", null)
+		if typeof(error) == TYPE_DICTIONARY and typeof(error.get("message")) == TYPE_STRING:
+			provider_message = str(error["message"])
+		elif typeof(error) == TYPE_STRING:
+			provider_message = str(error)
+		elif typeof(parsed.get("message")) == TYPE_STRING:
+			provider_message = str(parsed["message"])
+	elif not error_body.is_empty() and not error_body.begins_with("<"):
+		provider_message = error_body
+	provider_message = _sanitize_provider_error(provider_message)
+	var lowered := provider_message.to_lower()
+	if "does not support chat" in lowered or "embedding model" in lowered or "cannot generate chat" in lowered:
+		return "The selected model does not support chat. Choose a chat-capable model in Settings or enter a different Model ID."
+	return "Provider returned HTTP %d%s" % [response_code, ": " + provider_message if not provider_message.is_empty() else "."]
 
-	if host.is_empty() or port <= 0 or port > 65535:
-		return {}
-	return {"scheme": scheme, "host": host, "port": port, "target": target}
+
+func _sanitize_provider_error(message: String) -> String:
+	var sanitized := ""
+	for character in message:
+		var code := character.unicode_at(0)
+		if code >= 32 or character in ["\n", "\t"]:
+			sanitized += character
+	return sanitized.strip_edges().left(MAX_PROVIDER_ERROR_CHARS)
+
+
+func _local_model_mismatch_error(actual_model: String) -> String:
+	if _configured_provider not in ["ollama", "lmstudio", "local_openai"] or "embed" not in _configured_request_model.to_lower() or actual_model.is_empty() or actual_model == _configured_request_model:
+		return ""
+	return "The local provider served model '%s' instead of the selected model '%s'. The selected model may not support chat or may not be loaded." % [actual_model.left(256), _configured_request_model.left(256)]
+
+
+func _stream_error_category() -> String:
+	if _stream_error.contains("limit"):
+		return "response_limit"
+	if _stream_error.begins_with("The local provider served model"):
+		return "model_mismatch"
+	return "malformed_response"
 
 
 func _get_header(headers: Dictionary, requested_name: String) -> String:

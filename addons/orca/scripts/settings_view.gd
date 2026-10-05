@@ -7,6 +7,8 @@ signal settings_saved(provider_id: String, model: String)
 const Config = preload("res://addons/orca/scripts/config.gd")
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
 const ProviderModelService = preload("res://addons/orca/scripts/provider_model_service.gd")
+const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
+const AgentCompatibilityProbe = preload("res://addons/orca/scripts/agent_compatibility_probe.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const PLUGIN_CONFIG_PATH := "res://addons/orca/plugin.cfg"
 const ABOUT_LOGO_PATH := "res://addons/orca/assets/orca.svg"
@@ -21,12 +23,17 @@ var model_search: LineEdit
 var model_selector: OptionButton
 var custom_url_label: Label
 var custom_url_input: LineEdit
+var endpoint_status_label: Label
 var custom_model_input: LineEdit
 var effort_label: Label
 var effort_selector: OptionButton
 var effort_help: Label
 var metadata_label: Label
 var status_label: Label
+var agent_status_label: Label
+var agent_probe_button: Button
+var agent_enable_toggle: CheckButton
+var agent_warning_label: Label
 var done_button: Button
 var refresh_button: Button
 var settings_scroll: ScrollContainer
@@ -34,7 +41,12 @@ var about_scroll: ScrollContainer
 var provider_tab_button: Button
 var about_tab_button: Button
 var about_version_label: Label
+var _trust_dialog: ConfirmationDialog
+var _pending_trust_action := ""
+var _pending_trust_origin := ""
+var _pending_trust_provider := ""
 var _model_service
+var _agent_probe
 var _key_timer: Timer
 var _current_provider := ""
 var _current_models: Array[Dictionary] = []
@@ -56,10 +68,20 @@ func _ready() -> void:
 			_body_font_size = maxi(editor_font_size, 13)
 			_meta_font_size = maxi(_body_font_size - 1, 11)
 	_build_ui()
+	_trust_dialog = ConfirmationDialog.new()
+	_trust_dialog.title = "Trust AI Endpoint"
+	_trust_dialog.confirmed.connect(_on_endpoint_trust_confirmed)
+	add_child(_trust_dialog)
 	_model_service = ProviderModelService.new()
 	add_child(_model_service)
 	_model_service.models_loaded.connect(_on_models_loaded)
 	_model_service.models_failed.connect(_on_models_failed)
+	_agent_probe = AgentCompatibilityProbe.new()
+	add_child(_agent_probe)
+	_agent_probe.probe_step_changed.connect(_on_probe_step_changed)
+	_agent_probe.probe_passed.connect(_on_probe_passed)
+	_agent_probe.probe_failed.connect(_on_probe_failed)
+	_agent_probe.probe_cancelled.connect(_on_probe_cancelled)
 	_key_timer = Timer.new()
 	_key_timer.one_shot = true
 	_key_timer.wait_time = 0.8
@@ -171,6 +193,10 @@ func _build_ui() -> void:
 	custom_url_input = LineEdit.new()
 	custom_url_input.text_changed.connect(_on_custom_url_changed)
 	content.add_child(custom_url_input)
+	endpoint_status_label = Label.new()
+	endpoint_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	endpoint_status_label.add_theme_color_override("font_color", Color(0.72, 0.64, 0.42))
+	content.add_child(endpoint_status_label)
 
 	content.add_child(_field_label("Model"))
 	model_search = LineEdit.new()
@@ -191,6 +217,7 @@ func _build_ui() -> void:
 	model_row.add_child(refresh_button)
 	custom_model_input = LineEdit.new()
 	custom_model_input.placeholder_text = "Model ID"
+	custom_model_input.text_changed.connect(_on_manual_model_changed)
 	content.add_child(custom_model_input)
 
 	effort_label = _field_label("Reasoning Effort")
@@ -212,6 +239,27 @@ func _build_ui() -> void:
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.add_theme_color_override("font_color", Color(0.58, 0.7, 0.82))
 	content.add_child(status_label)
+	content.add_child(_field_label("Local Agent Compatibility"))
+	agent_status_label = Label.new()
+	agent_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(agent_status_label)
+	agent_probe_button = Button.new()
+	agent_probe_button.text = "Test Agent Compatibility"
+	agent_probe_button.pressed.connect(_on_agent_probe_pressed)
+	content.add_child(agent_probe_button)
+	agent_enable_toggle = CheckButton.new()
+	agent_enable_toggle.text = "Enable Agent tools"
+	agent_enable_toggle.tooltip_text = "Enable Agent tools for this exact endpoint and model"
+	agent_enable_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	agent_enable_toggle.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	agent_enable_toggle.clip_text = true
+	agent_enable_toggle.toggled.connect(_on_agent_enable_toggled)
+	content.add_child(agent_enable_toggle)
+	agent_warning_label = Label.new()
+	agent_warning_label.text = "The probe is synthetic and project-free. Enabling Agent tools may later send project context and allows normal Plan/Work operations; mutation approvals and runtime safety checks still apply."
+	agent_warning_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	agent_warning_label.add_theme_color_override("font_color", Color(0.72, 0.64, 0.42))
+	content.add_child(agent_warning_label)
 
 	about_scroll = _build_about_view()
 	about_scroll.hide()
@@ -344,7 +392,8 @@ func _field_label(text: String) -> Label:
 
 
 func _focus_model_configuration() -> void:
-	var target: Control = custom_model_input if _current_provider == "custom" else model_search
+	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
+	var target: Control = model_search if bool(definition.get("model_discovery", _current_provider != "custom")) else custom_model_input
 	target.grab_focus()
 	settings_scroll.ensure_control_visible(target)
 
@@ -367,6 +416,7 @@ func _select_provider(provider_id: String) -> void:
 
 
 func _on_provider_selected(index: int) -> void:
+	_cancel_agent_probe_for_change()
 	_save_current_profile()
 	_load_provider(str(provider_selector.get_item_metadata(index)))
 
@@ -376,7 +426,12 @@ func _load_provider(provider_id: String) -> void:
 	_key_timer.stop()
 	_current_provider = provider_id
 	_current_models.clear()
+	_model_service.cancel()
+	model_selector.clear()
+	model_selector.disabled = false
+	refresh_button.disabled = false
 	model_search.text = ""
+	metadata_label.text = ""
 	var provider = ProviderRegistry.get_provider(provider_id)
 	var definition: Dictionary = provider.definition()
 	var config := Config.get_provider_config(provider_id)
@@ -385,48 +440,95 @@ func _load_provider(provider_id: String) -> void:
 	key_link.visible = not str(definition.get("key_url", "")).is_empty()
 	custom_url_label.visible = bool(definition.get("custom_url", false))
 	custom_url_input.visible = custom_url_label.visible
+	endpoint_status_label.visible = custom_url_label.visible
 	custom_url_input.text = str(config.get("base_url", definition.get("base_url", "")))
-	var is_custom := provider_id == "custom"
-	model_search.visible = not is_custom
-	model_selector.visible = not is_custom
-	refresh_button.visible = not is_custom
-	custom_model_input.visible = is_custom
+	_update_endpoint_status()
+	var supports_discovery := bool(definition.get("model_discovery", provider_id != "custom"))
+	var supports_manual_model := bool(definition.get("manual_model", provider_id == "custom"))
+	var auth_optional := bool(definition.get("auth_optional", false))
+	model_search.visible = supports_discovery
+	model_selector.visible = supports_discovery
+	refresh_button.visible = supports_discovery
+	custom_model_input.visible = supports_manual_model
 	custom_model_input.text = str(config.get("model", ""))
 	_selected_model = str(config.get("model", definition.get("default_model", "")))
 	_selected_effort = str(config.get("reasoning_effort", "default"))
 	_set_efforts(PackedStringArray(), _selected_effort)
 	metadata_label.text = ""
-	status_label.text = "Enter an API key to load models." if api_key_input.text.is_empty() else "Loading models..."
-	if not is_custom and not api_key_input.text.is_empty():
+	api_key_input.placeholder_text = "Optional for local servers" if auth_optional else "Enter API key"
+	status_label.text = "Select Refresh to contact this endpoint. Local profiles currently run in Chat mode without project tools." if bool(definition.get("local", false)) else ("Loading models..." if not api_key_input.text.is_empty() else "Enter an API key to load models.")
+	if supports_discovery and not bool(definition.get("local", false)) and not api_key_input.text.is_empty():
 		_refresh_models()
 	_loading_provider = false
+	_sync_agent_compatibility()
 
 
 func _on_api_key_changed(_text: String) -> void:
-	if _loading_provider or _current_provider == "custom":
+	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
+	if _loading_provider or not bool(definition.get("model_discovery", _current_provider != "custom")):
 		return
+	_cancel_agent_probe_for_change()
 	_model_service.cancel()
 	_current_models.clear()
 	model_selector.clear()
+	model_selector.disabled = false
+	refresh_button.disabled = false
 	metadata_label.text = ""
-	status_label.text = "Enter an API key to load models." if api_key_input.text.is_empty() else "Waiting to load models..."
-	_key_timer.start()
+	var auth_optional := bool(definition.get("auth_optional", false))
+	status_label.text = "Waiting to load models..." if auth_optional or not api_key_input.text.is_empty() else "Enter an API key to load models."
+	if not bool(definition.get("local", false)) and (auth_optional or not api_key_input.text.is_empty()):
+		_key_timer.start()
 
 
 func _on_custom_url_changed(_text: String) -> void:
-	pass
+	if _loading_provider:
+		return
+	_update_endpoint_status()
+	_cancel_agent_probe_for_change()
+	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
+	if bool(definition.get("model_discovery", false)):
+		_model_service.cancel()
+		_current_models.clear()
+		model_selector.clear()
+		model_selector.disabled = false
+		refresh_button.disabled = false
+		metadata_label.text = ""
+		status_label.text = "Endpoint changed. Select Refresh to contact it."
+
+
+func _on_manual_model_changed(text: String) -> void:
+	if not _loading_provider:
+		_selected_model = text.strip_edges()
+		_current_models.clear()
+		model_selector.clear()
+		metadata_label.text = ""
+		_set_efforts(PackedStringArray(), _selected_effort)
+		status_label.text = "Using a manual Model ID. Select Refresh to restore discovered models."
+		_cancel_agent_probe_for_change()
+		_sync_agent_compatibility()
 
 
 func _refresh_models() -> void:
-	if _current_provider == "custom":
+	var provider = ProviderRegistry.get_provider(_current_provider)
+	var definition: Dictionary = provider.definition()
+	if not bool(definition.get("model_discovery", _current_provider != "custom")):
 		return
+	if bool(definition.get("custom_url", false)):
+		var inspected := EndpointPolicy.inspect_base_url(custom_url_input.text)
+		if not inspected.get("success", false):
+			status_label.text = str(inspected.get("error", "Invalid endpoint."))
+			return
+		if inspected.get("requires_confirmation", false) and Config.get_confirmed_origin(_current_provider) != str(inspected.get("origin", "")):
+			_request_endpoint_trust("refresh", inspected)
+			return
+		_set_normalized_url(str(inspected["base_url"]))
 	status_label.text = "Loading models..."
 	model_selector.disabled = true
 	refresh_button.disabled = true
-	var provider = ProviderRegistry.get_provider(_current_provider)
 	_model_service.fetch_models(_current_provider, {
 		"api_key": api_key_input.text.strip_edges(),
-		"base_url": provider.definition().get("base_url", "")
+		"base_url": custom_url_input.text.strip_edges() if bool(definition.get("custom_url", false)) else definition.get("base_url", ""),
+		"confirmed_origin": Config.get_confirmed_origin(_current_provider)
 	})
 
 
@@ -451,7 +553,8 @@ func _on_models_loaded(provider_id: String, models: Array, from_cache: bool) -> 
 	_current_models.assign(models)
 	model_selector.disabled = false
 	refresh_button.disabled = false
-	status_label.text = "Loaded %d models%s." % [models.size(), " from cache" if from_cache else ""]
+	var local_note := " Known embedding models are hidden; enter a Model ID manually to override discovery." if bool(ProviderRegistry.get_provider(provider_id).definition().get("local", false)) else ""
+	status_label.text = "Loaded %d models%s.%s" % [models.size(), " from cache" if from_cache else "", local_note]
 	_populate_models(model_search.text)
 
 
@@ -491,9 +594,17 @@ func _on_model_selected(index: int) -> void:
 	if index < 0 or index >= model_selector.item_count:
 		return
 	_selected_model = str(model_selector.get_item_metadata(index))
+	if custom_model_input.visible:
+		var was_loading := _loading_provider
+		_loading_provider = true
+		custom_model_input.text = _selected_model
+		_loading_provider = was_loading
 	var model := _find_model(_selected_model)
 	_set_efforts(model.get("efforts", PackedStringArray()), _selected_effort)
 	metadata_label.text = _format_model_metadata(model)
+	if not _loading_provider:
+		_cancel_agent_probe_for_change()
+		_sync_agent_compatibility()
 
 
 func _set_efforts(efforts, selected_effort: String) -> void:
@@ -518,6 +629,9 @@ func _set_efforts(efforts, selected_effort: String) -> void:
 func _on_effort_selected(index: int) -> void:
 	if index >= 0:
 		_selected_effort = str(effort_selector.get_item_metadata(index))
+		if not _loading_provider:
+			_cancel_agent_probe_for_change()
+			_sync_agent_compatibility()
 
 
 func _find_model(model_id: String) -> Dictionary:
@@ -559,7 +673,17 @@ func _on_key_link_pressed() -> void:
 
 
 func _on_done_pressed() -> void:
-	var model := custom_model_input.text.strip_edges() if _current_provider == "custom" else _selected_model
+	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
+	if bool(definition.get("custom_url", false)):
+		var inspected := EndpointPolicy.inspect_base_url(custom_url_input.text)
+		if not inspected.get("success", false):
+			status_label.text = str(inspected.get("error", "Invalid endpoint."))
+			return
+		if inspected.get("requires_confirmation", false) and Config.get_confirmed_origin(_current_provider) != str(inspected.get("origin", "")):
+			_request_endpoint_trust("done", inspected)
+			return
+		_set_normalized_url(str(inspected["base_url"]))
+	var model := _selected_model
 	var effort := "default"
 	if effort_selector.visible and effort_selector.selected >= 0:
 		effort = str(effort_selector.get_item_metadata(effort_selector.selected))
@@ -578,7 +702,7 @@ func _on_done_pressed() -> void:
 func _save_current_profile() -> void:
 	if _current_provider.is_empty():
 		return
-	var model := custom_model_input.text.strip_edges() if _current_provider == "custom" else _selected_model
+	var model := _selected_model
 	Config.save_provider_profile(
 		_current_provider,
 		api_key_input.text.strip_edges(),
@@ -586,3 +710,158 @@ func _save_current_profile() -> void:
 		_selected_effort,
 		custom_url_input.text.strip_edges()
 	)
+
+
+func _update_endpoint_status() -> void:
+	if endpoint_status_label == null or not endpoint_status_label.visible:
+		return
+	var inspected := EndpointPolicy.inspect_base_url(custom_url_input.text)
+	if not inspected.get("success", false):
+		endpoint_status_label.text = "Invalid endpoint: " + str(inspected.get("error", "Unknown error"))
+		return
+	var scope := str(inspected.get("scope", "remote")).capitalize()
+	if inspected.get("is_loopback", false):
+		endpoint_status_label.text = "Loopback endpoint. Requests stay addressed to this machine."
+		return
+	var warning := " HTTP is unencrypted." if inspected.get("uses_plaintext", false) else ""
+	var trusted := Config.get_confirmed_origin(_current_provider) == str(inspected.get("origin", ""))
+	endpoint_status_label.text = "%s endpoint%s %s" % [scope, warning, "Trusted for this exact origin." if trusted else "Confirmation is required before sending data."]
+
+
+func _request_endpoint_trust(action: String, inspected: Dictionary) -> void:
+	_pending_trust_action = action
+	_pending_trust_origin = str(inspected.get("origin", ""))
+	_pending_trust_provider = _current_provider
+	var plaintext := " This connection is HTTP and is not encrypted." if inspected.get("uses_plaintext", false) else ""
+	_trust_dialog.dialog_text = "Allow Orca to send this profile's credentials, prompts, and project context to %s? This confirmation is stored for this exact scheme, host, and port.%s" % [_pending_trust_origin, plaintext]
+	_trust_dialog.popup_centered()
+
+
+func _on_endpoint_trust_confirmed() -> void:
+	if _pending_trust_provider != _current_provider:
+		_clear_pending_trust()
+		return
+	var inspected := EndpointPolicy.inspect_base_url(custom_url_input.text)
+	if not inspected.get("success", false) or str(inspected.get("origin", "")) != _pending_trust_origin:
+		status_label.text = "Endpoint changed before confirmation. Review it again."
+		_clear_pending_trust()
+		return
+	var action := _pending_trust_action
+	Config.set_confirmed_origin(_current_provider, _pending_trust_origin)
+	_set_normalized_url(str(inspected["base_url"]))
+	_clear_pending_trust()
+	_update_endpoint_status()
+	if action == "refresh":
+		_refresh_models()
+	elif action == "done":
+		_on_done_pressed()
+	elif action == "probe":
+		_start_agent_probe()
+
+
+func _clear_pending_trust() -> void:
+	_pending_trust_action = ""
+	_pending_trust_origin = ""
+	_pending_trust_provider = ""
+
+
+func _set_normalized_url(value: String) -> void:
+	_loading_provider = true
+	custom_url_input.text = value
+	_loading_provider = false
+
+
+func _on_agent_probe_pressed() -> void:
+	var config := _current_form_config()
+	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
+	if bool(definition.get("custom_url", false)):
+		var inspected := EndpointPolicy.inspect_base_url(str(config.get("base_url", "")))
+		if not inspected.get("success", false):
+			agent_status_label.text = str(inspected.get("error", "Invalid endpoint."))
+			return
+		if inspected.get("requires_confirmation", false) and Config.get_confirmed_origin(_current_provider) != str(inspected.get("origin", "")):
+			_request_endpoint_trust("probe", inspected)
+			return
+	_start_agent_probe()
+
+
+func _start_agent_probe() -> void:
+	Config.clear_agent_compatibility(_current_provider)
+	agent_enable_toggle.set_pressed_no_signal(false)
+	agent_enable_toggle.disabled = true
+	agent_probe_button.disabled = true
+	done_button.disabled = true
+	if not _agent_probe.start_probe(_current_form_config()):
+		agent_probe_button.disabled = false
+		done_button.disabled = false
+
+
+func _on_probe_step_changed(step: int) -> void:
+	agent_status_label.text = "Testing Agent compatibility, step %d of 2..." % step
+
+
+func _on_probe_passed(binding: Dictionary) -> void:
+	if not AgentCompatibilityProbe.record_matches_binding(binding, AgentCompatibilityProbe.create_binding(_current_form_config()).get("binding", {})):
+		agent_status_label.text = "Profile changed during the probe. Run it again."
+	else:
+		Config.record_agent_probe_pass(binding)
+	_sync_agent_compatibility()
+	done_button.disabled = false
+
+
+func _on_probe_failed(_binding: Dictionary, message: String) -> void:
+	agent_status_label.text = "Compatibility check failed: " + message
+	agent_probe_button.disabled = false
+	agent_enable_toggle.disabled = true
+	agent_enable_toggle.set_pressed_no_signal(false)
+	done_button.disabled = false
+
+
+func _on_probe_cancelled() -> void:
+	_sync_agent_compatibility()
+	done_button.disabled = false
+
+
+func _on_agent_enable_toggled(enabled: bool) -> void:
+	if _loading_provider:
+		return
+	if not Config.set_agent_enabled(_current_provider, _current_form_config(), enabled):
+		agent_enable_toggle.set_pressed_no_signal(false)
+	_sync_agent_compatibility()
+
+
+func _sync_agent_compatibility() -> void:
+	if agent_status_label == null:
+		return
+	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
+	var required := bool(definition.get("custom_url", false))
+	for control in [agent_status_label, agent_probe_button, agent_enable_toggle, agent_warning_label]:
+		control.visible = required
+	if not required:
+		return
+	var status := Config.agent_compatibility_status(_current_provider, _current_form_config())
+	var passed := bool(status.get("passed", false))
+	var enabled := bool(status.get("enabled", false))
+	agent_probe_button.disabled = _agent_probe != null and _agent_probe.is_running()
+	agent_enable_toggle.disabled = not passed or agent_probe_button.disabled
+	agent_enable_toggle.set_pressed_no_signal(enabled)
+	if not agent_probe_button.disabled:
+		agent_status_label.text = ("Agent tools enabled for this exact profile." if enabled else "Probe passed. Review and explicitly enable Agent tools.") if passed else str(status.get("reason", "Run the compatibility probe."))
+
+
+func _cancel_agent_probe_for_change() -> void:
+	if _agent_probe != null and _agent_probe.is_running():
+		_agent_probe.cancel()
+
+
+func _current_form_config() -> Dictionary:
+	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
+	return {
+		"provider": _current_provider,
+		"api_key": api_key_input.text.strip_edges(),
+		"base_url": custom_url_input.text.strip_edges() if bool(definition.get("custom_url", false)) else definition.get("base_url", ""),
+		"model": _selected_model,
+		"reasoning_effort": _selected_effort,
+		"confirmed_origin": Config.get_confirmed_origin(_current_provider),
+		"agent_compatibility": Config.get_agent_compatibility(_current_provider)
+	}

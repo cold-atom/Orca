@@ -2,12 +2,15 @@
 extends Node
 
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
+const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
+const AgentCompatibilityProbe = preload("res://addons/orca/scripts/agent_compatibility_probe.gd")
 const SETTING_API_KEY = "orca/api/api_key"
 const SETTING_API_URL = "orca/api/base_url"
 const SETTING_MODEL = "orca/api/model"
 const SETTING_PROVIDER = "orca/providers/selected"
 const SETTING_MODEL_METADATA_CACHE = "orca/cache/model_metadata"
-const SETTING_PROVIDER_MODEL_CACHE = "orca/cache/provider_models"
+const SETTING_PROVIDER_MODEL_CACHE = "orca/cache/provider_models_v3"
+const MAX_CACHED_PROVIDER_MODELS := 200
 
 static func _get_editor_settings() -> EditorSettings:
 	if Engine.is_editor_hint():
@@ -31,7 +34,7 @@ func _init_settings() -> void:
 		settings.set_setting(SETTING_PROVIDER, provider_id)
 		settings.set_setting(_provider_setting(provider_id, "api_key"), str(settings.get_setting(SETTING_API_KEY)))
 		settings.set_setting(_provider_setting(provider_id, "model"), str(settings.get_setting(SETTING_MODEL)))
-		if provider_id == "custom":
+		if bool(ProviderRegistry.get_provider(provider_id).definition().get("custom_url", false)):
 			settings.set_setting(_provider_setting(provider_id, "base_url"), legacy_url)
 	if not settings.has_setting(SETTING_MODEL_METADATA_CACHE):
 		settings.set_setting(SETTING_MODEL_METADATA_CACHE, {})
@@ -72,7 +75,9 @@ static func get_active_provider_config() -> Dictionary:
 		"api_key": get_api_key(),
 		"base_url": get_api_url(),
 		"model": get_model(),
-		"reasoning_effort": get_reasoning_effort()
+		"reasoning_effort": get_reasoning_effort(),
+		"confirmed_origin": get_confirmed_origin(get_provider()),
+		"agent_compatibility": get_agent_compatibility(get_provider())
 	}
 
 
@@ -83,27 +88,95 @@ static func get_provider_config(provider_id: String) -> Dictionary:
 		"api_key": get_api_key(provider_id),
 		"base_url": str(_get_provider_value(provider_id, "base_url", definition.get("base_url", ""))),
 		"model": str(_get_provider_value(provider_id, "model", definition.get("default_model", ""))),
-		"reasoning_effort": str(_get_provider_value(provider_id, "reasoning_effort", "default"))
+		"reasoning_effort": str(_get_provider_value(provider_id, "reasoning_effort", "default")),
+		"confirmed_origin": get_confirmed_origin(provider_id),
+		"agent_compatibility": get_agent_compatibility(provider_id)
 	}
 
 
-static func save_provider_config(provider_id: String, api_key: String, model: String, reasoning_effort: String, base_url: String = "") -> void:
+static func save_provider_config(provider_id: String, api_key: String, model: String, reasoning_effort: String, base_url: String = "") -> bool:
 	var settings = _get_editor_settings()
 	if not settings:
-		return
+		return false
+	if not save_provider_profile(provider_id, api_key, model, reasoning_effort, base_url):
+		return false
 	settings.set_setting(SETTING_PROVIDER, provider_id)
-	save_provider_profile(provider_id, api_key, model, reasoning_effort, base_url)
+	return true
 
 
-static func save_provider_profile(provider_id: String, api_key: String, model: String, reasoning_effort: String, base_url: String = "") -> void:
+static func save_provider_profile(provider_id: String, api_key: String, model: String, reasoning_effort: String, base_url: String = "") -> bool:
 	var settings = _get_editor_settings()
 	if not settings:
-		return
+		return false
+	var definition: Dictionary = ProviderRegistry.get_provider(provider_id).definition()
+	var normalized_base := base_url
+	if bool(definition.get("custom_url", false)):
+		var inspected := EndpointPolicy.inspect_base_url(base_url)
+		if not inspected.get("success", false):
+			return false
+		normalized_base = str(inspected["base_url"])
 	settings.set_setting(_provider_setting(provider_id, "api_key"), api_key)
 	settings.set_setting(_provider_setting(provider_id, "model"), model)
 	settings.set_setting(_provider_setting(provider_id, "reasoning_effort"), reasoning_effort)
-	if provider_id == "custom":
-		settings.set_setting(_provider_setting(provider_id, "base_url"), base_url)
+	if bool(definition.get("custom_url", false)):
+		settings.set_setting(_provider_setting(provider_id, "base_url"), normalized_base)
+	return true
+
+
+static func get_confirmed_origin(provider_id: String) -> String:
+	return str(_get_provider_value(provider_id, "confirmed_origin", ""))
+
+
+static func set_confirmed_origin(provider_id: String, origin: String) -> void:
+	var settings = _get_editor_settings()
+	if settings:
+		settings.set_setting(_provider_setting(provider_id, "confirmed_origin"), origin)
+
+
+static func get_agent_compatibility(provider_id: String) -> Dictionary:
+	var value = _get_provider_value(provider_id, "agent_compatibility", {})
+	return value.duplicate(true) if typeof(value) == TYPE_DICTIONARY else {}
+
+
+static func record_agent_probe_pass(binding: Dictionary) -> bool:
+	var settings = _get_editor_settings()
+	if not settings or str(binding.get("provider", "")).is_empty():
+		return false
+	var record := binding.duplicate(true)
+	record["passed_at"] = Time.get_unix_time_from_system()
+	record["enabled"] = false
+	settings.set_setting(_provider_setting(str(binding["provider"]), "agent_compatibility"), record)
+	return true
+
+
+static func clear_agent_compatibility(provider_id: String) -> void:
+	var settings = _get_editor_settings()
+	if settings:
+		settings.set_setting(_provider_setting(provider_id, "agent_compatibility"), {})
+
+
+static func set_agent_enabled(provider_id: String, config: Dictionary, enabled: bool) -> bool:
+	var binding_result := AgentCompatibilityProbe.create_binding(config)
+	if not binding_result.get("success", false):
+		return false
+	var record := get_agent_compatibility(provider_id)
+	if not AgentCompatibilityProbe.record_matches_binding(record, binding_result["binding"]):
+		return false
+	record["enabled"] = enabled
+	var settings = _get_editor_settings()
+	if not settings:
+		return false
+	settings.set_setting(_provider_setting(provider_id, "agent_compatibility"), record)
+	return true
+
+
+static func agent_compatibility_status(provider_id: String, config: Dictionary) -> Dictionary:
+	var binding_result := AgentCompatibilityProbe.create_binding(config)
+	if not binding_result.get("success", false):
+		return {"passed": false, "enabled": false, "reason": str(binding_result.get("error", "Compatibility binding is invalid."))}
+	var record := config.get("agent_compatibility", get_agent_compatibility(provider_id))
+	var passed := typeof(record) == TYPE_DICTIONARY and AgentCompatibilityProbe.record_matches_binding(record, binding_result["binding"])
+	return {"passed": passed, "enabled": passed and bool(record.get("enabled", false)), "binding": binding_result["binding"], "reason": "" if passed else "Run the compatibility probe for this exact endpoint and model."}
 
 
 static func get_cached_model_metadata(provider: String, model: String) -> Dictionary:
@@ -158,23 +231,30 @@ static func _model_cache_key(provider: String, model: String) -> String:
 	return provider.strip_edges().to_lower() + "/" + model.strip_edges().to_lower()
 
 
-static func get_cached_provider_models(provider_id: String, credential_fingerprint: String = "") -> Dictionary:
+static func get_cached_provider_models(provider_id: String, endpoint: String, credential_fingerprint: String = "") -> Dictionary:
 	var settings = _get_editor_settings()
 	if not settings or not settings.has_setting(SETTING_PROVIDER_MODEL_CACHE):
 		return {}
 	var cache = settings.get_setting(SETTING_PROVIDER_MODEL_CACHE)
-	var entry = cache.get(_provider_model_cache_key(provider_id, credential_fingerprint), {}) if typeof(cache) == TYPE_DICTIONARY else {}
-	return entry.duplicate(true) if typeof(entry) == TYPE_DICTIONARY else {}
+	var entry = cache.get(_provider_model_cache_key(provider_id, endpoint, credential_fingerprint), {}) if typeof(cache) == TYPE_DICTIONARY else {}
+	if typeof(entry) != TYPE_DICTIONARY:
+		return {}
+	var models = entry.get("models", [])
+	var fetched_at = entry.get("fetched_at", 0.0)
+	return {
+		"fetched_at": float(fetched_at) if typeof(fetched_at) in [TYPE_INT, TYPE_FLOAT] else 0.0,
+		"models": (models.slice(0, MAX_CACHED_PROVIDER_MODELS) if typeof(models) == TYPE_ARRAY else []).duplicate(true)
+	}
 
 
-static func set_cached_provider_models(provider_id: String, models: Array, credential_fingerprint: String = "") -> void:
+static func set_cached_provider_models(provider_id: String, endpoint: String, models: Array, credential_fingerprint: String = "") -> void:
 	var settings = _get_editor_settings()
 	if not settings:
 		return
 	var cache = settings.get_setting(SETTING_PROVIDER_MODEL_CACHE) if settings.has_setting(SETTING_PROVIDER_MODEL_CACHE) else {}
 	if typeof(cache) != TYPE_DICTIONARY:
 		cache = {}
-	var incoming_key := _provider_model_cache_key(provider_id, credential_fingerprint)
+	var incoming_key := _provider_model_cache_key(provider_id, endpoint, credential_fingerprint)
 	if cache.size() >= 16 and not cache.has(incoming_key):
 		var oldest_key := ""
 		var oldest_time := INF
@@ -196,7 +276,9 @@ static func _ensure_provider_settings(settings: EditorSettings, provider_id: Str
 		["api_key", ""],
 		["model", definition.get("default_model", "")],
 		["reasoning_effort", "default"],
-		["base_url", definition.get("base_url", "")]
+		["base_url", definition.get("base_url", "")],
+		["confirmed_origin", ""],
+		["agent_compatibility", {}]
 	]:
 		var setting := _provider_setting(provider_id, pair[0])
 		if not settings.has_setting(setting):
@@ -213,5 +295,6 @@ static func _provider_setting(provider_id: String, field: String) -> String:
 	return "orca/providers/%s/%s" % [provider_id, field]
 
 
-static func _provider_model_cache_key(provider_id: String, credential_fingerprint: String) -> String:
-	return provider_id + "/" + credential_fingerprint
+static func _provider_model_cache_key(provider_id: String, endpoint: String, credential_fingerprint: String) -> String:
+	var normalized_endpoint := endpoint.strip_edges().trim_suffix("/")
+	return provider_id + "/" + normalized_endpoint.sha256_text() + "/" + credential_fingerprint

@@ -36,10 +36,12 @@ jobs:
         run: |
           "$GODOT_BIN" --headless --path . --script res://tests/api_client_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/provider_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/endpoint_policy_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/context_budget_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/patch_utils_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/tools_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/session_store_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/history_view_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/settings_view_test.gd
@@ -60,6 +62,16 @@ jobs:
           "$GODOT_BIN" --headless --path . --script res://tests/project_settings_proposal_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/scene_proposal_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/game_process_service_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/diagnostics_service_test.gd
+
+      - name: Run editor integration tests
+        shell: bash
+        run: |
+          "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+          "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
+          "$GODOT_BIN" --headless --editor --path . --script res://tests/diagnostics_editor_integration_test.gd
+          "$GODOT_BIN" --headless --editor --path . --script res://tests/plugin_lifecycle_test.gd
+          "$GODOT_BIN" --headless --editor --path . --script res://tests/provider_settings_editor_test.gd
 
       - name: Run local transport integration
         shell: bash
@@ -68,6 +80,18 @@ jobs:
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           "$GODOT_BIN" --headless --path . --script res://tests/api_client_integration_test.gd
+          wait "$server_pid"
+          trap - EXIT
+          ORCA_TEST_REQUESTS=3 python3 tests/http_test_server.py &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          "$GODOT_BIN" --headless --path . --script res://tests/provider_model_service_integration_test.gd
+          wait "$server_pid"
+          trap - EXIT
+          ORCA_TEST_REQUESTS=2 python3 tests/http_test_server.py &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          "$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_integration_test.gd
           wait "$server_pid"
           trap - EXIT
 

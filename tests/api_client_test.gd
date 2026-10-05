@@ -10,6 +10,8 @@ func _init() -> void:
 	_test_fragmented_sse_and_eof_flush()
 	_test_streamed_tool_metadata()
 	_test_structured_error_metadata()
+	_test_provider_error_formatting()
+	_test_required_auth_configuration()
 	_test_tool_call_validation()
 	if _failures.is_empty():
 		print("api_client_test: PASS")
@@ -109,6 +111,49 @@ func _test_tool_call_validation() -> void:
 	_expect(not client._validate_json_response({"choices": [{"message": "invalid"}]}).is_empty(), "non-streamed JSON assistant messages must have a valid dictionary shape")
 	_expect(not client._validate_json_response({"choices": []}).is_empty(), "non-streamed JSON responses must contain a choice")
 	_expect(client._validate_json_response({"choices": [{"message": {"content": "ok"}}]}).is_empty(), "valid non-streamed JSON assistant messages should pass validation")
+	client.free()
+
+
+func _test_provider_error_formatting() -> void:
+	var client = ApiClient.new()
+	_expect(client._format_http_error(400, '{"error":{"message":"model does not support chat"}}').contains("does not support chat"), "nested provider chat errors should become plain guidance")
+	_expect(client._format_http_error(400, '{"error":"This model is an embedding model"}').contains("does not support chat"), "string embedding errors should become plain guidance")
+	var bounded := client._format_http_error(500, '{"message":"%s"}' % "x".repeat(ApiClient.MAX_PROVIDER_ERROR_CHARS + 100))
+	_expect(bounded.length() <= ApiClient.MAX_PROVIDER_ERROR_CHARS + 32, "provider error messages should be bounded")
+	_expect(client._format_http_error(500, "<html>failure</html>") == "Provider returned HTTP 500.", "HTML error bodies should not be shown to users")
+	client._configured_provider = "lmstudio"
+	client._configured_request_model = "embedding-model"
+	_expect(client._local_model_mismatch_error("llama-chat").contains("served model"), "local provider model substitution should produce a clear error")
+	client.free()
+
+
+func _test_required_auth_configuration() -> void:
+	var client = ApiClient.new()
+	var observed := {"failure": {}}
+	client.request_failed.connect(func(error: Dictionary): observed["failure"] = error)
+	client.send_chat_completion([{"role": "user", "content": "test"}], [], {
+		"provider": "custom",
+		"base_url": "http://127.0.0.1:1/v1",
+		"api_key": "",
+		"model": "fixture"
+	})
+	_expect(observed["failure"].get("category") == "configuration", "authenticated OpenAI-compatible profiles should still reject an empty API key before transport")
+	observed["failure"] = {}
+	client.send_chat_completion([{"role": "user", "content": "test"}], [], {
+		"provider": "custom",
+		"base_url": "http://127.0.0.1:1/v1",
+		"api_key": "   ",
+		"model": "fixture"
+	})
+	_expect(observed["failure"].get("category") == "configuration", "whitespace credentials should not bypass required authentication")
+	for unsafe_config in [
+		{"provider": "ollama", "base_url": "http://192.168.1.20:11434/v1", "api_key": "", "model": "fixture"},
+		{"provider": "custom", "base_url": "https://models.example.com/v1", "api_key": "secret", "model": "fixture"},
+		{"provider": "ollama", "base_url": "http://127.0.0.1:11434/v1/chat/completions", "api_key": "", "model": "fixture"}
+	]:
+		observed["failure"] = {}
+		client.send_chat_completion([{"role": "user", "content": "test"}], [], unsafe_config)
+		_expect(observed["failure"].get("category") == "configuration" and not client.is_requesting(), "unsafe or unconfirmed endpoint should fail before transport: " + str(unsafe_config.get("base_url")))
 	client.free()
 
 

@@ -14,6 +14,12 @@ Run provider registration, model normalization, reasoning, and metadata-mapping 
 "$GODOT_BIN" --headless --path . --script res://tests/provider_test.gd
 ```
 
+Run strict endpoint parsing, normalization, scope classification, and exact-origin trust checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/endpoint_policy_test.gd
+```
+
 Run protocol-aware context estimation, reserve, compaction-boundary, and oversized-active-turn checks:
 
 ```bash
@@ -36,6 +42,12 @@ Run Plan/Work permission, approval, rejection, cancellation, guidance, tool-loop
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
+```
+
+Run isolated two-step synthetic tool-call compatibility, continuation, failure, and cancellation checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_test.gd
 ```
 
 Run project-scoped session persistence, recovery-checkpoint retention, redaction, and controller restoration checks:
@@ -66,6 +78,30 @@ Run the editor-scale integration check using the active editor display scale:
 
 ```bash
 "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+```
+
+Run real editor dirty-script and dirty-scene conflict checks, including unsaved source provenance and patch/run/revert protection:
+
+```bash
+"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
+```
+
+Run editor logger capture, shared registration, and duplicate-record prevention checks:
+
+```bash
+"$GODOT_BIN" --headless --editor --path . --script res://tests/diagnostics_editor_integration_test.gd
+```
+
+Run actual plugin enable, disable, re-enable, service ownership, dock, and toolbar lifecycle checks:
+
+```bash
+"$GODOT_BIN" --headless --editor --path . --script res://tests/plugin_lifecycle_test.gd
+```
+
+Run isolated local-provider URL, model, optional-key, and reasoning persistence checks against real EditorSettings:
+
+```bash
+"$GODOT_BIN" --headless --editor --path . --script res://tests/provider_settings_editor_test.gd
 ```
 
 Run working-state animation, first-token lifecycle, active-turn auto-follow, sequential review navigation, finalized assistant code-block, expanded diff, streaming-finalization, recoverable-interruption UI, restoration, structured review-card, and narrow-layout checks:
@@ -164,6 +200,12 @@ Run Orca-owned nonblocking process lifecycle, output bounds, multiline diagnosti
 "$GODOT_BIN" --headless --path . --script res://tests/game_process_service_test.gd
 ```
 
+Run bounded diagnostic retention, validation, sanitation, and report-isolation checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/diagnostics_service_test.gd
+```
+
 Run the deterministic local transport checks by starting the server in one terminal:
 
 ```bash
@@ -176,4 +218,18 @@ Then run the integration test in another terminal:
 "$GODOT_BIN" --headless --path . --script res://tests/api_client_integration_test.gd
 ```
 
-The local server accepts seven requests and exits. It receives only the synthetic test key and prompt defined in the integration runner, and it accepts no network traffic from outside `127.0.0.1`.
+The chat transport server accepts ten requests and exits. It receives only synthetic test keys and prompts, covers plain embedding errors and local model substitution, and accepts no network traffic from outside `127.0.0.1`.
+
+Run keyless native Ollama/LM Studio discovery, embedding filtering, cache sanitation, stale-request ownership, and redirect-rejection integration against a fresh three-request fixture:
+
+```bash
+ORCA_TEST_REQUESTS=3 python3 tests/http_test_server.py
+"$GODOT_BIN" --headless --path . --script res://tests/provider_model_service_integration_test.gd
+```
+
+Run the isolated two-request compatibility probe through the real local HTTP/SSE transport:
+
+```bash
+ORCA_TEST_REQUESTS=2 python3 tests/http_test_server.py
+"$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_integration_test.gd
+```

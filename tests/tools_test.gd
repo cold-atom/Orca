@@ -188,6 +188,7 @@ func _test_path_boundaries() -> void:
 	_expect(not Tools._validate_path("res://", true).is_empty(), "project root must not be writable as a file")
 	_expect(Tools._validate_path("res://addons/orca_example/file.txt", true).is_empty(), "similarly named directories should not be blocked")
 	_expect(Tools._validate_path("res://tests/../project.godot", false).is_empty(), "normalized in-project paths should be allowed")
+	_expect(Tools._canonical_project_path("res://tests/../project.godot") == "res://project.godot", "accepted in-project aliases should canonicalize before safety checks")
 	var protected_read: Dictionary = Tools.execute_tool("read_file", {"filepath": "res://addons/orca/scripts/tools.gd"})
 	_expect(not protected_read.get("success", true), "public read_file should enforce plugin protection")
 	var protected_list: Dictionary = Tools.execute_tool("list_directory", {"path": "res://addons/orca"})
@@ -222,6 +223,8 @@ func _test_patch_lifecycle() -> void:
 	_expect(proposal.get("status") == "pending", "proposal should start pending")
 	_expect(proposal.get("old_hash") == original.sha256_text(), "proposal should retain the old hash")
 	_expect(proposal.get("new_hash") == str(proposal.get("new_content", "")).sha256_text(), "proposal should retain the new hash")
+	var alias_proposal: Dictionary = Tools.prepare_file_patch("alias", _fixture_path.path_join("nested/../existing.txt"), original.sha256_text(), [{"start_line": 1, "end_line": 1, "replacement": "ONE"}])
+	_expect(alias_proposal.get("success", false) and alias_proposal.get("filepath") == existing_path, "patch proposals should retain the canonical path used by editor-state and write checks")
 	var stale := Tools.prepare_file_patch("stale", existing_path, "wrong-hash", [{"start_line": 1, "end_line": 1, "replacement": "ONE"}])
 	_expect(not stale.get("success", true), "stale base hashes should be rejected")
 

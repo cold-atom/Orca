@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-const PROVIDER_IDS := ["openai", "gemini", "xai", "deepseek", "openrouter", "custom"]
+const PROVIDER_IDS := ["openai", "gemini", "xai", "deepseek", "openrouter", "ollama", "lmstudio", "local_openai", "custom"]
 
 
 static func get_provider(provider_id: String):
@@ -16,6 +16,8 @@ static func get_provider(provider_id: String):
 			return preload("res://addons/orca/scripts/providers/deepseek_provider.gd").new()
 		"openrouter":
 			return preload("res://addons/orca/scripts/providers/openrouter_provider.gd").new()
+		"ollama", "lmstudio", "local_openai":
+			return preload("res://addons/orca/scripts/providers/local_openai_provider.gd").new(provider_id)
 		_:
 			return preload("res://addons/orca/scripts/providers/custom_openai_provider.gd").new()
 
@@ -39,4 +41,10 @@ static func infer_provider(api_url: String) -> String:
 		return "deepseek"
 	if normalized in ["https://openrouter.ai", "https://openrouter.ai/api/v1"]:
 		return "openrouter"
+	if normalized in ["http://localhost:11434/v1", "http://127.0.0.1:11434/v1"]:
+		return "ollama"
+	if normalized in ["http://localhost:1234/v1", "http://127.0.0.1:1234/v1"]:
+		return "lmstudio"
+	if normalized in ["http://localhost:8080/v1", "http://127.0.0.1:8080/v1"]:
+		return "local_openai"
 	return "custom"

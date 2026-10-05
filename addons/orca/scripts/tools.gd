@@ -549,7 +549,11 @@ static func execute_tool(tool_name: String, arguments: Dictionary, game_process_
 				api_data["help_topic"] = str(api_data.get("help_topic", "")).left(GodotApiInspector.MAX_STRING_CHARS)
 			return _tool_success(str(api_result.get("content", "{}")), api_data)
 		"read_gdscript_function":
-			var open_script := EditorContext.get_unsaved_open_script(str(arguments.get("filepath", "")))
+			var requested_path := str(arguments.get("filepath", ""))
+			var canonical_path := _canonical_project_path(requested_path) if requested_path.begins_with("res://") else requested_path
+			var open_script := EditorContext.get_unsaved_open_script(canonical_path)
+			if EditorContext.has_unsaved_file(canonical_path) and open_script.is_empty():
+				return _tool_error("The requested script has unsaved editor changes but is not the active script. Select it in the Script editor and try again so Orca does not read stale disk source.")
 			var function_result := GDScriptFunctionReader.read_function(arguments, open_script)
 			if not function_result.get("success", false):
 				var error_data := function_result.duplicate(true)
@@ -798,6 +802,7 @@ static func prepare_file_patch(change_id: String, filepath: String, base_hash: S
 	var validation_error := _validate_path(filepath, true)
 	if not validation_error.is_empty():
 		return {"success": false, "error": validation_error}
+	filepath = _canonical_project_path(filepath)
 	if EditorContext.has_unsaved_file(filepath):
 		return {"success": false, "error": "The file has unsaved changes in Godot. Save it before asking Orca to patch it."}
 
@@ -1270,6 +1275,7 @@ static func apply_file_edit(proposal: Dictionary) -> String:
 	var validation_error := _validate_path(filepath, true)
 	if not validation_error.is_empty():
 		return "Error: " + validation_error
+	filepath = _canonical_project_path(filepath)
 	if EditorContext.has_unsaved_file(filepath):
 		return "Error: The file has unsaved changes in Godot. Save or discard them before applying this patch."
 
@@ -1301,6 +1307,9 @@ static func revert_file_edit(proposal: Dictionary) -> String:
 	var validation_error := _validate_path(filepath, true)
 	if not validation_error.is_empty():
 		return "Error: " + validation_error
+	filepath = _canonical_project_path(filepath)
+	if EditorContext.has_unsaved_file(filepath):
+		return "Error: The file has unsaved changes in Godot. Save or discard them before reverting this patch."
 	if not FileAccess.file_exists(filepath):
 		return "Error: The edited file no longer exists."
 
@@ -1339,6 +1348,10 @@ static func _validate_path(filepath: String, for_writing: bool) -> String:
 	if for_writing and relative_path.is_empty():
 		return "The project root cannot be written as a file."
 	return ""
+
+
+static func _canonical_project_path(filepath: String) -> String:
+	return ProjectSettings.localize_path(ProjectSettings.globalize_path(filepath).simplify_path())
 
 
 static func _read_text_file(filepath: String) -> Dictionary:
@@ -1527,7 +1540,7 @@ static func _first_diagnostic_location(report: Dictionary) -> Dictionary:
 			return {"open_path": path, "open_line": maxi(1, int(record.get("line", 1))), "open_column": 1}
 	for record in report.get("records", []):
 		var path := str(record.get("file", ""))
-		if path.begins_with("res://") and FileAccess.file_exists(path):
+		if _validate_path(path, false).is_empty() and FileAccess.file_exists(path):
 			return {"open_path": path, "open_line": maxi(1, int(record.get("line", 1))), "open_column": 1}
 	return {}
 

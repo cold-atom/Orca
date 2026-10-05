@@ -2,14 +2,14 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory is the complete installable Orca 1.1.1 addon for Godot 4.7.2.
+This directory is the complete installable Orca 1.2.0 addon for Godot 4.7.2.
 
 ## Install
 
 1. Copy `addons/orca/` into your Godot project's `addons/` directory.
 2. Open the project in Godot 4.7.2.
 3. Enable **Orca** in **Project > Project Settings > Plugins**.
-4. Open the Orca dock, select a provider, add your API key, and choose a model.
+4. Open the Orca dock, select a provider, add an API key when required, and choose a model.
 
 ## Safety Model
 
@@ -25,7 +25,9 @@ Always review proposed changes and use source control. Orca does not replace cod
 
 ## Providers And Data
 
-Orca supports OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, and custom OpenAI-compatible endpoints through its current Chat Completions transport.
+Orca supports OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, Local OpenAI-compatible, and custom OpenAI-compatible endpoints through its current Chat Completions transport. Editable profiles start in Chat mode and require a successful project-free compatibility probe plus separate explicit opt-in before Orca project tools are exposed.
+
+Native Ollama and LM Studio discovery hides models identified as embeddings. The manual Model ID remains available for unusual or unclassified models.
 
 Prompts, relevant editor context, and project content returned by Orca's tools may be sent to the selected provider. API credentials are saved through Godot Editor Settings, and project-scoped session history is stored as plaintext JSON under Godot's `user://` storage. Neither is an encrypted OS credential store.
 

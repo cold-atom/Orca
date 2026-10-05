@@ -4,6 +4,7 @@ const AgentController = preload("res://addons/orca/scripts/agent_controller.gd")
 const ContextBudget = preload("res://addons/orca/scripts/context_budget.gd")
 const ModelMetadata = preload("res://addons/orca/scripts/model_metadata.gd")
 const TaskUtils = preload("res://addons/orca/scripts/task_utils.gd")
+const AgentCompatibilityProbe = preload("res://addons/orca/scripts/agent_compatibility_probe.gd")
 
 class FakeApiClient:
 	extends RefCounted
@@ -11,8 +12,8 @@ class FakeApiClient:
 	var requesting := false
 	var cancelled := false
 
-	func send_chat_completion(messages: Array, tools: Array, provider_config: Dictionary = {}) -> void:
-		requests.append({"messages": messages.duplicate(true), "tools": tools.duplicate(true), "provider_config": provider_config.duplicate(true)})
+	func send_chat_completion(messages: Array, tools: Array, provider_config: Dictionary = {}, request_options: Dictionary = {}) -> void:
+		requests.append({"messages": messages.duplicate(true), "tools": tools.duplicate(true), "provider_config": provider_config.duplicate(true), "request_options": request_options.duplicate(true)})
 
 	func is_requesting() -> bool:
 		return requesting
@@ -267,6 +268,7 @@ func _init() -> void:
 
 func _run() -> void:
 	await _test_modes_and_plan_runtime_denial()
+	await _test_local_chat_tool_denial()
 	await _test_request_workflow_state()
 	await _test_work_approval()
 	await _test_work_rejection_protocol()
@@ -312,6 +314,39 @@ func _test_modes_and_plan_runtime_denial() -> void:
 	_expect(str(result.get("result", "")).contains("unavailable in Plan mode"), "Plan denial should explain the mode restriction")
 	_expect(tools.prepare_calls == 0, "Plan denial must happen before patch preparation")
 	_expect(tools.apply_calls == 0, "Plan denial must never apply a patch")
+	await _free_controller(controller)
+
+
+func _test_local_chat_tool_denial() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var tools: FakeTools = fixture["tools"]
+	for local_config in [
+		{"provider": "ollama", "base_url": "http://127.0.0.1:11434/v1", "api_key": "", "model": "fixture-local"},
+		{"provider": "custom", "base_url": "http://localhost:1234/v1", "api_key": "fixture", "model": "fixture-local"},
+		{"provider": "custom", "base_url": "https://compatible.example/v1", "confirmed_origin": "https://compatible.example:443", "api_key": "fixture", "model": "fixture-custom"},
+		{"provider": "openai", "base_url": "http://127.0.0.1:18473/v1", "confirmed_origin": "http://127.0.0.1:18473", "api_key": "fixture", "model": "fixture-local"}
+	]:
+		controller._turn_provider_config = local_config
+		_expect(controller._get_tool_definitions().is_empty(), "editable or overridden endpoints should start in Chat mode until compatibility opt-in")
+	controller._turn_provider_config = {"provider": "custom", "base_url": "http://localhost:1234/v1", "api_key": "fixture", "model": "fixture-local"}
+	var result: Dictionary = await controller._execute_tool_call({
+		"id": "unsolicited_local_tool",
+		"type": "function",
+		"function": {"name": "read_file", "arguments": "{\"filepath\":\"res://project.godot\"}"}
+	})
+	_expect(result.get("outcome") == "failed" and str(result.get("result", "")).contains("Tools are disabled"), "unsolicited local tool calls should fail at runtime")
+	_expect(tools.execute_calls == 0 and tools.prepare_calls == 0, "local Chat denial must occur before any tool side effect")
+	var enabled_config := {"provider": "ollama", "base_url": "http://127.0.0.1:11434/v1", "api_key": "", "model": "fixture-local", "reasoning_effort": "default", "confirmed_origin": ""}
+	var binding_result := AgentCompatibilityProbe.create_binding(enabled_config)
+	var record: Dictionary = binding_result.get("binding", {}).duplicate(true)
+	record["enabled"] = true
+	enabled_config["agent_compatibility"] = record
+	controller._turn_provider_config = enabled_config
+	_expect(not controller._get_tool_definitions().is_empty(), "an exact passed and explicitly enabled local binding should expose normal mode tools")
+	enabled_config["model"] = "different-model"
+	controller._turn_provider_config = enabled_config
+	_expect(controller._get_tool_definitions().is_empty(), "changing the exact model should invalidate local Agent opt-in")
 	await _free_controller(controller)
 
 
@@ -370,6 +405,7 @@ func _test_work_rejection_protocol() -> void:
 	_expect(controller._proposals.is_empty(), "rejected proposals should release private retained content")
 	_expect(api.requests.size() == 1, "rejected patch should continue the model loop once")
 	if api.requests.size() == 1:
+		_expect(api.requests[0].get("request_options", {}).get("allow_stream_options_retry") == false, "tool-result continuations must disable stream-options compatibility retries")
 		var history: Array = api.requests[0].get("messages", [])
 		_expect(_tool_result_count(history, "reject_call") == 1, "rejection should append exactly one matching tool result")
 		_expect(_protocol_is_valid(history), "rejection continuation history should remain protocol-valid")

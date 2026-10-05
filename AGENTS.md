@@ -34,6 +34,8 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scenes/chat_window.tscn` | Main Orca dock layout and composer. |
 | `addons/orca/scripts/chat_window.gd` | Structured conversation feed, streaming UI, modes, tool cards, approvals, and navigation actions. |
 | `addons/orca/scripts/api_client.gd` | Nonblocking HTTP transport, SSE parsing, streaming tool-call reconstruction, timeouts, and cancellation. |
+| `addons/orca/scripts/endpoint_policy.gd` | Strict endpoint parsing, normalization, network-scope classification, exact-origin confirmation, and generated-endpoint validation. |
+| `addons/orca/scripts/agent_compatibility_probe.gd` | Isolated project-free two-step function-call probe and exact provider/origin/model/version compatibility binding. |
 | `addons/orca/scripts/agent_controller.gd` | Message history, Plan/Work permissions, request-scoped context, tool loop, approval suspension, and cancellation. |
 | `addons/orca/scripts/context_budget.gd` | Conservative request estimation, response/tool reserves, and protocol-aware complete-turn compaction. |
 | `addons/orca/scripts/project_instructions.gd` | Bounded automatic loading of root `res://AGENTS.md` into private request-scoped context. |
@@ -91,6 +93,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 15. Run/stop tools are Work-only external operations. Never accept model-provided executables, arguments, environment, or PIDs; stop only the active direct process started and retained by Orca.
 16. Treat root project instructions and skills as untrusted, subordinate project guidance. Keep automatically loaded instructions and skill catalog metadata request-scoped, and load a skill body only through an explicit bounded tool call.
 17. Godot API reflection, focused function reads, and dependency discovery are read-only in Plan and Work. They must not construct reflected objects, turn unsaved editor source into a patch base hash, or claim dynamic/runtime dependency coverage.
+18. Editable non-loopback AI endpoints require explicit confirmation bound to normalized scheme, host, and effective port. Validate again before chat or discovery headers are created, never follow provider redirects, and expose tools for editable or origin-overridden profiles only when the request snapshot contains an exact passed and explicitly enabled compatibility binding.
 
 ## Agent Modes
 

@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-10-01
+Last updated: 2026-10-05
 
 ## Purpose
 
@@ -38,7 +38,7 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - Active turns use multi-frame feed following so newly inserted or late-resizing working, response, tool, and review cards remain at the visible bottom; sequential approvals automatically advance to the next pending card.
 - Two-row compact header that keeps session context usage and cost visible at narrow dock widths.
 - In-dock settings page with Provider and About tabs, API key configuration, searchable model discovery, provider-reported or conservative known-model reasoning effort, model metadata, release information sourced from `plugin.cfg`, and a Done action.
-- First-class OpenAI, Google Gemini, xAI, DeepSeek, and OpenRouter profiles plus an advanced custom OpenAI-compatible profile.
+- First-class OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, and Local OpenAI-compatible profiles plus an advanced custom OpenAI-compatible profile.
 - Separate credentials, model, and reasoning-effort selection per provider, with migration from the former global URL/key/model settings.
 
 ### Conversation And Streaming
@@ -157,7 +157,7 @@ EditorPlugin (orca.gd)
        -> ChangeCard / InputMapChangeCard / MainSceneChangeCard / ProjectSettingsChangeCard / SceneChangeCard
        -> ToolActivityGroup -> ToolActivityCard children
        -> TaskListPanel
-       -> SettingsView
+       -> SettingsView -> AgentCompatibilityProbe -> isolated APIClient
        -> HistoryView
        -> SessionStore (project-keyed user:// JSON)
        -> DiagnosticsService
@@ -165,7 +165,7 @@ EditorPlugin (orca.gd)
        -> ModelCatalogService
        -> ProviderModelService
        -> AgentController
-             -> APIClient (HTTPClient + SSE)
+              -> APIClient (HTTPClient + SSE) -> EndpointPolicy
              -> ProviderRegistry
                     -> OpenAI / Gemini / xAI / DeepSeek / OpenRouter / Custom adapters
              -> ContextBudget (request estimate, reserves, complete-turn compaction)
@@ -238,9 +238,11 @@ Each completed HTTP request contributes its reported input, output, and cached t
 
 `model_catalog_service.gd` infers known providers from the configured base URL, loads a compact selected-model cache from `EditorSettings`, and refreshes stale metadata from `https://models.dev/api.json` at most once every seven days per provider/model pair. The response is capped at 8 MB. Only public provider/model identifiers are requested; API keys, prompts, file contents, and project context are not sent. `model_metadata.gd` supplies conservative offline fallbacks and normalizes context windows and per-million-token rates. Unknown custom endpoints continue working, but cost or context limits remain unavailable when neither the provider nor a trusted catalog supplies them.
 
-`provider_model_service.gd` requests the selected provider's authenticated model-discovery endpoint with a 30-second timeout and 8 MB response limit. Most adapters use OpenAI-style `/models`; Gemini uses the native bounded `v1beta/models` listing so input limits and generation capabilities can be normalized. Normalized model lists are cached for one hour by provider and a one-way API-key fingerprint, with a bounded cache. Provider metadata takes precedence over public catalog and built-in fallback metadata. Gemini's profile ID maps to the `google` public-catalog namespace, while xAI maps to `xai`. Discovery failures remain inline settings errors and do not alter the active provider profile.
+`provider_model_service.gd` requests the selected provider's model-discovery endpoint with a 30-second timeout and 8 MB response limit. Hosted profiles require authentication; local profiles omit Authorization when their optional key is empty and are contacted only after an explicit Refresh action. Ollama uses one same-origin `/api/tags` request, LM Studio uses `/api/v1/models`, generic compatible servers use `/v1/models`, and Gemini uses native `v1beta/models`. Native type/capability metadata excludes known embedding models; absent metadata falls back to a case-insensitive `embed` name filter while manual Model ID remains unrestricted. No per-model `/api/show` fan-out occurs. Normalization retains at most 200 models and bounds display/reasoning metadata and cached records. Model lists are cached for one hour in a v3 cache keyed by provider, final endpoint hash, and one-way API-key fingerprint. Discovery failures remain inline settings errors and do not alter the active provider profile.
 
 `provider_registry.gd` is the extension point for provider support. Each adapter defines its canonical endpoint, key help URL, model-list normalization, request headers, reasoning request shape, and provider-specific reasoning-history sanitation. Native non-Chat-Completions providers still require separate transport adapters.
+
+`endpoint_policy.gd` is the shared trust boundary for editable provider URLs. It rejects userinfo, queries, fragments, ambiguous separators, malformed ports, dot segments, and already-complete chat/model endpoints; normalizes scheme, host, effective port, and path; and classifies loopback, LAN, or remote scope without DNS resolution. Loopback may use HTTP directly. LAN and remote origins require explicit confirmation persisted per provider as the normalized scheme/host/effective-port origin. Chat and discovery independently reauthorize before creating headers, validate that adapter-generated endpoints retain the authorized origin, and never follow provider redirects. Confirmation is informed consent rather than DNS or certificate pinning.
 
 DeepSeek thinking is enabled at high effort by provider default and otherwise permits output far beyond Orca's response reserve. The DeepSeek adapter therefore sends an 8,192-token maximum for both thinking and non-thinking requests, aligned with the minimum final-answer reserve for its known 64K fallback context. This bounds cost and latency while leaving the user's selected reasoning effort intact.
 
@@ -287,7 +289,7 @@ Task state is stored separately from tool protocol. `update_tasks` replaces the 
 
 ### Diagnostics Lifecycle
 
-`diagnostics_service.gd` registers a public Godot `Logger` while Orca is active and keeps a bounded sequence of observed editor-process errors. Proposed GDScript is validated using a fresh `GDScript`, a path cache hint, and `reload()`. Orca API failures use ordinary stdout logging rather than stderr so transport failures do not feed back into project diagnostics.
+`diagnostics_service.gd` reference-counts one shared public Godot `Logger` across active service instances so plugin reloads or fallback ownership cannot duplicate records. It keeps at most 100 observed editor-process records; messages, paths, and function names have independent character bounds, and warning severity is preserved. Logger callbacks write directly to the mutex-protected static sink without loading resources from a potentially non-main logging thread. Proposed GDScript is validated using a fresh `GDScript`, a path cache hint, and `reload()`. Orca API failures use ordinary stdout logging rather than stderr so transport failures do not feed back into project diagnostics.
 
 The public GDScript plugin API does not expose:
 
@@ -618,7 +620,7 @@ Run calls may include one optional bounded `verification` object. Initial kinds 
 - Project instructions and skills are untrusted input. Wrapping and prompt precedence are defense in depth; runtime mode, approval, path, execution, and disclosure checks remain the security boundary.
 - Unsaved editor source returned by `read_gdscript_function` has no disk hash and cannot be used as an `apply_patch` base. It may still be sent to the selected provider as tool output.
 - `inspect_godot_api` uses reflection and safe Help topics rather than prose scraping or object construction. `discover_dependencies` reads serialized dependency metadata without loading resources, but its reverse scan still enumerates bounded project resource paths on the editor thread.
-- Orca currently has no trusted-host confirmation, privacy consent flow, or host allowlist.
+- Editable LAN and remote endpoints require explicit exact-origin confirmation before credentials or project context can be sent. Orca does not maintain a general host allowlist, pin DNS answers or certificates, or control whether a confirmed server proxies data elsewhere.
 - GDScript `reload()` is a compiler/loader validation mechanism, not a sandbox. Trusted generated source may reach tool-script static initialization.
 - `PackedScene` loading for inspection is read-only and does not instantiate nodes, but referenced resources and scripts may still be loaded by Godot; dependency loading is not a sandbox or independently size-bounded.
 - Existing-scene structured mutation requires `PackedScene.instantiate()` after rejecting unreviewed dependencies, subresources, scripts, inheritance, non-core nodes, object properties, and unsupported size. This is deliberately narrower than read-only inspection and is not a general scene sandbox. Script attach/detach requires explicit preliminary trust because candidate construction can execute exact reviewed project code; that execution is not sandboxed.
@@ -657,15 +659,18 @@ Do not describe the current credential storage or execution model as fully secur
 A committed automated suite exists under `tests/`:
 
 - `api_client_test.gd` verifies media-type recognition, fragmented SSE reconstruction, clean-EOF event flushing, bounded opaque tool-call metadata, structured failure metadata, raw-buffer behavior, and tool-call ID validation.
-- `provider_test.gd` verifies Gemini/xAI registration, URLs, authentication, model normalization, reasoning continuation/options, pricing conversion, and public metadata namespace mapping.
+- `provider_test.gd` verifies hosted/local registration, native Ollama/LM Studio discovery URLs and filtering, generic embedding-name fallback, loaded context selection, required/optional authentication, bounded model normalization, reasoning options, pricing conversion, endpoint-aware cache identities, and public metadata mapping.
 - `context_budget_test.gd` verifies unknown-limit behavior, conservative reserves, complete-turn removal, historical and active tool-group integrity, repeated compaction, malformed protocol refusal, and oversized protected-turn failure.
-- `api_client_integration_test.gd` uses `http_test_server.py` on `127.0.0.1` to verify successful SSE, Gemini thought-signature reconstruction, xAI reasoning requests, mid-stream disconnect metadata, aggregate response limits, buffer cleanup, and unexpected content types.
+- `api_client_integration_test.gd` uses `http_test_server.py` on `127.0.0.1` to verify successful SSE, keyless local chat without an Authorization header, Gemini thought-signature reconstruction, xAI reasoning requests, mid-stream disconnect metadata, aggregate response limits, buffer cleanup, and unexpected content types.
+- `provider_model_service_integration_test.gd` verifies keyless native Ollama/LM Studio discovery, embedding exclusion, loaded context, absent Authorization headers, redirect rejection, stale-request ownership, and cached-record sanitation against localhost fixtures.
+- `agent_compatibility_probe_integration_test.gd` verifies the complete isolated two-request function-call and matching tool-result continuation through the real local HTTP/SSE transport.
 - `patch_utils_test.gd` verifies replacement, insertion, deletion, append, empty-file creation, multiple edits, overlap rejection, and LF/CRLF preservation.
 - `tools_test.gd` verifies Plan/Work tool-schema separation, direct-mutation denial, project and plugin path boundaries, symbolic-link rejection, immutable proposals, base hashes, stale application and revert guards, safe application, and new/existing-file revert behavior.
-- `agent_controller_test.gd` verifies Plan/Work schema and runtime enforcement, request-scoped project guidance, mode locking, explicit approval and rejection, cancellation while awaiting approval, skipped remaining calls, tool-loop finalization, recoverable provider failures, applied-change non-replay, unsafe-protocol refusal, and matching protocol-valid tool results.
+- `agent_controller_test.gd` verifies Plan/Work schema and runtime enforcement, request-scoped project guidance, exact compatibility-bound local Agent gating, mode locking, explicit approval and rejection, cancellation while awaiting approval, skipped remaining calls, tool-loop finalization, recoverable provider failures, applied-change non-replay, unsafe-protocol refusal, and matching protocol-valid tool results.
+- `agent_compatibility_probe_test.gd` verifies the isolated synthetic two-step tool-call protocol, exact challenge/call-ID continuation, opaque metadata preservation, strict acknowledgement, disabled request fallback, failure, timeout, and cancellation.
 - `session_store_test.gd` verifies project isolation, recovery-checkpoint persistence, schema redaction, backup recovery, retention, truncation, deletion cleanup, and controller state restoration.
 - `history_view_test.gd` verifies that the History page remains within the 300 px minimum dock width.
-- `settings_view_test.gd` verifies Provider/About tab switching, version metadata, branding, compatibility, license presentation, and the 300 px dock-width constraint.
+- `settings_view_test.gd` verifies Provider/About tab switching, local-profile presentation, explicit keyless discovery, endpoint-change cleanup, compatibility controls/default denial, version metadata, branding, compatibility, license presentation, and the 300 px dock-width constraint.
 - `chat_window_test.gd` verifies editor-scale conversion math, compact line-based composer sizing, narrow action containment, working-state animation, first-token transitions, delayed-layout auto-follow, sequential review navigation, fenced-code parsing, BBCode isolation, exact code preservation, expanded previous/proposed diff content and safe line highlighting, bounded code-block layout, streaming-to-final transitions, tool-preface handling, recoverable/unsafe interruption composer state, restoration rules, structured review cards, and the 300 px dock-width constraint.
 - `editor_ui_scale_test.gd` runs in editor mode and verifies that dock margins, branding, composer controls, and prompt sizing use Godot's effective editor scale without double-scaling theme fonts.
 - `logo_asset_test.gd` verifies that the Orca mark has no opaque white tile and retains transparent corners after import.
@@ -685,8 +690,13 @@ A committed automated suite exists under `tests/`:
 - `scene_proposal_test.gd` verifies typed-root creation; add, property, rename, remove, reparent, script, child-instance, and signal operations; non-executing script trust preparation; strict paths/types/dependencies; semantic preservation; scratch cleanup; stale targets; exact-byte restoration; conflicts; and guarded revert.
 - `game_process_service_test.gd` verifies fixed launch arguments, one-process ownership, direct-PID stop, natural exit codes, timeout and kill-failure states, shutdown failure honesty, separate stdout/stderr bounds, safe diagnostic navigation, launch failure, and real nonblocking Godot pipe integration.
 - The same suite verifies monotonic run identity/sequence, strict criteria normalization, clean-startup and expected-exit verdicts, nonzero-exit failure, truncation-driven inconclusive results, stale run rejection, and genuine multiline Godot diagnostic locations.
+- `diagnostics_service_test.gd` verifies validation contracts, warning/error normalization, stderr filtering, bounded oldest-to-newest retention of the latest records, field sanitation, monotonic sequences, and deep-copy report isolation.
+- `editor_unsaved_state_test.gd` uses public editor APIs to dirty real script and scene buffers and verifies exact current-editor source provenance, absent disk hashes, patch/apply/revert rejection, stale scene-inspection and structured-proposal rejection, and run blocking.
+- `diagnostics_editor_integration_test.gd` verifies real editor logger capture and proves that simultaneous diagnostics service instances share one logger without duplicate records.
+- `plugin_lifecycle_test.gd` verifies actual enable, disable, and re-enable behavior, single toolbar/dock/service ownership, dependency injection identity, and dock registration.
+- `provider_settings_editor_test.gd` verifies isolated editable endpoints, models, optional credentials, reasoning settings, compatibility-pass persistence, separate opt-in, and binding invalidation through real EditorSettings.
 
-Run instructions are in `tests/README.md`. `.github/workflows/tests.yml` runs the permanent suites, localhost transport integration, replacement-artifact check, and headless plugin initialization on Godot 4.7.2. Editor-only unsaved-file conflicts, GDScript diagnostic capture, authenticated provider-setting interactions, diagnostics, and deeper plugin lifecycle integration still require permanent coverage.
+Run instructions are in `tests/README.md`. `.github/workflows/tests.yml` runs the permanent suites, editor-scale and editor-state integration, localhost transport integration, replacement-artifact checks, and headless plugin initialization on Godot 4.7.2. Authenticated provider-setting interactions still require deeper permanent coverage. Visual dock placement, focus, and theme checks remain manual.
 
 ### Required Headless Check
 
@@ -778,20 +788,20 @@ Expected result: project scan, plugin initialization, and editor layout complete
 
 ### Providers And Distribution
 
-- First-class OpenAI, Google Gemini, xAI, DeepSeek, and OpenRouter profiles use the shared Chat Completions transport.
+- First-class OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, and Local OpenAI-compatible profiles use the shared Chat Completions transport. Local profiles support optional authentication, editable endpoints, explicit keyless model discovery, manual model fallback, and endpoint-aware discovery caches.
 - Custom OpenAI-compatible endpoints remain available, but their model capabilities cannot always be discovered.
 - Native Anthropic Messages, Gemini `generateContent`, Azure, and OpenAI Responses adapters are absent.
 - Gemini's OpenAI-compatibility surface is beta, and Gemini/xAI have not been exercised against live credentials in the permanent automated suite.
-- Keyless local endpoint configuration is not first-class.
+- Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and separate explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, and probe version.
 - Credentials are not stored in an OS credential manager.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata declares version 1.1.1 and a concise description. Public release documentation and an MIT license are present, but release packaging, broader compatibility coverage, and third-party asset license verification remain incomplete.
+- Plugin metadata declares version 1.2.0 and a concise description. Public release documentation, an MIT license, and add-on-only Git export rules are present; release automation, broader compatibility coverage, and third-party asset attribution records remain incomplete.
 
 ## Roadmap
 
 ### P0: Reliability And Persistence
 
-- Expand the permanent automated test harness with editor-only unsaved-file conflicts, GDScript diagnostics, provider settings, diagnostics, and deeper plugin lifecycle coverage.
+- Expand provider-settings coverage for credential isolation, migration, custom endpoint preservation, discovery failures, and active-request lockout. Editor-only unsaved conflicts, diagnostics contracts/logger integration, editor scaling, and deeper plugin lifecycle coverage are permanent.
 - Expand CI when additional Godot versions enter the supported compatibility matrix; Godot 4.7.2 is currently covered.
 - Continue tuning token/context reserves from real-provider beta evidence; automatic complete-turn compaction is implemented for models with known context windows.
 - Add durable pending-approval recovery after editor restart without weakening stale-state checks.
@@ -821,15 +831,14 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Add native Anthropic Messages, Gemini `generateContent`, Azure, and OpenAI Responses adapters only where the shared Chat Completions transport is insufficient.
 - Expand provider capability detection and add more community-maintained provider adapters.
 - Support explicitly keyless local endpoints.
-- Add trusted-host confirmation and project-data privacy disclosure.
+- Continue refining endpoint trust presentation from real user feedback without weakening exact-origin transport enforcement.
 - Integrate an OS credential store where available.
 - Add post-response retry controls, rate-limit backoff, proxy support, and configurable timeout behavior. Pre-submit connection retry is already bounded to one attempt.
 
 ### P3: Release Readiness
 
-- Define supported Godot versions.
-- Add packaging and release automation.
-- Verify the licenses and required attribution for bundled third-party assets before distribution.
+- Expand the supported compatibility matrix beyond Godot 4.7.2 when permanent coverage is available.
+- Add packaging and release automation around the existing add-on-only Git export rules.
 
 ## Decision Log
 
@@ -863,7 +872,7 @@ Decision: detect stable repeated or no-progress activity before the existing har
 
 ### Progressive Schema Disclosure
 
-Decision: progressive tool-schema disclosure is deferred. Version 1.1.1 continues sending the complete schema eligible for the active mode; future disclosure must preserve deterministic availability, Plan/Work boundaries, context budgeting, provider compatibility, and protocol-valid continuation.
+Decision: progressive tool-schema disclosure is deferred. Version 1.2.0 continues sending the complete schema eligible for the active mode; future disclosure must preserve deterministic availability, Plan/Work boundaries, context budgeting, provider compatibility, and protocol-valid continuation.
 
 ### Plan And Work Names
 
@@ -1138,6 +1147,46 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Raised the raw streamed transport allowance to 16 MiB while retaining tighter limits for accumulated assistant text, reasoning, tool arguments, metadata, SSE lines, and SSE events.
 - Added provider-option coverage and a localhost regression proving that valid framing-heavy streams above the former 4 MiB threshold complete while oversized streams remain bounded.
 - Restored the documented controller integration for repetitive/no-progress tool-loop detection and made the 12-round boundary request one tool-free summary instead of raising a system error after completed work.
+
+### 2026-10-04: Orca 1.2 Editor Reliability Foundation
+
+- Added permanent Godot 4.7.2 editor integration for real dirty script/scene state, exact unsaved current-editor source, patch/apply/revert conflict protection, saved-scene inspection/proposal rejection, and run blocking.
+- Canonicalized reviewed file paths before editor-state, hash, and write checks; file reverts now reject dirty editor buffers rather than overwriting their saved backing file.
+- Bounded diagnostic record fields, preserved warning severity, removed resource loading from logger callbacks, and reference-counted one shared logger so multiple services cannot duplicate records.
+- Added diagnostics contract/editor integration and actual plugin enable/disable/re-enable suites, and registered all editor integration suites, including the previously omitted editor-scale suite, in CI.
+
+### 2026-10-04: Orca 1.2 Local Provider Foundation
+
+- Added first-class Ollama, LM Studio, and Local OpenAI-compatible profiles over the bounded shared Chat Completions transport, with editable conventional endpoints, truly optional bearer authentication, explicit keyless model discovery, and manual model fallback.
+- Moved provider model discovery to an endpoint- and credential-aware cache and bounded model count, names, IDs, and reasoning metadata.
+- Enforced local profiles as Chat-only at both schema and runtime boundaries; unsolicited tool calls fail before any project or process action unless an exact compatibility-bound opt-in is active.
+- Added hermetic settings coverage, real EditorSettings profile-isolation coverage, keyless chat transport coverage, and keyless `/models` integration that verifies no Authorization header is sent.
+
+### 2026-10-04: Orca 1.2 Endpoint Trust Hardening
+
+- Added one strict endpoint policy for URL normalization, loopback/LAN/remote classification, exact-origin confirmation, and generated chat/discovery endpoint validation.
+- Added Settings disclosure and confirmation bound to scheme, host, and effective port; stale confirmations, changed dialog text, malformed URLs, and partial profile saves fail closed.
+- Chat and discovery reauthorize before constructing credential headers. Discovery disables redirects, while the low-level chat transport continues treating redirect responses as terminal HTTP failures.
+- Bound Chat-only behavior to every editable OpenAI-compatible profile and fixed-provider origin override so DNS aliases, alternate IP forms, or provider labels cannot bypass the endpoint/model compatibility requirement.
+
+### 2026-10-04: Orca 1.2 Compatibility-Checked Local Agents
+
+- Added an isolated two-step synthetic function-call probe that sends no project, editor, session, task, instruction, skill, or real-tool context and requires exact call metadata, challenge arguments, matching tool-result continuation, and final acknowledgement.
+- Persisted only bounded compatibility metadata in EditorSettings. A pass always starts disabled; a separate checkbox is required to enable Agent tools for the exact binding, and runtime recomputes the binding from the request snapshot.
+- Kept canonical hosted providers unchanged while requiring probe plus opt-in for every editable profile and fixed-provider origin override. Provider, origin, base/chat endpoint, model, reasoning effort, or probe-version drift fails closed.
+- Disabled the stream-options compatibility retry on probe requests and every normal continuation after a real tool round so post-tool failures cannot silently resend a changed request.
+
+### 2026-10-05: Native Local Model Filtering
+
+- Switched Ollama discovery to `/api/tags` and LM Studio discovery to `/api/v1/models`; known embeddings are excluded using native capabilities/types, with a conservative `embed` fallback only when metadata is absent.
+- Preserved unrestricted manual Model ID override, reset normalized discovery cache to v3, sanitized cached records, and fixed stale request ownership and programmatic model-selection signal handling.
+- Added bounded provider error extraction and local embedding-selection model-substitution detection. Live LM Studio testing showed that requesting its embedding ID returned HTTP 200 from the loaded Llama model; after the fix, Orca returns `model_mismatch` before emitting assistant text.
+
+### 2026-10-05: Orca 1.2.0 Release Preparation
+
+- Finalized 1.2.0 plugin metadata, public release notes, supported-version documentation, and About-page coverage.
+- Kept editable-provider Settings within the 300 px dock constraint by preventing the Agent opt-in control from imposing a wide non-wrapping minimum.
+- Retained add-on-only Git export rules and documented that release packaging automation remains future work.
 
 ## Handoff Checklist
 
