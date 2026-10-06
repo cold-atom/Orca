@@ -309,6 +309,7 @@ func _run() -> void:
 	await _test_local_chat_tool_denial()
 	await _test_request_workflow_state()
 	await _test_request_ownership()
+	await _test_support_request_metadata()
 	await _test_reentrant_request_lifecycle()
 	await _test_synchronous_tool_and_approval_boundaries()
 	await _test_work_approval()
@@ -442,6 +443,7 @@ func _test_request_ownership() -> void:
 	_expect(cancellations == [second_turn] and not controller.is_busy(), "matching cancellation should finish once before ownership is invalidated")
 	await _free_controller(controller)
 
+
 	fixture = await _new_controller()
 	controller = fixture["controller"]
 	api = fixture["api"]
@@ -485,6 +487,54 @@ func _test_request_ownership() -> void:
 	var sent_request_id := int(api.requests[0].get("request_options", {}).get("lifecycle_request_id", 0))
 	_expect(sent_request_id > 0 and controller._expected_provider_request_id == 0, "synchronous failures should be owned by the ID set before APIClient is called")
 	_expect(synchronous_errors.size() == 1 and int(synchronous_errors[0].get("turn_id", 0)) > 0 and not controller.is_busy(), "an owned synchronous failure should terminate exactly its originating turn")
+	await _free_controller(controller)
+
+
+func _test_support_request_metadata() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	controller.send_user_message("private prompt")
+	var initial: Dictionary = controller.support_request_metadata()
+	_expect(initial.get("provider_type") == "openai" and initial.get("outcome") == "in_progress" and initial.get("stage") == "initial" and initial.get("interaction_mode") == "work", "support metadata should describe the request-time provider and initial Work request coarsely")
+	initial["outcome"] = "tampered"
+	_expect(controller.support_request_metadata().get("outcome") == "in_progress", "support metadata callers must receive a deep copy")
+	var request_id := api.current_request_id()
+	api.fail({"message": "private provider body", "category": "http", "phase": "receiving_response", "http_status": 429, "retryable": true, "response_started": true, "partial_response": false})
+	var failed: Dictionary = controller.support_request_metadata()
+	var serialized := JSON.stringify(failed)
+	_expect(failed.get("outcome") == "failed" and failed.get("failure_category") == "http" and failed.get("http_status") == 429 and failed.get("retryable") == true, "matching failures should retain only coarse structured support fields")
+	_expect(not serialized.contains("private provider body") and not serialized.contains("private prompt"), "support metadata must not retain provider errors or prompts")
+	api.request_failed.emit(request_id, {"message": "stale secret", "category": "tls", "phase": "connecting"})
+	_expect(controller.support_request_metadata() == failed, "stale terminal callbacks must not overwrite support metadata")
+
+	controller.send_user_message("cancel me")
+	controller.cancel_current_request()
+	_expect(controller.support_request_metadata().get("outcome") == "cancelled", "matching cancellation should be represented without request content")
+	controller.send_user_message("complete me")
+	api.complete({"choices": [{"message": {"role": "assistant", "content": "done"}}]})
+	_expect(controller.support_request_metadata().get("outcome") == "completed" and controller.support_request_metadata().get("response_started") == true, "matching completion should update the support outcome and response state")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	controller.send_user_message("tool loop")
+	api.complete(_tool_response([{"id": "support_read", "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://fixture.txt\"}"}}]))
+	await process_frame
+	var follow_up: Dictionary = controller.support_request_metadata()
+	_expect(follow_up.get("stage") == "follow_up" and follow_up.get("outcome") == "in_progress" and follow_up.get("tools_offered") == true, "tool continuation should replace the snapshot with a follow-up request stage")
+	controller.cancel_current_request()
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	controller.send_user_message("cancel after provider completion")
+	api.complete(_tool_response([{"id": "support_approval", "type": "function", "function": {"name": "apply_patch", "arguments": "{\"filepath\":\"res://fixture.txt\",\"base_hash\":\"hash\",\"edits\":[]}"}}]))
+	await process_frame
+	controller.cancel_current_request()
+	_expect(controller.support_request_metadata().get("outcome") == "completed", "turn cancellation after a completed provider tool response must not relabel that provider request as cancelled")
 	await _free_controller(controller)
 
 

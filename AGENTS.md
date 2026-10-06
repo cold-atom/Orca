@@ -55,6 +55,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scripts/patch_utils.gd` | Strict one-based line edit materialization with LF/CRLF handling. |
 | `addons/orca/scripts/diff_utils.gd` | Old/new line diff generation for review. |
 | `addons/orca/scripts/diagnostics_service.gd` | GDScript validation, observed editor-process errors, and play-state reporting. |
+| `addons/orca/scripts/support_diagnostic_report.gd` | Strict-allowlist, memory-only support report containing versions and coarse provider/request state. |
 | `addons/orca/scripts/game_process_service.gd` | Nonblocking Orca-owned game launch, run identity, bounded stdout/stderr diagnostics, immutable verification criteria, timeout, and direct-process stop. |
 | `addons/orca/scripts/model_catalog_service.gd` | Bounded public model-metadata refresh and selected-model cache management. |
 | `addons/orca/scripts/model_metadata.gd` | Provider inference, model context/pricing normalization, fallback metadata, and cost calculation. |

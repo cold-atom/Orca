@@ -63,6 +63,7 @@ jobs:
           "$GODOT_BIN" --headless --path . --script res://tests/scene_proposal_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/game_process_service_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/diagnostics_service_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/support_diagnostic_report_test.gd
 
       - name: Run editor integration tests
         shell: bash

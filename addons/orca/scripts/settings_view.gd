@@ -9,6 +9,7 @@ const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd
 const ProviderModelService = preload("res://addons/orca/scripts/provider_model_service.gd")
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const AgentCompatibilityProbe = preload("res://addons/orca/scripts/agent_compatibility_probe.gd")
+const SupportDiagnosticReport = preload("res://addons/orca/scripts/support_diagnostic_report.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const PLUGIN_CONFIG_PATH := "res://addons/orca/plugin.cfg"
 const ABOUT_LOGO_PATH := "res://addons/orca/assets/orca.svg"
@@ -41,6 +42,7 @@ var about_scroll: ScrollContainer
 var provider_tab_button: Button
 var about_tab_button: Button
 var about_version_label: Label
+var support_report_status: Label
 var _trust_dialog: ConfirmationDialog
 var _pending_trust_action := ""
 var _pending_trust_origin := ""
@@ -55,6 +57,7 @@ var _selected_effort := "default"
 var _loading_provider := false
 var _body_font_size := 13
 var _meta_font_size := 11
+var _support_request_metadata: Dictionary = {}
 
 
 func _ready() -> void:
@@ -99,6 +102,10 @@ func open() -> void:
 func open_model_configuration() -> void:
 	open()
 	call_deferred("_focus_model_configuration")
+
+
+func set_support_request_metadata(metadata: Dictionary) -> void:
+	_support_request_metadata = metadata.duplicate(true)
 
 
 func _build_ui() -> void:
@@ -349,6 +356,27 @@ func _build_about_view() -> ScrollContainer:
 	compatibility.text = "Godot " + SUPPORTED_GODOT_VERSION
 	content.add_child(compatibility)
 
+	content.add_child(_about_heading("SUPPORT"))
+	var support_description := Label.new()
+	support_description.name = "SupportReportDescription"
+	support_description.text = "Copies a strict-allowlist report with Orca/Godot versions and coarse provider/request state. It excludes credentials, endpoint addresses, project data, conversations, model output, logs, and file changes."
+	support_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	support_description.add_theme_color_override("font_color", Color(0.66, 0.69, 0.74))
+	content.add_child(support_description)
+	var copy_report_button := Button.new()
+	copy_report_button.name = "CopySupportReport"
+	copy_report_button.text = "Copy Privacy-Safe Diagnostic Report"
+	copy_report_button.tooltip_text = copy_report_button.text
+	copy_report_button.clip_text = true
+	copy_report_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy_report_button.pressed.connect(_on_copy_support_report_pressed)
+	content.add_child(copy_report_button)
+	support_report_status = Label.new()
+	support_report_status.name = "SupportReportStatus"
+	support_report_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	support_report_status.add_theme_color_override("font_color", Color(0.58, 0.72, 0.82))
+	content.add_child(support_report_status)
+
 	content.add_child(_about_heading("LICENSE"))
 	var license := Label.new()
 	license.name = "AboutLicense"
@@ -372,6 +400,16 @@ func _plugin_version() -> String:
 	if plugin_config.load(PLUGIN_CONFIG_PATH) != OK:
 		return "Unknown"
 	return str(plugin_config.get_value("plugin", "version", "Unknown")).strip_edges()
+
+
+func diagnostic_report_text() -> String:
+	var profile := SupportDiagnosticReport.current_profile(Config.get_active_provider_config())
+	return SupportDiagnosticReport.serialize(SupportDiagnosticReport.build(_plugin_version(), profile, _support_request_metadata))
+
+
+func _on_copy_support_report_pressed() -> void:
+	DisplayServer.clipboard_set(diagnostic_report_text())
+	support_report_status.text = "Copied diagnostic report."
 
 
 func _about_logo_texture() -> Texture2D:
