@@ -143,15 +143,38 @@ func _test_completion_validation() -> void:
 
 func _test_terminal_signal_ownership() -> void:
 	var client = ApiClient.new()
-	var signals := {"failed": 0, "cancelled": 0}
+	var signals := {"completed": 0, "failed": 0, "cancelled": 0}
+	client.request_completed.connect(func(_response: Dictionary): signals["completed"] += 1)
 	client.request_failed.connect(func(_error: Dictionary): signals["failed"] += 1)
 	client.request_cancelled.connect(func(): signals["cancelled"] += 1)
 	client._is_requesting = true
 	client._request_serial = 7
+	client._generation_deadline_ms = Time.get_ticks_msec() + 100
+	client._response_generation_timeout_ms = 100
 	client.cancel_request()
 	client._fail_request(7, "stale", "connection", false)
+	client._assistant_content = "stale completion"
+	client._finish_reason = "stop"
+	client._complete_stream(7)
 	_expect(signals["cancelled"] == 1 and signals["failed"] == 0, "cancellation should own the request serial and suppress stale terminal failures")
+	_expect(signals["completed"] == 0, "cancellation should suppress stale completion callbacks")
+	_expect(client._generation_deadline_ms == 0 and client._response_generation_timeout_ms == ApiClient.RESPONSE_GENERATION_TIMEOUT_MS, "cancellation should clear request-scoped generation deadline state")
 	_expect(not client._finish_request(8), "an already terminated request must not be claimed again")
+	client._is_requesting = true
+	client._cancel_requested = false
+	client._request_serial = 9
+	client._assistant_content = "complete"
+	client._finish_reason = "stop"
+	client._complete_stream(9)
+	client._complete_stream(9)
+	client._fail_request(9, "late", "connection", false)
+	_expect(signals["completed"] == 1 and signals["failed"] == 0, "completion should emit exactly once and suppress duplicate or late terminal signals")
+	client._is_requesting = true
+	client._request_serial = 10
+	client._fail_request(10, "failed", "connection", false)
+	client._fail_request(10, "duplicate", "connection", false)
+	client._complete_stream(10)
+	_expect(signals["failed"] == 1 and signals["completed"] == 1, "failure should emit exactly once and suppress duplicate or late completion signals")
 	client.free()
 
 

@@ -1196,6 +1196,14 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Verified retained raw-patch fields, content hashes, canonical edits, and review diff immediately before Apply; final destination bytes are reread, hash-checked, and revalidated, with guarded rollback or an explicit retained recovery state on failure.
 - Added permanent transport, controller, UI, real GDScript patch lifecycle, and duplicate-variable regressions. All permanent unit/component and real-editor suites, all three localhost integrations, `git diff --check`, and Godot 4.7.2 editor/plugin initialization pass; live Gemini/DeepSeek checks and deterministic post-write fault injection remain release gates.
 
+### 2026-10-06: Orca 1.2.1 Deterministic Recovery Verification
+
+- Replaced ambiguous write-error strings with explicit not-committed, committed, committed-with-cleanup-warning, and recovery-failure outcomes across every reviewed mutation and revert path.
+- Separated successful cleanup attention from uncertain recovery: cleanup-only states remain safely revertible without bypassing live-state conflict checks, while uncertain apply/revert outcomes are unsuccessful, retain private proposal state, hide unsafe Revert, and persist bounded project-relative recovery guidance.
+- Added environment-gated deterministic fault injection for temporary verification/cleanup, replacement/restore, backup cleanup, post-write reread/hash/validation, independent destination change, and rollback failure paths. The model tool surface cannot configure these test faults.
+- Preserved one absolute provider-generation deadline across connection and `stream_options` compatibility retries and added active localhost SSE fixtures proving continuous hidden reasoning cannot extend it.
+- Added controller, card, session, file patch, structured mutation, and transport regressions for the new outcome contracts. Live Gemini and DeepSeek multi-round checks remain manual release gates.
+
 ## Handoff Checklist
 
 Before another agent takes over, it should be able to answer:

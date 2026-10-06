@@ -74,8 +74,11 @@ class FakeTools:
 	var prepare_calls := 0
 	var promote_calls := 0
 	var apply_calls := 0
+	var revert_calls := 0
 	var execute_calls := 0
 	var changing_results := false
+	var apply_result := "Applied changes to res://fixture.txt"
+	var revert_result := "Reverted changes to res://fixture.txt"
 
 	func get_tool_definitions(include_edit_tools: bool = true) -> Array:
 		var definitions := [
@@ -215,9 +218,17 @@ class FakeTools:
 			"status": "pending"
 		}
 
-	func apply_file_edit(_proposal: Dictionary) -> String:
+	func apply_file_edit(proposal: Dictionary) -> String:
 		apply_calls += 1
-		return "Applied changes to res://fixture.txt"
+		if apply_result.begins_with("Cleanup required:"):
+			proposal["cleanup_required"] = true
+			proposal["exact_applied_state"] = true
+		elif apply_result.begins_with("Recovery required:"):
+			proposal["recovery_required"] = true
+			proposal["exact_applied_state"] = false
+		else:
+			proposal["exact_applied_state"] = true
+		return apply_result
 
 	func apply_reviewed_change(proposal: Dictionary) -> String:
 		return apply_file_edit(proposal)
@@ -234,8 +245,12 @@ class FakeTools:
 			"validation": {"valid": true}, "status": "pending"
 		}
 
-	func revert_file_edit(_proposal: Dictionary) -> String:
-		return "Reverted changes to res://fixture.txt"
+	func revert_file_edit(proposal: Dictionary) -> String:
+		revert_calls += 1
+		if revert_result.begins_with("Recovery required:"):
+			proposal["recovery_required"] = true
+			proposal["exact_applied_state"] = false
+		return revert_result
 
 	func revert_reviewed_change(proposal: Dictionary) -> String:
 		return revert_file_edit(proposal)
@@ -272,6 +287,7 @@ func _run() -> void:
 	await _test_local_chat_tool_denial()
 	await _test_request_workflow_state()
 	await _test_work_approval()
+	await _test_mutation_recovery_classification()
 	await _test_work_rejection_protocol()
 	await _test_cancellation_protocol()
 	await _test_task_state()
@@ -390,6 +406,45 @@ func _test_work_approval() -> void:
 	_expect(controller._proposals.has("approve_call"), "applied proposals should remain available for guarded revert")
 	controller.revert_edit("approve_call")
 	_expect(not controller._proposals.has("approve_call"), "successfully reverted proposals should release private retained content")
+	await _free_controller(controller)
+
+
+func _test_mutation_recovery_classification() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var tools: FakeTools = fixture["tools"]
+	tools.apply_result = "Cleanup required: Applied the reviewed changes. Recovery copy: /private/backup"
+	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true))
+	var cleanup_result: Dictionary = await controller._execute_tool_call(_patch_call("cleanup_apply"))
+	_expect(cleanup_result.get("outcome") == "applied_recovery" and cleanup_result.get("execution", {}).get("success", false), "committed cleanup warnings should remain successful applied_recovery outcomes")
+	_expect(controller._proposals.get("cleanup_apply", {}).get("cleanup_required", false) and not controller._proposals.get("cleanup_apply", {}).get("recovery_required", false), "cleanup-warning proposals should remain guarded and revertible without recovery bypass state")
+	var cleanup_resolutions := []
+	controller.edit_resolved.connect(func(_id: String, status: String, _message: String): cleanup_resolutions.append(status))
+	controller.revert_edit("cleanup_apply")
+	_expect(cleanup_resolutions.has("reverted"), "a committed cleanup-warning proposal should retain guarded Revert")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	tools = fixture["tools"]
+	tools.apply_result = "Recovery required: Replacement failed and the original could not be restored. Recovery copy: /private/recovery"
+	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true))
+	var recovery_result: Dictionary = await controller._execute_tool_call(_patch_call("uncertain_apply"))
+	var retained: Dictionary = controller._proposals.get("uncertain_apply", {})
+	_expect(recovery_result.get("outcome") == "apply_recovery_required" and not recovery_result.get("execution", {}).get("success", true), "uncertain apply recovery must not be a successful or completed tool outcome")
+	_expect(retained.get("status") == "apply_recovery_required" and retained.get("recovery_required", false) and not retained.get("exact_applied_state", true), "uncertain apply recovery should retain exact private proposal state")
+	_expect(retained.get("old_content") == "old\n" and retained.get("new_content") == "new\n", "uncertain apply recovery must preserve private recovery bytes")
+	var revert_calls_before := tools.revert_calls
+	controller.revert_edit("uncertain_apply")
+	_expect(tools.revert_calls == revert_calls_before, "uncertain apply recovery must not offer or execute unsafe Revert")
+
+	controller._proposals["uncertain_revert"] = {"id": "uncertain_revert", "kind": "file_patch", "filepath": "res://fixture.txt", "old_content": "old", "new_content": "new", "status": "applied", "exact_applied_state": true}
+	tools.revert_result = "Recovery required: Revert replacement failed. Recovery copy: /private/revert"
+	var revert_resolutions := []
+	controller.edit_resolved.connect(func(_id: String, status: String, message: String): revert_resolutions.append([status, message]))
+	controller.revert_edit("uncertain_revert")
+	_expect(revert_resolutions[-1][0] == "revert_recovery_required" and str(revert_resolutions[-1][1]).contains("/private/revert"), "uncertain revert recovery should have a distinct status and preserve its exact message")
+	_expect(controller._proposals.get("uncertain_revert", {}).get("status") == "revert_recovery_required" and controller._proposals.get("uncertain_revert", {}).get("old_content") == "old", "uncertain revert recovery should retain private proposal state")
 	await _free_controller(controller)
 
 
@@ -523,7 +578,7 @@ func _test_plan_revert_denial() -> void:
 	var fixture := await _new_controller()
 	var controller = fixture["controller"]
 	var tools: FakeTools = fixture["tools"]
-	controller._proposals["applied"] = {"id": "applied", "kind": "file_patch", "filepath": "res://fixture.txt", "status": "applied"}
+	controller._proposals["applied"] = {"id": "applied", "kind": "file_patch", "filepath": "res://fixture.txt", "status": "applied", "exact_applied_state": true}
 	controller.set_mode(AgentController.AgentMode.PLAN)
 	var resolutions := []
 	controller.edit_resolved.connect(func(_id: String, status: String, message: String): resolutions.append([status, message]))

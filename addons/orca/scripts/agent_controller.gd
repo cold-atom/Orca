@@ -331,10 +331,10 @@ func resolve_edit(change_id: String, approved: bool) -> void:
 				return
 		else:
 			result = tools_script.apply_reviewed_change(proposal)
-			status = "failed" if result.begins_with("Error:") else "applied_recovery" if result.begins_with("Recovery:") else "applied"
+			status = "failed" if result.begins_with("Error:") or result.begins_with("Conflict:") else "apply_recovery_required" if result.begins_with("Recovery required:") else "applied_recovery" if result.begins_with("Cleanup required:") else "applied"
 			success = status in ["applied", "applied_recovery"]
 	proposal["status"] = status
-	if status in ["applied", "applied_recovery"]:
+	if status in ["applied", "applied_recovery", "apply_recovery_required"]:
 		_proposals[change_id] = proposal
 	else:
 		_proposals.erase(change_id)
@@ -351,12 +351,16 @@ func revert_edit(change_id: String) -> void:
 	if _mode != AgentMode.BUILD:
 		edit_resolved.emit(change_id, "revert_failed", "Error: Project changes cannot be reverted while Orca is in Plan mode.")
 		return
+	if not proposal.get("exact_applied_state", false):
+		edit_resolved.emit(change_id, "revert_failed", "Error: Revert is unavailable because the exact applied candidate state has not been proven.")
+		return
 	var result: String = tools_script.revert_reviewed_change(proposal)
-	var status := "conflict" if result.begins_with("Conflict:") else "revert_failed" if result.begins_with("Error:") else "reverted_recovery" if result.begins_with("Recovery:") else "reverted"
+	var status := "conflict" if result.begins_with("Conflict:") else "revert_failed" if result.begins_with("Error:") else "revert_recovery_required" if result.begins_with("Recovery required:") else "reverted_recovery" if result.begins_with("Cleanup required:") else "reverted"
 	if status in ["reverted", "reverted_recovery"]:
 		proposal["status"] = status
 		_proposals.erase(change_id)
 	else:
+		proposal["status"] = status
 		_proposals[change_id] = proposal
 	edit_resolved.emit(change_id, status, result)
 

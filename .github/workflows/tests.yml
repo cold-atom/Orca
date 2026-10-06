@@ -80,7 +80,8 @@ jobs:
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           "$GODOT_BIN" --headless --path . --script res://tests/api_client_integration_test.gd
-          wait "$server_pid"
+          kill "$server_pid" 2>/dev/null || true
+          wait "$server_pid" 2>/dev/null || true
           trap - EXIT
           ORCA_TEST_REQUESTS=3 python3 tests/http_test_server.py &
           server_pid=$!

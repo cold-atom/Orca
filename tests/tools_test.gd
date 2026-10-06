@@ -35,6 +35,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	OS.set_environment("ORCA_TEST_FAULT_INJECTION", "1")
 	_fixture_path = "res://.orca_tools_test_%d" % Time.get_ticks_usec()
 	var fixture_absolute := ProjectSettings.globalize_path(_fixture_path)
 	_expect(DirAccess.make_dir_recursive_absolute(fixture_absolute) == OK, "fixture directory should be created")
@@ -44,9 +45,12 @@ func _run() -> void:
 	_test_path_boundaries()
 	_test_symlink_boundary(fixture_absolute)
 	_test_patch_lifecycle()
+	_test_safe_replacement_faults()
 	_test_gdscript_patch_lifecycle()
 	_expect(not _has_replacement_artifacts(fixture_absolute), "tool tests should leave no temporary or backup artifacts")
 	_remove_tree(fixture_absolute)
+	Tools._clear_replacement_test_faults()
+	OS.unset_environment("ORCA_TEST_FAULT_INJECTION")
 	_finish()
 
 
@@ -295,6 +299,109 @@ func _test_gdscript_patch_lifecycle() -> void:
 	_expect(_read(script_path) == original, "noncanonical retained proposal fields must not be written")
 
 
+func _test_safe_replacement_faults() -> void:
+	var path := _fixture_path.path_join("replacement.txt")
+	var original := "original\n"
+	var candidate := "candidate\n"
+	_write(path, original)
+	OS.unset_environment("ORCA_TEST_FAULT_INJECTION")
+	Tools._set_replacement_test_faults({"backup_cleanup_failure": 1})
+	OS.set_environment("ORCA_TEST_FAULT_INJECTION", "1")
+	var ungated := Tools._write_file_safely(path, candidate, original.sha256_text(), true)
+	_expect(ungated.get("outcome") == Tools.SafeWriteOutcome.COMMITTED_SUCCESS, "fault setters must be inert without the dedicated test environment variable")
+	_expect(Tools._write_file_safely(path, original, candidate.sha256_text(), true).get("outcome") == Tools.SafeWriteOutcome.COMMITTED_SUCCESS, "ungated fault fixture should reset cleanly")
+
+	Tools._set_replacement_test_faults({"temporary_verification_failure": 1})
+	var precommit := Tools._write_file_safely(path, candidate, original.sha256_text(), true)
+	_expect(precommit.get("outcome") == Tools.SafeWriteOutcome.NOT_COMMITTED_FAILURE, "temporary verification failure should be explicitly not committed")
+	_expect(_read(path) == original, "a precommit replacement failure must preserve the original destination")
+
+	Tools._set_replacement_test_faults({"temporary_verification_failure": 1, "temporary_cleanup_failure": 1})
+	var retained_temporary := Tools._write_file_safely(path, candidate, original.sha256_text(), true)
+	_expect(retained_temporary.get("outcome") == Tools.SafeWriteOutcome.NOT_COMMITTED_FAILURE and str(retained_temporary.get("message", "")).contains("Retained temporary copy:"), "temporary cleanup failure should report the exact retained artifact without claiming a commit")
+	var retained_path := str(retained_temporary.get("message", "")).get_slice("Retained temporary copy: ", 1)
+	_expect(not retained_path.is_empty() and FileAccess.file_exists(retained_path), "temporary cleanup failure should retain the reported artifact")
+	if not retained_path.is_empty():
+		DirAccess.remove_absolute(retained_path)
+
+	Tools._set_replacement_test_faults({"replacement_failure": 1})
+	var restored := Tools._write_file_safely(path, candidate, original.sha256_text(), true)
+	_expect(restored.get("outcome") == Tools.SafeWriteOutcome.NOT_COMMITTED_FAILURE, "a failed replacement with successful restore should be explicitly not committed")
+	_expect(_read(path) == original, "failed replacement should restore the guarded original bytes")
+	var committed := Tools._write_file_safely(path, candidate, original.sha256_text(), true)
+	_expect(committed.get("outcome") == Tools.SafeWriteOutcome.COMMITTED_SUCCESS, "a clean replacement should have an explicit committed-success outcome")
+	_expect(_read(path) == candidate, "a committed-success outcome should match the destination bytes")
+	var reset := Tools._write_file_safely(path, original, candidate.sha256_text(), true)
+	_expect(reset.get("outcome") == Tools.SafeWriteOutcome.COMMITTED_SUCCESS, "the successful replacement fixture should reset cleanly")
+
+	Tools._set_replacement_test_faults({"replacement_failure": 1, "restore_failure": 1})
+	var recovery := Tools._write_file_safely(path, candidate, original.sha256_text(), true)
+	_expect(recovery.get("outcome") == Tools.SafeWriteOutcome.RECOVERY_FAILURE, "failed replacement and restore should have an explicit recovery-failure outcome")
+	_expect(not FileAccess.file_exists(path), "a restore failure must not claim that either destination state was committed")
+	var recovery_artifacts := _replacement_artifacts(ProjectSettings.globalize_path(_fixture_path))
+	var recovery_backup := ""
+	for artifact in recovery_artifacts:
+		if artifact.contains("replacement.txt.orca_backup_"):
+			recovery_backup = artifact
+	_expect(not recovery_backup.is_empty(), "restore failure should retain the guarded recovery copy")
+	if not recovery_backup.is_empty():
+		_expect(DirAccess.rename_absolute(recovery_backup, ProjectSettings.globalize_path(path)) == OK, "the test should restore the retained recovery copy")
+
+	Tools._set_replacement_test_faults({"backup_cleanup_failure": 1})
+	var warning := Tools._write_file_safely(path, candidate, original.sha256_text(), true)
+	_expect(warning.get("outcome") == Tools.SafeWriteOutcome.COMMITTED_CLEANUP_WARNING, "backup cleanup failure should be classified as committed with a warning")
+	_expect(_read(path) == candidate, "cleanup failure must still expose the committed candidate bytes")
+	_remove_replacement_artifacts(ProjectSettings.globalize_path(_fixture_path))
+	_write(path, original)
+
+	for fault in ["post_write_reread_failure", "post_write_hash_mismatch", "post_write_validation_failure"]:
+		var proposal := Tools.prepare_file_patch("fault_" + fault, path, original.sha256_text(), [{"start_line": 1, "end_line": 1, "replacement": "candidate"}])
+		_expect(proposal.get("success", false), fault + " fixture should prepare")
+		Tools._set_replacement_test_faults({fault: 1})
+		var result := Tools.apply_file_edit(proposal)
+		_expect(result.begins_with("Error:") and result.contains("original disk state was restored"), fault + " should report verified guarded rollback")
+		_expect(_read(path) == original, fault + " should restore the exact original bytes")
+
+	var rollback_recovery_proposal := Tools.prepare_file_patch("rollback_recovery", path, original.sha256_text(), [{"start_line": 1, "end_line": 1, "replacement": "candidate"}])
+	Tools._set_replacement_test_faults({"post_write_validation_failure": 1, "replacement_failure_on_write_2": 1, "restore_failure": 1})
+	var rollback_recovery_result := Tools.apply_file_edit(rollback_recovery_proposal)
+	_expect(rollback_recovery_result.begins_with("Recovery required:") and rollback_recovery_result.contains("Replacement failed and the original could not be restored. Recovery copy:"), "rollback recovery failure should immediately surface its exact recovery-copy message")
+	_expect(rollback_recovery_proposal.get("recovery_required", false) and not rollback_recovery_proposal.get("exact_applied_state", true), "rollback recovery failure should retain explicit uncertain proposal state")
+	var rollback_backup := rollback_recovery_result.get_slice("Recovery copy: ", 1).get_slice(" ", 0)
+	_expect(not rollback_backup.is_empty() and FileAccess.file_exists(rollback_backup), "rollback recovery failure should retain the reported recovery copy")
+	if not rollback_backup.is_empty():
+		DirAccess.remove_absolute(rollback_backup)
+	_write(path, original)
+
+	var accumulated_warning_proposal := Tools.prepare_file_patch("accumulated_warnings", path, original.sha256_text(), [{"start_line": 1, "end_line": 1, "replacement": "candidate"}])
+	Tools._set_replacement_test_faults({"backup_cleanup_failure": 2, "post_write_validation_failure": 1})
+	var accumulated_warning_result := Tools.apply_file_edit(accumulated_warning_proposal)
+	_expect(accumulated_warning_result.begins_with("Error:") and accumulated_warning_result.count("Replacement succeeded") == 2, "terminal rollback results should surface cleanup warnings from both initial and rollback writes")
+	_expect(accumulated_warning_proposal.get("cleanup_required", false) and not accumulated_warning_proposal.get("recovery_required", false), "accumulated cleanup warnings should not become recovery uncertainty")
+	_expect(_read(path) == original, "cleanup-warning accumulation should preserve successful guarded rollback")
+	_remove_replacement_artifacts(ProjectSettings.globalize_path(_fixture_path))
+
+	var unsafe_proposal := Tools.prepare_file_patch("unsafe_rollback", path, original.sha256_text(), [{"start_line": 1, "end_line": 1, "replacement": "candidate"}])
+	Tools._set_replacement_test_faults({"post_write_independent_change": 1})
+	var unsafe_result := Tools.apply_file_edit(unsafe_proposal)
+	_expect(unsafe_result.begins_with("Recovery required:") and unsafe_result.contains("preserved"), "an unverifiable destination should block rollback and require recovery")
+	_expect(_read(path) == "independent fault-injected bytes\n", "unsafe rollback handling must preserve independently changed destination bytes")
+	_expect(unsafe_proposal.get("recovery_required", false), "unsafe rollback preservation should mark the proposal for recovery")
+	_write(path, original)
+
+	var warning_proposal := Tools.prepare_file_patch("cleanup_warning", path, original.sha256_text(), [{"start_line": 1, "end_line": 1, "replacement": "candidate"}])
+	Tools._set_replacement_test_faults({"backup_cleanup_failure": 1})
+	var warning_result := Tools.apply_file_edit(warning_proposal)
+	_expect(warning_result.begins_with("Cleanup required:") and warning_result.contains("Applied"), "a committed cleanup warning must not be reported as an ordinary apply failure")
+	_expect(_read(path) == candidate, "the public apply result should retain committed bytes after a cleanup warning")
+	_expect(warning_proposal.get("cleanup_required", false) and not warning_proposal.get("recovery_required", false), "cleanup warnings must not activate recovery validation bypasses")
+	_remove_replacement_artifacts(ProjectSettings.globalize_path(_fixture_path))
+	warning_proposal.erase("cleanup_required")
+	warning_proposal.erase("cleanup_warnings")
+	Tools._clear_replacement_test_faults()
+	_expect(Tools.revert_file_edit(warning_proposal).begins_with("Reverted"), "cleanup-warning candidate should remain safely revertible")
+
+
 func _tool_names(definitions: Array) -> PackedStringArray:
 	var names := PackedStringArray()
 	for definition in definitions:
@@ -340,6 +447,26 @@ func _has_replacement_artifacts(path: String) -> bool:
 		name = directory.get_next()
 	directory.list_dir_end()
 	return false
+
+
+func _replacement_artifacts(path: String) -> PackedStringArray:
+	var artifacts := PackedStringArray()
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return artifacts
+	directory.list_dir_begin()
+	var name := directory.get_next()
+	while not name.is_empty():
+		if name.contains(".orca_tmp_") or name.contains(".orca_backup_"):
+			artifacts.append(path.path_join(name))
+		name = directory.get_next()
+	directory.list_dir_end()
+	return artifacts
+
+
+func _remove_replacement_artifacts(path: String) -> void:
+	for artifact in _replacement_artifacts(path):
+		DirAccess.remove_absolute(artifact)
 
 
 func _remove_tree(path: String) -> void:

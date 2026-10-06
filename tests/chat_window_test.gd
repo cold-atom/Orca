@@ -4,6 +4,10 @@ const ChatWindow = preload("res://addons/orca/scripts/chat_window.gd")
 const ChatWindowScene = preload("res://addons/orca/scenes/chat_window.tscn")
 const TaskListPanel = preload("res://addons/orca/scripts/task_list_panel.gd")
 const ChangeCard = preload("res://addons/orca/scripts/change_card.gd")
+const InputMapChangeCard = preload("res://addons/orca/scripts/input_map_change_card.gd")
+const MainSceneChangeCard = preload("res://addons/orca/scripts/main_scene_change_card.gd")
+const ProjectSettingsChangeCard = preload("res://addons/orca/scripts/project_settings_change_card.gd")
+const SceneChangeCard = preload("res://addons/orca/scripts/scene_change_card.gd")
 const DiffUtils = preload("res://addons/orca/scripts/diff_utils.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 
@@ -81,6 +85,8 @@ func _run() -> void:
 	await _test_script_trust_change_card(view)
 	await process_frame
 	await _test_expanded_diff_content()
+	await process_frame
+	_test_recovery_event_persistence(view)
 	await process_frame
 	view._session = {}
 	view._has_session_content = false
@@ -673,9 +679,41 @@ func _test_expanded_diff_content() -> void:
 	if editors.size() == 2:
 		_expect(editors[0].text == old_content, "expanded diff previous pane should retain exact old content")
 		_expect(editors[1].text == new_content, "expanded diff proposed pane should retain exact new content")
-	card.set_status("applied_recovery", "Applied, but cleanup requires attention.")
-	_expect(card._revert_button.visible, "a file patch in recovery state should retain its guarded Revert action")
+	card.set_status("applied_recovery", "Cleanup required: applied with a retained backup.")
+	_expect(card._revert_button.visible, "a committed file patch with cleanup required should retain its guarded Revert action")
+	card.set_status("apply_recovery_required", "Recovery required: destination state is uncertain.")
+	_expect(not card._revert_button.visible, "an uncertain file-patch apply must not offer unsafe Revert")
 	card.queue_free()
+
+
+func _test_recovery_event_persistence(view) -> void:
+	view._session = {"events": [
+		{"type": "change", "id": "recovery_change", "filepath": "res://main.gd", "status": "pending"},
+		{"type": "tool", "id": "recovery_tool", "name": "apply_patch", "outcome": "running", "summary": "Running", "duration_ms": 0},
+	]}
+	view._tool_event_indices = {"recovery_tool": 1}
+	var absolute_backup := ProjectSettings.globalize_path("res://main.gd.orca_backup_123")
+	view._update_change_event("recovery_change", "apply_recovery_required", "Recovery required: Recovery copy: " + absolute_backup)
+	var change_event: Dictionary = view._session.get("events", [])[0]
+	_expect(change_event.get("status") == "apply_recovery_required", "uncertain mutation status should persist distinctly")
+	_expect(str(change_event.get("resolution_message", "")).contains("res://main.gd.orca_backup_123") and not str(change_event.get("resolution_message", "")).contains(ProjectSettings.globalize_path("res://").trim_suffix("/")), "persisted recovery guidance should retain a project-relative recovery copy without the absolute project path")
+	view._update_tool_event("recovery_tool", {"outcome": "apply_recovery_required", "data": {}}, 1)
+	var tool_event: Dictionary = view._session.get("events", [])[1]
+	_expect(tool_event.get("summary") == "Recovery required. See the associated change record.", "uncertain mutation activity must not persist as completed successfully")
+
+	for card_script in [InputMapChangeCard, MainSceneChangeCard, ProjectSettingsChangeCard, SceneChangeCard]:
+		var structured_card = card_script.new()
+		get_root().add_child(structured_card)
+		await process_frame
+		structured_card.configure({"id": "structured_recovery", "filepath": "res://fixture.tscn", "review": [], "scene_summary": {}, "validation": {"valid": true, "message": "Passed"}, "status": "pending"})
+		structured_card.set_status("applied_recovery", "Cleanup required: retained backup.")
+		_expect(structured_card._revert_button.visible, "committed structured cleanup warnings should retain guarded Revert")
+		structured_card.set_status("apply_recovery_required", "Recovery required: destination state is uncertain.")
+		_expect(not structured_card._revert_button.visible, "uncertain structured applies must hide Revert")
+		_expect(structured_card._validation_label.text.contains("destination state is uncertain"), "structured cards should surface recovery-required details")
+		structured_card.set_status("revert_recovery_required", "Recovery required: revert state is uncertain.")
+		_expect(not structured_card._revert_button.visible, "uncertain structured reverts must hide Revert")
+		structured_card.queue_free()
 
 
 func _count_blocks(blocks: Array, type: String) -> int:

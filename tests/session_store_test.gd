@@ -21,7 +21,7 @@ func _run() -> void:
 	session["events"] = [
 		{"type": "message", "sender": "User", "text": "Build a test", "kind": "user", "mode": 1, "completion": "complete"},
 		{"type": "tool", "id": "call_1", "name": "apply_patch", "arguments": {"filepath": "res://main.gd", "scene_path": "res://main.tscn", "setting_path": "application/run/main_scene", "include_properties": true, "max_nodes": 20, "query": "Player", "setting_value": "must-not-persist", "edits": [{"replacement": "secret source"}]}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 3, "open_path": "res://main.gd", "open_line": 7, "open_column": 4, "raw_data": "must-not-persist"},
-		{"type": "change", "id": "call_1", "filepath": "res://main.gd", "status": "applied", "additions": 2, "deletions": 1, "old_hash": "old", "new_hash": "new", "old_content": "must-not-persist"},
+		{"type": "change", "id": "call_1", "filepath": "res://main.gd", "status": "apply_recovery_required", "resolution_message": "Recovery required: Recovery copy: res://main.gd.orca_backup_123", "additions": 2, "deletions": 1, "old_hash": "old", "new_hash": "new", "old_content": "must-not-persist"},
 		{"type": "change", "id": "input_1", "filepath": "res://project.godot", "kind": "input_map", "summary": "Input Map: jump", "status": "applied", "old_hash": "old-input", "new_hash": "new-input", "review": [{"action": "jump", "secret": "must-not-persist"}], "old_content": "must-not-persist"},
 		{"type": "change", "id": "main_1", "filepath": "res://project.godot", "kind": "main_scene", "summary": "Main scene: res://main.tscn", "status": "applied", "old_hash": "must-not-persist", "new_hash": "must-not-persist", "new_value": "must-not-persist"},
 		{"type": "change", "id": "settings_1", "filepath": "res://project.godot", "kind": "project_settings", "summary": "Project settings: Viewport width", "status": "applied", "values": {"display/window/size/viewport_width": "must-not-persist"}, "changes": ["must-not-persist"]},
@@ -60,6 +60,7 @@ func _run() -> void:
 	_expect(loaded.get("events", [])[1].get("open_line") == 7 and loaded.get("events", [])[1].get("open_column") == 4, "navigation coordinates should persist")
 	_expect(not loaded.get("events", [])[1].has("raw_data"), "arbitrary tool execution data must not persist")
 	_expect(not loaded.get("events", [])[2].has("old_content"), "source snapshots must not be persisted in change summaries")
+	_expect(loaded.get("events", [])[2].get("status") == "apply_recovery_required" and str(loaded.get("events", [])[2].get("resolution_message", "")).contains("res://main.gd.orca_backup_123"), "bounded recovery status and recovery-copy guidance should survive persistence")
 	_expect(loaded.get("events", [])[3].get("kind") == "input_map" and loaded.get("events", [])[3].get("summary") == "Input Map: jump", "safe structured change kind and summary should persist")
 	_expect(not loaded.get("events", [])[3].has("review") and not loaded.get("events", [])[3].has("old_content"), "structured review payloads must not persist")
 	_expect(not loaded.get("events", [])[2].has("old_hash") and not loaded.get("events", [])[3].has("new_hash"), "proposal hashes must not persist in change summaries")

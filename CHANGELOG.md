@@ -8,20 +8,25 @@ All notable changes to Orca are documented in this file.
 
 - Provider responses must now contain visible non-whitespace assistant text or at least one valid tool call; empty, whitespace-only, reasoning-only, usage-only, truncated, filtered, and contradictory completions fail visibly instead of silently ending a turn.
 - Active provider generation now has a ten-minute total deadline in addition to the existing connection and inactivity timeouts.
+- The total generation deadline is preserved across connection and `stream_options` compatibility retries; deterministic localhost coverage keeps the stream active while proving the original deadline still wins.
 - Tool-loop finalization now has a distinct `Finalizing safely` state, retains the safety trigger reason, explains denied post-finalization tool calls accurately, and gives explicit non-replay continuation guidance.
 - Raw file patches now verify retained proposal integrity before Apply and reread, hash-check, and revalidate exact destination bytes after replacement.
+- Verified replacement now has explicit not-committed, committed, committed-with-cleanup-warning, and recovery-failure outcomes across file, scene, Input Map, main-scene, and ProjectSettings mutations.
 
 ### Fixed
 
 - Fixed DeepSeek-compatible reasoning-only or empty completions removing the working state without displaying an answer or error.
 - Fixed empty tool-loop finalization responses ending without a visible outcome.
 - Fixed file-patch recovery states hiding the guarded Revert action.
+- Fixed committed writes being reported as failed when private-backup cleanup failed, and fixed uncertain replacement failures being reported or persisted as successful mutations.
+- Cleanup-only warnings no longer weaken typed live-state conflict checks; recovery-copy guidance is retained as bounded project-relative session metadata.
 
 ### Tests
 
 - Added empty, whitespace-only, reasoning-only, tool-only, truncated, filtered, and terminal-ownership transport regressions.
 - Added real GDScript patch lifecycle coverage and exact duplicate class/local variable validation regressions.
 - Added tool-loop trigger, finalization-state, denied-provider-text, explicit-continuation, and empty-finalization coverage.
+- Added deterministic replacement, restoration, temporary-cleanup, post-write verification, cleanup-warning, recovery-classification, and retry-deadline fault coverage.
 
 ## 1.2.0 - 2026-10-05
 

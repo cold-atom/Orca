@@ -14,6 +14,8 @@ const CONNECT_TIMEOUT_MS := 30000
 const INACTIVITY_TIMEOUT_MS := 60000
 # Long reasoning models may be active continuously, but an editor request must still terminate.
 const RESPONSE_GENERATION_TIMEOUT_MS := 10 * 60 * 1000
+const INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION := "_orca_internal_generation_timeout_ms"
+const GENERATION_TIMEOUT_MESSAGE := "The response exceeded the total generation deadline."
 const MAX_RESPONSE_BYTES := 16 * 1024 * 1024
 const MAX_SSE_LINE_BYTES := 1024 * 1024
 const MAX_SSE_EVENT_BYTES := 1024 * 1024
@@ -63,6 +65,7 @@ var _reasoning_details_bytes := 0
 var _request_phase := "idle"
 var _response_code := 0
 var _generation_deadline_ms := 0
+var _response_generation_timeout_ms := RESPONSE_GENERATION_TIMEOUT_MS
 var _partial_response_detected := false
 
 
@@ -125,6 +128,9 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 
 	_reset_stream_state()
 	_generation_deadline_ms = 0
+	_response_generation_timeout_ms = RESPONSE_GENERATION_TIMEOUT_MS
+	if request_options.has(INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION):
+		_response_generation_timeout_ms = clampi(int(request_options[INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION]), 1, RESPONSE_GENERATION_TIMEOUT_MS)
 	_partial_response_detected = false
 	_request_model = str(body["model"])
 	_configured_request_model = _request_model
@@ -132,6 +138,7 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 	_is_requesting = true
 	_cancel_requested = false
 	_request_serial += 1
+	_generation_deadline_ms = Time.get_ticks_msec() + _response_generation_timeout_ms
 	_perform_request(_request_serial, endpoint, provider.request_headers(api_key), body, bool(request_options.get("allow_stream_options_retry", true)), MAX_CONNECT_RETRIES)
 
 
@@ -145,10 +152,14 @@ func cancel_request() -> void:
 		_http_client.close()
 		_http_client = null
 	_reset_stream_state()
+	_generation_deadline_ms = 0
+	_response_generation_timeout_ms = RESPONSE_GENERATION_TIMEOUT_MS
 	request_cancelled.emit()
 
 
 func _perform_request(request_id: int, endpoint: Dictionary, base_headers: PackedStringArray, body: Dictionary, allow_usage_retry: bool, connect_retries_remaining: int) -> void:
+	if _fail_if_generation_timed_out(request_id):
+		return
 	_http_client = HTTPClient.new()
 	_http_client.read_chunk_size = 4096
 	var json_body := JSON.stringify(body)
@@ -167,6 +178,8 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 
 	var deadline := Time.get_ticks_msec() + CONNECT_TIMEOUT_MS
 	while _is_current_request(request_id) and _http_client.get_status() in [HTTPClient.STATUS_RESOLVING, HTTPClient.STATUS_CONNECTING]:
+		if _fail_if_generation_timed_out(request_id):
+			return
 		error = _http_client.poll()
 		if error != OK:
 			await _retry_connection_or_fail(request_id, endpoint, base_headers, body, allow_usage_retry, connect_retries_remaining, "Connection failed: " + error_string(error), "connection")
@@ -189,8 +202,6 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 		return
 	# Once HTTPClient accepts the POST, a later failure may still have incurred provider usage.
 	_request_may_have_usage = true
-	if _generation_deadline_ms == 0:
-		_generation_deadline_ms = Time.get_ticks_msec() + RESPONSE_GENERATION_TIMEOUT_MS
 
 	_request_phase = "waiting_for_response"
 	deadline = Time.get_ticks_msec() + CONNECT_TIMEOUT_MS
@@ -202,8 +213,7 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 		if Time.get_ticks_msec() > deadline:
 			_fail_request(request_id, "The API did not begin responding in time.", "timeout", true)
 			return
-		if _response_generation_timed_out():
-			_fail_request(request_id, "The response exceeded the 10-minute generation deadline.", "timeout", false)
+		if _fail_if_generation_timed_out(request_id):
 			return
 		await get_tree().process_frame
 
@@ -235,8 +245,7 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 
 		var received_data := false
 		while _http_client.get_status() == HTTPClient.STATUS_BODY:
-			if _response_generation_timed_out():
-				_fail_request(request_id, "The response exceeded the 10-minute generation deadline.", "timeout", false)
+			if _fail_if_generation_timed_out(request_id):
 				return
 			var chunk := _http_client.read_response_body_chunk()
 			if chunk.is_empty():
@@ -274,12 +283,13 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 		if not received_data and Time.get_ticks_msec() - last_activity > INACTIVITY_TIMEOUT_MS:
 			_fail_request(request_id, "The response stream timed out due to inactivity.", "timeout", false)
 			return
-		if _response_generation_timed_out():
-			_fail_request(request_id, "The response exceeded the 10-minute generation deadline.", "timeout", false)
+		if _fail_if_generation_timed_out(request_id):
 			return
 		await get_tree().process_frame
 
 	if not _is_current_request(request_id):
+		return
+	if _fail_if_generation_timed_out(request_id):
 		return
 	if response_code != HTTPClient.RESPONSE_OK:
 		var error_body := _raw_response.get_string_from_utf8().strip_edges()
@@ -544,6 +554,8 @@ func _finish_sse_input() -> void:
 func _complete_stream(request_id: int) -> void:
 	if not _is_current_request(request_id):
 		return
+	if _fail_if_generation_timed_out(request_id):
+		return
 	var completed_tool_calls := _stream_tool_calls()
 	var completion_error := _validate_completion(_assistant_content, completed_tool_calls, _finish_reason)
 	if not completion_error.is_empty():
@@ -581,6 +593,10 @@ func _complete_stream(request_id: int) -> void:
 
 
 func _complete_json_response(request_id: int) -> void:
+	if not _is_current_request(request_id):
+		return
+	if _fail_if_generation_timed_out(request_id):
+		return
 	var json := JSON.new()
 	if json.parse(_raw_response.get_string_from_utf8()) != OK:
 		_fail_request(request_id, "Failed to parse the API response.", "malformed_response", false)
@@ -614,6 +630,7 @@ func _finish_request(request_id: int) -> bool:
 		_http_client = null
 	_reset_stream_state()
 	_generation_deadline_ms = 0
+	_response_generation_timeout_ms = RESPONSE_GENERATION_TIMEOUT_MS
 	_partial_response_detected = false
 	return true
 
@@ -627,14 +644,22 @@ func _fail_request(request_id: int, message: String, category: String, retryable
 
 
 func _retry_connection_or_fail(request_id: int, endpoint: Dictionary, base_headers: PackedStringArray, body: Dictionary, allow_usage_retry: bool, retries_remaining: int, message: String, category: String) -> void:
+	if _fail_if_generation_timed_out(request_id):
+		return
 	if retries_remaining <= 0:
 		_fail_request(request_id, message, category, true)
 		return
 	if _http_client != null:
 		_http_client.close()
 		_http_client = null
-	await get_tree().create_timer(CONNECT_RETRY_DELAY_SECONDS).timeout
+	var retry_at_ms := Time.get_ticks_msec() + int(CONNECT_RETRY_DELAY_SECONDS * 1000.0)
+	while _is_current_request(request_id) and Time.get_ticks_msec() < retry_at_ms:
+		if _fail_if_generation_timed_out(request_id):
+			return
+		await get_tree().process_frame
 	if not _is_current_request(request_id):
+		return
+	if _fail_if_generation_timed_out(request_id):
 		return
 	_reset_stream_state()
 	await _perform_request(request_id, endpoint, base_headers, body, allow_usage_retry, retries_remaining - 1)
@@ -783,6 +808,13 @@ func _make_error(message: String, category: String, retryable: bool) -> Dictiona
 
 func _response_generation_timed_out() -> bool:
 	return _generation_deadline_ms > 0 and Time.get_ticks_msec() > _generation_deadline_ms
+
+
+func _fail_if_generation_timed_out(request_id: int) -> bool:
+	if not _response_generation_timed_out():
+		return false
+	_fail_request(request_id, GENERATION_TIMEOUT_MESSAGE, "timeout", false)
+	return true
 
 
 func _is_json_media_type(media_type: String) -> bool:

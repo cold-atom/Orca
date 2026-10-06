@@ -12,6 +12,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	OS.set_environment("ORCA_TEST_FAULT_INJECTION", "1")
 	_fixture_path = "res://.orca_scene_proposal_test_%d" % Time.get_ticks_usec()
 	_expect(DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_fixture_path)) == OK, "fixture directory should be created")
 	_test_scratch_cleanup()
@@ -29,6 +30,8 @@ func _run() -> void:
 	_expect(_scratch_files().is_empty(), "scene validation should leave no scratch .tscn files")
 	_expect(not _has_replacement_artifacts(ProjectSettings.globalize_path(_fixture_path)), "scene proposal tests should leave no replacement artifacts")
 	_remove_tree(ProjectSettings.globalize_path(_fixture_path))
+	Tools._clear_replacement_test_faults()
+	OS.unset_environment("ORCA_TEST_FAULT_INJECTION")
 	_finish()
 
 
@@ -132,7 +135,14 @@ func _test_add_node_lifecycle() -> void:
 	_expect(summary.get("operation") == "add_node" and summary.get("before_node_count") == 3 and summary.get("after_node_count") == 4, "add_node review should show complete node counts")
 	_expect(summary.get("added_node", {}).get("path") == "./Container/SpawnPoint" and summary.get("added_node", {}).get("owner_path") == ".", "add_node review should show the resulting path and root ownership")
 	_expect(SceneProposal.validate_candidate(proposal).is_empty(), "fresh add_node candidates should pass complete semantic validation")
-	_expect(Tools.apply_reviewed_change(proposal).begins_with("Applied"), "approved add_node should replace the saved scene")
+	Tools._set_replacement_test_faults({"backup_cleanup_failure": 1})
+	var applied := Tools.apply_reviewed_change(proposal)
+	_expect(applied.begins_with("Cleanup required:") and applied.contains("Applied"), "a committed scene replacement with a cleanup warning should not be reported as an ordinary failure")
+	_expect(proposal.get("cleanup_required", false) and not proposal.get("recovery_required", false), "scene cleanup warnings must remain distinct from uncertain recovery state")
+	_cleanup_reported_recovery_copy(applied)
+	proposal.erase("cleanup_required")
+	proposal.erase("cleanup_warnings")
+	Tools._clear_replacement_test_faults()
 	var packed = ResourceLoader.load(target, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE)
 	_expect(packed is PackedScene, "add_node result should remain a PackedScene")
 	if packed is PackedScene:
@@ -426,6 +436,13 @@ func _read(path: String) -> String:
 	var content := file.get_as_text()
 	file.close()
 	return content
+
+
+func _cleanup_reported_recovery_copy(result: String) -> void:
+	var marker := "Recovery copy: "
+	var marker_index := result.find(marker)
+	if marker_index >= 0:
+		DirAccess.remove_absolute(result.substr(marker_index + marker.length()))
 
 
 func _scratch_files() -> PackedStringArray:
