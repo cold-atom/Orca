@@ -32,6 +32,14 @@ func _test_validation_contract() -> void:
 	for diagnostic in invalid.get("diagnostics", []):
 		_expect(diagnostic.get("file") == "res://invalid_fixture.gd", "validation diagnostics should identify the candidate path")
 
+	var duplicate_class_variable := DiagnosticsService.validate_source("res://duplicate_class_variable.gd", "extends Node\n\nvar value := 1\nvar value := 2\n")
+	_expect(not duplicate_class_variable.get("valid", true), "duplicate class variables should fail GDScript validation")
+	_expect(not duplicate_class_variable.get("diagnostics", []).is_empty(), "duplicate class variable validation should return diagnostics")
+
+	var duplicate_local_variable := DiagnosticsService.validate_source("res://duplicate_local_variable.gd", "extends Node\n\nfunc duplicate() -> void:\n\tvar value := 1\n\tvar value := 2\n")
+	_expect(not duplicate_local_variable.get("valid", true), "duplicate local variables should fail GDScript validation")
+	_expect(not duplicate_local_variable.get("diagnostics", []).is_empty(), "duplicate local variable validation should return diagnostics")
+
 
 func _test_record_bounds_and_isolation() -> void:
 	DiagnosticsService.clear()

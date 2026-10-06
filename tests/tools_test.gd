@@ -44,6 +44,7 @@ func _run() -> void:
 	_test_path_boundaries()
 	_test_symlink_boundary(fixture_absolute)
 	_test_patch_lifecycle()
+	_test_gdscript_patch_lifecycle()
 	_expect(not _has_replacement_artifacts(fixture_absolute), "tool tests should leave no temporary or backup artifacts")
 	_remove_tree(fixture_absolute)
 	_finish()
@@ -256,6 +257,42 @@ func _test_patch_lifecycle() -> void:
 	_expect(_read(new_path) == "created", "new-file application should write reviewed content")
 	_expect(Tools.revert_file_edit(new_proposal).begins_with("Reverted"), "new-file proposal should revert")
 	_expect(not FileAccess.file_exists(new_path), "reverting a created file should remove it")
+
+
+func _test_gdscript_patch_lifecycle() -> void:
+	var script_path := _fixture_path.path_join("mutation_fixture.gd")
+	var original := "extends Node\n\nvar value := 1\n\nfunc read_value() -> int:\n\treturn value\n"
+	_write(script_path, original)
+	var duplicate_class: Dictionary = Tools.prepare_file_patch("duplicate_class", script_path, original.sha256_text(), [{"start_line": 4, "end_line": 3, "replacement": "var value := 2\n"}])
+	_expect(not duplicate_class.get("success", true), "a real .gd patch with a duplicate class variable should be rejected before review")
+	_expect(not duplicate_class.get("diagnostics", []).is_empty(), "rejected duplicate class variable patches should return diagnostics")
+	_expect(_read(script_path) == original, "invalid class-variable candidates must not modify the real .gd file")
+
+	var duplicate_local: Dictionary = Tools.prepare_file_patch("duplicate_local", script_path, original.sha256_text(), [{"start_line": 6, "end_line": 6, "replacement": "\tvar local := value\n\tvar local := value + 1\n\treturn local"}])
+	_expect(not duplicate_local.get("success", true), "a real .gd patch with a duplicate local variable should be rejected before review")
+	_expect(not duplicate_local.get("diagnostics", []).is_empty(), "rejected duplicate local variable patches should return diagnostics")
+	_expect(_read(script_path) == original, "invalid local-variable candidates must not modify the real .gd file")
+
+	var valid: Dictionary = Tools.prepare_file_patch("valid_script", script_path, original.sha256_text(), [{"start_line": 3, "end_line": 3, "replacement": "var value := 2"}])
+	_expect(valid.get("success", false), "a valid real .gd candidate should be prepared for review")
+	_expect(Tools.apply_file_edit(valid).begins_with("Applied"), "a valid reviewed real .gd candidate should apply")
+	_expect(_read(script_path) == str(valid.get("new_content", "")), "the applied real .gd file should equal the reviewed candidate")
+
+	_expect(Tools.revert_file_edit(valid).begins_with("Reverted"), "the valid real .gd patch should revert")
+	var tampered_content := valid.duplicate(true)
+	tampered_content["new_content"] = str(tampered_content["new_content"]) + "\n"
+	_expect(Tools.apply_file_edit(tampered_content).contains("reviewed hashes"), "apply should reject retained candidate content that disagrees with its hash")
+	_expect(_read(script_path) == original, "tampered retained candidate content must not be written")
+	var remapped_content := valid.duplicate(true)
+	remapped_content["new_content"] = str(remapped_content["new_content"]) + "\n"
+	remapped_content["new_hash"] = str(remapped_content["new_content"]).sha256_text()
+	_expect(Tools.apply_file_edit(remapped_content).contains("canonical edits and review diff"), "apply should reject rehashed content that disagrees with the reviewed edits and diff")
+	_expect(_read(script_path) == original, "rehashed unreviewed candidate content must not be written")
+
+	var tampered_canonical := valid.duplicate(true)
+	tampered_canonical["filepath"] = _fixture_path.path_join("nested/../mutation_fixture.gd")
+	_expect(Tools.apply_file_edit(tampered_canonical).contains("canonical proposal fields"), "apply should reject a noncanonical retained filepath")
+	_expect(_read(script_path) == original, "noncanonical retained proposal fields must not be written")
 
 
 func _tool_names(definitions: Array) -> PackedStringArray:

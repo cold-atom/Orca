@@ -13,6 +13,8 @@ func _init() -> void:
 	_test_provider_error_formatting()
 	_test_required_auth_configuration()
 	_test_tool_call_validation()
+	_test_completion_validation()
+	_test_terminal_signal_ownership()
 	if _failures.is_empty():
 		print("api_client_test: PASS")
 		quit(0)
@@ -110,7 +112,46 @@ func _test_tool_call_validation() -> void:
 	_expect(not client._validate_tool_call_array([{"id": "call_missing_args", "type": "function", "function": {"name": "stop_game"}}]).is_empty(), "missing tool-call arguments should be rejected before side effects")
 	_expect(not client._validate_json_response({"choices": [{"message": "invalid"}]}).is_empty(), "non-streamed JSON assistant messages must have a valid dictionary shape")
 	_expect(not client._validate_json_response({"choices": []}).is_empty(), "non-streamed JSON responses must contain a choice")
-	_expect(client._validate_json_response({"choices": [{"message": {"content": "ok"}}]}).is_empty(), "valid non-streamed JSON assistant messages should pass validation")
+	_expect(client._validate_json_response({"choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}]}).is_empty(), "valid non-streamed JSON assistant messages should pass validation")
+	client.free()
+
+
+func _test_completion_validation() -> void:
+	var client = ApiClient.new()
+	var valid_call := {"id": "call_1", "type": "function", "function": {"name": "read_file", "arguments": "{}"}}
+	_expect(not client._validate_completion("", [], "stop").is_empty(), "empty DONE responses must fail")
+	_expect(not client._validate_completion("   \n", [], "stop").is_empty(), "whitespace-only responses must fail")
+	_expect(not client._validate_json_response({"choices": [{"message": {"content": ""}, "finish_reason": "stop"}]}).is_empty(), "empty JSON responses must fail")
+	_expect(not client._validate_json_response({"choices": [{"message": {"content": " \n\t"}, "finish_reason": "stop"}]}).is_empty(), "whitespace-only JSON responses must fail")
+	_expect(not client._validate_json_response({"choices": [], "usage": {"prompt_tokens": 1, "completion_tokens": 1}}).is_empty(), "usage-only JSON responses must fail")
+	_expect(not client._validate_json_response({"choices": [{"message": {"content": null, "reasoning_content": "hidden"}, "finish_reason": "stop"}]}).is_empty(), "reasoning-only JSON responses must fail")
+	_expect(client._validate_completion("visible", [], "stop").is_empty(), "normal visible content should succeed")
+	_expect(client._validate_completion("", [valid_call], "tool_calls").is_empty(), "tool-only responses should succeed")
+	_expect(client._validate_json_response({"choices": [{"message": {"content": null, "tool_calls": [valid_call]}, "finish_reason": "tool_calls"}]}).is_empty(), "tool-only JSON responses should succeed")
+	_expect(not client._validate_completion("partial", [], "length").is_empty(), "length finishes must fail despite partial content")
+	_expect(not client._validate_completion("partial", [], "content_filter").is_empty(), "content-filter finishes must fail despite partial content")
+	_expect(not client._validate_json_response({"choices": [{"message": {"content": "partial"}, "finish_reason": "length"}]}).is_empty(), "length-truncated JSON responses must fail")
+	_expect(client._validate_completion("visible", [], null).is_empty(), "meaningful content should remain compatible with providers that omit finish reasons")
+	_expect(client._validate_completion("visible", [], "end_turn").is_empty(), "meaningful content should remain compatible with provider-specific successful finish reasons")
+	_expect(not client._validate_completion("", [valid_call], "stop").is_empty(), "tool calls with a stop finish must fail as contradictory")
+	_expect(not client._validate_completion("visible", [], "tool_calls").is_empty(), "tool-call finishes without calls must fail as contradictory")
+	_expect(not client._json_has_partial_response({"choices": [{"message": {"content": "", "reasoning_content": null, "reasoning_details": []}}]}), "empty optional reasoning fields must not claim partial output")
+	client._generation_deadline_ms = Time.get_ticks_msec() - 1
+	_expect(client._response_generation_timed_out(), "the total generation deadline should expire independently of stream activity")
+	client.free()
+
+
+func _test_terminal_signal_ownership() -> void:
+	var client = ApiClient.new()
+	var signals := {"failed": 0, "cancelled": 0}
+	client.request_failed.connect(func(_error: Dictionary): signals["failed"] += 1)
+	client.request_cancelled.connect(func(): signals["cancelled"] += 1)
+	client._is_requesting = true
+	client._request_serial = 7
+	client.cancel_request()
+	client._fail_request(7, "stale", "connection", false)
+	_expect(signals["cancelled"] == 1 and signals["failed"] == 0, "cancellation should own the request serial and suppress stale terminal failures")
+	_expect(not client._finish_request(8), "an already terminated request must not be claimed again")
 	client.free()
 
 

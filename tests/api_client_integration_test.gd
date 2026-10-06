@@ -20,6 +20,29 @@ func _run() -> void:
 		_expect(success_choices[0].get("finish_reason") == "stop", "stream completion should preserve finish_reason")
 	_expect(success.get("response", {}).get("usage", {}).get("total_tokens") == 7, "stream completion should preserve usage-only events")
 
+	var empty_done := await _request("empty-done")
+	_expect_malformed(empty_done, "an empty DONE stream")
+
+	var reasoning_only := await _request("reasoning-only")
+	_expect_malformed(reasoning_only, "a reasoning-only stream")
+
+	var whitespace_only := await _request("whitespace-only")
+	_expect_malformed(whitespace_only, "a whitespace-only stream")
+
+	var normal_content := await _request("normal-content")
+	_expect(normal_content.get("kind") == "completed", "normal visible content should complete")
+
+	var tool_only := await _request("tool-only", "custom", "test-model", "default", true)
+	_expect(tool_only.get("kind") == "completed", "a valid tool-only response should complete")
+
+	var finish_length := await _request("finish-length")
+	_expect_malformed(finish_length, "a length-truncated stream")
+	_expect(finish_length.get("error", {}).get("partial_response") == true, "length-truncated visible output should be marked partial")
+
+	var finish_filter := await _request("finish-content-filter")
+	_expect_malformed(finish_filter, "a content-filtered stream")
+	_expect(finish_filter.get("error", {}).get("partial_response") == true, "content-filtered visible output should be marked partial")
+
 	var disconnect := await _request("disconnect")
 	_expect(disconnect.get("kind") == "failed", "a truncated SSE stream should fail")
 	_expect(disconnect.get("error", {}).get("category") == "connection", "a truncated stream should be categorized as a connection failure")
@@ -109,3 +132,8 @@ func _request(scenario: String, provider: String = "custom", model: String = "te
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		_failures.append(message)
+
+
+func _expect_malformed(result: Dictionary, description: String) -> void:
+	_expect(result.get("kind") == "failed", description + " should fail")
+	_expect(result.get("error", {}).get("category") == "malformed_response", description + " should be categorized as malformed")
