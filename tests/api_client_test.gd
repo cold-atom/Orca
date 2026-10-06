@@ -36,7 +36,8 @@ func _test_fragmented_sse_and_eof_flush() -> void:
 	var client = ApiClient.new()
 	client._reset_stream_state()
 	var deltas := PackedStringArray()
-	client.stream_delta.connect(func(content: String): deltas.append(content))
+	client.stream_delta.connect(func(_request_id: int, content: String): deltas.append(content))
+	client._lifecycle_request_id = 11
 	var event := "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"},\"finish_reason\":\"stop\"}]}\n\n"
 	var bytes := event.to_utf8_buffer()
 	client._consume_sse_bytes(bytes.slice(0, 17))
@@ -144,11 +145,13 @@ func _test_completion_validation() -> void:
 func _test_terminal_signal_ownership() -> void:
 	var client = ApiClient.new()
 	var signals := {"completed": 0, "failed": 0, "cancelled": 0}
-	client.request_completed.connect(func(_response: Dictionary): signals["completed"] += 1)
-	client.request_failed.connect(func(_error: Dictionary): signals["failed"] += 1)
-	client.request_cancelled.connect(func(): signals["cancelled"] += 1)
+	var ids := PackedInt32Array()
+	client.request_completed.connect(func(request_id: int, _response: Dictionary): signals["completed"] += 1; ids.append(request_id))
+	client.request_failed.connect(func(request_id: int, _error: Dictionary): signals["failed"] += 1; ids.append(request_id))
+	client.request_cancelled.connect(func(request_id: int): signals["cancelled"] += 1; ids.append(request_id))
 	client._is_requesting = true
 	client._request_serial = 7
+	client._lifecycle_request_id = 70
 	client._generation_deadline_ms = Time.get_ticks_msec() + 100
 	client._response_generation_timeout_ms = 100
 	client.cancel_request()
@@ -157,12 +160,14 @@ func _test_terminal_signal_ownership() -> void:
 	client._finish_reason = "stop"
 	client._complete_stream(7)
 	_expect(signals["cancelled"] == 1 and signals["failed"] == 0, "cancellation should own the request serial and suppress stale terminal failures")
+	_expect(ids == PackedInt32Array([70]), "cancellation should carry the code-owned lifecycle request ID")
 	_expect(signals["completed"] == 0, "cancellation should suppress stale completion callbacks")
 	_expect(client._generation_deadline_ms == 0 and client._response_generation_timeout_ms == ApiClient.RESPONSE_GENERATION_TIMEOUT_MS, "cancellation should clear request-scoped generation deadline state")
 	_expect(not client._finish_request(8), "an already terminated request must not be claimed again")
 	client._is_requesting = true
 	client._cancel_requested = false
 	client._request_serial = 9
+	client._lifecycle_request_id = 90
 	client._assistant_content = "complete"
 	client._finish_reason = "stop"
 	client._complete_stream(9)
@@ -171,6 +176,7 @@ func _test_terminal_signal_ownership() -> void:
 	_expect(signals["completed"] == 1 and signals["failed"] == 0, "completion should emit exactly once and suppress duplicate or late terminal signals")
 	client._is_requesting = true
 	client._request_serial = 10
+	client._lifecycle_request_id = 100
 	client._fail_request(10, "failed", "connection", false)
 	client._fail_request(10, "duplicate", "connection", false)
 	client._complete_stream(10)
@@ -194,21 +200,22 @@ func _test_provider_error_formatting() -> void:
 func _test_required_auth_configuration() -> void:
 	var client = ApiClient.new()
 	var observed := {"failure": {}}
-	client.request_failed.connect(func(error: Dictionary): observed["failure"] = error)
+	client.request_failed.connect(func(request_id: int, error: Dictionary): observed.merge({"request_id": request_id, "failure": error}, true))
 	client.send_chat_completion([{"role": "user", "content": "test"}], [], {
 		"provider": "custom",
 		"base_url": "http://127.0.0.1:1/v1",
 		"api_key": "",
 		"model": "fixture"
-	})
+	}, {ApiClient.LIFECYCLE_REQUEST_ID_OPTION: 41})
 	_expect(observed["failure"].get("category") == "configuration", "authenticated OpenAI-compatible profiles should still reject an empty API key before transport")
+	_expect(observed.get("request_id") == 41, "synchronous configuration failures should retain the incoming lifecycle request ID")
 	observed["failure"] = {}
 	client.send_chat_completion([{"role": "user", "content": "test"}], [], {
 		"provider": "custom",
 		"base_url": "http://127.0.0.1:1/v1",
 		"api_key": "   ",
 		"model": "fixture"
-	})
+	}, {ApiClient.LIFECYCLE_REQUEST_ID_OPTION: 42})
 	_expect(observed["failure"].get("category") == "configuration", "whitespace credentials should not bypass required authentication")
 	for unsafe_config in [
 		{"provider": "ollama", "base_url": "http://192.168.1.20:11434/v1", "api_key": "", "model": "fixture"},

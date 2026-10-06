@@ -48,6 +48,7 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - Incremental assistant text updates.
 - Fragmented streamed tool-call reconstruction.
 - Stop/cancel behavior with stale-request protection.
+- End-to-end lifecycle ownership: each provider call has a controller-issued request ID, while one monotonic turn ID spans its complete tool loop and request-scoped UI state.
 - Maximum tool-round limit.
 - Mode transition messages that override stale Plan/Work statements in history.
 - Provider-reported token accounting across initial and follow-up tool requests.
@@ -212,6 +213,8 @@ User submits prompt
 The request-scoped context, including project instructions and skill catalog metadata, remains available through all tool rounds in one turn but does not pollute later turns with stale state. Skill bodies are not included automatically; `read_project_skill` returns one selected body as a normal bounded tool result.
 The provider snapshot is also retained through all tool rounds so settings changes cannot mix endpoints or models inside one protocol turn.
 
+Each user submission receives one monotonic controller turn ID. Every initial provider request and tool follow-up receives a distinct monotonic provider request ID through private request options; `APIClient` carries that ID on all stream and terminal signals without serializing it into provider payloads. The controller reserves request ownership before publishing thinking/finalizing state and rechecks the captured turn/request pair before transport, so synchronous cancellation cannot launch an orphan request. It claims matching terminal events once and invalidates ending ownership before any busy/terminal signal can synchronously start a new turn. Awaited approval and run-observation continuations remain bound to the originating turn. `ChatWindow` independently checks the turn ID before changing working/stream cards, tool or review cards, session persistence, composer state, or Send/Stop controls.
+
 Before each provider request, `context_budget.gd` resolves the request-scoped model's known context window, preferring the provider-reported model identity during a tool continuation, and estimates the serialized messages and tool schemas conservatively from UTF-8 bytes plus structural overhead. It reserves bounded capacity for a final answer and, while tools are exposed, for a later tool result. If necessary it replaces the oldest contiguous completed turns with one system notice. Historical tool rounds are removable only when the assistant call, every matching tool result, and the terminal assistant response are complete. The active user turn, provider reasoning continuation, temporary editor context, and runtime observation remain protected. Unknown custom-model limits continue without speculative blocking; an oversized protected request for a known limit fails before transport.
 
 Compaction changes only model continuation history. The visible session transcript remains intact, while later session snapshots naturally persist only retained user/assistant continuation. The internal compaction notice and request-scoped system messages are not persisted.
@@ -227,7 +230,7 @@ The transport supports:
 - Response and event size limits.
 - Regular JSON fallback for compatible endpoints that ignore streaming.
 - Explicit cancellation.
-- Request generations that prevent stale callbacks.
+- Private transport generations that stop stale client coroutines, plus caller-owned lifecycle IDs on every stream and terminal signal.
 - Streamed usage capture through `stream_options.include_usage`, including usage-only events with empty choices.
 - One safe retry without `stream_options` when a provider rejects that option before streaming begins.
 - One bounded retry for connection failures before the POST is submitted. Requests are not automatically replayed after submission or partial output.
@@ -658,7 +661,7 @@ Do not describe the current credential storage or execution model as fully secur
 
 A committed automated suite exists under `tests/`:
 
-- `api_client_test.gd` verifies media-type recognition, fragmented SSE reconstruction, clean-EOF event flushing, bounded opaque tool-call metadata, structured failure metadata, raw-buffer behavior, and tool-call ID validation.
+- `api_client_test.gd` verifies media-type recognition, fragmented SSE reconstruction, clean-EOF event flushing, bounded opaque tool-call metadata, structured failure metadata, raw-buffer behavior, tool-call validation, terminal ownership, and lifecycle signal IDs.
 - `provider_test.gd` verifies hosted/local registration, native Ollama/LM Studio discovery URLs and filtering, generic embedding-name fallback, loaded context selection, required/optional authentication, bounded model normalization, reasoning options, pricing conversion, endpoint-aware cache identities, and public metadata mapping.
 - `context_budget_test.gd` verifies unknown-limit behavior, conservative reserves, complete-turn removal, historical and active tool-group integrity, repeated compaction, malformed protocol refusal, and oversized protected-turn failure.
 - `api_client_integration_test.gd` uses `http_test_server.py` on `127.0.0.1` to verify successful SSE, keyless local chat without an Authorization header, Gemini thought-signature reconstruction, xAI reasoning requests, mid-stream disconnect metadata, aggregate response limits, buffer cleanup, and unexpected content types.
@@ -666,12 +669,12 @@ A committed automated suite exists under `tests/`:
 - `agent_compatibility_probe_integration_test.gd` verifies the complete isolated two-request function-call and matching tool-result continuation through the real local HTTP/SSE transport.
 - `patch_utils_test.gd` verifies replacement, insertion, deletion, append, empty-file creation, multiple edits, overlap rejection, and LF/CRLF preservation.
 - `tools_test.gd` verifies Plan/Work tool-schema separation, direct-mutation denial, project and plugin path boundaries, symbolic-link rejection, immutable proposals, base hashes, stale application and revert guards, safe application, and new/existing-file revert behavior.
-- `agent_controller_test.gd` verifies Plan/Work schema and runtime enforcement, request-scoped project guidance, exact compatibility-bound local Agent gating, mode locking, explicit approval and rejection, cancellation while awaiting approval, skipped remaining calls, tool-loop finalization, recoverable provider failures, applied-change non-replay, unsafe-protocol refusal, and matching protocol-valid tool results.
-- `agent_compatibility_probe_test.gd` verifies the isolated synthetic two-step tool-call protocol, exact challenge/call-ID continuation, opaque metadata preservation, strict acknowledgement, disabled request fallback, failure, timeout, and cancellation.
+- `agent_controller_test.gd` verifies Plan/Work schema and runtime enforcement, request-scoped project guidance, exact compatibility-bound local Agent gating, mode locking, explicit approval and rejection, cancellation while awaiting approval, skipped remaining calls, turn/provider ownership, stale and duplicate terminal rejection, synchronous workflow cancellation, terminal reentry, tool-loop finalization, recoverable provider failures, applied-change non-replay, unsafe-protocol refusal, and matching protocol-valid tool results.
+- `agent_compatibility_probe_test.gd` verifies the isolated synthetic two-step tool-call protocol, distinct owned request IDs, stale callback rejection, exact challenge/call-ID continuation, opaque metadata preservation, strict acknowledgement, disabled request fallback, failure, timeout, and cancellation.
 - `session_store_test.gd` verifies project isolation, recovery-checkpoint persistence, schema redaction, backup recovery, retention, truncation, deletion cleanup, and controller state restoration.
 - `history_view_test.gd` verifies that the History page remains within the 300 px minimum dock width.
 - `settings_view_test.gd` verifies Provider/About tab switching, local-profile presentation, explicit keyless discovery, endpoint-change cleanup, compatibility controls/default denial, version metadata, branding, compatibility, license presentation, and the 300 px dock-width constraint.
-- `chat_window_test.gd` verifies editor-scale conversion math, compact line-based composer sizing, narrow action containment, working-state animation, first-token transitions, delayed-layout auto-follow, sequential review navigation, fenced-code parsing, BBCode isolation, exact code preservation, expanded previous/proposed diff content and safe line highlighting, bounded code-block layout, streaming-to-final transitions, tool-preface handling, recoverable/unsafe interruption composer state, restoration rules, structured review cards, and the 300 px dock-width constraint.
+- `chat_window_test.gd` verifies editor-scale conversion math, compact line-based composer sizing, narrow action containment, working-state animation, first-token transitions, turn-scoped stale event rejection, delayed-layout auto-follow, sequential review navigation, fenced-code parsing, BBCode isolation, exact code preservation, expanded previous/proposed diff content and safe line highlighting, bounded code-block layout, streaming-to-final transitions, tool-preface handling, recoverable/unsafe interruption composer state, restoration rules, structured review cards, and the 300 px dock-width constraint.
 - `editor_ui_scale_test.gd` runs in editor mode and verifies that dock margins, branding, composer controls, and prompt sizing use Godot's effective editor scale without double-scaling theme fonts.
 - `logo_asset_test.gd` verifies that the Orca mark has no opaque white tile and retains transparent corners after import.
 - `tool_activity_group_test.gd` verifies aggregate status and duration, expansion, append closure, forwarded navigation, and the 300 px width constraint.
@@ -1203,6 +1206,13 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Added environment-gated deterministic fault injection for temporary verification/cleanup, replacement/restore, backup cleanup, post-write reread/hash/validation, independent destination change, and rollback failure paths. The model tool surface cannot configure these test faults.
 - Preserved one absolute provider-generation deadline across connection and `stream_options` compatibility retries and added active localhost SSE fixtures proving continuous hidden reasoning cannot extend it.
 - Added controller, card, session, file patch, structured mutation, and transport regressions for the new outcome contracts. Live Gemini and DeepSeek multi-round checks remain manual release gates.
+
+### 2026-10-06: Orca 1.2.1 Provider Request Ownership
+
+- Added caller-owned lifecycle IDs to all `APIClient` stream and terminal signals while preserving its separate private coroutine serial.
+- Added monotonic controller turn and provider-request ownership, distinct IDs for tool follow-ups, single-claim terminal handling, and turn-bound awaited continuations.
+- Added independent ChatWindow turn guards before request-scoped card, session, composer, and Send/Stop changes, plus focused stale, duplicate, cancellation, follow-up, probe, and synchronous-failure regressions.
+- Hardened synchronous signal reentrancy by reserving request ownership before workflow signals, rechecking before transport, and invalidating ending ownership before busy or terminal emissions.
 
 ## Handoff Checklist
 

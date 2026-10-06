@@ -8,13 +8,23 @@ const AgentCompatibilityProbe = preload("res://addons/orca/scripts/agent_compati
 const ToolLoopGuard = preload("res://addons/orca/scripts/tool_loop_guard.gd")
 
 class FakeApiClient:
-	extends RefCounted
+	extends Node
+	signal request_completed(request_id: int, response: Dictionary)
+	signal request_failed(request_id: int, error: Dictionary)
+	signal request_cancelled(request_id: int)
+	signal stream_started(request_id: int)
+	signal stream_delta(request_id: int, content: String)
 	var requests: Array[Dictionary] = []
 	var requesting := false
 	var cancelled := false
+	var synchronous_failure: Dictionary = {}
 
 	func send_chat_completion(messages: Array, tools: Array, provider_config: Dictionary = {}, request_options: Dictionary = {}) -> void:
 		requests.append({"messages": messages.duplicate(true), "tools": tools.duplicate(true), "provider_config": provider_config.duplicate(true), "request_options": request_options.duplicate(true)})
+		requesting = true
+		if not synchronous_failure.is_empty():
+			requesting = false
+			request_failed.emit(current_request_id(), synchronous_failure.duplicate(true))
 
 	func is_requesting() -> bool:
 		return requesting
@@ -22,9 +32,21 @@ class FakeApiClient:
 	func cancel_request() -> void:
 		cancelled = true
 		requesting = false
+		request_cancelled.emit(current_request_id())
 
 	func last_request_may_have_usage() -> bool:
 		return false
+
+	func current_request_id() -> int:
+		return int(requests[-1].get("request_options", {}).get("lifecycle_request_id", 0)) if not requests.is_empty() else 0
+
+	func complete(response: Dictionary, request_id: int = -1) -> void:
+		requesting = false
+		request_completed.emit(current_request_id() if request_id < 0 else request_id, response)
+
+	func fail(error: Dictionary, request_id: int = -1) -> void:
+		requesting = false
+		request_failed.emit(current_request_id() if request_id < 0 else request_id, error)
 
 
 class FakeGameProcessService:
@@ -286,6 +308,9 @@ func _run() -> void:
 	await _test_modes_and_plan_runtime_denial()
 	await _test_local_chat_tool_denial()
 	await _test_request_workflow_state()
+	await _test_request_ownership()
+	await _test_reentrant_request_lifecycle()
+	await _test_synchronous_tool_and_approval_boundaries()
 	await _test_work_approval()
 	await _test_mutation_recovery_classification()
 	await _test_work_rejection_protocol()
@@ -372,15 +397,197 @@ func _test_request_workflow_state() -> void:
 	var fixture := await _new_controller()
 	var controller = fixture["controller"]
 	var states: Array[Dictionary] = []
-	controller.workflow_state_changed.connect(func(state: String, details: Dictionary):
+	controller.workflow_state_changed.connect(func(_turn_id: int, state: String, details: Dictionary):
 		states.append({"state": state, "details": details.duplicate(true)})
 	)
 	controller.send_user_message("Inspect the project")
 	_expect(states.size() == 1 and states[0].get("state") == "thinking" and not bool(states[0].get("details", {}).get("follow_up", true)), "the initial provider request should expose a thinking workflow state")
-	await controller._on_api_request_completed(_tool_response([
+	await _deliver_completion(controller, _tool_response([
 		{"id": "workflow_read", "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://fixture.txt\"}"}}
 	]))
 	_expect(states.size() >= 2 and states[-1].get("state") == "thinking" and bool(states[-1].get("details", {}).get("follow_up", false)), "a provider request after tools should expose a follow-up preparing state")
+	await _free_controller(controller)
+
+
+func _test_request_ownership() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var messages: Array[Dictionary] = []
+	var errors: Array[Dictionary] = []
+	var cancellations: Array[int] = []
+	var stream_text := [""]
+	controller.message_received.connect(func(turn_id: int, _role: String, content: String): messages.append({"turn_id": turn_id, "content": content}))
+	controller.error_occurred.connect(func(turn_id: int, message: String): errors.append({"turn_id": turn_id, "message": message}))
+	controller.request_cancelled.connect(func(turn_id: int): cancellations.append(turn_id))
+	controller.message_stream_delta.connect(func(_turn_id: int, content: String): stream_text[0] += content)
+
+	controller.send_user_message("first")
+	var first_turn: int = controller._active_turn_id
+	var first_request := api.current_request_id()
+	api.complete({"choices": [{"message": {"role": "assistant", "content": "first complete"}}]})
+	controller.send_user_message("second")
+	var second_turn: int = controller._active_turn_id
+	var second_request := api.current_request_id()
+	var history_size: int = controller.message_history.size()
+	api.stream_delta.emit(first_request, "stale delta")
+	api.request_completed.emit(first_request, {"choices": [{"message": {"role": "assistant", "content": "stale completion"}}]})
+	api.request_failed.emit(first_request, {"message": "stale failure"})
+	api.request_cancelled.emit(first_request)
+	_expect(second_turn > first_turn and second_request > first_request, "new turns should own monotonic turn and provider request IDs")
+	_expect(controller.is_busy() and controller.message_history.size() == history_size and stream_text[0].is_empty(), "stale stream and completion events must not mutate the newer turn")
+	_expect(errors.is_empty() and cancellations.is_empty(), "stale failure and cancellation events must not terminate the newer turn")
+	api.request_cancelled.emit(second_request)
+	api.request_cancelled.emit(second_request)
+	_expect(cancellations == [second_turn] and not controller.is_busy(), "matching cancellation should finish once before ownership is invalidated")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	var observed_turn_ids: Array[int] = []
+	var terminal_messages: Array[Dictionary] = []
+	controller.workflow_state_changed.connect(func(turn_id: int, _state: String, _details: Dictionary): observed_turn_ids.append(turn_id))
+	controller.message_received.connect(func(turn_id: int, _role: String, content: String): terminal_messages.append({"turn_id": turn_id, "content": content}))
+	controller.send_user_message("follow tools")
+	var tool_turn: int = controller._active_turn_id
+	var initial_request := api.current_request_id()
+	api.complete(_tool_response([{"id": "owned_read", "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://fixture.txt\"}"}}]))
+	await process_frame
+	var follow_up_request := api.current_request_id()
+	_expect(follow_up_request > initial_request, "every tool follow-up should use a distinct provider request ID")
+	_expect(observed_turn_ids.all(func(turn_id: int): return turn_id == tool_turn), "one turn ID should span initial and follow-up provider requests")
+	api.complete({"choices": [{"message": {"role": "assistant", "content": "done"}}]})
+	var completed_history: Array = controller.message_history.duplicate(true)
+	var completed_usage: Dictionary = {
+		"requests": controller._completed_requests,
+		"input": controller._session_input_tokens,
+		"output": controller._session_output_tokens,
+		"cost": controller._session_cost_usd
+	}
+	var completed_message_count: int = terminal_messages.size()
+	api.request_completed.emit(follow_up_request, {"choices": [{"message": {"role": "assistant", "content": "duplicate"}}]})
+	api.request_failed.emit(follow_up_request, {"message": "duplicate failure"})
+	api.request_cancelled.emit(follow_up_request)
+	_expect(not controller.is_busy(), "duplicate terminal events must not reopen a completed turn")
+	_expect(controller.message_history == completed_history, "duplicate terminal events must not mutate completed history")
+	_expect(controller._completed_requests == completed_usage["requests"] and controller._session_input_tokens == completed_usage["input"] and controller._session_output_tokens == completed_usage["output"] and is_equal_approx(controller._session_cost_usd, completed_usage["cost"]), "duplicate terminal events must not mutate usage")
+	_expect(terminal_messages.size() == completed_message_count, "duplicate terminal events must not emit another assistant message")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	api.synchronous_failure = {"message": "synchronous configuration failure", "category": "configuration"}
+	var synchronous_errors: Array[Dictionary] = []
+	controller.error_occurred.connect(func(turn_id: int, message: String): synchronous_errors.append({"turn_id": turn_id, "message": message}))
+	controller.send_user_message("invalid config")
+	var sent_request_id := int(api.requests[0].get("request_options", {}).get("lifecycle_request_id", 0))
+	_expect(sent_request_id > 0 and controller._expected_provider_request_id == 0, "synchronous failures should be owned by the ID set before APIClient is called")
+	_expect(synchronous_errors.size() == 1 and int(synchronous_errors[0].get("turn_id", 0)) > 0 and not controller.is_busy(), "an owned synchronous failure should terminate exactly its originating turn")
+	await _free_controller(controller)
+
+
+func _test_reentrant_request_lifecycle() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	controller.request_state_changed.connect(func(_turn_id: int, active: bool):
+		if active:
+			controller.cancel_current_request()
+	)
+	controller.send_user_message("cancel during activation")
+	_expect(api.requests.is_empty() and controller.message_history.size() == 1 and not controller.is_busy(), "cancellation from the initial active-state signal must not append user history or launch transport")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	controller.workflow_state_changed.connect(func(_turn_id: int, state: String, _details: Dictionary):
+		if state == "thinking":
+			controller.cancel_current_request()
+	)
+	controller.send_user_message("cancel during thinking")
+	_expect(api.requests.is_empty() and not controller.is_busy(), "cancellation from the thinking signal must not launch an orphan provider request")
+	_expect(controller._active_turn_id == 0 and controller._expected_provider_request_id == 0, "thinking cancellation should invalidate turn and provider ownership")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	controller.send_user_message("prepare finalization")
+	api.requests.clear()
+	api.requesting = false
+	controller._expected_provider_request_id = 0
+	controller._loop_final_request = true
+	controller.workflow_state_changed.connect(func(_turn_id: int, state: String, _details: Dictionary):
+		if state == "finalizing":
+			controller.cancel_current_request()
+	)
+	controller._send_current_request()
+	_expect(api.requests.is_empty() and not controller.is_busy(), "cancellation from the finalizing signal must not launch an orphan provider request")
+	_expect(controller._active_turn_id == 0 and controller._expected_provider_request_id == 0, "finalizing cancellation should invalidate turn and provider ownership")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	var old_turn := [0]
+	var started_new_turn := [false]
+	var stream_turns: Array[int] = []
+	controller.request_state_changed.connect(func(turn_id: int, active: bool):
+		if not active and turn_id == old_turn[0] and not started_new_turn[0]:
+			started_new_turn[0] = true
+			controller.send_user_message("reentrant next turn")
+	)
+	controller.message_stream_delta.connect(func(turn_id: int, _content: String): stream_turns.append(turn_id))
+	controller.send_user_message("old turn")
+	old_turn[0] = controller._active_turn_id
+	var old_request := api.current_request_id()
+	api.complete({"choices": [{"message": {"role": "assistant", "content": "old complete"}}]})
+	var new_turn: int = controller._active_turn_id
+	var new_request := api.current_request_id()
+	_expect(started_new_turn[0] and controller.is_busy() and new_turn > old_turn[0], "a request-state listener should be able to start a new turn after the old ownership is invalidated")
+	_expect(new_request > old_request and controller._expected_provider_request_id == new_request, "old terminal emissions must preserve reentrant new-turn provider ownership")
+	api.stream_delta.emit(new_request, "new delta")
+	_expect(stream_turns == [new_turn], "reentrant new-turn stream events should retain the new turn ID")
+	await _free_controller(controller)
+
+
+func _test_synchronous_tool_and_approval_boundaries() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var tools: FakeTools = fixture["tools"]
+	controller.tool_execution_started.connect(func(_turn_id: int, _call_id: String, _tool_name: String, _arguments: Dictionary): controller.cancel_current_request())
+	controller.send_user_message("cancel before tool side effect")
+	api.complete(_tool_response([{"id": "cancel_before_execute", "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://fixture.txt\"}"}}]))
+	await process_frame
+	_expect(tools.execute_calls == 0 and not controller.is_busy(), "synchronous cancellation from tool-start must prevent tool side effects and finish the turn")
+	_expect(_tool_result_count(controller.message_history, "cancel_before_execute") == 1 and _protocol_is_valid(controller.message_history), "tool-start cancellation must retain one protocol-valid cancellation result")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	tools = fixture["tools"]
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary): controller.resolve_edit(str(proposal.get("id", "")), turn_id, true))
+	controller.send_user_message("approve synchronously")
+	api.complete(_tool_response([_patch_call("sync_approval")]))
+	await process_frame
+	_expect(tools.apply_calls == 1 and controller._pending_change_id.is_empty(), "a synchronous approval must be consumed without losing the decision signal")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	tools = fixture["tools"]
+	controller._is_running = true
+	controller._active_turn_id = 22
+	controller._awaiting_edit_resolution = true
+	controller._pending_change_id = "reused_id"
+	controller._proposals["reused_id"] = {"id": "reused_id", "_origin_turn_id": 22, "kind": "file_patch", "filepath": "res://fixture.txt"}
+	controller.resolve_edit("reused_id", 21, true)
+	_expect(tools.apply_calls == 0 and controller._pending_change_id == "reused_id", "a stale approval with a reused provider call ID must not resolve a newer proposal")
 	await _free_controller(controller)
 
 
@@ -390,10 +597,10 @@ func _test_work_approval() -> void:
 	var tools: FakeTools = fixture["tools"]
 	var apply_count_at_proposal := [-1]
 	var review_proposals := []
-	controller.edit_proposed.connect(func(proposal: Dictionary):
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary):
 		apply_count_at_proposal[0] = tools.apply_calls
 		review_proposals.append(proposal)
-		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true)
+		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true)
 	)
 	var result: Dictionary = await controller._execute_tool_call(_patch_call("approve_call"))
 	_expect(apply_count_at_proposal[0] == 0, "approval proposal must be emitted before applying")
@@ -414,7 +621,7 @@ func _test_mutation_recovery_classification() -> void:
 	var controller = fixture["controller"]
 	var tools: FakeTools = fixture["tools"]
 	tools.apply_result = "Cleanup required: Applied the reviewed changes. Recovery copy: /private/backup"
-	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true))
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true))
 	var cleanup_result: Dictionary = await controller._execute_tool_call(_patch_call("cleanup_apply"))
 	_expect(cleanup_result.get("outcome") == "applied_recovery" and cleanup_result.get("execution", {}).get("success", false), "committed cleanup warnings should remain successful applied_recovery outcomes")
 	_expect(controller._proposals.get("cleanup_apply", {}).get("cleanup_required", false) and not controller._proposals.get("cleanup_apply", {}).get("recovery_required", false), "cleanup-warning proposals should remain guarded and revertible without recovery bypass state")
@@ -428,7 +635,7 @@ func _test_mutation_recovery_classification() -> void:
 	controller = fixture["controller"]
 	tools = fixture["tools"]
 	tools.apply_result = "Recovery required: Replacement failed and the original could not be restored. Recovery copy: /private/recovery"
-	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true))
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true))
 	var recovery_result: Dictionary = await controller._execute_tool_call(_patch_call("uncertain_apply"))
 	var retained: Dictionary = controller._proposals.get("uncertain_apply", {})
 	_expect(recovery_result.get("outcome") == "apply_recovery_required" and not recovery_result.get("execution", {}).get("success", true), "uncertain apply recovery must not be a successful or completed tool outcome")
@@ -453,11 +660,11 @@ func _test_work_rejection_protocol() -> void:
 	var controller = fixture["controller"]
 	var tools: FakeTools = fixture["tools"]
 	var api: FakeApiClient = fixture["api"]
-	controller.edit_proposed.connect(func(proposal: Dictionary):
-		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), false)
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary):
+		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, false)
 	)
 	controller._is_running = true
-	await controller._on_api_request_completed(_tool_response([_patch_call("reject_call")]))
+	await _deliver_completion(controller, _tool_response([_patch_call("reject_call")]))
 	_expect(tools.apply_calls == 0, "rejected patch must not be applied")
 	_expect(controller._proposals.is_empty(), "rejected proposals should release private retained content")
 	_expect(api.requests.size() == 1, "rejected patch should continue the model loop once")
@@ -475,12 +682,12 @@ func _test_cancellation_protocol() -> void:
 	var tools: FakeTools = fixture["tools"]
 	var api: FakeApiClient = fixture["api"]
 	var cancelled_count := [0]
-	controller.request_cancelled.connect(func(): cancelled_count[0] += 1)
-	controller.edit_proposed.connect(func(_proposal: Dictionary):
+	controller.request_cancelled.connect(func(_turn_id: int): cancelled_count[0] += 1)
+	controller.edit_proposed.connect(func(_turn_id: int, _proposal: Dictionary):
 		controller.call_deferred("cancel_current_request")
 	)
 	controller._is_running = true
-	await controller._on_api_request_completed(_tool_response([
+	await _deliver_completion(controller, _tool_response([
 		_patch_call("cancel_patch"),
 		{"id": "cancel_read", "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://fixture.txt\"}"}}
 	]))
@@ -528,7 +735,7 @@ func _test_scene_inspection_permission() -> void:
 	_expect(controller.set_mode(AgentController.AgentMode.PLAN), "scene inspection should be available from Plan mode")
 	_expect(_tool_names(controller._get_tool_definitions()).has("inspect_scene"), "Plan schema should expose inspect_scene")
 	var proposals := [0]
-	controller.edit_proposed.connect(func(_proposal: Dictionary): proposals[0] += 1)
+	controller.edit_proposed.connect(func(_turn_id: int, _proposal: Dictionary): proposals[0] += 1)
 	var result: Dictionary = await controller._execute_tool_call({"id": "inspect_1", "type": "function", "function": {"name": "inspect_scene", "arguments": "{\"scene_path\":\"res://main.tscn\"}"}})
 	_expect(result.get("outcome") == "completed", "inspect_scene should use the generic read-only execution path")
 	_expect(tools.execute_calls == 1, "inspect_scene should execute exactly once")
@@ -543,7 +750,7 @@ func _test_project_settings_inspection_permission() -> void:
 	_expect(controller.set_mode(AgentController.AgentMode.PLAN), "project settings inspection should be available from Plan mode")
 	_expect(_tool_names(controller._get_tool_definitions()).has("inspect_project_settings"), "Plan schema should expose inspect_project_settings")
 	var proposals := [0]
-	controller.edit_proposed.connect(func(_proposal: Dictionary): proposals[0] += 1)
+	controller.edit_proposed.connect(func(_turn_id: int, _proposal: Dictionary): proposals[0] += 1)
 	var result: Dictionary = await controller._execute_tool_call({"id": "settings_1", "type": "function", "function": {"name": "inspect_project_settings", "arguments": "{}"}})
 	_expect(result.get("outcome") == "completed", "inspect_project_settings should use the generic read-only execution path")
 	_expect(tools.execute_calls == 1, "inspect_project_settings should execute exactly once")
@@ -556,7 +763,7 @@ func _test_input_map_approval_and_plan_denial() -> void:
 	var controller = fixture["controller"]
 	var tools: FakeTools = fixture["tools"]
 	_expect(_tool_names(controller._get_tool_definitions()).has("propose_input_map_changes"), "Work schema should expose Input Map proposals")
-	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true))
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true))
 	var call := {"id": "input_approve", "type": "function", "function": {"name": "propose_input_map_changes", "arguments": JSON.stringify({"base_hash": "hash", "changes": [{"operation": "upsert", "action": "jump", "events": []}]})}}
 	var result: Dictionary = await controller._execute_tool_call(call)
 	_expect(result.get("outcome") == "applied", "approved Input Map proposals should use the reviewed mutation path")
@@ -594,9 +801,9 @@ func _test_main_scene_approval_and_privacy() -> void:
 	var tools: FakeTools = fixture["tools"]
 	_expect(_tool_names(controller._get_tool_definitions()).has("propose_main_scene_change"), "Work schema should expose main scene proposals")
 	var visible_proposals := []
-	controller.edit_proposed.connect(func(proposal: Dictionary):
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary):
 		visible_proposals.append(proposal)
-		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true)
+		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true)
 	)
 	var call := {"id": "main_approve", "type": "function", "function": {"name": "propose_main_scene_change", "arguments": JSON.stringify({"base_hash": "hash", "scene_path": "res://main.tscn"})}}
 	var result: Dictionary = await controller._execute_tool_call(call)
@@ -623,7 +830,7 @@ func _test_project_settings_approval_and_plan_denial() -> void:
 	for tool_name in ["apply_patch", "propose_input_map_changes", "propose_main_scene_change", "propose_project_settings_changes", "propose_scene_changes"]:
 		_expect(AgentController.REVIEWED_MUTATION_TOOLS.has(tool_name), "every Work mutation schema must have runtime reviewed routing: " + tool_name)
 	_expect(_tool_names(controller._get_tool_definitions()).has("propose_project_settings_changes"), "Work schema should expose allowlisted ProjectSettings proposals")
-	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true))
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true))
 	var call := {"id": "settings_approve", "type": "function", "function": {"name": "propose_project_settings_changes", "arguments": JSON.stringify({"base_hash": "hash", "changes": [{"setting_path": "display/window/size/viewport_width", "value": 1920}]})}}
 	var result: Dictionary = await controller._execute_tool_call(call)
 	_expect(result.get("outcome") == "applied", "approved ProjectSettings proposals should use the reviewed mutation path")
@@ -647,9 +854,9 @@ func _test_scene_creation_approval_and_privacy() -> void:
 	var tools: FakeTools = fixture["tools"]
 	_expect(_tool_names(controller._get_tool_definitions()).has("propose_scene_changes"), "Work schema should expose structured scene proposals")
 	var visible := []
-	controller.edit_proposed.connect(func(proposal: Dictionary):
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary):
 		visible.append(proposal)
-		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true)
+		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true)
 	)
 	var call := {"id": "scene_create", "type": "function", "function": {"name": "propose_scene_changes", "arguments": JSON.stringify({"scene_path": "res://world.tscn", "base_hash": "", "operations": [{"operation": "create_scene", "root_type": "Node2D", "root_name": "World"}]})}}
 	var result: Dictionary = await controller._execute_tool_call(call)
@@ -675,9 +882,9 @@ func _test_scene_script_two_stage_approval() -> void:
 	var controller = fixture["controller"]
 	var tools: FakeTools = fixture["tools"]
 	var visible := []
-	controller.edit_proposed.connect(func(proposal: Dictionary):
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary):
 		visible.append(proposal)
-		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true)
+		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true)
 	)
 	var call := {"id": "script_attach", "type": "function", "function": {"name": "propose_scene_changes", "arguments": JSON.stringify({"scene_path": "res://actor.tscn", "base_hash": "scene-hash", "operations": [{"operation": "attach_script", "node_path": ".", "script_path": "res://actor.gd", "script_hash": "script-hash"}]})}}
 	var result: Dictionary = await controller._execute_tool_call(call)
@@ -692,7 +899,7 @@ func _test_scene_script_two_stage_approval() -> void:
 	fixture = await _new_controller()
 	controller = fixture["controller"]
 	tools = fixture["tools"]
-	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), false))
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, false))
 	result = await controller._execute_tool_call(call)
 	_expect(result.get("outcome") == "rejected" and tools.promote_calls == 0 and tools.apply_calls == 0, "rejecting preliminary script trust must not construct or apply a candidate")
 	await _free_controller(controller)
@@ -704,13 +911,13 @@ func _test_scene_script_second_stage_resolution() -> void:
 	var tools: FakeTools = fixture["tools"]
 	var api: FakeApiClient = fixture["api"]
 	var stage := [0]
-	controller.edit_proposed.connect(func(proposal: Dictionary):
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary):
 		stage[0] += 1
-		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), stage[0] == 1)
+		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, stage[0] == 1)
 	)
 	var call := {"id": "script_reject_final", "type": "function", "function": {"name": "propose_scene_changes", "arguments": JSON.stringify({"scene_path": "res://actor.tscn", "base_hash": "scene-hash", "operations": [{"operation": "attach_script", "node_path": ".", "script_path": "res://actor.gd", "script_hash": "script-hash"}]})}}
 	controller._is_running = true
-	await controller._on_api_request_completed(_tool_response([call]))
+	await _deliver_completion(controller, _tool_response([call]))
 	_expect(stage[0] == 2 and tools.promote_calls == 1 and tools.apply_calls == 0, "rejecting the final script candidate should occur after exactly one trusted construction and before apply")
 	_expect(api.requests.size() == 1 and _tool_result_count(api.requests[0].get("messages", []), "script_reject_final") == 1, "both script decisions should still produce exactly one protocol tool result")
 	_expect(_protocol_is_valid(api.requests[0].get("messages", [])), "second-stage script rejection history should remain protocol-valid")
@@ -721,15 +928,15 @@ func _test_scene_script_second_stage_resolution() -> void:
 	tools = fixture["tools"]
 	api = fixture["api"]
 	stage = [0]
-	controller.edit_proposed.connect(func(proposal: Dictionary):
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary):
 		stage[0] += 1
 		if stage[0] == 1:
-			controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true)
+			controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true)
 		else:
 			controller.call_deferred("cancel_current_request")
 	)
 	controller._is_running = true
-	await controller._on_api_request_completed(_tool_response([call]))
+	await _deliver_completion(controller, _tool_response([call]))
 	_expect(stage[0] == 2 and tools.promote_calls == 1 and tools.apply_calls == 0, "cancelling at final script review must not apply the candidate")
 	_expect(_tool_result_count(controller.message_history, "script_reject_final") == 1 and _protocol_is_valid(controller.message_history), "second-stage cancellation should retain exactly one valid tool result")
 	await _free_controller(controller)
@@ -803,10 +1010,10 @@ func _test_bounded_run_observation() -> void:
 	var api: FakeApiClient = fixture["api"]
 	game.terminal_on_observe = true
 	var states := []
-	controller.workflow_state_changed.connect(func(state: String, _details: Dictionary): states.append(state))
+	controller.workflow_state_changed.connect(func(_turn_id: int, state: String, _details: Dictionary): states.append(state))
 	controller._is_running = true
 	var run_call := {"id": "observed_run", "type": "function", "function": {"name": "run_current_scene", "arguments": JSON.stringify({"verification": {"kind": "expected_exit", "expected_exit_code": 0}})}}
-	await controller._on_api_request_completed(_tool_response([run_call]))
+	await _deliver_completion(controller, _tool_response([run_call]))
 	_expect(api.requests.size() == 1, "a completed bounded observation should trigger exactly one delayed model continuation")
 	if api.requests.size() == 1:
 		var history: Array = api.requests[0].get("messages", [])
@@ -820,12 +1027,12 @@ func _test_bounded_run_observation() -> void:
 	controller = fixture["controller"]
 	game = fixture["game"]
 	api = fixture["api"]
-	controller.workflow_state_changed.connect(func(state: String, _details: Dictionary):
+	controller.workflow_state_changed.connect(func(_turn_id: int, state: String, _details: Dictionary):
 		if state == "observing":
 			controller.call_deferred("cancel_current_request")
 	)
 	controller._is_running = true
-	await controller._on_api_request_completed(_tool_response([run_call]))
+	await _deliver_completion(controller, _tool_response([run_call]))
 	_expect(api.requests.is_empty() and not controller.is_busy(), "cancelling during observation should suppress the delayed provider request")
 	_expect(_tool_result_count(controller.message_history, "observed_run") == 1 and _protocol_is_valid(controller.message_history), "observation cancellation should preserve the completed run tool result")
 	_expect(game.stops == 0, "cancelling model observation must not stop the independently owned game process")
@@ -836,12 +1043,12 @@ func _test_bounded_run_observation() -> void:
 	game = fixture["game"]
 	api = fixture["api"]
 	game.terminal_on_observe = true
-	controller.workflow_state_changed.connect(func(state: String, _details: Dictionary):
+	controller.workflow_state_changed.connect(func(_turn_id: int, state: String, _details: Dictionary):
 		if state == "assessment_ready":
 			controller.cancel_current_request()
 	)
 	controller._is_running = true
-	await controller._on_api_request_completed(_tool_response([run_call]))
+	await _deliver_completion(controller, _tool_response([run_call]))
 	_expect(api.requests.is_empty() and not controller.is_busy(), "cancelling at assessment-ready must not send the delayed provider request")
 	_expect(_tool_result_count(controller.message_history, "observed_run") == 1 and _protocol_is_valid(controller.message_history), "assessment-ready cancellation should preserve protocol-valid run history")
 	await _free_controller(controller)
@@ -852,12 +1059,12 @@ func _test_tool_call_count_bound() -> void:
 	var controller = fixture["controller"]
 	var tools: FakeTools = fixture["tools"]
 	var errors := []
-	controller.error_occurred.connect(func(message: String): errors.append(message))
+	controller.error_occurred.connect(func(_turn_id: int, message: String): errors.append(message))
 	var calls := []
 	for index in range(AgentController.MAX_TOOL_CALLS_PER_RESPONSE + 1):
 		calls.append({"id": "many_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}})
 	controller._is_running = true
-	await controller._on_api_request_completed(_tool_response(calls))
+	await _deliver_completion(controller, _tool_response(calls))
 	_expect(tools.execute_calls == 0 and not controller.is_busy(), "oversized tool-call batches must fail before any tool side effect")
 	_expect(errors.size() == 1 and str(errors[0]).contains("more than"), "oversized tool-call batches should report a bounded-response error")
 	await _free_controller(controller)
@@ -867,7 +1074,7 @@ func _test_project_guidance_context() -> void:
 	var controller := GuidanceController.new()
 	get_root().add_child(controller)
 	await process_frame
-	controller.api_client = FakeApiClient.new()
+	controller.set_api_client_for_testing(FakeApiClient.new())
 	controller.tools_script = FakeTools.new()
 	controller._tasks.assign([{"content": "Fixture task", "status": "pending"}])
 	controller._add_turn_context()
@@ -890,7 +1097,7 @@ func _test_project_guidance_context() -> void:
 	_expect(controller._context_message_index == -1 and not JSON.stringify(controller.message_history).contains("root failed"), "cancellation should remove guidance and reset its index")
 	controller._add_turn_context()
 	controller._is_running = true
-	controller._on_api_request_failed({"message": "fixture failure"})
+	_deliver_failure(controller, {"message": "fixture failure"})
 	_expect(controller._context_message_index == -1 and controller._tool_loop_guard == null, "request failure should remove guidance and reset loop state")
 	await _free_controller(controller)
 
@@ -903,20 +1110,20 @@ func _test_loop_guard_duplicate_denial() -> void:
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	for index in range(3):
-		await controller._on_api_request_completed(_tool_response([{"id": "duplicate_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://same.gd\"}"}}]))
+		await _deliver_completion(controller, _tool_response([{"id": "duplicate_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://same.gd\"}"}}]))
 	_expect(api.requests.size() == 3, "three duplicate rounds should issue two normal continuations and exactly one forced final request")
 	_expect(api.requests[-1].get("tools", [1]).is_empty(), "the loop guard's final request must expose tools=[]")
 	_expect(controller._loop_final_request and controller._loop_notice_message_index >= 0, "duplicate detection should append one tracked request-scoped loop notice")
 	_expect(controller._loop_final_trigger_reason == "identical_call_result", "duplicate detection should preserve its exact trigger reason")
 	var visible_messages := []
-	controller.message_received.connect(func(_role: String, content: String): visible_messages.append(content))
+	controller.message_received.connect(func(_turn_id: int, _role: String, content: String): visible_messages.append(content))
 	var denied_response := _tool_response([
 		{"id": "denied_a", "type": "function", "function": {"name": "read_file", "arguments": "{}"}},
 		{"id": "denied_b", "type": "function", "function": {"name": "read_file", "arguments": "{}"}}
 	])
 	denied_response["choices"][0]["message"]["content"] = "I completed the inspection before trying one more read."
 	denied_response["choices"][0]["message"]["reasoning_content"] = "hidden reasoning must not render"
-	await controller._on_api_request_completed(denied_response)
+	await _deliver_completion(controller, denied_response)
 	_expect(tools.execute_calls == 3, "tool calls emitted after the no-tools request must not execute")
 	_expect(_tool_result_count(controller.message_history, "denied_a") == 1 and _tool_result_count(controller.message_history, "denied_b") == 1, "every denied final-request call should receive exactly one matching result")
 	_expect(_protocol_is_valid(controller.message_history), "denied final-request calls should leave protocol-valid history")
@@ -937,12 +1144,12 @@ func _test_loop_guard_cycle_final_response() -> void:
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	for round_index in range(3):
-		await controller._on_api_request_completed(_tool_response([
+		await _deliver_completion(controller, _tool_response([
 			{"id": "cycle_a_%d" % round_index, "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://a.gd\"}"}},
 			{"id": "cycle_b_%d" % round_index, "type": "function", "function": {"name": "inspect_scene", "arguments": "{\"scene_path\":\"res://b.tscn\"}"}}
 		]))
 	_expect(api.requests.size() == 3 and api.requests[-1].get("tools", [1]).is_empty(), "an alternating cycle should also issue exactly one no-tools final request")
-	await controller._on_api_request_completed({"choices": [{"message": {"role": "assistant", "content": "Stopped safely."}}]})
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Stopped safely."}}]})
 	_expect(not controller.is_busy() and not JSON.stringify(controller.message_history).contains(AgentController.LOOP_FINAL_NOTICE), "a valid forced-final answer should finish and remove the loop notice")
 	_expect(str(controller.message_history[-1].get("content", "")).contains("`continue` is not special") and str(controller.message_history[-1].get("content", "")).contains("re-inspect the current state"), "a valid forced-final answer should receive explicit non-replay continuation guidance")
 	await _free_controller(controller)
@@ -954,15 +1161,15 @@ func _test_loop_guard_empty_final_response() -> void:
 	var api: FakeApiClient = fixture["api"]
 	var states: Array[Dictionary] = []
 	var visible_messages := []
-	controller.workflow_state_changed.connect(func(state: String, details: Dictionary): states.append({"state": state, "details": details.duplicate(true)}))
-	controller.message_received.connect(func(_role: String, content: String): visible_messages.append(content))
+	controller.workflow_state_changed.connect(func(_turn_id: int, state: String, details: Dictionary): states.append({"state": state, "details": details.duplicate(true)}))
+	controller.message_received.connect(func(_turn_id: int, _role: String, content: String): visible_messages.append(content))
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	for index in range(3):
-		await controller._on_api_request_completed(_tool_response([{"id": "empty_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
+		await _deliver_completion(controller, _tool_response([{"id": "empty_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
 	_expect(api.requests.size() == 3 and api.requests[-1].get("tools", [1]).is_empty(), "empty-finalization fixture should reach one no-tools request")
 	_expect(states[-1].get("state") == "finalizing" and states[-1].get("details", {}).get("trigger_reason") == "identical_call_result", "forced finalization should expose its distinct state and trigger")
-	await controller._on_api_request_completed({"choices": [{"message": {"role": "assistant", "content": "  \n "}}]})
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "  \n "}}]})
 	_expect(visible_messages.size() == 1 and str(visible_messages[0]).contains("provider returned no summary"), "an empty no-tools response should produce a visible local fallback")
 	_expect(str(visible_messages[0]).contains("Completed actions were kept") and str(visible_messages[0]).contains("A new request is needed"), "empty finalization should explain the retained work and required next request")
 	_expect(controller.message_history[-1].get("content") == visible_messages[0], "the exact visible fallback should be retained in assistant history")
@@ -972,11 +1179,11 @@ func _test_loop_guard_empty_final_response() -> void:
 	fixture = await _new_controller()
 	controller = fixture["controller"]
 	visible_messages = []
-	controller.message_received.connect(func(_role: String, content: String): visible_messages.append(content))
+	controller.message_received.connect(func(_turn_id: int, _role: String, content: String): visible_messages.append(content))
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	controller._begin_loop_finalization(ToolLoopGuard.REASON_NO_PROGRESS)
-	controller._on_api_request_failed({"message": "The provider completed without visible assistant content or a valid tool call.", "category": "malformed_response"})
+	_deliver_failure(controller, {"message": "The provider completed without visible assistant content or a valid tool call.", "category": "malformed_response"})
 	_expect(visible_messages.size() == 1 and str(visible_messages[0]).contains("provider returned no summary"), "transport-level empty finalization rejection should use the visible local fallback")
 	_expect(not controller.is_busy(), "transport-level empty finalization rejection should end the request")
 	await _free_controller(controller)
@@ -989,10 +1196,9 @@ func _test_loop_guard_cancellation_and_progress() -> void:
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	for index in range(3):
-		await controller._on_api_request_completed(_tool_response([{"id": "cancel_loop_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
+		await _deliver_completion(controller, _tool_response([{"id": "cancel_loop_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
 	api.requesting = true
 	controller.cancel_current_request()
-	controller._on_api_request_cancelled()
 	_expect(api.cancelled and not controller.is_busy() and controller._tool_loop_guard == null and not controller._loop_final_request, "cancelling the forced-final request should reset every loop-guard field")
 	await _free_controller(controller)
 
@@ -1004,7 +1210,7 @@ func _test_loop_guard_cancellation_and_progress() -> void:
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	for index in range(4):
-		await controller._on_api_request_completed(_tool_response([{"id": "changing_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
+		await _deliver_completion(controller, _tool_response([{"id": "changing_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
 	_expect(api.requests.size() == 4 and not api.requests[-1].get("tools", []).is_empty(), "changed results for the same stable call should count as progress and avoid false loop finalization")
 	_expect(not controller._loop_final_request, "stable result changes should keep the normal tool loop active")
 	await _free_controller(controller)
@@ -1015,7 +1221,7 @@ func _test_loop_guard_cancellation_and_progress() -> void:
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	for index in range(4):
-		await controller._on_api_request_completed(_tool_response([{"id": "distinct_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": JSON.stringify({"filepath": "res://file_%d.gd" % index})}}]))
+		await _deliver_completion(controller, _tool_response([{"id": "distinct_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": JSON.stringify({"filepath": "res://file_%d.gd" % index})}}]))
 	_expect(api.requests.size() == 4 and not api.requests[-1].get("tools", []).is_empty(), "distinct tool evidence should count as progress and avoid no-progress finalization")
 	_expect(not controller._loop_final_request, "new stable tool invocations should keep the normal tool loop active")
 	await _free_controller(controller)
@@ -1026,11 +1232,11 @@ func _test_tool_round_cap_finalization() -> void:
 	var controller = fixture["controller"]
 	var api: FakeApiClient = fixture["api"]
 	var errors := []
-	controller.error_occurred.connect(func(message: String): errors.append(message))
+	controller.error_occurred.connect(func(_turn_id: int, message: String): errors.append(message))
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	for index in range(AgentController.MAX_TOOL_ROUNDS):
-		await controller._on_api_request_completed(_tool_response([{
+		await _deliver_completion(controller, _tool_response([{
 			"id": "bounded_%d" % index,
 			"type": "function",
 			"function": {"name": "read_file", "arguments": JSON.stringify({"filepath": "res://bounded_%d.gd" % index})}
@@ -1039,7 +1245,7 @@ func _test_tool_round_cap_finalization() -> void:
 	_expect(api.requests[-1].get("tools", [1]).is_empty(), "the hard tool-round boundary must remove the tool schema")
 	_expect(controller._loop_final_trigger_reason == AgentController.LOOP_TRIGGER_ROUND_CAP, "the hard cap should remain distinct from repetitive/no-progress triggers")
 	_expect(errors.is_empty() and controller.is_busy(), "reaching the tool-round boundary should remain active while awaiting the final response")
-	await controller._on_api_request_completed({"choices": [{"message": {"role": "assistant", "content": "Bounded summary."}}]})
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Bounded summary."}}]})
 	_expect(not controller.is_busy() and errors.is_empty(), "a final answer at the tool-round boundary should complete without a system error")
 	await _free_controller(controller)
 
@@ -1050,19 +1256,19 @@ func _test_recoverable_provider_failure() -> void:
 	var api: FakeApiClient = fixture["api"]
 	var tools: FakeTools = fixture["tools"]
 	var errors := []
-	controller.error_occurred.connect(func(message: String): errors.append(message))
+	controller.error_occurred.connect(func(_turn_id: int, message: String): errors.append(message))
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	controller._reset_turn_recovery_state()
 	controller.message_history.append({"role": "user", "content": "Inspect safely"})
-	await controller._on_api_request_completed(_tool_response([{
+	await _deliver_completion(controller, _tool_response([{
 		"id": "recover_read",
 		"type": "function",
 		"function": {"name": "read_file", "arguments": "{\"filepath\":\"res://secret.gd\"}"}
 	}]))
 	_expect(api.requests.size() == 1 and tools.execute_calls == 1, "a completed recovery fixture tool should issue one follow-up")
 	controller._current_stream_content = "private partial provider output"
-	controller._on_api_request_failed({"message": "fixture disconnect", "partial_response": true})
+	_deliver_failure(controller, {"message": "fixture disconnect", "partial_response": true})
 	_expect(controller.last_failure_was_checkpointed(), "a complete tool round should become a recoverable checkpoint after provider failure")
 	_expect(not controller.is_busy() and errors.size() == 1 and str(errors[0]).contains("`continue` is not special") and str(errors[0]).contains("re-inspect the current state"), "recoverable provider failure should finish idle with explicit continuation guidance")
 	var serialized := JSON.stringify(controller.message_history)
@@ -1094,14 +1300,14 @@ func _test_applied_change_recovery_does_not_replay() -> void:
 	var fixture := await _new_controller()
 	var controller = fixture["controller"]
 	var tools: FakeTools = fixture["tools"]
-	controller.edit_proposed.connect(func(proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), true))
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary): controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true))
 	controller._is_running = true
 	controller._reset_turn_loop_state()
 	controller._reset_turn_recovery_state()
 	controller.message_history.append({"role": "user", "content": "Apply once"})
-	await controller._on_api_request_completed(_tool_response([_patch_call("recover_patch")]))
+	await _deliver_completion(controller, _tool_response([_patch_call("recover_patch")]))
 	_expect(tools.apply_calls == 1, "the recovery fixture should apply its approved change exactly once")
-	controller._on_api_request_failed({"message": "disconnect after apply"})
+	_deliver_failure(controller, {"message": "disconnect after apply"})
 	_expect(controller.last_failure_was_checkpointed(), "an applied change with a complete tool result should be recoverable")
 	_expect(tools.apply_calls == 1, "building a recovery checkpoint must never replay an applied change")
 	var serialized := JSON.stringify(controller.message_history)
@@ -1128,6 +1334,7 @@ func _test_context_budget_integration() -> void:
 	controller._loop_notice_message_index = 6
 	controller._turn_provider_config = {"provider": "openai", "base_url": "https://api.openai.com/v1", "model": "orca-budget-test", "api_key": "test"}
 	controller._is_running = true
+	_owned_request_id(controller)
 	_expect(controller._send_current_request(), "the controller should send a request after safe compaction")
 	_expect(api.requests.size() == 1, "context preparation should issue exactly one provider request")
 	if api.requests.size() == 1:
@@ -1144,6 +1351,24 @@ func _test_context_budget_integration() -> void:
 	await _free_controller(controller)
 
 
+func _owned_request_id(controller) -> int:
+	if controller._active_turn_id <= 0:
+		controller._turn_id_serial += 1
+		controller._active_turn_id = controller._turn_id_serial
+	if controller._expected_provider_request_id <= 0:
+		controller._provider_request_id_serial += 1
+		controller._expected_provider_request_id = controller._provider_request_id_serial
+	return controller._expected_provider_request_id
+
+
+func _deliver_completion(controller, response: Dictionary) -> void:
+	await controller._on_api_request_completed(_owned_request_id(controller), response)
+
+
+func _deliver_failure(controller, error: Dictionary) -> void:
+	controller._on_api_request_failed(_owned_request_id(controller), error)
+
+
 func _new_controller() -> Dictionary:
 	var controller = AgentController.new()
 	get_root().add_child(controller)
@@ -1151,7 +1376,7 @@ func _new_controller() -> Dictionary:
 	var fake_api := FakeApiClient.new()
 	var fake_tools := FakeTools.new()
 	var fake_game := FakeGameProcessService.new()
-	controller.api_client = fake_api
+	controller.set_api_client_for_testing(fake_api)
 	controller.tools_script = fake_tools
 	controller.game_process_service = fake_game
 	return {"controller": controller, "api": fake_api, "tools": fake_tools, "game": fake_game}

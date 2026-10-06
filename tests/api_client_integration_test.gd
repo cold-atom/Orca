@@ -129,22 +129,32 @@ func _request(scenario: String, provider: String = "custom", model: String = "te
 	get_root().add_child(client)
 	var result: Dictionary = {}
 	var terminal_counts := {"completed": 0, "failed": 0, "cancelled": 0}
-	client.request_completed.connect(func(response: Dictionary):
+	var lifecycle_request_id := 700 + scenario.hash() % 100
+	var observed_signal_ids: Array[int] = []
+	client.stream_started.connect(func(request_id: int): observed_signal_ids.append(request_id))
+	client.stream_delta.connect(func(request_id: int, _content: String): observed_signal_ids.append(request_id))
+	client.request_completed.connect(func(request_id: int, response: Dictionary):
+		observed_signal_ids.append(request_id)
 		terminal_counts["completed"] += 1
 		if result.is_empty():
 			result["kind"] = "completed"
 			result["response"] = response
+			result["request_id"] = request_id
 	)
-	client.request_failed.connect(func(error: Dictionary):
+	client.request_failed.connect(func(request_id: int, error: Dictionary):
+		observed_signal_ids.append(request_id)
 		terminal_counts["failed"] += 1
 		if result.is_empty():
 			result["kind"] = "failed"
 			result["error"] = error
+			result["request_id"] = request_id
 	)
-	client.request_cancelled.connect(func():
+	client.request_cancelled.connect(func(request_id: int):
+		observed_signal_ids.append(request_id)
 		terminal_counts["cancelled"] += 1
 		if result.is_empty():
 			result["kind"] = "cancelled"
+			result["request_id"] = request_id
 	)
 	client.send_chat_completion(
 		[{"role": "user", "content": "test"}],
@@ -157,7 +167,7 @@ func _request(scenario: String, provider: String = "custom", model: String = "te
 			"reasoning_effort": effort,
 			"confirmed_origin": "http://127.0.0.1:18473"
 		},
-		request_options
+		request_options.merged({ApiClient.LIFECYCLE_REQUEST_ID_OPTION: lifecycle_request_id}, true)
 	)
 	var deadline := Time.get_ticks_msec() + 10000
 	while result.is_empty() and Time.get_ticks_msec() < deadline:
@@ -168,6 +178,9 @@ func _request(scenario: String, provider: String = "custom", model: String = "te
 	result["completed_count"] = terminal_counts["completed"]
 	result["failed_count"] = terminal_counts["failed"]
 	result["cancelled_count"] = terminal_counts["cancelled"]
+	result["request_id_matches"] = result.get("request_id") == lifecycle_request_id
+	result["all_signal_ids_match"] = observed_signal_ids.all(func(request_id: int): return request_id == lifecycle_request_id)
+	_expect(result["request_id_matches"] and result["all_signal_ids_match"], "%s should carry one lifecycle ID on every API signal" % scenario)
 	result["request_cleaned"] = not client.is_requesting() and client._http_client == null and client._generation_deadline_ms == 0 and client._response_generation_timeout_ms == ApiClient.RESPONSE_GENERATION_TIMEOUT_MS
 	result["buffers_cleared"] = client._raw_response.is_empty() and client._line_buffer.is_empty() and client._assistant_content.is_empty()
 	client.queue_free()

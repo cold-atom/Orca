@@ -2,7 +2,7 @@
 
 GitHub Actions runs all commands below on Godot 4.7.2 through `.github/workflows/tests.yml`.
 
-Run the parser and response-contract checks:
+Run parser, response-contract, terminal-ownership, and lifecycle-ID checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/api_client_test.gd
@@ -38,13 +38,13 @@ Run filesystem path, proposal, conflict, application, and revert safety checks:
 "$GODOT_BIN" --headless --path . --script res://tests/tools_test.gd
 ```
 
-Run Plan/Work permission, approval, rejection, cancellation, guidance, tool-loop, and recoverable-interruption protocol checks:
+Run Plan/Work permission, approval, rejection, cancellation, request/turn ownership, synchronous reentrancy, guidance, tool-loop, and recoverable-interruption protocol checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
 ```
 
-Run isolated two-step synthetic tool-call compatibility, continuation, failure, and cancellation checks:
+Run isolated two-step synthetic tool-call compatibility, per-step request ownership, continuation, failure, and cancellation checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_test.gd
@@ -218,7 +218,7 @@ Then run the integration test in another terminal:
 "$GODOT_BIN" --headless --path . --script res://tests/api_client_integration_test.gd
 ```
 
-The chat transport server accepts twenty-one requests and exits. It receives only synthetic test keys and prompts, covers malformed and incomplete assistant completions, active SSE streams exceeding short internal total-generation deadlines both directly and after a `stream_options` compatibility retry, plain embedding errors, and local model substitution, and accepts no network traffic from outside `127.0.0.1`.
+The chat transport server accepts twenty-one requests and exits. It receives only synthetic test keys and prompts, checks lifecycle IDs on every observed API signal, covers malformed and incomplete assistant completions, active SSE streams exceeding short internal total-generation deadlines both directly and after a `stream_options` compatibility retry, plain embedding errors, and local model substitution, and accepts no network traffic from outside `127.0.0.1`.
 
 Run keyless native Ollama/LM Studio discovery, embedding filtering, cache sanitation, stale-request ownership, and redirect-rejection integration against a fresh three-request fixture:
 

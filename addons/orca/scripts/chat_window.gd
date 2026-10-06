@@ -110,6 +110,7 @@ var _active_tool_group
 var _tool_groups_by_call_id: Dictionary = {}
 var _task_tool_arguments: Dictionary = {}
 var _change_cards: Dictionary = {}
+var _change_origin_turns: Dictionary = {}
 var _mode_items: Array[Button] = []
 var _mode_panels: Array[PanelContainer] = []
 var _body_font_size := 13
@@ -125,6 +126,7 @@ var _session_resumable := true
 var _turn_had_tools := false
 var _session_resume_tainted := false
 var _request_active := false
+var _active_turn_id := 0
 var _scroll_follow_frames := 0
 
 
@@ -184,21 +186,21 @@ func _ready() -> void:
 	model_catalog_service = ModelCatalogService.new()
 	add_child(model_catalog_service)
 	model_catalog_service.metadata_updated.connect(_on_model_metadata_updated)
-	agent_controller.message_received.connect(_on_agent_message_received)
-	agent_controller.error_occurred.connect(_on_agent_error_occurred)
-	agent_controller.tool_execution_started.connect(_on_tool_execution_started)
-	agent_controller.tool_execution_completed.connect(_on_tool_execution_completed)
-	agent_controller.edit_proposed.connect(_on_edit_proposed)
+	agent_controller.message_received.connect(_on_turn_message_received)
+	agent_controller.error_occurred.connect(_on_turn_error_occurred)
+	agent_controller.tool_execution_started.connect(_on_turn_tool_execution_started)
+	agent_controller.tool_execution_completed.connect(_on_turn_tool_execution_completed)
+	agent_controller.edit_proposed.connect(_on_turn_edit_proposed)
 	agent_controller.edit_resolved.connect(_on_edit_resolved)
-	agent_controller.message_stream_started.connect(_on_message_stream_started)
-	agent_controller.message_stream_delta.connect(_on_message_stream_delta)
-	agent_controller.request_state_changed.connect(_set_request_active)
-	agent_controller.request_cancelled.connect(_on_agent_request_cancelled)
+	agent_controller.message_stream_started.connect(_on_turn_message_stream_started)
+	agent_controller.message_stream_delta.connect(_on_turn_message_stream_delta)
+	agent_controller.request_state_changed.connect(_on_turn_request_state_changed)
+	agent_controller.request_cancelled.connect(_on_turn_request_cancelled)
 	agent_controller.mode_changed.connect(_sync_mode_ui)
 	agent_controller.session_usage_changed.connect(_sync_session_usage)
 	agent_controller.model_metadata_requested.connect(model_catalog_service.refresh)
 	agent_controller.tasks_changed.connect(_on_tasks_changed)
-	agent_controller.workflow_state_changed.connect(_on_workflow_state_changed)
+	agent_controller.workflow_state_changed.connect(_on_turn_workflow_state_changed)
 	_setup_mode_menu()
 
 	settings_view = SettingsView.new()
@@ -442,6 +444,67 @@ func _on_send_button_pressed() -> void:
 	_save_current_session()
 
 
+func _on_turn_request_state_changed(turn_id: int, active: bool) -> void:
+	if active:
+		if turn_id <= _active_turn_id:
+			return
+		_active_turn_id = turn_id
+	elif turn_id != _active_turn_id:
+		return
+	_set_request_active(active)
+
+
+func _on_turn_message_received(turn_id: int, role: String, content: String) -> void:
+	if turn_id != _active_turn_id:
+		return
+	_on_agent_message_received(role, content)
+	_active_turn_id = 0
+
+
+func _on_turn_error_occurred(turn_id: int, message: String) -> void:
+	if turn_id != _active_turn_id:
+		return
+	_on_agent_error_occurred(message)
+	_active_turn_id = 0
+
+
+func _on_turn_request_cancelled(turn_id: int) -> void:
+	if turn_id != _active_turn_id:
+		return
+	_on_agent_request_cancelled()
+	_active_turn_id = 0
+
+
+func _on_turn_message_stream_started(turn_id: int) -> void:
+	if turn_id == _active_turn_id:
+		_on_message_stream_started()
+
+
+func _on_turn_message_stream_delta(turn_id: int, content: String) -> void:
+	if turn_id == _active_turn_id:
+		_on_message_stream_delta(content)
+
+
+func _on_turn_tool_execution_started(turn_id: int, call_id: String, tool_name: String, arguments: Dictionary) -> void:
+	if turn_id == _active_turn_id:
+		_on_tool_execution_started(call_id, tool_name, arguments)
+
+
+func _on_turn_tool_execution_completed(turn_id: int, call_id: String, tool_name: String, execution: Dictionary, duration_ms: int) -> void:
+	if turn_id == _active_turn_id:
+		_on_tool_execution_completed(call_id, tool_name, execution, duration_ms)
+
+
+func _on_turn_edit_proposed(turn_id: int, proposal: Dictionary) -> void:
+	if turn_id == _active_turn_id:
+		_on_edit_proposed(proposal, turn_id)
+
+
+func _on_turn_workflow_state_changed(turn_id: int, state: String, details: Dictionary) -> void:
+	if turn_id == _active_turn_id:
+		_on_workflow_state_changed(state, details)
+
+
 func _on_tool_execution_started(call_id: String, tool_name: String, arguments: Dictionary) -> void:
 	_turn_had_tools = true
 	_finish_stream_before_activity()
@@ -534,9 +597,11 @@ func _on_workflow_state_changed(state: String, details: Dictionary) -> void:
 			_remove_transient_card()
 
 
-func _on_edit_proposed(proposal: Dictionary) -> void:
+func _on_edit_proposed(proposal: Dictionary, origin_turn_id: int = -1) -> void:
 	_close_active_tool_group()
 	var change_id: String = proposal.get("id", "")
+	if origin_turn_id >= 0:
+		_change_origin_turns[change_id] = origin_turn_id
 	if _change_cards.has(change_id) and is_instance_valid(_change_cards[change_id]) and str(proposal.get("kind", "")) == "scene":
 		_change_cards[change_id].configure(proposal)
 		_update_staged_change_event(proposal)
@@ -560,7 +625,7 @@ func _on_edit_proposed(proposal: Dictionary) -> void:
 			card = ChangeCard.new()
 	chat_feed.add_child(card)
 	card.configure(proposal)
-	card.action_requested.connect(_on_change_action_requested)
+	card.action_requested.connect(_on_change_action_requested.bind(origin_turn_id))
 	card.open_requested.connect(_on_open_file_requested)
 	_change_cards[change_id] = card
 	var diff: Dictionary = proposal.get("diff", {})
@@ -639,17 +704,18 @@ func _on_edit_resolved(change_id: String, status: String, message: String) -> vo
 	if _change_cards.has(change_id) and is_instance_valid(_change_cards[change_id]):
 		_change_cards[change_id].set_status(status, message)
 	_update_change_event(change_id, status, message)
+	_change_origin_turns.erase(change_id)
 	_recount_changed_files()
 	_save_current_session()
 	_scroll_to_bottom()
 
 
-func _on_change_action_requested(change_id: String, action: String) -> void:
+func _on_change_action_requested(change_id: String, action: String, origin_turn_id: int = -1) -> void:
 	match action:
 		"apply":
-			agent_controller.resolve_edit(change_id, true)
+			agent_controller.resolve_edit(change_id, origin_turn_id, true)
 		"reject":
-			agent_controller.resolve_edit(change_id, false)
+			agent_controller.resolve_edit(change_id, origin_turn_id, false)
 		"revert":
 			agent_controller.revert_edit(change_id)
 
@@ -1290,6 +1356,7 @@ func _render_session_event(event: Dictionary) -> void:
 func _clear_chat_feed() -> void:
 	_close_active_tool_group()
 	_tool_groups_by_call_id.clear()
+	_change_origin_turns.clear()
 	for child in chat_feed.get_children():
 		if child != empty_state:
 			child.queue_free()

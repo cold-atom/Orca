@@ -1,22 +1,22 @@
 @tool
 extends Node
 
-signal message_received(role: String, content: String)
-signal error_occurred(message: String)
-signal tool_execution_started(call_id: String, tool_name: String, arguments: Dictionary)
-signal tool_execution_completed(call_id: String, tool_name: String, execution: Dictionary, duration_ms: int)
-signal edit_proposed(proposal: Dictionary)
+signal message_received(turn_id: int, role: String, content: String)
+signal error_occurred(turn_id: int, message: String)
+signal tool_execution_started(turn_id: int, call_id: String, tool_name: String, arguments: Dictionary)
+signal tool_execution_completed(turn_id: int, call_id: String, tool_name: String, execution: Dictionary, duration_ms: int)
+signal edit_proposed(turn_id: int, proposal: Dictionary)
 signal edit_resolved(change_id: String, status: String, message: String)
-signal message_stream_started
-signal message_stream_delta(content: String)
-signal request_state_changed(is_busy: bool)
-signal request_cancelled
+signal message_stream_started(turn_id: int)
+signal message_stream_delta(turn_id: int, content: String)
+signal request_state_changed(turn_id: int, is_busy: bool)
+signal request_cancelled(turn_id: int)
 signal edit_decision_received(resolution: Dictionary)
 signal mode_changed(mode: int)
 signal session_usage_changed(summary: Dictionary)
 signal model_metadata_requested(model: String, api_url: String)
 signal tasks_changed(tasks: Array)
-signal workflow_state_changed(state: String, details: Dictionary)
+signal workflow_state_changed(turn_id: int, state: String, details: Dictionary)
 
 const MAX_TOOL_ROUNDS := 12
 const MAX_TOOL_CALLS_PER_RESPONSE := 16
@@ -103,21 +103,56 @@ var _loop_final_trigger_reason := ""
 var _loop_notice_message_index := -1
 var _turn_tool_receipts: Array[Dictionary] = []
 var _last_failure_checkpointed := false
+var _turn_id_serial := 0
+var _active_turn_id := 0
+var _provider_request_id_serial := 0
+var _expected_provider_request_id := 0
+var _executing_tool_call := false
+var _awaiting_edit_resolution := false
+var _pending_edit_resolution: Dictionary = {}
 
 func _ready() -> void:
 	api_client = preload("res://addons/orca/scripts/api_client.gd").new()
 	# The streaming client awaits process frames, so it must be in the active scene tree.
 	add_child(api_client)
-	api_client.request_completed.connect(_on_api_request_completed)
-	api_client.request_failed.connect(_on_api_request_failed)
-	api_client.request_cancelled.connect(_on_api_request_cancelled)
-	api_client.stream_started.connect(_on_stream_started)
-	api_client.stream_delta.connect(_on_stream_delta)
+	_connect_api_client(api_client)
 	
 	tools_script = preload("res://addons/orca/scripts/tools.gd")
 	
 	_init_system_prompt()
 	_reset_session_usage()
+
+
+func set_api_client_for_testing(client) -> void:
+	_disconnect_api_client(api_client)
+	api_client = client
+	if api_client is Node and api_client.get_parent() == null:
+		add_child(api_client)
+	_connect_api_client(api_client)
+
+
+func _connect_api_client(client) -> void:
+	if client == null:
+		return
+	client.request_completed.connect(_on_api_request_completed)
+	client.request_failed.connect(_on_api_request_failed)
+	client.request_cancelled.connect(_on_api_request_cancelled)
+	client.stream_started.connect(_on_stream_started)
+	client.stream_delta.connect(_on_stream_delta)
+
+
+func _disconnect_api_client(client) -> void:
+	if client == null:
+		return
+	for connection in [
+		[client.request_completed, _on_api_request_completed],
+		[client.request_failed, _on_api_request_failed],
+		[client.request_cancelled, _on_api_request_cancelled],
+		[client.stream_started, _on_stream_started],
+		[client.stream_delta, _on_stream_delta]
+	]:
+		if connection[0].is_connected(connection[1]):
+			connection[0].disconnect(connection[1])
 
 func _init_system_prompt() -> void:
 	message_history = []
@@ -130,6 +165,8 @@ func send_user_message(text: String) -> void:
 	if _is_running:
 		return
 	_is_running = true
+	_turn_id_serial += 1
+	_active_turn_id = _turn_id_serial
 	_cancel_requested = false
 	_tool_rounds = 0
 	_reset_turn_loop_state()
@@ -139,7 +176,10 @@ func send_user_message(text: String) -> void:
 	_baseline_criteria_initialized = false
 	_pending_run_observation.clear()
 	_turn_provider_config = Config.get_active_provider_config()
-	request_state_changed.emit(true)
+	var turn_id := _active_turn_id
+	request_state_changed.emit(turn_id, true)
+	if not _owns_turn(turn_id):
+		return
 	_add_turn_context()
 	message_history.append({
 		"role": "user",
@@ -296,7 +336,7 @@ func set_mode(mode: int) -> bool:
 	return true
 
 func cancel_current_request() -> void:
-	if not _is_running:
+	if not _is_running or _active_turn_id <= 0:
 		return
 	_cancel_requested = true
 	_observation_generation += 1
@@ -304,13 +344,17 @@ func cancel_current_request() -> void:
 		_cancel_pending_edit()
 	elif api_client.is_requesting():
 		api_client.cancel_request()
+	elif _executing_tool_call:
+		return
 	else:
 		_finish_cancelled()
 
-func resolve_edit(change_id: String, approved: bool) -> void:
+func resolve_edit(change_id: String, origin_turn_id: int, approved: bool) -> void:
 	if change_id != _pending_change_id or not _proposals.has(change_id):
 		return
 	var proposal: Dictionary = _proposals[change_id]
+	if not _awaiting_edit_resolution or int(proposal.get("_origin_turn_id", 0)) != origin_turn_id or origin_turn_id != _active_turn_id:
+		return
 	var status := "rejected"
 	var result: String = "The user rejected the proposed changes to " + str(proposal.get("filepath", "the file")) + "."
 	var success := false
@@ -326,8 +370,9 @@ func resolve_edit(change_id: String, approved: bool) -> void:
 					result += "\n%s:%d: %s" % [diagnostic.get("file", ""), diagnostic.get("line", 0), diagnostic.get("message", "")]
 				status = "failed"
 			else:
+				promoted["_origin_turn_id"] = origin_turn_id
 				_proposals[change_id] = promoted.duplicate(true)
-				edit_proposed.emit(_proposal_for_review(promoted))
+				edit_proposed.emit(origin_turn_id, _proposal_for_review(promoted))
 				return
 		else:
 			result = tools_script.apply_reviewed_change(proposal)
@@ -339,8 +384,9 @@ func resolve_edit(change_id: String, approved: bool) -> void:
 	else:
 		_proposals.erase(change_id)
 	_pending_change_id = ""
+	_pending_edit_resolution = {"change_id": change_id, "result": result, "success": success, "outcome": status}
 	edit_resolved.emit(change_id, status, result)
-	edit_decision_received.emit({"change_id": change_id, "result": result, "success": success, "outcome": status})
+	edit_decision_received.emit(_pending_edit_resolution.duplicate(true))
 
 func revert_edit(change_id: String) -> void:
 	if not _proposals.has(change_id):
@@ -373,11 +419,15 @@ func _cancel_pending_edit() -> void:
 	_proposals.erase(change_id)
 	_pending_change_id = ""
 	var result := "The proposed edit was cancelled before a decision was made."
+	_pending_edit_resolution = {"change_id": change_id, "result": result, "success": false, "outcome": "cancelled"}
 	edit_resolved.emit(change_id, "cancelled", result)
-	edit_decision_received.emit({"change_id": change_id, "result": result, "success": false, "outcome": "cancelled"})
+	edit_decision_received.emit(_pending_edit_resolution.duplicate(true))
 
-func _on_api_request_completed(response: Dictionary) -> void:
-	_record_request_usage(response)
+func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
+	if not _owns_provider_request(request_id):
+		return
+	_expected_provider_request_id = 0
+	var turn_id := _active_turn_id
 	if response.has("choices") and typeof(response.get("choices")) == TYPE_ARRAY and response.choices.size() > 0 and typeof(response.choices[0]) == TYPE_DICTIONARY and typeof(response.choices[0].get("message")) == TYPE_DICTIONARY:
 		var choice = response.choices[0]
 		var message = choice.message
@@ -393,15 +443,24 @@ func _on_api_request_completed(response: Dictionary) -> void:
 		
 		if message.has("tool_calls") and typeof(message.tool_calls) == TYPE_ARRAY and not message.tool_calls.is_empty():
 			if message.tool_calls.size() > MAX_TOOL_CALLS_PER_RESPONSE:
-				_finish_request_error("The provider returned more than %d tool calls in one response." % MAX_TOOL_CALLS_PER_RESPONSE)
+				turn_id = _invalidate_turn_ownership()
+				_record_request_usage(response)
+				_finish_request_error("The provider returned more than %d tool calls in one response." % MAX_TOOL_CALLS_PER_RESPONSE, turn_id)
 				return
 			if _loop_final_request:
-				_finish_denied_loop_calls(assistant_message, message.tool_calls)
+				turn_id = _invalidate_turn_ownership()
+				_record_request_usage(response)
+				_finish_denied_loop_calls(assistant_message, message.tool_calls, turn_id)
 				return
 			_tool_rounds += 1
 			if _tool_rounds > MAX_TOOL_ROUNDS:
 				_loop_final_trigger_reason = LOOP_TRIGGER_ROUND_CAP
-				_finish_denied_loop_calls(assistant_message, message.tool_calls)
+				turn_id = _invalidate_turn_ownership()
+				_record_request_usage(response)
+				_finish_denied_loop_calls(assistant_message, message.tool_calls, turn_id)
+				return
+			_record_request_usage(response)
+			if not _owns_turn(turn_id):
 				return
 			assistant_message["tool_calls"] = message.tool_calls
 			message_history.append(assistant_message)
@@ -409,7 +468,9 @@ func _on_api_request_completed(response: Dictionary) -> void:
 
 			for tool_index in range(message.tool_calls.size()):
 				var tool_call: Dictionary = message.tool_calls[tool_index]
-				var tool_result: Dictionary = await _execute_tool_call(tool_call)
+				var tool_result: Dictionary = await _execute_tool_call(tool_call, turn_id)
+				if not _owns_turn(turn_id):
+					return
 				round_results.append(tool_result)
 				message_history.append({
 					"role": "tool",
@@ -430,7 +491,7 @@ func _on_api_request_completed(response: Dictionary) -> void:
 
 			if not _pending_run_observation.is_empty():
 				var observed := await _begin_bounded_run_observation()
-				if not observed or not _is_running or _cancel_requested:
+				if not observed or not _owns_turn(turn_id) or _cancel_requested:
 					return
 			if _tool_loop_guard == null:
 				_reset_turn_loop_state()
@@ -441,8 +502,11 @@ func _on_api_request_completed(response: Dictionary) -> void:
 			elif _tool_rounds >= MAX_TOOL_ROUNDS:
 				_begin_loop_finalization(LOOP_TRIGGER_ROUND_CAP)
 			else:
-				_send_current_request()
+				if _owns_turn(turn_id):
+					_send_current_request()
 		else:
+			turn_id = _invalidate_turn_ownership()
+			_record_request_usage(response)
 			if _loop_final_request:
 				if not _has_meaningful_content(str(assistant_message.get("content", ""))):
 					assistant_message["content"] = _empty_finalization_fallback()
@@ -454,13 +518,16 @@ func _on_api_request_completed(response: Dictionary) -> void:
 				content = str(content)
 			_clear_turn_context()
 			_reset_turn_recovery_state()
-			_set_running(false)
-			workflow_state_changed.emit("idle", {})
-			message_received.emit("assistant", content)
+			_set_running(false, turn_id)
+			workflow_state_changed.emit(turn_id, "idle", {})
+			message_received.emit(turn_id, "assistant", content)
 	else:
-		_finish_request_error("Unexpected API response format.")
+		turn_id = _invalidate_turn_ownership()
+		_record_request_usage(response)
+		_finish_request_error("Unexpected API response format.", turn_id)
 
-func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
+func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1) -> Dictionary:
+	var signal_turn_id := _active_turn_id if expected_turn_id < 0 else expected_turn_id
 	var call_id := str(tool_call.get("id", "tool_" + str(Time.get_ticks_usec())))
 	var function = tool_call.get("function", {})
 	var function_name := str(function.get("name", "")) if typeof(function) == TYPE_DICTIONARY else ""
@@ -487,7 +554,11 @@ func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
 			else:
 				arguments = parsed_arguments
 
-	tool_execution_started.emit(call_id, function_name, arguments)
+	_executing_tool_call = true
+	tool_execution_started.emit(signal_turn_id, call_id, function_name, arguments)
+	if expected_turn_id >= 0 and (_cancel_requested or not _owns_turn(expected_turn_id)):
+		_executing_tool_call = false
+		return _cancelled_tool_result(call_id, function_name, arguments)
 	if result.is_empty() and function_name in ["run_current_scene", "run_main_scene"]:
 		if _run_attempts >= MAX_RUN_ATTEMPTS_PER_TURN:
 			result = "Error: Orca reached the limit of %d game runs in this user turn. Start a new turn before running again." % MAX_RUN_ATTEMPTS_PER_TURN
@@ -509,6 +580,9 @@ func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
 		result = "Error: %s is unavailable in Plan mode. Switch to Work mode to control an Orca-owned game process." % function_name
 		outcome = "failed"
 	elif result.is_empty() and REVIEWED_MUTATION_TOOLS.has(function_name):
+		if expected_turn_id >= 0 and (_cancel_requested or not _owns_turn(expected_turn_id)):
+			_executing_tool_call = false
+			return _cancelled_tool_result(call_id, function_name, arguments)
 		var proposal: Dictionary = tools_script.prepare_reviewed_change(function_name, call_id, arguments)
 		if not proposal.get("success", false):
 			result = "Error: " + str(proposal.get("error", "Could not prepare the reviewed change."))
@@ -520,10 +594,21 @@ func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
 		elif proposal.get("no_changes", false) or (proposal.get("kind", "file_patch") == "file_patch" and proposal.get("diff", {}).get("additions", 0) == 0 and proposal.get("diff", {}).get("deletions", 0) == 0):
 			result = "No changes were needed for " + str(proposal.get("filepath", "the target")) + "."
 		else:
+			proposal["_origin_turn_id"] = signal_turn_id
 			_proposals[call_id] = proposal.duplicate(true)
 			_pending_change_id = call_id
-			edit_proposed.emit(_proposal_for_review(proposal))
-			var resolution: Dictionary = await edit_decision_received
+			_pending_edit_resolution.clear()
+			_awaiting_edit_resolution = true
+			edit_proposed.emit(signal_turn_id, _proposal_for_review(proposal))
+			var resolution: Dictionary = {}
+			if _pending_edit_resolution.is_empty():
+				await edit_decision_received
+			resolution = _pending_edit_resolution.duplicate(true)
+			_pending_edit_resolution.clear()
+			_awaiting_edit_resolution = false
+			if expected_turn_id >= 0 and not _owns_turn(expected_turn_id):
+				_executing_tool_call = false
+				return {"call_id": call_id, "name": function_name, "arguments": arguments, "result": "The originating turn is no longer active.", "outcome": "cancelled", "execution": {}}
 			if str(resolution.get("change_id", "")) != call_id:
 				result = "Error: The change decision did not match the pending proposal."
 				outcome = "failed"
@@ -531,6 +616,9 @@ func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
 				result = resolution.get("result", "Error: The edit decision was interrupted.")
 				outcome = resolution.get("outcome", "failed")
 	elif result.is_empty():
+		if expected_turn_id >= 0 and (_cancel_requested or not _owns_turn(expected_turn_id)):
+			_executing_tool_call = false
+			return _cancelled_tool_result(call_id, function_name, arguments)
 		execution = tools_script.execute_tool(function_name, arguments, game_process_service)
 		result = execution.get("content", "Error: Tool execution returned no result.")
 		outcome = execution.get("outcome", "failed")
@@ -554,8 +642,22 @@ func _execute_tool_call(tool_call: Dictionary) -> Dictionary:
 		execution["success"] = outcome in ["completed", "applied", "applied_recovery"]
 		execution["content"] = result
 		execution["outcome"] = outcome
-	tool_execution_completed.emit(call_id, function_name, execution, Time.get_ticks_msec() - started_at)
+	_executing_tool_call = false
+	if expected_turn_id < 0 or _owns_turn(expected_turn_id):
+		tool_execution_completed.emit(signal_turn_id, call_id, function_name, execution, Time.get_ticks_msec() - started_at)
 	return {"call_id": call_id, "name": function_name, "arguments": arguments, "result": result, "outcome": outcome, "execution": execution}
+
+
+func _cancelled_tool_result(call_id: String, function_name: String, arguments: Dictionary) -> Dictionary:
+	var message := "The tool call was cancelled before execution."
+	return {
+		"call_id": call_id,
+		"name": function_name,
+		"arguments": arguments,
+		"result": message,
+		"outcome": "cancelled",
+		"execution": {"success": false, "content": message, "outcome": "cancelled", "data": {}}
+	}
 
 
 func _begin_bounded_run_observation() -> bool:
@@ -569,7 +671,7 @@ func _begin_bounded_run_observation() -> bool:
 	var run_id := int(_pending_run_observation.get("run_id", 0))
 	var initial_sequence := int(_pending_run_observation.get("sequence", 0))
 	var started_at := Time.get_ticks_msec()
-	workflow_state_changed.emit("observing", {"run_id": run_id})
+	workflow_state_changed.emit(_active_turn_id, "observing", {"run_id": run_id})
 	var observation: Dictionary = {}
 	while _is_running and not _cancel_requested and generation == _observation_generation:
 		observation = game_process_service.observe_run(run_id, initial_sequence)
@@ -590,7 +692,7 @@ func _begin_bounded_run_observation() -> bool:
 		_append_runtime_context(observation.get("snapshot", {}), bool(observation.get("changed_since", true)))
 	else:
 		_append_runtime_context({"run_id": run_id, "state": "observation_failed", "message": str(observation.get("error", "The bounded game observation failed."))}, true)
-	workflow_state_changed.emit("assessment_ready", {"run_id": run_id})
+	workflow_state_changed.emit(_active_turn_id, "assessment_ready", {"run_id": run_id})
 	return _is_running and not _cancel_requested and generation == _observation_generation
 
 
@@ -605,7 +707,7 @@ func _append_runtime_context(snapshot: Dictionary, changed_since: bool) -> void:
 
 func _proposal_for_review(proposal: Dictionary) -> Dictionary:
 	var review_copy := proposal.duplicate(true)
-	for field in ["old_values", "new_values", "old_value", "new_value", "old_hash", "new_hash", "changes", "edits", "operations", "script_content", "trust_binding", "candidate_binding"]:
+	for field in ["_origin_turn_id", "old_values", "new_values", "old_value", "new_value", "old_hash", "new_hash", "changes", "edits", "operations", "script_content", "trust_binding", "candidate_binding"]:
 		review_copy.erase(field)
 	if proposal.get("kind", "file_patch") != "file_patch":
 		review_copy.erase("old_content")
@@ -742,7 +844,7 @@ func _begin_loop_finalization(trigger_reason: String) -> void:
 	_send_current_request()
 
 
-func _finish_denied_loop_calls(assistant_message: Dictionary, tool_calls: Array) -> void:
+func _finish_denied_loop_calls(assistant_message: Dictionary, tool_calls: Array, ending_turn_id: int = -1) -> void:
 	assistant_message["tool_calls"] = tool_calls
 	message_history.append(assistant_message)
 	for tool_call_value in tool_calls:
@@ -758,11 +860,12 @@ func _finish_denied_loop_calls(assistant_message: Dictionary, tool_calls: Array)
 		final_content += "\n\nProvider text before the denied tool call:\n" + provider_text
 	final_content += "\n\n" + _continuation_guidance()
 	message_history.append({"role": "assistant", "content": final_content})
+	var turn_id := _invalidate_turn_ownership() if ending_turn_id < 0 else ending_turn_id
 	_clear_turn_context()
 	_reset_turn_recovery_state()
-	_set_running(false)
-	workflow_state_changed.emit("idle", {})
-	message_received.emit("assistant", final_content)
+	_set_running(false, turn_id)
+	workflow_state_changed.emit(turn_id, "idle", {})
+	message_received.emit(turn_id, "assistant", final_content)
 
 
 func _empty_finalization_fallback() -> String:
@@ -796,7 +899,10 @@ func _bounded_visible_provider_text(content: String) -> String:
 	return content.strip_edges().left(MAX_FINAL_PROVIDER_TEXT_CHARS)
 
 
-func _on_api_request_failed(error: Dictionary) -> void:
+func _on_api_request_failed(request_id: int, error: Dictionary) -> void:
+	if not _owns_provider_request(request_id):
+		return
+	var turn_id := _invalidate_turn_ownership()
 	var error_message := str(error.get("message", "The API request failed."))
 	var phase := str(error.get("phase", ""))
 	var category := str(error.get("category", "unknown"))
@@ -812,9 +918,9 @@ func _on_api_request_failed(error: Dictionary) -> void:
 		message_history.append({"role": "assistant", "content": final_content})
 		_clear_turn_context()
 		_reset_turn_recovery_state()
-		_set_running(false)
-		workflow_state_changed.emit("idle", {})
-		message_received.emit("assistant", final_content)
+		_set_running(false, turn_id)
+		workflow_state_changed.emit(turn_id, "idle", {})
+		message_received.emit(turn_id, "assistant", final_content)
 		return
 	var user_message := error_message
 	if bool(error.get("partial_response", false)):
@@ -822,9 +928,12 @@ func _on_api_request_failed(error: Dictionary) -> void:
 	if bool(error.get("retryable", false)):
 		user_message += "\n\nThis failure may be temporary; you can retry after checking the provider connection."
 	_current_stream_content = ""
-	_finish_request_error(user_message)
+	_finish_request_error(user_message, turn_id)
 
-func _on_api_request_cancelled() -> void:
+func _on_api_request_cancelled(request_id: int) -> void:
+	if not _owns_provider_request(request_id):
+		return
+	var turn_id := _invalidate_turn_ownership()
 	if api_client.last_request_may_have_usage():
 		_latest_context_tokens = 0
 		_usage_complete = false
@@ -836,23 +945,27 @@ func _on_api_request_cancelled() -> void:
 			"content": _current_stream_content
 		})
 	_current_stream_content = ""
-	_finish_cancelled()
+	_finish_cancelled(turn_id)
 
-func _on_stream_started() -> void:
+func _on_stream_started(request_id: int) -> void:
+	if not _owns_provider_request(request_id):
+		return
 	_current_stream_content = ""
-	message_stream_started.emit()
+	message_stream_started.emit(_active_turn_id)
 
-func _on_stream_delta(content: String) -> void:
+func _on_stream_delta(request_id: int, content: String) -> void:
+	if not _owns_provider_request(request_id):
+		return
 	_current_stream_content += content
-	message_stream_delta.emit(content)
+	message_stream_delta.emit(_active_turn_id, content)
 
-func _set_running(value: bool) -> void:
+func _set_running(value: bool, turn_id: int = -1) -> void:
 	if _is_running == value:
 		return
 	_is_running = value
 	if not value:
 		_turn_provider_config.clear()
-	request_state_changed.emit(value)
+	request_state_changed.emit(_active_turn_id if turn_id < 0 else turn_id, value)
 
 
 func _send_current_request() -> bool:
@@ -868,12 +981,36 @@ func _send_current_request() -> bool:
 	if prepared.get("compacted", false):
 		_remap_context_indices(int(prepared.get("removed_start", -1)), int(prepared.get("removed_count", 0)), int(prepared.get("inserted_count", 0)))
 		message_history = prepared.get("messages", []).duplicate(true)
+	_provider_request_id_serial += 1
+	_expected_provider_request_id = _provider_request_id_serial
+	var turn_id := _active_turn_id
+	var request_id := _expected_provider_request_id
 	if _loop_final_request:
-		workflow_state_changed.emit("finalizing", {"trigger_reason": _loop_final_trigger_reason})
+		workflow_state_changed.emit(turn_id, "finalizing", {"trigger_reason": _loop_final_trigger_reason})
 	else:
-		workflow_state_changed.emit("thinking", {"follow_up": _tool_rounds > 0})
-	api_client.send_chat_completion(message_history, definitions, _turn_provider_config, {"allow_stream_options_retry": _tool_rounds == 0})
+		workflow_state_changed.emit(turn_id, "thinking", {"follow_up": _tool_rounds > 0})
+	if not _owns_turn(turn_id) or _expected_provider_request_id != request_id:
+		return false
+	api_client.send_chat_completion(message_history, definitions, _turn_provider_config, {
+		"allow_stream_options_retry": _tool_rounds == 0,
+		"lifecycle_request_id": request_id
+	})
 	return true
+
+
+func _owns_provider_request(request_id: int) -> bool:
+	return _is_running and request_id > 0 and request_id == _expected_provider_request_id
+
+
+func _owns_turn(turn_id: int) -> bool:
+	return _is_running and turn_id > 0 and turn_id == _active_turn_id
+
+
+func _invalidate_turn_ownership() -> int:
+	var turn_id := _active_turn_id
+	_active_turn_id = 0
+	_expected_provider_request_id = 0
+	return turn_id
 
 
 func _remap_context_indices(removed_start: int, removed_count: int, inserted_count: int) -> void:
@@ -919,18 +1056,20 @@ func _get_mode_transition_prompt() -> String:
 		return "MODE CHANGED: Orca is now in Plan mode. From this point forward, use only read-only project tools and update_tasks; do not propose or apply file changes or start/stop game processes."
 	return "MODE CHANGED: Orca is now in Work mode. This supersedes any earlier statement that Orca is in Plan mode. Continue the user's task now, use reviewed mutation tools when implementation is requested, and run only Orca-owned game processes when execution advances the task; every project file change still requires user approval."
 
-func _finish_cancelled() -> void:
+func _finish_cancelled(ending_turn_id: int = -1) -> void:
+	var turn_id := _invalidate_turn_ownership() if ending_turn_id < 0 else ending_turn_id
 	_pending_change_id = ""
 	_pending_run_observation.clear()
 	_current_stream_content = ""
 	_clear_turn_context()
 	_reset_turn_recovery_state()
-	_set_running(false)
-	workflow_state_changed.emit("cancelled", {})
-	request_cancelled.emit()
+	_set_running(false, turn_id)
+	workflow_state_changed.emit(turn_id, "cancelled", {})
+	request_cancelled.emit(turn_id)
 
 
-func _finish_request_error(message: String) -> void:
+func _finish_request_error(message: String, ending_turn_id: int = -1) -> void:
+	var turn_id := _invalidate_turn_ownership() if ending_turn_id < 0 else ending_turn_id
 	_clear_turn_context()
 	_last_failure_checkpointed = _checkpoint_failed_tool_turn()
 	var rendered := message
@@ -938,9 +1077,9 @@ func _finish_request_error(message: String) -> void:
 		rendered += "\n\nCompleted tool actions were saved in a sanitized recovery checkpoint. " + _continuation_guidance()
 	elif _tool_rounds > 0:
 		rendered += "\n\nCompleted tool actions were kept, but Orca could not prove that the interrupted turn is safe to resume. Start a new conversation to avoid repeating side effects."
-	_set_running(false)
-	workflow_state_changed.emit("idle", {})
-	error_occurred.emit(rendered)
+	_set_running(false, turn_id)
+	workflow_state_changed.emit(turn_id, "idle", {})
+	error_occurred.emit(turn_id, rendered)
 
 func _clear_turn_context() -> void:
 	var indices := [_context_message_index, _runtime_context_message_index, _loop_notice_message_index]
