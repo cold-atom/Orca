@@ -69,6 +69,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scripts/tool_activity_group.gd` | Aggregate status and collapsible grouping for consecutive read-only activity cards. |
 | `addons/orca/scripts/task_utils.gd` | Shared strict validation and defensive sanitation for bounded session task lists. |
 | `addons/orca/scripts/task_list_panel.gd` | Collapsible persistent checklist for multi-step session work. |
+| `addons/orca/scripts/mode_switch_card.gd` | Turn-bound Plan-to-Work approval card with explicit stay/switch decisions. |
 | `addons/orca/scripts/change_card.gd` | Unified diff, expanded side-by-side review, Apply/Reject/Revert, validation state, and file opening. |
 | `addons/orca/scripts/input_map_change_card.gd` | Structured Input Map action review with Apply/Reject/Revert and project settings navigation. |
 | `addons/orca/scripts/main_scene_change_card.gd` | Structured previous/proposed main-scene review and navigation. |
@@ -77,7 +78,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 
 ## Non-Negotiable Invariants
 
-1. Plan mode is read-only for project and external state. Do not expose or execute project mutation tools in Plan mode; bounded session task metadata may be updated.
+1. Plan mode is read-only for project and external state. Do not expose or execute project mutation tools in Plan mode; bounded session task metadata may be updated, and a model may request one explicit user-approved transition to Work without performing project or external mutation.
 2. Work mode may propose changes, but no model-requested file mutation or revert happens without Work-mode permission and explicit user approval for the original proposal.
 3. Keep runtime permission checks even when a tool is omitted from the model schema. Prompt instructions are not a security boundary.
 4. Project paths must remain inside `res://`, reject symbolic-link traversal, and protect `res://addons/orca/` from agent tools.
@@ -103,6 +104,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 - May list directories, search files, read line ranges, inspect editor context, and read supported diagnostics.
 - May inspect reflected Godot API signatures, focused GDScript functions, serialized dependencies, and explicitly selected project skills.
 - May maintain the bounded session task checklist; this does not modify project files or external state.
+- May request one explicit user-approved transition to Work for the active turn without performing project or external mutation.
 - Must not propose, apply, or revert project changes.
 - Uses orange assistant headings in the UI.
 
@@ -116,7 +118,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 - Uses green assistant headings in the UI.
 - Is the default mode.
 
-Mode changes are disabled while a request or approval is active. A mode-transition system message is appended so prior conversation text cannot leave the model believing it is still in the old mode.
+Manual mode changes are disabled while a request or approval is active. During a Plan turn, `request_work_mode` may suspend once for an exact turn-bound user decision. Approval affects only the next provider request after every call in the original Plan-generated batch receives its result; rejection or cancellation remains in Plan. Approval regenerates the primary Work prompt and returns an explicit matching tool result without inserting a system message inside the active protocol turn.
 
 ## Development Workflow
 

@@ -13,6 +13,7 @@ All notable changes to Orca are documented in this file.
 - Raw file patches now verify retained proposal integrity before Apply and reread, hash-check, and revalidate exact destination bytes after replacement.
 - Verified replacement now has explicit not-committed, committed, committed-with-cleanup-warning, and recovery-failure outcomes across file, scene, Input Map, main-scene, and ProjectSettings mutations.
 - The About page can copy a strict-allowlist diagnostic report containing Orca/Godot versions and coarse provider/request state without credentials, endpoint addresses, project data, conversation content, model output, logs, or file changes.
+- Plan turns can request one explicit, turn-bound transition to Work mode when the user asked for implementation or execution. Approval continues the same task with Work tools on the next provider request; rejection remains in Plan, and every project mutation still requires its normal separate approval.
 
 ### Fixed
 
@@ -34,6 +35,7 @@ All notable changes to Orca are documented in this file.
 - Added transport, compatibility-probe, controller, and chat-window ownership regressions for stale and duplicate callbacks, follow-up identity, cancellation, and synchronous configuration failures.
 - Added thinking/finalizing cancellation, terminal reentry, duplicate history/usage/message, and stale second-step probe failure/cancellation regressions.
 - Added active-composer, real Stop-button, draft-preservation, stale-control-state, request diagnostic lifecycle, and adversarial diagnostic privacy regressions.
+- Added Plan-to-Work schema, approval, rejection, cancellation, stale-decision, one-request, mixed-batch permission, protocol-ordering, session-redaction, and narrow-card regressions.
 
 ## 1.2.0 - 2026-10-05
 

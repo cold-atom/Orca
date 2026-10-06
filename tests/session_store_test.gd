@@ -29,7 +29,8 @@ func _run() -> void:
 		{"type": "tool", "id": "skill_1", "name": "read_project_skill", "arguments": {"name": "Gameplay", "body": "must-not-persist", "sha256": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "report": "must-not-persist"},
 		{"type": "tool", "id": "api_1", "name": "inspect_godot_api", "arguments": {"class_name": "Node", "member_name": "add_child", "member_kind": "method", "include_inherited": true, "report": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "help_topic": "class_method:Node:add_child", "graph": "must-not-persist"},
 		{"type": "tool", "id": "function_1", "name": "read_gdscript_function", "arguments": {"filepath": "res://player.gd", "function_name": "move", "start_line_hint": 8, "include_documentation": false, "body": "must-not-persist", "disk_sha256": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2},
-		{"type": "tool", "id": "deps_1", "name": "discover_dependencies", "arguments": {"filepath": "res://main.tscn", "direction": "reverse", "max_depth": 99, "max_results": 999, "graph": "must-not-persist", "hash": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "help_topic": "https://example.invalid"}
+		{"type": "tool", "id": "deps_1", "name": "discover_dependencies", "arguments": {"filepath": "res://main.tscn", "direction": "reverse", "max_depth": 99, "max_results": 999, "graph": "must-not-persist", "hash": "must-not-persist"}, "outcome": "completed", "summary": "Completed successfully.", "duration_ms": 2, "help_topic": "https://example.invalid"},
+		{"type": "tool", "id": "mode_1", "name": "request_work_mode", "arguments": {"reason": "must-not-persist"}, "outcome": "completed", "summary": "Stayed in Plan mode", "duration_ms": 2}
 	]
 	session["continuation"] = [
 		{"role": "user", "content": "Build a test", "reasoning_content": "must-not-persist"},
@@ -78,6 +79,7 @@ func _run() -> void:
 	var dependency_arguments: Dictionary = loaded.get("events", [])[10].get("arguments", {})
 	_expect(dependency_arguments.size() == 4 and dependency_arguments.get("filepath") == "res://main.tscn" and dependency_arguments.get("direction") == "reverse" and int(dependency_arguments.get("max_depth", 0)) == 3 and int(dependency_arguments.get("max_results", 0)) == 100, "dependency activity should retain bounded target, direction, depth, and result count")
 	_expect(not loaded.get("events", [])[10].has("help_topic"), "unsafe help topic prefixes must not persist")
+	_expect(loaded.get("events", [])[11].get("name") == "request_work_mode" and loaded.get("events", [])[11].get("arguments", {}).is_empty() and loaded.get("events", [])[11].get("summary") == "Stayed in Plan mode", "mode decisions should persist only a non-actionable summary")
 	_expect(loaded.get("tasks", []).size() == 4, "sanitized task state should persist")
 	_expect(not loaded.get("tasks", [])[0].has("secret"), "unknown task fields must not persist")
 	_expect(loaded.get("tasks", [])[2].get("status") == "pending", "only one persisted task may remain in progress")

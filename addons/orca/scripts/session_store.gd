@@ -251,6 +251,8 @@ func _sanitize_tool_arguments(raw, tool_name: String = "") -> Dictionary:
 	if typeof(raw) != TYPE_DICTIONARY:
 		return {}
 	var result := {}
+	if tool_name == "request_work_mode":
+		return result
 	if tool_name == "read_project_skill":
 		if typeof(raw.get("name")) == TYPE_STRING:
 			result["name"] = _bounded_text(str(raw["name"]), 128)

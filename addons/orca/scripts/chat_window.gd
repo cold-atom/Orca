@@ -4,6 +4,7 @@ extends Control
 const ToolActivityCard = preload("res://addons/orca/scripts/tool_activity_card.gd")
 const ToolActivityGroup = preload("res://addons/orca/scripts/tool_activity_group.gd")
 const TaskListPanel = preload("res://addons/orca/scripts/task_list_panel.gd")
+const ModeSwitchCard = preload("res://addons/orca/scripts/mode_switch_card.gd")
 const ChangeCard = preload("res://addons/orca/scripts/change_card.gd")
 const InputMapChangeCard = preload("res://addons/orca/scripts/input_map_change_card.gd")
 const MainSceneChangeCard = preload("res://addons/orca/scripts/main_scene_change_card.gd")
@@ -124,6 +125,7 @@ var _last_usage_summary: Dictionary = {}
 var _tool_event_indices: Dictionary = {}
 var _session_resumable := true
 var _turn_had_tools := false
+var _turn_had_mode_request := false
 var _session_resume_tainted := false
 var _request_active := false
 var _active_turn_id := 0
@@ -201,6 +203,7 @@ func _ready() -> void:
 	agent_controller.model_metadata_requested.connect(model_catalog_service.refresh)
 	agent_controller.tasks_changed.connect(_on_tasks_changed)
 	agent_controller.workflow_state_changed.connect(_on_turn_workflow_state_changed)
+	agent_controller.work_mode_requested.connect(_on_turn_work_mode_requested)
 	_setup_mode_menu()
 
 	settings_view = SettingsView.new()
@@ -435,6 +438,7 @@ func _on_send_button_pressed() -> void:
 	_session["clean"] = false
 	_session["resumable"] = not _session_resume_tainted
 	_turn_had_tools = false
+	_turn_had_mode_request = false
 	_append_session_event(_message_event("User", text, "user", "complete"))
 	_set_request_active(true)
 	_show_working_indicator("Thinking")
@@ -503,10 +507,19 @@ func _on_turn_workflow_state_changed(turn_id: int, state: String, details: Dicti
 		_on_workflow_state_changed(state, details)
 
 
+func _on_turn_work_mode_requested(turn_id: int, request: Dictionary) -> void:
+	if turn_id == _active_turn_id:
+		_on_work_mode_requested(request, turn_id)
+
+
 func _on_tool_execution_started(call_id: String, tool_name: String, arguments: Dictionary) -> void:
-	_turn_had_tools = true
 	_finish_stream_before_activity()
 	_remove_transient_card()
+	if tool_name == AgentController.WORK_MODE_REQUEST_TOOL:
+		_turn_had_mode_request = true
+		_close_active_tool_group()
+		return
+	_turn_had_tools = true
 	if tool_name == "update_tasks":
 		_close_active_tool_group()
 		_task_tool_arguments[call_id] = arguments.duplicate(true)
@@ -538,6 +551,14 @@ func _on_tool_execution_started(call_id: String, tool_name: String, arguments: D
 
 
 func _on_tool_execution_completed(call_id: String, tool_name: String, execution: Dictionary, duration_ms: int) -> void:
+	if tool_name == AgentController.WORK_MODE_REQUEST_TOOL:
+		if _tool_cards.has(call_id) and is_instance_valid(_tool_cards[call_id]):
+			_tool_cards[call_id].complete(execution, duration_ms)
+		var summary := "Switched to Work mode" if execution.get("success", false) and str(execution.get("content", "")).contains("approved Work mode") else "Stayed in Plan mode" if execution.get("success", false) else "Mode switch cancelled" if str(execution.get("outcome", "")) == "cancelled" else "Mode switch failed"
+		_append_session_event({"type": "tool", "timestamp": Time.get_unix_time_from_system(), "id": call_id, "name": tool_name, "arguments": {}, "outcome": str(execution.get("outcome", "failed")), "summary": summary, "duration_ms": duration_ms})
+		_save_current_session()
+		_scroll_to_bottom()
+		return
 	if tool_name == "update_tasks":
 		var arguments: Dictionary = _task_tool_arguments.get(call_id, {})
 		_task_tool_arguments.erase(call_id)
@@ -568,6 +589,25 @@ func _on_tool_execution_completed(call_id: String, tool_name: String, execution:
 	_update_tool_event(call_id, execution, duration_ms)
 	_save_current_session()
 	_scroll_to_bottom()
+
+
+func _on_work_mode_requested(request: Dictionary, origin_turn_id: int) -> void:
+	_close_active_tool_group()
+	var call_id := str(request.get("call_id", ""))
+	if call_id.is_empty():
+		return
+	if _tool_cards.has(call_id) and is_instance_valid(_tool_cards[call_id]):
+		_tool_cards[call_id].queue_free()
+	var card := ModeSwitchCard.new()
+	chat_feed.add_child(card)
+	card.configure(request, origin_turn_id)
+	card.decision_requested.connect(_on_work_mode_decision_requested)
+	_tool_cards[call_id] = card
+	_scroll_to_bottom()
+
+
+func _on_work_mode_decision_requested(call_id: String, origin_turn_id: int, approved: bool) -> void:
+	agent_controller.resolve_work_mode_request(call_id, origin_turn_id, approved)
 
 
 func _on_tasks_changed(tasks: Array) -> void:
@@ -749,6 +789,7 @@ func _on_agent_message_received(_role: String, content: String) -> void:
 	_session["resumable"] = not _session_resume_tainted
 	prompt_input.placeholder_text = "Describe what you want to build or fix..."
 	_turn_had_tools = false
+	_turn_had_mode_request = false
 	_save_current_session()
 	_scroll_to_bottom()
 
@@ -756,7 +797,7 @@ func _on_agent_message_received(_role: String, content: String) -> void:
 func _on_agent_error_occurred(message: String) -> void:
 	_set_request_active(false)
 	_remove_transient_card()
-	var recovered: bool = _turn_had_tools and agent_controller != null and agent_controller.has_method("last_failure_was_checkpointed") and bool(agent_controller.last_failure_was_checkpointed())
+	var recovered: bool = (_turn_had_tools or _turn_had_mode_request) and agent_controller != null and agent_controller.has_method("last_failure_was_checkpointed") and bool(agent_controller.last_failure_was_checkpointed())
 	var partial_content := _stream_content
 	if _stream_label != null and is_instance_valid(_stream_label):
 		if _stream_content.is_empty():
@@ -770,9 +811,10 @@ func _on_agent_error_occurred(message: String) -> void:
 		_append_session_event(_message_event("Orca (incomplete)", partial_content, "assistant", "incomplete"))
 	_append_session_event(_message_event("Recovery Ready" if recovered else "System Error", message, "status" if recovered else "error", "complete"))
 	_session["clean"] = true
-	if _turn_had_tools:
+	if _turn_had_tools or _turn_had_mode_request:
 		_set_interrupted_turn_resumability(recovered)
 	_turn_had_tools = false
+	_turn_had_mode_request = false
 	_save_current_session()
 	print("Orca Error: ", message)
 
@@ -833,6 +875,7 @@ func _on_agent_request_cancelled() -> void:
 		prompt_input.placeholder_text = "Start a new chat to continue after this interrupted tool turn"
 		_sync_send_availability()
 	_turn_had_tools = false
+	_turn_had_mode_request = false
 	_save_current_session()
 
 
@@ -1001,6 +1044,7 @@ func _start_new_session() -> void:
 	_tool_event_indices.clear()
 	_task_tool_arguments.clear()
 	_turn_had_tools = false
+	_turn_had_mode_request = false
 	_clear_chat_feed()
 	if task_list_panel != null:
 		task_list_panel.clear()

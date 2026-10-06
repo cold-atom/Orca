@@ -93,6 +93,7 @@ class FakeGameProcessService:
 
 class FakeTools:
 	extends RefCounted
+	const MAX_WORK_MODE_REASON_CHARS := 240
 	var prepare_calls := 0
 	var promote_calls := 0
 	var apply_calls := 0
@@ -102,7 +103,7 @@ class FakeTools:
 	var apply_result := "Applied changes to res://fixture.txt"
 	var revert_result := "Reverted changes to res://fixture.txt"
 
-	func get_tool_definitions(include_edit_tools: bool = true) -> Array:
+	func get_tool_definitions(include_edit_tools: bool = true, include_work_mode_request: bool = false) -> Array:
 		var definitions := [
 			{"type": "function", "function": {"name": "read_file", "parameters": {"type": "object"}}},
 			{"type": "function", "function": {"name": "inspect_scene", "parameters": {"type": "object"}}},
@@ -111,6 +112,8 @@ class FakeTools:
 			{"type": "function", "function": {"name": "verify_game_run", "parameters": {"type": "object"}}},
 			{"type": "function", "function": {"name": "update_tasks", "parameters": {"type": "object"}}}
 		]
+		if include_work_mode_request:
+			definitions.append({"type": "function", "function": {"name": "request_work_mode", "parameters": {"type": "object"}}})
 		if include_edit_tools:
 			definitions.append({"type": "function", "function": {"name": "apply_patch", "parameters": {"type": "object"}}})
 			definitions.append({"type": "function", "function": {"name": "propose_input_map_changes", "parameters": {"type": "object"}}})
@@ -306,6 +309,7 @@ func _init() -> void:
 
 func _run() -> void:
 	await _test_modes_and_plan_runtime_denial()
+	await _test_work_mode_escalation()
 	await _test_local_chat_tool_denial()
 	await _test_request_workflow_state()
 	await _test_request_ownership()
@@ -358,6 +362,90 @@ func _test_modes_and_plan_runtime_denial() -> void:
 	_expect(str(result.get("result", "")).contains("unavailable in Plan mode"), "Plan denial should explain the mode restriction")
 	_expect(tools.prepare_calls == 0, "Plan denial must happen before patch preparation")
 	_expect(tools.apply_calls == 0, "Plan denial must never apply a patch")
+	await _free_controller(controller)
+
+
+func _test_work_mode_escalation() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	_expect(controller.set_mode(AgentController.AgentMode.PLAN), "Work-mode escalation should start from Plan")
+	_expect(_tool_names(controller._get_tool_definitions()).has("request_work_mode") and not _tool_names(controller._get_tool_definitions()).has("apply_patch"), "Plan should expose escalation without Work mutations")
+	var requests: Array[Dictionary] = []
+	controller.work_mode_requested.connect(func(turn_id: int, request: Dictionary):
+		requests.append({"turn_id": turn_id, "request": request.duplicate(true)})
+		controller.resolve_work_mode_request(str(request.get("call_id", "")), turn_id, true)
+	)
+	controller.send_user_message("Implement the feature")
+	api.complete(_tool_response([_work_mode_call("mode_yes", "Implementation requires reviewed project changes.")]))
+	await process_frame
+	_expect(requests.size() == 1 and controller.get_mode() == AgentController.AgentMode.BUILD, "an exact approved request should switch the active turn to Work")
+	_expect(api.requests.size() == 2 and _tool_names(api.requests[-1].get("tools", [])).has("apply_patch") and not _tool_names(api.requests[-1].get("tools", [])).has("request_work_mode"), "approval should continue automatically with a fresh Work request")
+	_expect(_tool_result_count(controller.message_history, "mode_yes") == 1 and str(controller.message_history[0].get("content", "")).contains("You are in Work mode"), "approval should retain one protocol result and regenerate the authoritative Work prompt")
+	api.fail({"message": "follow-up failure", "category": "connection", "phase": "receiving_response"})
+	_expect(controller.last_failure_was_checkpointed() and not controller.is_busy(), "failure after approved escalation should retain a safe non-replayable recovery checkpoint")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	var tools: FakeTools = fixture["tools"]
+	controller.set_mode(AgentController.AgentMode.PLAN)
+	controller.work_mode_requested.connect(func(turn_id: int, request: Dictionary): controller.resolve_work_mode_request(str(request.get("call_id", "")), turn_id, true))
+	controller.send_user_message("Try a mixed batch")
+	api.complete(_tool_response([_work_mode_call("mode_mixed", "Work is needed."), _work_mode_call("mode_duplicate", "Ask again."), _patch_call("smuggled_patch")]))
+	await process_frame
+	_expect(controller.get_mode() == AgentController.AgentMode.BUILD and tools.prepare_calls == 0, "approval must not authorize mutation calls from the original Plan-generated batch")
+	_expect(_tool_result_count(controller.message_history, "mode_mixed") == 1 and _tool_result_count(controller.message_history, "mode_duplicate") == 1 and _tool_result_count(controller.message_history, "smuggled_patch") == 1, "mixed Plan batches should remain protocol-complete")
+	_expect(JSON.stringify(controller.message_history).contains("unavailable in Plan mode"), "a mutation after escalation in the same Plan batch should be denied")
+	_expect(JSON.stringify(controller.message_history).contains("at most once per user turn"), "a second escalation request in the same turn should be denied without another decision")
+	var call_batch_index := _assistant_call_index(controller.message_history, "mode_mixed")
+	var final_tool_index := _tool_result_index(controller.message_history, "smuggled_patch")
+	_expect(call_batch_index >= 0 and final_tool_index == call_batch_index + 3, "the original Plan-generated batch should retain contiguous matching tool results")
+	controller.cancel_current_request()
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	controller.set_mode(AgentController.AgentMode.PLAN)
+	controller.work_mode_requested.connect(func(turn_id: int, request: Dictionary):
+		controller.resolve_work_mode_request("wrong-call", turn_id, true)
+		_expect(controller.get_mode() == AgentController.AgentMode.PLAN and controller._pending_work_mode_call_id == str(request.get("call_id", "")), "mismatched decisions must leave the exact request pending")
+		controller.resolve_work_mode_request(str(request.get("call_id", "")), turn_id, false)
+	)
+	controller.send_user_message("Remain in Plan")
+	api.complete(_tool_response([_work_mode_call("mode_no", "Work would permit implementation.")]))
+	await process_frame
+	_expect(controller.get_mode() == AgentController.AgentMode.PLAN, "declining escalation should remain in Plan")
+	_expect(api.requests.size() == 2 and not _tool_names(api.requests[-1].get("tools", [])).has("request_work_mode"), "a declined turn must not expose another escalation request")
+	controller.cancel_current_request()
+	var request_count := api.requests.size()
+	_expect(controller.set_mode(AgentController.AgentMode.BUILD) and api.requests.size() == request_count, "after declining and ending the turn, the user may switch manually without replaying the task")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	controller.set_mode(AgentController.AgentMode.PLAN)
+	var cancelled_turns: Array[int] = []
+	controller.request_cancelled.connect(func(turn_id: int): cancelled_turns.append(turn_id))
+	controller.work_mode_requested.connect(func(_turn_id: int, _request: Dictionary): controller.call_deferred("cancel_current_request"))
+	controller.send_user_message("Cancel the choice")
+	api.complete(_tool_response([_work_mode_call("mode_cancel", "Work is needed.")]))
+	await process_frame
+	await process_frame
+	_expect(controller.get_mode() == AgentController.AgentMode.PLAN and not controller.is_busy() and cancelled_turns.size() == 1, "Stop during escalation should finish once and remain in Plan")
+	_expect(_tool_result_count(controller.message_history, "mode_cancel") == 1, "cancelled escalation should retain exactly one matching tool result")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	var invalid: Dictionary = await controller._execute_tool_call(_work_mode_call("mode_invalid", "Reason"))
+	_expect(invalid.get("outcome") == "failed" and str(invalid.get("result", "")).contains("only from an active Plan-mode response"), "Work mode must runtime-deny unsolicited escalation calls")
+	controller.set_mode(AgentController.AgentMode.PLAN)
+	invalid = await controller._execute_tool_call(_work_mode_call("mode_bad_reason", "bad\nreason"))
+	_expect(invalid.get("outcome") == "failed" and controller.get_mode() == AgentController.AgentMode.PLAN, "malformed escalation reasons must fail without changing mode")
 	await _free_controller(controller)
 
 
@@ -1452,6 +1540,10 @@ func _patch_call(id: String) -> Dictionary:
 	}
 
 
+func _work_mode_call(id: String, reason: String) -> Dictionary:
+	return {"id": id, "type": "function", "function": {"name": "request_work_mode", "arguments": JSON.stringify({"reason": reason})}}
+
+
 func _tool_response(tool_calls: Array) -> Dictionary:
 	return {
 		"model": "test-model",
@@ -1475,6 +1567,25 @@ func _tool_result_count(history: Array, call_id: String) -> int:
 		if typeof(message) == TYPE_DICTIONARY and message.get("role") == "tool" and message.get("tool_call_id") == call_id:
 			count += 1
 	return count
+
+
+func _tool_result_index(history: Array, call_id: String) -> int:
+	for index in range(history.size()):
+		var message = history[index]
+		if typeof(message) == TYPE_DICTIONARY and message.get("role") == "tool" and message.get("tool_call_id") == call_id:
+			return index
+	return -1
+
+
+func _assistant_call_index(history: Array, call_id: String) -> int:
+	for index in range(history.size()):
+		var message = history[index]
+		if typeof(message) != TYPE_DICTIONARY or message.get("role") != "assistant":
+			continue
+		for call in message.get("tool_calls", []):
+			if typeof(call) == TYPE_DICTIONARY and str(call.get("id", "")) == call_id:
+				return index
+	return -1
 
 
 func _protocol_is_valid(history: Array) -> bool:

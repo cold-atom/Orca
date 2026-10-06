@@ -25,6 +25,7 @@ const MAX_SEARCH_FILE_BYTES := 1024 * 1024
 const MAX_SEARCH_RESULTS := 200
 const SEARCH_TIMEOUT_MS := 2500
 const MAX_SCENE_FILE_BYTES := 2 * 1024 * 1024
+const MAX_WORK_MODE_REASON_CHARS := 240
 
 enum SafeWriteOutcome {
 	NOT_COMMITTED_FAILURE,
@@ -36,7 +37,7 @@ enum SafeWriteOutcome {
 static var _replacement_test_faults := {}
 static var _replacement_test_write_index := 0
 
-static func get_tool_definitions(include_edit_tools: bool = true) -> Array:
+static func get_tool_definitions(include_edit_tools: bool = true, include_work_mode_request: bool = false) -> Array:
 	var definitions := [
 		{
 			"type": "function",
@@ -258,6 +259,22 @@ static func get_tool_definitions(include_edit_tools: bool = true) -> Array:
 			"parameters": {"type": "object", "properties": {"run_id": {"type": "integer", "minimum": 1}}, "required": ["run_id"], "additionalProperties": false}
 		}
 	})
+	if include_work_mode_request:
+		definitions.append({
+			"type": "function",
+			"function": {
+				"name": "request_work_mode",
+				"description": "Asks the user for permission to switch this active Plan turn to Work mode. Use only when the user asked Orca to implement, modify, run, or otherwise perform work that Plan mode cannot do. Do not use for analysis-only or planning requests. Approval changes mode but does not approve any file mutation.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"reason": {"type": "string", "minLength": 1, "maxLength": MAX_WORK_MODE_REASON_CHARS, "description": "A concise user-facing explanation of why Work mode is required."}
+					},
+					"required": ["reason"],
+					"additionalProperties": false
+				}
+			}
+		})
 	if include_edit_tools:
 		for operation in [
 			["run_current_scene", "Starts the currently edited saved scene in one bounded nonblocking Orca-owned Godot process. All open scripts/scenes must be saved. Optional verification criteria are fixed before launch."],

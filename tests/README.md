@@ -110,6 +110,12 @@ Run working-state animation, first-token lifecycle, active-turn auto-follow, seq
 "$GODOT_BIN" --headless --path . --script res://tests/chat_window_test.gd
 ```
 
+Run explicit Plan-to-Work decision-card, duplicate-decision, resolved-state, and narrow-layout checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/mode_switch_card_test.gd
+```
+
 Run grouped tool aggregate, expansion, navigation, and narrow-layout checks:
 
 ```bash

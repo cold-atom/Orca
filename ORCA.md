@@ -52,7 +52,7 @@ The project is currently a functional, foundational Godot Editor Plugin located 
    - **Built-in Safety:** Canonical path and symlink checks keep access inside the project and protect Orca's own plugin directory. Writes use conflict checks, validation, diff review, temporary-file replacement, explicit committed/recovery outcomes, final disk verification, and reversible checkpoints. Cleanup warnings remain distinct from uncertain recovery and never weaken live-state conflict checks. Game runs accept no arbitrary commands or PIDs and are bounded to one Orca-owned direct process.
    - **Project Guidance:** Orca automatically loads a bounded root `res://AGENTS.md` and bounded skill catalog metadata into private request-scoped context. Guidance is subordinate to Orca's permissions and safety rules, removed after the turn, and skill bodies require an explicit read-only tool call.
 5. **Agent Modes and Review**
-   - Plan mode exposes only read-only tools.
+   - Plan mode exposes only read-only tools plus one explicit `request_work_mode` escalation when the user asked for implementation or execution. Orca waits for `Stay in Plan` or `Switch to Work`; approval applies only to the next provider continuation and does not approve a project change.
    - Work mode can propose patches, but every change requires explicit user approval.
    - Consecutive read-only activity is grouped with aggregate status and duration while retaining each call's details and navigation.
    - Unified diffs, expanded side-by-side review, and file navigation make agent work visible.
