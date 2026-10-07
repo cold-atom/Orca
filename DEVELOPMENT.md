@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-10-05
+Last updated: 2026-10-06
 
 ## Purpose
 
@@ -1187,6 +1187,14 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Finalized 1.2.0 plugin metadata, public release notes, supported-version documentation, and About-page coverage.
 - Kept editable-provider Settings within the 300 px dock constraint by preventing the Agent opt-in control from imposing a wide non-wrapping minimum.
 - Retained add-on-only Git export rules and documented that release packaging automation remains future work.
+
+### 2026-10-06: Orca 1.2.1 Reliability Wave 1
+
+- Required every completed provider response to contain visible non-whitespace assistant text or at least one valid tool call. Empty, whitespace-only, reasoning-only, usage-only, known truncated/filtered, and contradictory responses now fail visibly.
+- Added a ten-minute total provider-generation deadline alongside the existing connection and inactivity bounds, plus terminal-signal ownership checks that prevent stale request paths from completing twice.
+- Made loop finalization a distinct visible workflow state, retained the bounded trigger class, improved denied-call wording, preserved bounded useful provider text, and added explicit non-replay continuation guidance.
+- Verified retained raw-patch fields, content hashes, canonical edits, and review diff immediately before Apply; final destination bytes are reread, hash-checked, and revalidated, with guarded rollback or an explicit retained recovery state on failure.
+- Added permanent transport, controller, UI, real GDScript patch lifecycle, and duplicate-variable regressions. All permanent unit/component and real-editor suites, all three localhost integrations, `git diff --check`, and Godot 4.7.2 editor/plugin initialization pass; live Gemini/DeepSeek checks and deterministic post-write fault injection remain release gates.
 
 ## Handoff Checklist
 

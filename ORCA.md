@@ -58,7 +58,7 @@ The project is currently a functional, foundational Godot Editor Plugin located 
    - Completed responses render fenced code in bounded selectable blocks with language labels, Copy actions, and native GDScript highlighting.
    - A mode-colored five-square working indicator shows initial thinking, post-tool response preparation, and runtime observation without creating empty assistant messages during first-token delays.
    - Active turns automatically follow late-sizing response, tool, and review cards so the newest activity and sequential approvals remain visible.
-   - Repeated identical calls/results, alternating cycles, repeated rounds, sustained no-progress rounds, or the 12-round boundary trigger one final provider request with tools disabled.
+    - Repeated identical calls/results, alternating cycles, repeated rounds, sustained no-progress rounds, or the 12-round boundary trigger one visibly identified safe-finalization request with tools disabled. A provider that still requests tools is denied and the user receives explicit non-replay continuation guidance.
 6. **Sessions and Usage**
    - Conversations are automatically saved in bounded, project-scoped local history and the most recent session is restored when the editor reopens.
    - The History page can open, continue, or delete prior sessions. Provider failures after complete tool rounds use sanitized, non-replayable recovery checkpoints; unsafe, cancelled, dirty, or truncated sessions remain view-only.
@@ -66,6 +66,7 @@ The project is currently a functional, foundational Godot Editor Plugin located 
     - Provider-reported token usage is accumulated across all model requests in a session, including tool follow-up rounds.
     - The header shows current context use and session cost when model metadata is available.
     - Known model context windows are budgeted conservatively before every request, with capacity reserved for tool results and a final answer. Old complete turns are omitted atomically when needed without splitting tool-call/result groups.
+    - Provider completions require visible non-whitespace text or a valid tool call, and a total generation deadline bounds continuously active hidden reasoning in addition to connection and inactivity timeouts.
      - Orca prefers provider-reported cost, then automatically resolves public model context and pricing metadata from a cached `models.dev` catalog with built-in offline fallbacks.
     - Multi-step work can maintain a bounded persistent checklist with pending, active, completed, blocked, and cancelled states.
 7. **Configuration (`config.gd`, `settings_view.gd`)**

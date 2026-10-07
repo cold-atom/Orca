@@ -5,6 +5,7 @@ const ContextBudget = preload("res://addons/orca/scripts/context_budget.gd")
 const ModelMetadata = preload("res://addons/orca/scripts/model_metadata.gd")
 const TaskUtils = preload("res://addons/orca/scripts/task_utils.gd")
 const AgentCompatibilityProbe = preload("res://addons/orca/scripts/agent_compatibility_probe.gd")
+const ToolLoopGuard = preload("res://addons/orca/scripts/tool_loop_guard.gd")
 
 class FakeApiClient:
 	extends RefCounted
@@ -288,6 +289,7 @@ func _run() -> void:
 	await _test_project_guidance_context()
 	await _test_loop_guard_duplicate_denial()
 	await _test_loop_guard_cycle_final_response()
+	await _test_loop_guard_empty_final_response()
 	await _test_loop_guard_cancellation_and_progress()
 	await _test_tool_round_cap_finalization()
 	await _test_recoverable_provider_failure()
@@ -850,14 +852,26 @@ func _test_loop_guard_duplicate_denial() -> void:
 	_expect(api.requests.size() == 3, "three duplicate rounds should issue two normal continuations and exactly one forced final request")
 	_expect(api.requests[-1].get("tools", [1]).is_empty(), "the loop guard's final request must expose tools=[]")
 	_expect(controller._loop_final_request and controller._loop_notice_message_index >= 0, "duplicate detection should append one tracked request-scoped loop notice")
-	await controller._on_api_request_completed(_tool_response([
+	_expect(controller._loop_final_trigger_reason == "identical_call_result", "duplicate detection should preserve its exact trigger reason")
+	var visible_messages := []
+	controller.message_received.connect(func(_role: String, content: String): visible_messages.append(content))
+	var denied_response := _tool_response([
 		{"id": "denied_a", "type": "function", "function": {"name": "read_file", "arguments": "{}"}},
 		{"id": "denied_b", "type": "function", "function": {"name": "read_file", "arguments": "{}"}}
-	]))
+	])
+	denied_response["choices"][0]["message"]["content"] = "I completed the inspection before trying one more read."
+	denied_response["choices"][0]["message"]["reasoning_content"] = "hidden reasoning must not render"
+	await controller._on_api_request_completed(denied_response)
 	_expect(tools.execute_calls == 3, "tool calls emitted after the no-tools request must not execute")
 	_expect(_tool_result_count(controller.message_history, "denied_a") == 1 and _tool_result_count(controller.message_history, "denied_b") == 1, "every denied final-request call should receive exactly one matching result")
 	_expect(_protocol_is_valid(controller.message_history), "denied final-request calls should leave protocol-valid history")
 	_expect(not controller.is_busy() and controller._loop_notice_message_index == -1, "denial should terminate safely and clear request-scoped loop state")
+	_expect(visible_messages.size() == 1 and str(visible_messages[0]).contains("provider attempted another tool after Orca disabled tools"), "denied final tools should produce an accurate visible outcome")
+	_expect(str(visible_messages[0]).contains("repetitive tool calls") and str(visible_messages[0]).contains("I completed the inspection"), "the denied-tool outcome should include the bounded trigger and useful provider text")
+	_expect(not str(visible_messages[0]).contains("hidden reasoning"), "the denied-tool outcome must not expose provider reasoning fields")
+	_expect(str(visible_messages[0]).contains("`continue` is not special") and str(visible_messages[0]).contains("re-inspect the current state"), "denied-tool continuation guidance should require an explicit new request")
+	controller.send_user_message("Inspect a different file")
+	_expect(controller._loop_final_trigger_reason.is_empty() and not controller._loop_final_request, "the next user turn should reset finalization trigger state")
 	await _free_controller(controller)
 
 
@@ -875,6 +889,41 @@ func _test_loop_guard_cycle_final_response() -> void:
 	_expect(api.requests.size() == 3 and api.requests[-1].get("tools", [1]).is_empty(), "an alternating cycle should also issue exactly one no-tools final request")
 	await controller._on_api_request_completed({"choices": [{"message": {"role": "assistant", "content": "Stopped safely."}}]})
 	_expect(not controller.is_busy() and not JSON.stringify(controller.message_history).contains(AgentController.LOOP_FINAL_NOTICE), "a valid forced-final answer should finish and remove the loop notice")
+	_expect(str(controller.message_history[-1].get("content", "")).contains("`continue` is not special") and str(controller.message_history[-1].get("content", "")).contains("re-inspect the current state"), "a valid forced-final answer should receive explicit non-replay continuation guidance")
+	await _free_controller(controller)
+
+
+func _test_loop_guard_empty_final_response() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var states: Array[Dictionary] = []
+	var visible_messages := []
+	controller.workflow_state_changed.connect(func(state: String, details: Dictionary): states.append({"state": state, "details": details.duplicate(true)}))
+	controller.message_received.connect(func(_role: String, content: String): visible_messages.append(content))
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	for index in range(3):
+		await controller._on_api_request_completed(_tool_response([{"id": "empty_%d" % index, "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]))
+	_expect(api.requests.size() == 3 and api.requests[-1].get("tools", [1]).is_empty(), "empty-finalization fixture should reach one no-tools request")
+	_expect(states[-1].get("state") == "finalizing" and states[-1].get("details", {}).get("trigger_reason") == "identical_call_result", "forced finalization should expose its distinct state and trigger")
+	await controller._on_api_request_completed({"choices": [{"message": {"role": "assistant", "content": "  \n "}}]})
+	_expect(visible_messages.size() == 1 and str(visible_messages[0]).contains("provider returned no summary"), "an empty no-tools response should produce a visible local fallback")
+	_expect(str(visible_messages[0]).contains("Completed actions were kept") and str(visible_messages[0]).contains("A new request is needed"), "empty finalization should explain the retained work and required next request")
+	_expect(controller.message_history[-1].get("content") == visible_messages[0], "the exact visible fallback should be retained in assistant history")
+	_expect(not controller.is_busy(), "empty finalization fallback should end the request")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	visible_messages = []
+	controller.message_received.connect(func(_role: String, content: String): visible_messages.append(content))
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._begin_loop_finalization(ToolLoopGuard.REASON_NO_PROGRESS)
+	controller._on_api_request_failed({"message": "The provider completed without visible assistant content or a valid tool call.", "category": "malformed_response"})
+	_expect(visible_messages.size() == 1 and str(visible_messages[0]).contains("provider returned no summary"), "transport-level empty finalization rejection should use the visible local fallback")
+	_expect(not controller.is_busy(), "transport-level empty finalization rejection should end the request")
 	await _free_controller(controller)
 
 
@@ -933,6 +982,7 @@ func _test_tool_round_cap_finalization() -> void:
 		}]))
 	_expect(api.requests.size() == AgentController.MAX_TOOL_ROUNDS, "the hard tool-round boundary should request one final response instead of failing")
 	_expect(api.requests[-1].get("tools", [1]).is_empty(), "the hard tool-round boundary must remove the tool schema")
+	_expect(controller._loop_final_trigger_reason == AgentController.LOOP_TRIGGER_ROUND_CAP, "the hard cap should remain distinct from repetitive/no-progress triggers")
 	_expect(errors.is_empty() and controller.is_busy(), "reaching the tool-round boundary should remain active while awaiting the final response")
 	await controller._on_api_request_completed({"choices": [{"message": {"role": "assistant", "content": "Bounded summary."}}]})
 	_expect(not controller.is_busy() and errors.is_empty(), "a final answer at the tool-round boundary should complete without a system error")
@@ -959,7 +1009,7 @@ func _test_recoverable_provider_failure() -> void:
 	controller._current_stream_content = "private partial provider output"
 	controller._on_api_request_failed({"message": "fixture disconnect", "partial_response": true})
 	_expect(controller.last_failure_was_checkpointed(), "a complete tool round should become a recoverable checkpoint after provider failure")
-	_expect(not controller.is_busy() and errors.size() == 1 and str(errors[0]).contains("You can continue"), "recoverable provider failure should finish idle with continuation guidance")
+	_expect(not controller.is_busy() and errors.size() == 1 and str(errors[0]).contains("`continue` is not special") and str(errors[0]).contains("re-inspect the current state"), "recoverable provider failure should finish idle with explicit continuation guidance")
 	var serialized := JSON.stringify(controller.message_history)
 	_expect(serialized.contains(AgentController.RECOVERY_CHECKPOINT_HEADING), "recovery history should contain the local checkpoint")
 	_expect(not serialized.contains("recover_read") and not serialized.contains("executed read_file") and not serialized.contains("private partial provider output"), "recovery history must omit call IDs, raw results, and partial provider output")

@@ -521,6 +521,8 @@ func _on_workflow_state_changed(state: String, details: Dictionary) -> void:
 	match state:
 		"thinking":
 			_show_working_indicator("Preparing response" if bool(details.get("follow_up", false)) else "Thinking")
+		"finalizing":
+			_show_working_indicator("Finalizing safely")
 		"observing":
 			_show_working_indicator("Observing game")
 		"assessment_ready":
@@ -668,8 +670,11 @@ func _on_agent_message_received(_role: String, content: String) -> void:
 	_set_request_active(false)
 	_remove_transient_card()
 	if _stream_label != null and is_instance_valid(_stream_label):
-		_stream_content = content
-		_finalize_assistant_message(_stream_label, "Orca", content, _assistant_color())
+		if content.strip_edges().is_empty():
+			_stream_label.get_parent().queue_free()
+		else:
+			_stream_content = content
+			_finalize_assistant_message(_stream_label, "Orca", content, _assistant_color())
 		_stream_label = null
 		_stream_content = ""
 	elif not content.is_empty():
@@ -713,7 +718,7 @@ func _set_interrupted_turn_resumability(recovered: bool) -> void:
 	_session["resumable"] = recovered
 	_session_resumable = recovered
 	prompt_input.editable = recovered
-	prompt_input.placeholder_text = "Continue from the recovery checkpoint..." if recovered else "Start a new chat to continue after this interrupted tool turn"
+	prompt_input.placeholder_text = "Describe unfinished work from the recovery checkpoint..." if recovered else "Start a new chat to continue after this interrupted tool turn"
 	_sync_send_availability()
 
 
@@ -770,7 +775,7 @@ func _on_agent_request_cancelled() -> void:
 func _set_request_active(active: bool) -> void:
 	_request_active = active
 	send_icon_view.texture = _stop_icon if active else _send_icon
-	send_button.tooltip_text = "Stop response" if active else "Send message"
+	send_button.tooltip_text = "Stop response (draft text is kept)" if active else "Send message"
 	send_button.disabled = false if active else prompt_input.text.strip_edges().is_empty()
 	_sync_send_icon_tint(active)
 	mode_button.disabled = active or not _session_resumable

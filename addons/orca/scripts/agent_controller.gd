@@ -49,6 +49,8 @@ const LOOP_FINAL_NOTICE := "ORCA TOOL LOOP NOTICE: Stop using tools for this tur
 const RECOVERY_CHECKPOINT_HEADING := "ORCA RECOVERY CHECKPOINT"
 const MAX_RECOVERY_RECEIPTS := MAX_TOOL_ROUNDS * MAX_TOOL_CALLS_PER_RESPONSE
 const MAX_GUIDANCE_WARNING_CHARS := 240
+const LOOP_TRIGGER_ROUND_CAP := "round_cap"
+const MAX_FINAL_PROVIDER_TEXT_CHARS := 1200
 
 enum AgentMode {
 	PLAN,
@@ -97,6 +99,7 @@ var _tool_loop_guard
 var _tool_progress_epoch := 0
 var _tool_progress_fingerprints: Dictionary = {}
 var _loop_final_request := false
+var _loop_final_trigger_reason := ""
 var _loop_notice_message_index := -1
 var _turn_tool_receipts: Array[Dictionary] = []
 var _last_failure_checkpointed := false
@@ -393,6 +396,7 @@ func _on_api_request_completed(response: Dictionary) -> void:
 				return
 			_tool_rounds += 1
 			if _tool_rounds > MAX_TOOL_ROUNDS:
+				_loop_final_trigger_reason = LOOP_TRIGGER_ROUND_CAP
 				_finish_denied_loop_calls(assistant_message, message.tool_calls)
 				return
 			assistant_message["tool_calls"] = message.tool_calls
@@ -428,11 +432,18 @@ func _on_api_request_completed(response: Dictionary) -> void:
 				_reset_turn_loop_state()
 			_record_tool_progress(round_results)
 			var loop_result: Dictionary = _tool_loop_guard.record_round(round_results, _tool_progress_epoch)
-			if bool(loop_result.get("triggered", false)) or _tool_rounds >= MAX_TOOL_ROUNDS:
-				_begin_loop_finalization()
+			if bool(loop_result.get("triggered", false)):
+				_begin_loop_finalization(str(loop_result.get("reason", "no_progress")))
+			elif _tool_rounds >= MAX_TOOL_ROUNDS:
+				_begin_loop_finalization(LOOP_TRIGGER_ROUND_CAP)
 			else:
 				_send_current_request()
 		else:
+			if _loop_final_request:
+				if not _has_meaningful_content(str(assistant_message.get("content", ""))):
+					assistant_message["content"] = _empty_finalization_fallback()
+				else:
+					assistant_message["content"] = str(assistant_message.get("content", "")).strip_edges() + "\n\n" + _continuation_guidance()
 			message_history.append(assistant_message)
 			var content = assistant_message.get("content", "")
 			if typeof(content) != TYPE_STRING:
@@ -602,6 +613,7 @@ func _reset_turn_loop_state() -> void:
 	_tool_progress_epoch = 0
 	_tool_progress_fingerprints.clear()
 	_loop_final_request = false
+	_loop_final_trigger_reason = ""
 	_loop_notice_message_index = -1
 
 
@@ -610,6 +622,7 @@ func _clear_turn_loop_state() -> void:
 	_tool_progress_epoch = 0
 	_tool_progress_fingerprints.clear()
 	_loop_final_request = false
+	_loop_final_trigger_reason = ""
 	_loop_notice_message_index = -1
 
 
@@ -697,7 +710,7 @@ func _format_recovery_checkpoint() -> String:
 	])
 	for receipt in _turn_tool_receipts:
 		lines.append("- %s: %s" % [str(receipt.get("name", "unknown")), str(receipt.get("outcome", "completed"))])
-	lines.append("Continue from the current project state. Re-inspect live state and obtain normal approval before any new mutation or external operation.")
+	lines.append(_continuation_guidance() + " Obtain normal approval before any new mutation or external operation.")
 	return "\n".join(lines)
 
 
@@ -715,10 +728,11 @@ func _record_tool_progress(round_results: Array) -> void:
 			_tool_progress_epoch += 1
 
 
-func _begin_loop_finalization() -> void:
+func _begin_loop_finalization(trigger_reason: String) -> void:
 	if _loop_final_request:
 		return
 	_loop_final_request = true
+	_loop_final_trigger_reason = trigger_reason.left(64)
 	_loop_notice_message_index = message_history.size()
 	message_history.append({"role": "system", "content": LOOP_FINAL_NOTICE})
 	_send_current_request()
@@ -732,15 +746,50 @@ func _finish_denied_loop_calls(assistant_message: Dictionary, tool_calls: Array)
 		message_history.append({
 			"role": "tool",
 			"tool_call_id": str(tool_call.get("id", "")),
-			"content": "The tool call was denied because Orca reached the tool-loop safety limit. No action was executed."
+			"content": "The tool call was denied because the provider attempted another tool after Orca disabled tools for safe finalization. No action was executed."
 		})
-	var final_content := "Orca stopped requesting tools after reaching the tool-loop safety limit. Completed actions were kept; send a new request for any unfinished work."
+	var final_content := "The provider attempted another tool after Orca disabled tools for safe finalization (%s). No additional action was executed. Completed actions were kept." % _loop_trigger_description()
+	var provider_text := _bounded_visible_provider_text(str(assistant_message.get("content", "")))
+	if not provider_text.is_empty():
+		final_content += "\n\nProvider text before the denied tool call:\n" + provider_text
+	final_content += "\n\n" + _continuation_guidance()
 	message_history.append({"role": "assistant", "content": final_content})
 	_clear_turn_context()
 	_reset_turn_recovery_state()
 	_set_running(false)
 	workflow_state_changed.emit("idle", {})
 	message_received.emit("assistant", final_content)
+
+
+func _empty_finalization_fallback() -> String:
+	return "Orca finalized safely (%s), but the provider returned no summary. Completed actions were kept. %s" % [_loop_trigger_description(), _continuation_guidance()]
+
+
+func _continuation_guidance() -> String:
+	return "A new request is needed for unfinished work. `continue` is not special: describe the unfinished work so Orca can re-inspect the current state. Completed actions will not be replayed automatically."
+
+
+func _loop_trigger_description() -> String:
+	match _loop_final_trigger_reason:
+		ToolLoopGuardScript.REASON_IDENTICAL_CALL_RESULT:
+			return "repetitive tool calls"
+		ToolLoopGuardScript.REASON_ALTERNATING_CALL_CYCLE:
+			return "repeating tool-call cycle"
+		ToolLoopGuardScript.REASON_IDENTICAL_ROUND:
+			return "repetitive tool rounds"
+		ToolLoopGuardScript.REASON_NO_PROGRESS:
+			return "no tool progress"
+		LOOP_TRIGGER_ROUND_CAP:
+			return "%d-round tool limit" % MAX_TOOL_ROUNDS
+	return "tool-loop safety trigger"
+
+
+func _has_meaningful_content(content: String) -> bool:
+	return not content.strip_edges().is_empty()
+
+
+func _bounded_visible_provider_text(content: String) -> String:
+	return content.strip_edges().left(MAX_FINAL_PROVIDER_TEXT_CHARS)
 
 
 func _on_api_request_failed(error: Dictionary) -> void:
@@ -753,6 +802,16 @@ func _on_api_request_failed(error: Dictionary) -> void:
 		_usage_complete = false
 		_cost_complete = false
 		_emit_session_usage(_last_usage_model)
+	if _loop_final_request and category == "malformed_response" and error_message.contains("without visible assistant content or a valid tool call"):
+		var final_content := _empty_finalization_fallback()
+		_current_stream_content = ""
+		message_history.append({"role": "assistant", "content": final_content})
+		_clear_turn_context()
+		_reset_turn_recovery_state()
+		_set_running(false)
+		workflow_state_changed.emit("idle", {})
+		message_received.emit("assistant", final_content)
+		return
 	var user_message := error_message
 	if bool(error.get("partial_response", false)):
 		user_message += "\n\nThe incomplete provider response was not added to the model's conversation history."
@@ -805,7 +864,10 @@ func _send_current_request() -> bool:
 	if prepared.get("compacted", false):
 		_remap_context_indices(int(prepared.get("removed_start", -1)), int(prepared.get("removed_count", 0)), int(prepared.get("inserted_count", 0)))
 		message_history = prepared.get("messages", []).duplicate(true)
-	workflow_state_changed.emit("thinking", {"follow_up": _tool_rounds > 0})
+	if _loop_final_request:
+		workflow_state_changed.emit("finalizing", {"trigger_reason": _loop_final_trigger_reason})
+	else:
+		workflow_state_changed.emit("thinking", {"follow_up": _tool_rounds > 0})
 	api_client.send_chat_completion(message_history, definitions, _turn_provider_config, {"allow_stream_options_retry": _tool_rounds == 0})
 	return true
 
@@ -869,7 +931,7 @@ func _finish_request_error(message: String) -> void:
 	_last_failure_checkpointed = _checkpoint_failed_tool_turn()
 	var rendered := message
 	if _last_failure_checkpointed:
-		rendered += "\n\nCompleted tool actions were saved in a sanitized recovery checkpoint. They will not be replayed automatically. You can continue in this conversation."
+		rendered += "\n\nCompleted tool actions were saved in a sanitized recovery checkpoint. " + _continuation_guidance()
 	elif _tool_rounds > 0:
 		rendered += "\n\nCompleted tool actions were kept, but Orca could not prove that the interrupted turn is safe to resume. Start a new conversation to avoid repeating side effects."
 	_set_running(false)

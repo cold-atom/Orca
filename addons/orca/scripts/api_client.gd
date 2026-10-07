@@ -12,6 +12,8 @@ signal stream_delta(content: String)
 
 const CONNECT_TIMEOUT_MS := 30000
 const INACTIVITY_TIMEOUT_MS := 60000
+# Long reasoning models may be active continuously, but an editor request must still terminate.
+const RESPONSE_GENERATION_TIMEOUT_MS := 10 * 60 * 1000
 const MAX_RESPONSE_BYTES := 16 * 1024 * 1024
 const MAX_SSE_LINE_BYTES := 1024 * 1024
 const MAX_SSE_EVENT_BYTES := 1024 * 1024
@@ -60,6 +62,8 @@ var _tool_metadata_bytes := 0
 var _reasoning_details_bytes := 0
 var _request_phase := "idle"
 var _response_code := 0
+var _generation_deadline_ms := 0
+var _partial_response_detected := false
 
 
 func _ready() -> void:
@@ -120,6 +124,8 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 	provider.apply_chat_options(body, str(request_config.get("reasoning_effort", "default")))
 
 	_reset_stream_state()
+	_generation_deadline_ms = 0
+	_partial_response_detected = false
 	_request_model = str(body["model"])
 	_configured_request_model = _request_model
 	_configured_provider = str(request_config.get("provider", "custom"))
@@ -183,6 +189,8 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 		return
 	# Once HTTPClient accepts the POST, a later failure may still have incurred provider usage.
 	_request_may_have_usage = true
+	if _generation_deadline_ms == 0:
+		_generation_deadline_ms = Time.get_ticks_msec() + RESPONSE_GENERATION_TIMEOUT_MS
 
 	_request_phase = "waiting_for_response"
 	deadline = Time.get_ticks_msec() + CONNECT_TIMEOUT_MS
@@ -193,6 +201,9 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 			return
 		if Time.get_ticks_msec() > deadline:
 			_fail_request(request_id, "The API did not begin responding in time.", "timeout", true)
+			return
+		if _response_generation_timed_out():
+			_fail_request(request_id, "The response exceeded the 10-minute generation deadline.", "timeout", false)
 			return
 		await get_tree().process_frame
 
@@ -224,6 +235,9 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 
 		var received_data := false
 		while _http_client.get_status() == HTTPClient.STATUS_BODY:
+			if _response_generation_timed_out():
+				_fail_request(request_id, "The response exceeded the 10-minute generation deadline.", "timeout", false)
+				return
 			var chunk := _http_client.read_response_body_chunk()
 			if chunk.is_empty():
 				break
@@ -259,6 +273,9 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 			break
 		if not received_data and Time.get_ticks_msec() - last_activity > INACTIVITY_TIMEOUT_MS:
 			_fail_request(request_id, "The response stream timed out due to inactivity.", "timeout", false)
+			return
+		if _response_generation_timed_out():
+			_fail_request(request_id, "The response exceeded the 10-minute generation deadline.", "timeout", false)
 			return
 		await get_tree().process_frame
 
@@ -527,20 +544,16 @@ func _finish_sse_input() -> void:
 func _complete_stream(request_id: int) -> void:
 	if not _is_current_request(request_id):
 		return
-	var tool_call_error := _validate_tool_calls()
-	if not tool_call_error.is_empty():
-		_fail_request(request_id, tool_call_error, "malformed_response", false)
+	var completed_tool_calls := _stream_tool_calls()
+	var completion_error := _validate_completion(_assistant_content, completed_tool_calls, _finish_reason)
+	if not completion_error.is_empty():
+		_fail_request(request_id, completion_error, "malformed_response", false)
 		return
 	var assistant_message := {
 		"role": "assistant",
 		"content": _assistant_content
 	}
 	if not _tool_calls.is_empty():
-		var indices := _tool_calls.keys()
-		indices.sort()
-		var completed_tool_calls := []
-		for index in indices:
-			completed_tool_calls.append(_tool_calls[index])
 		assistant_message["tool_calls"] = completed_tool_calls
 	if not _reasoning_content.is_empty():
 		assistant_message["reasoning_content"] = _reasoning_content
@@ -563,8 +576,8 @@ func _complete_stream(request_id: int) -> void:
 	if not model_error.is_empty():
 		_fail_request(request_id, model_error, "model_mismatch", false)
 		return
-	_finish_request(request_id)
-	request_completed.emit(response)
+	if _finish_request(request_id):
+		request_completed.emit(response)
 
 
 func _complete_json_response(request_id: int) -> void:
@@ -576,6 +589,7 @@ func _complete_json_response(request_id: int) -> void:
 	if typeof(data) != TYPE_DICTIONARY:
 		_fail_request(request_id, "Invalid API response format.", "malformed_response", false)
 		return
+	_partial_response_detected = _json_has_partial_response(data)
 	var response_error := _validate_json_response(data)
 	if not response_error.is_empty():
 		_fail_request(request_id, response_error, "malformed_response", false)
@@ -587,26 +601,29 @@ func _complete_json_response(request_id: int) -> void:
 	if not model_error.is_empty():
 		_fail_request(request_id, model_error, "model_mismatch", false)
 		return
-	_finish_request(request_id)
-	request_completed.emit(data)
+	if _finish_request(request_id):
+		request_completed.emit(data)
 
 
-func _finish_request(request_id: int) -> void:
-	if request_id != _request_serial:
-		return
+func _finish_request(request_id: int) -> bool:
+	if not _is_current_request(request_id):
+		return false
 	_is_requesting = false
 	if _http_client != null:
 		_http_client.close()
 		_http_client = null
 	_reset_stream_state()
+	_generation_deadline_ms = 0
+	_partial_response_detected = false
+	return true
 
 
 func _fail_request(request_id: int, message: String, category: String, retryable: bool) -> void:
 	if not _is_current_request(request_id):
 		return
 	var error := _make_error(message, category, retryable)
-	_finish_request(request_id)
-	request_failed.emit(error)
+	if _finish_request(request_id):
+		request_failed.emit(error)
 
 
 func _retry_connection_or_fail(request_id: int, endpoint: Dictionary, base_headers: PackedStringArray, body: Dictionary, allow_usage_retry: bool, retries_remaining: int, message: String, category: String) -> void:
@@ -654,10 +671,16 @@ func _reset_stream_state() -> void:
 
 
 func _validate_tool_calls() -> String:
+	return _validate_tool_call_array(_stream_tool_calls())
+
+
+func _stream_tool_calls() -> Array:
 	var calls: Array = []
-	for index in _tool_calls:
+	var indices := _tool_calls.keys()
+	indices.sort()
+	for index in indices:
 		calls.append(_tool_calls[index])
-	return _validate_tool_call_array(calls)
+	return calls
 
 
 func _validate_json_response(data: Dictionary) -> String:
@@ -669,9 +692,54 @@ func _validate_json_response(data: Dictionary) -> String:
 		return "The provider returned an invalid assistant message."
 	if message.has("content") and message.get("content") != null and typeof(message.get("content")) != TYPE_STRING:
 		return "The provider returned assistant content in an invalid format."
-	if message.has("tool_calls"):
-		return _validate_tool_call_array(message.get("tool_calls"))
+	var content := str(message.get("content", "")) if message.get("content") != null else ""
+	var tool_calls = message.get("tool_calls", [])
+	return _validate_completion(content, tool_calls, choices[0].get("finish_reason"))
+
+
+func _validate_completion(content: String, tool_calls, finish_reason) -> String:
+	var tool_call_error := _validate_tool_call_array(tool_calls)
+	if not tool_call_error.is_empty():
+		return tool_call_error
+	var has_content := not content.strip_edges().is_empty()
+	var has_tool_calls: bool = typeof(tool_calls) == TYPE_ARRAY and not tool_calls.is_empty()
+	if not has_content and not has_tool_calls:
+		return "The provider completed without visible assistant content or a valid tool call."
+	# Some otherwise compatible providers omit or extend finish reasons. The
+	# meaningful-output invariant remains the boundary in those cases.
+	if finish_reason == null or str(finish_reason).strip_edges().is_empty():
+		return ""
+	var normalized_reason := str(finish_reason).strip_edges().to_lower()
+	if normalized_reason in ["length", "max_tokens", "max_output_tokens", "content_filter", "safety", "blocked", "moderation"]:
+		return "The provider stopped before completing the response (finish reason: %s)." % normalized_reason
+	if normalized_reason == "stop":
+		if has_tool_calls:
+			return "The provider returned tool calls with a contradictory stop finish reason."
+		return ""
+	if normalized_reason == "tool_calls":
+		if not has_tool_calls:
+			return "The provider reported a tool-call finish without a valid tool call."
+		return ""
 	return ""
+
+
+func _json_has_partial_response(data: Dictionary) -> bool:
+	var choices = data.get("choices", [])
+	if typeof(choices) != TYPE_ARRAY or choices.is_empty() or typeof(choices[0]) != TYPE_DICTIONARY:
+		return false
+	var message = choices[0].get("message", {})
+	if typeof(message) != TYPE_DICTIONARY:
+		return false
+	var content = message.get("content")
+	if typeof(content) == TYPE_STRING and not content.strip_edges().is_empty():
+		return true
+	var reasoning_content = message.get("reasoning_content")
+	if typeof(reasoning_content) == TYPE_STRING and not reasoning_content.is_empty():
+		return true
+	var reasoning_details = message.get("reasoning_details")
+	if typeof(reasoning_details) == TYPE_ARRAY and not reasoning_details.is_empty():
+		return true
+	return typeof(message.get("tool_calls")) == TYPE_ARRAY and not message.get("tool_calls").is_empty()
 
 
 func _validate_tool_call_array(tool_calls) -> String:
@@ -709,8 +777,12 @@ func _make_error(message: String, category: String, retryable: bool) -> Dictiona
 		"http_status": _response_code,
 		"bytes_received": _response_bytes_received,
 		"response_started": _response_code > 0,
-		"partial_response": _assistant_content_bytes > 0 or _reasoning_content_bytes > 0 or _reasoning_details_bytes > 0 or not _tool_calls.is_empty()
+		"partial_response": _partial_response_detected or _assistant_content_bytes > 0 or _reasoning_content_bytes > 0 or _reasoning_details_bytes > 0 or not _tool_calls.is_empty()
 	}
+
+
+func _response_generation_timed_out() -> bool:
+	return _generation_deadline_ms > 0 and Time.get_ticks_msec() > _generation_deadline_ms
 
 
 func _is_json_media_type(media_type: String) -> bool:

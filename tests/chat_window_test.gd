@@ -228,8 +228,19 @@ func _test_working_indicator(view) -> void:
 	view._finish_stream_before_activity()
 	view._on_workflow_state_changed("thinking", {"follow_up": true})
 	_expect(view._working_status_label != null and view._working_status_label.text == "Preparing response", "tool follow-ups should return to an explicit preparing state")
+	view._on_workflow_state_changed("finalizing", {"trigger_reason": "no_progress"})
+	_expect(view._working_status_label != null and view._working_status_label.text == "Finalizing safely", "safe no-tools finalization should have a distinct working state")
+	view.prompt_input.text = "Retained follow-up draft"
+	view._set_request_active(true)
+	_expect(view.prompt_input.text == "Retained follow-up draft" and view.send_button.tooltip_text.contains("draft text is kept"), "active Stop behavior should explicitly retain a typed draft")
 	view._on_workflow_state_changed("idle", {})
 	_expect(view._transient_card == null and view._working_timer == null, "idle transitions should stop and release the working animation")
+	view._show_working_indicator("Finalizing safely")
+	view._on_message_stream_started()
+	view._on_agent_message_received("assistant", "")
+	_expect(view._transient_card == null and view._stream_label == null, "an empty terminal response should always remove the working indicator and empty stream state")
+	view.prompt_input.text = ""
+	view._set_request_active(false)
 	_expect(view.get_combined_minimum_size().x <= 300.0, "the working indicator must not widen the minimum dock beyond 300 px")
 
 
@@ -662,6 +673,8 @@ func _test_expanded_diff_content() -> void:
 	if editors.size() == 2:
 		_expect(editors[0].text == old_content, "expanded diff previous pane should retain exact old content")
 		_expect(editors[1].text == new_content, "expanded diff proposed pane should retain exact new content")
+	card.set_status("applied_recovery", "Applied, but cleanup requires attention.")
+	_expect(card._revert_button.visible, "a file patch in recovery state should retain its guarded Revert action")
 	card.queue_free()
 
 

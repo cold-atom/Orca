@@ -1275,13 +1275,29 @@ static func apply_file_edit(proposal: Dictionary) -> String:
 	var validation_error := _validate_path(filepath, true)
 	if not validation_error.is_empty():
 		return "Error: " + validation_error
-	filepath = _canonical_project_path(filepath)
+	var canonical_path := _canonical_project_path(filepath)
+	if filepath != canonical_path or str(proposal.get("kind", "")) != "file_patch" or str(proposal.get("tool_name", "")) != "apply_patch":
+		return "Error: The retained file patch has invalid canonical proposal fields. Review a fresh proposal before applying it."
+	filepath = canonical_path
 	if EditorContext.has_unsaved_file(filepath):
 		return "Error: The file has unsaved changes in Godot. Save or discard them before applying this patch."
+	if typeof(proposal.get("old_content")) != TYPE_STRING or typeof(proposal.get("new_content")) != TYPE_STRING or typeof(proposal.get("old_hash")) != TYPE_STRING or typeof(proposal.get("new_hash")) != TYPE_STRING or typeof(proposal.get("existed")) != TYPE_BOOL:
+		return "Error: The retained file patch content, hashes, or existence state are invalid. Review a fresh proposal before applying it."
+	var old_content: String = proposal["old_content"]
+	var new_content: String = proposal["new_content"]
+	var old_hash: String = proposal["old_hash"]
+	var new_hash: String = proposal["new_hash"]
+	if old_content.sha256_text() != old_hash or new_content.sha256_text() != new_hash:
+		return "Error: The retained file patch content does not match its reviewed hashes. Review a fresh proposal before applying it."
+	if typeof(proposal.get("edits")) != TYPE_ARRAY or typeof(proposal.get("diff")) != TYPE_DICTIONARY:
+		return "Error: The retained file patch edits or review diff are invalid. Review a fresh proposal before applying it."
+	var retained_patch := PatchUtils.apply_line_edits(old_content, proposal["edits"])
+	if not retained_patch.get("success", false) or str(retained_patch.get("content", "")) != new_content or proposal["diff"] != DiffUtils.create_diff(old_content, new_content):
+		return "Error: The retained file patch does not match its canonical edits and review diff. Review a fresh proposal before applying it."
 
 	var current_content := ""
 	var current_exists := FileAccess.file_exists(filepath)
-	if current_exists != proposal.get("existed", false):
+	if current_exists != proposal["existed"]:
 		return "Error: The file's existence changed after this edit was proposed."
 	if current_exists:
 		var current_file := FileAccess.open(filepath, FileAccess.READ)
@@ -1289,16 +1305,61 @@ static func apply_file_edit(proposal: Dictionary) -> String:
 			return "Error: Could not verify the current file before applying changes."
 		current_content = current_file.get_as_text()
 		current_file.close()
-	if current_content.sha256_text() != proposal.get("old_hash", ""):
+	if current_content.sha256_text() != old_hash:
 		return "Error: The file changed after this edit was proposed. Review a fresh diff before applying it."
-	var source_validation := DiagnosticsService.validate_source(filepath, proposal.get("new_content", ""))
+	if current_content != old_content:
+		return "Error: The retained old content does not match the current file. Review a fresh diff before applying it."
+	var source_validation := DiagnosticsService.validate_source(filepath, new_content)
 	if not source_validation.get("valid", false):
-		return "Error: " + str(source_validation.get("message", "GDScript validation failed."))
+		return "Error: Pre-write validation failed. " + _format_source_validation(source_validation)
 
-	var write_error := _write_file_safely(filepath, proposal.get("new_content", ""), proposal.get("old_hash", ""), proposal.get("existed", false))
-	if not write_error.is_empty():
+	var write_error := _write_file_safely(filepath, new_content, old_hash, proposal["existed"])
+	var post_write_warning := ""
+	if write_error.begins_with("Replacement succeeded"):
+		post_write_warning = write_error
+	elif not write_error.is_empty():
 		return "Error: " + write_error
+	var final_file := _read_text_file(filepath)
+	var final_error := ""
+	if not final_file.get("success", false):
+		final_error = str(final_file.get("error", "Could not reread the replaced file."))
+	else:
+		var final_content := str(final_file.get("content", ""))
+		if final_content.sha256_text() != new_hash:
+			final_error = "The final destination hash does not match the reviewed candidate."
+		else:
+			var final_validation := DiagnosticsService.validate_source(filepath, final_content)
+			if not final_validation.get("valid", false):
+				final_error = "Final disk validation failed. " + _format_source_validation(final_validation)
+	if not final_error.is_empty():
+		var recovery := "Rollback was not attempted because the destination could not be verified as Orca's candidate; the current disk bytes were preserved."
+		var recovered := false
+		var recovery_file := _read_text_file(filepath)
+		if recovery_file.get("success", false) and str(recovery_file.get("content", "")).sha256_text() == new_hash:
+			var rollback_error := ""
+			if proposal["existed"]:
+				rollback_error = _write_file_safely(filepath, old_content, new_hash, true)
+			else:
+				var remove_error := DirAccess.remove_absolute(ProjectSettings.globalize_path(filepath))
+				if remove_error != OK or FileAccess.file_exists(filepath):
+					rollback_error = "Could not remove the file created by Orca."
+			if rollback_error.is_empty():
+				var restored := _read_text_file(filepath) if proposal["existed"] else {"success": not FileAccess.file_exists(filepath), "content": ""}
+				if restored.get("success", false) and (not proposal["existed"] or str(restored.get("content", "")).sha256_text() == old_hash):
+					recovery = "The original disk state was restored."
+					recovered = true
+				else:
+					recovery = "Rollback completed but the original disk state could not be verified; manual recovery is required."
+			else:
+				recovery = "Rollback failed; manual recovery is required: " + rollback_error
+		if not recovered:
+			proposal["recovery_required"] = true
+		_scan_filesystem()
+		return "%s: %s %s" % ["Error" if recovered else "Recovery", final_error, recovery]
 	_scan_filesystem()
+	if not post_write_warning.is_empty():
+		proposal["recovery_required"] = true
+		return "Recovery: Applied the reviewed changes, but cleanup requires attention. " + post_write_warning
 	return "Applied changes to " + filepath
 
 
@@ -1419,6 +1480,16 @@ static func _write_file_safely(filepath: String, content: String, expected_hash:
 		if cleanup_error != OK:
 			return "Replacement succeeded, but the private backup could not be removed. Recovery copy: " + backup_path
 	return ""
+
+
+static func _format_source_validation(validation: Dictionary) -> String:
+	var lines := PackedStringArray([str(validation.get("message", "GDScript validation failed."))])
+	for diagnostic in validation.get("diagnostics", []):
+		var location := str(diagnostic.get("file", ""))
+		if int(diagnostic.get("line", 0)) > 0:
+			location += ":" + str(diagnostic.get("line"))
+		lines.append("%s%s" % [location + ": " if not location.is_empty() else "", str(diagnostic.get("message", "GDScript validation error."))])
+	return " ".join(lines)
 
 
 static func _scan_filesystem() -> void:

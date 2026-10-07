@@ -130,11 +130,13 @@ func set_status(status: String, message: String) -> void:
 	_status_label.tooltip_text = message
 	_apply_button.visible = false
 	_reject_button.visible = false
-	_revert_button.visible = status == "applied" or status == "revert_failed"
-	_open_button.disabled = not _proposal.get("existed", false) and status not in ["applied", "revert_failed"]
+	_revert_button.visible = status in ["applied", "applied_recovery", "revert_failed"]
+	_open_button.disabled = not _proposal.get("existed", false) and status not in ["applied", "applied_recovery", "revert_failed"]
 	match status:
 		"applied":
 			_status_label.add_theme_color_override("font_color", Color(0.45, 0.82, 0.55))
+		"applied_recovery":
+			_status_label.add_theme_color_override("font_color", Color(0.95, 0.68, 0.28))
 		"rejected", "reverted":
 			_status_label.add_theme_color_override("font_color", Color(0.62, 0.65, 0.7))
 		_:

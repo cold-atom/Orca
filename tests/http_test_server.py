@@ -10,7 +10,7 @@ class ReusableHTTPServer(HTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    requests_remaining = int(os.environ.get("ORCA_TEST_REQUESTS", "10"))
+    requests_remaining = int(os.environ.get("ORCA_TEST_REQUESTS", "17"))
 
     def do_GET(self):
         try:
@@ -49,6 +49,38 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_sse([
                     b'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\n',
                     b'data: {"choices":[],"usage":{"prompt_tokens":5,"completion_tokens":2,"total_tokens":7}}\n\n',
+                    b"data: [DONE]\n\n",
+                ])
+            elif self.path.startswith("/empty-done/"):
+                self._send_sse([b"data: [DONE]\n\n"])
+            elif self.path.startswith("/reasoning-only/"):
+                self._send_sse([
+                    b'data: {"choices":[{"delta":{"reasoning_content":"hidden"},"finish_reason":"stop"}]}\n\n',
+                    b"data: [DONE]\n\n",
+                ])
+            elif self.path.startswith("/whitespace-only/"):
+                self._send_sse([
+                    b'data: {"choices":[{"delta":{"content":"  \\n"},"finish_reason":"stop"}]}\n\n',
+                    b"data: [DONE]\n\n",
+                ])
+            elif self.path.startswith("/normal-content/"):
+                self._send_sse([
+                    b'data: {"choices":[{"delta":{"content":"visible"},"finish_reason":"stop"}]}\n\n',
+                    b"data: [DONE]\n\n",
+                ])
+            elif self.path.startswith("/tool-only/"):
+                self._send_sse([
+                    b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_fixture","type":"function","function":{"name":"read_file","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}\n\n',
+                    b"data: [DONE]\n\n",
+                ])
+            elif self.path.startswith("/finish-length/"):
+                self._send_sse([
+                    b'data: {"choices":[{"delta":{"content":"partial"},"finish_reason":"length"}]}\n\n',
+                    b"data: [DONE]\n\n",
+                ])
+            elif self.path.startswith("/finish-content-filter/"):
+                self._send_sse([
+                    b'data: {"choices":[{"delta":{"content":"partial"},"finish_reason":"content_filter"}]}\n\n',
                     b"data: [DONE]\n\n",
                 ])
             elif self.path.startswith("/disconnect/"):
