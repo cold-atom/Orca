@@ -29,6 +29,10 @@ func apply_chat_options(body: Dictionary, effort: String) -> void:
 		body["reasoning_effort"] = effort
 
 
+func allows_stop_finish_with_tool_calls() -> bool:
+	return true
+
+
 func normalize_models(response) -> Array[Dictionary]:
 	var models: Array[Dictionary] = []
 	if typeof(response) != TYPE_DICTIONARY or typeof(response.get("models")) != TYPE_ARRAY:

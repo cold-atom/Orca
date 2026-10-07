@@ -97,6 +97,7 @@ func _run() -> void:
 	_expect(gemini.get("kind") == "completed", "Gemini-compatible SSE should complete")
 	var gemini_calls: Array = gemini.get("response", {}).get("choices", [{}])[0].get("message", {}).get("tool_calls", [])
 	_expect(gemini_calls.size() == 1, "Gemini-compatible SSE should return a tool call")
+	_expect(gemini.get("response", {}).get("choices", [{}])[0].get("finish_reason") == "stop", "Gemini-compatible SSE should preserve its stop finish reason")
 	if gemini_calls.size() == 1:
 		_expect(gemini_calls[0].get("extra_content", {}).get("google", {}).get("thought_signature") == "test-signature", "Gemini thought signatures should survive SSE reconstruction")
 

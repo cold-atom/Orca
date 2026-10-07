@@ -148,7 +148,7 @@ class Handler(BaseHTTPRequestHandler):
                     self._send_json_error(400, "Invalid Gemini request")
                 else:
                     self._send_sse([
-                        b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"gemini_call","type":"function","function":{"name":"read_file","arguments":"{}"},"extra_content":{"google":{"thought_signature":"test-signature"}}}]},"finish_reason":"tool_calls"}]}\n\n',
+                        b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"gemini_call","type":"function","function":{"name":"read_file","arguments":"{}"},"extra_content":{"google":{"thought_signature":"test-signature"}}}]},"finish_reason":"stop"}]}\n\n',
                         b"data: [DONE]\n\n",
                     ])
             elif self.path == "/xai/chat/completions":
