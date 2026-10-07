@@ -53,6 +53,7 @@ func _run() -> void:
 	get_root().add_child(view)
 	await process_frame
 	await process_frame
+	_test_animated_empty_logo(view)
 	if view.agent_controller == null:
 		view.agent_controller = FakeAgent.new()
 	if view.task_list_panel == null:
@@ -116,6 +117,13 @@ func _run() -> void:
 	view.queue_free()
 	await process_frame
 	_finish()
+
+
+func _test_animated_empty_logo(view) -> void:
+	var logo := view.get_node("MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content/Logo") as TextureRect
+	_expect(logo.texture is AtlasTexture, "the empty state should use the animated Orca sprite sheet")
+	if logo.texture is AtlasTexture:
+		_expect(logo.texture.region.size == Vector2(194, 144), "animated Orca frames should preserve the SVG aspect ratio")
 
 
 func _test_block_parser() -> void:

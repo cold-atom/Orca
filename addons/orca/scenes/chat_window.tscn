@@ -1,7 +1,7 @@
 [gd_scene load_steps=22 format=3 uid="uid://co17vbggd108t"]
 
 [ext_resource type="Script" path="res://addons/orca/scripts/chat_window.gd" id="1_abcd1"]
-[ext_resource type="Texture2D" path="res://addons/orca/assets/orca.svg" id="2_logo"]
+[ext_resource type="Script" path="res://addons/orca/scripts/animated_logo.gd" id="2_logo"]
 [ext_resource type="Texture2D" path="res://addons/orca/assets/settings.svg" id="3_settings"]
 [ext_resource type="Texture2D" path="res://addons/orca/assets/send-alt.svg" id="5_send"]
 [ext_resource type="Texture2D" path="res://addons/orca/assets/history.svg" id="7_history"]
@@ -265,9 +265,9 @@ theme_override_constants/separation = 14
 custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 size_flags_horizontal = 4
-texture = ExtResource("2_logo")
 expand_mode = 3
 stretch_mode = 5
+script = ExtResource("2_logo")
 
 [node name="Title" type="Label" parent="MarginContainer/VBoxContainer/ChatScroll/ChatFeed/EmptyState/Content"]
 layout_mode = 2
