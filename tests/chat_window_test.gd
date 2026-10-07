@@ -1,6 +1,7 @@
 extends SceneTree
 
 const ChatWindow = preload("res://addons/orca/scripts/chat_window.gd")
+const AgentController = preload("res://addons/orca/scripts/agent_controller.gd")
 const ChatWindowScene = preload("res://addons/orca/scenes/chat_window.tscn")
 const TaskListPanel = preload("res://addons/orca/scripts/task_list_panel.gd")
 const ChangeCard = preload("res://addons/orca/scripts/change_card.gd")
@@ -8,6 +9,7 @@ const InputMapChangeCard = preload("res://addons/orca/scripts/input_map_change_c
 const MainSceneChangeCard = preload("res://addons/orca/scripts/main_scene_change_card.gd")
 const ProjectSettingsChangeCard = preload("res://addons/orca/scripts/project_settings_change_card.gd")
 const SceneChangeCard = preload("res://addons/orca/scripts/scene_change_card.gd")
+const ModeSwitchCard = preload("res://addons/orca/scripts/mode_switch_card.gd")
 const DiffUtils = preload("res://addons/orca/scripts/diff_utils.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 
@@ -15,6 +17,8 @@ class FakeAgent:
 	extends RefCounted
 	var busy := true
 	var cancellations := 0
+	var mode_decisions: Array[Dictionary] = []
+	var checkpointed := true
 
 	func get_mode() -> int:
 		return 1
@@ -24,6 +28,15 @@ class FakeAgent:
 
 	func cancel_current_request() -> void:
 		cancellations += 1
+
+	func resolve_work_mode_request(call_id: String, origin_turn_id: int, approved: bool) -> void:
+		mode_decisions.append({"call_id": call_id, "turn_id": origin_turn_id, "approved": approved})
+
+	func snapshot_session_state() -> Dictionary:
+		return {"mode": get_mode(), "continuation": [], "usage": {}, "tasks": []}
+
+	func last_failure_was_checkpointed() -> bool:
+		return checkpointed
 
 
 var _failures := PackedStringArray()
@@ -57,6 +70,7 @@ func _run() -> void:
 	await process_frame
 	_test_working_indicator(view)
 	_test_turn_event_ownership(view)
+	_test_work_mode_request_ui(view)
 	await process_frame
 	await _test_active_feed_follow(view)
 	await process_frame
@@ -325,6 +339,46 @@ func _test_turn_event_ownership(view) -> void:
 	_expect(view._active_turn_id == 23 and view._request_active, "old terminal UI events must not clear reentrant new-turn ownership")
 	view._on_turn_request_cancelled(23)
 	_expect(view._active_turn_id == 0 and not view._request_active, "the matching cancellation should release the active UI turn")
+
+
+func _test_work_mode_request_ui(view) -> void:
+	var real_agent = view.agent_controller
+	var fake_agent := FakeAgent.new()
+	view.agent_controller = fake_agent
+	view._clear_chat_feed()
+	view._session = {"events": [], "clean": false, "resumable": true}
+	view._active_turn_id = 44
+	view._set_request_active(true)
+	view._on_turn_work_mode_requested(43, {"call_id": "stale_mode", "reason": "stale"})
+	_expect(_collect_type(view.chat_feed, ModeSwitchCard).is_empty(), "stale mode requests must not create decision UI")
+	view._on_tool_execution_started("mode_ui", AgentController.WORK_MODE_REQUEST_TOOL, {"reason": "private reason"})
+	view._on_turn_work_mode_requested(44, {"call_id": "mode_ui", "reason": "Implementing the requested change requires reviewed project edits."})
+	var cards := _collect_type(view.chat_feed, ModeSwitchCard)
+	_expect(cards.size() == 1 and view._session.get("events", []).is_empty(), "a matching mode request should show one memory-only decision card")
+	if cards.size() == 1:
+		var switch_buttons := _collect_type(cards[0], Button).filter(func(button): return button.text == "Switch to Work")
+		_expect(switch_buttons.size() == 1 and cards[0].get_combined_minimum_size().x <= 300.0, "the explicit Work action should fit the narrow dock")
+		if switch_buttons.size() == 1:
+			switch_buttons[0].pressed.emit()
+	_expect(fake_agent.mode_decisions == [{"call_id": "mode_ui", "turn_id": 44, "approved": true}], "the card should send one exact turn-bound approval")
+	view._on_turn_tool_execution_completed(44, "mode_ui", AgentController.WORK_MODE_REQUEST_TOOL, {"success": true, "content": "The user approved Work mode.", "outcome": "completed", "data": {}}, 5)
+	var persisted := JSON.stringify(view._session.get("events", []))
+	_expect(view._session.get("events", []).size() == 1 and persisted.contains("Switched to Work mode") and not persisted.contains("reviewed project edits"), "resolved mode activity should persist without the model-supplied reason")
+	view._session = {"events": [], "clean": false, "resumable": true}
+	view._session_resumable = true
+	view.prompt_input.editable = true
+	view._active_turn_id = 45
+	view._set_request_active(true)
+	view._on_tool_execution_started("mode_cancel_ui", AgentController.WORK_MODE_REQUEST_TOOL, {"reason": "private"})
+	view._on_turn_work_mode_requested(45, {"call_id": "mode_cancel_ui", "reason": "Work is needed."})
+	view._on_turn_tool_execution_completed(45, "mode_cancel_ui", AgentController.WORK_MODE_REQUEST_TOOL, {"success": false, "content": "The Work mode request was cancelled.", "outcome": "cancelled", "data": {}}, 3)
+	view._on_turn_request_cancelled(45)
+	_expect(view._session_resumable and view.prompt_input.editable, "stopping a side-effect-free mode decision should leave the Plan conversation usable")
+	view._active_turn_id = 0
+	view._set_request_active(false)
+	view._turn_had_tools = false
+	view._turn_had_mode_request = false
+	view.agent_controller = real_agent
 
 
 func _test_active_feed_follow(view) -> void:

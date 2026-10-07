@@ -56,7 +56,11 @@ func _run() -> void:
 
 func _test_tool_permissions() -> void:
 	var plan_names := _tool_names(Tools.get_tool_definitions(false))
+	var plan_request_names := _tool_names(Tools.get_tool_definitions(false, true))
 	_expect(not plan_names.has("apply_patch"), "read-only tool definitions must omit apply_patch")
+	_expect(not plan_names.has("request_work_mode") and plan_request_names.has("request_work_mode"), "the Work-mode request schema should appear only when explicitly enabled for Plan")
+	var mode_request_parameters: Dictionary = _tool_definition(Tools.get_tool_definitions(false, true), "request_work_mode").get("function", {}).get("parameters", {})
+	_expect(mode_request_parameters.get("required", []) == ["reason"] and mode_request_parameters.get("additionalProperties") == false, "Work-mode requests should require only one bounded reason")
 	_expect(not plan_names.has("propose_input_map_changes"), "read-only tool definitions must omit Input Map mutation proposals")
 	_expect(not plan_names.has("propose_main_scene_change"), "read-only tool definitions must omit main scene mutation proposals")
 	_expect(not plan_names.has("propose_project_settings_changes"), "read-only tool definitions must omit ProjectSettings mutation proposals")

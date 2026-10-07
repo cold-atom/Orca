@@ -14,6 +14,7 @@ This directory is the complete installable Orca 1.2.0 addon for Godot 4.7.2.
 ## Safety Model
 
 - Plan mode is read-only.
+- A Plan turn can ask once to switch to Work, but it waits for an explicit user decision and the switch does not approve a file change.
 - Work mode can prepare changes, but every model-requested project change requires explicit approval.
 - File proposals use content hashes, validation, stale-state checks, and guarded revert data.
 - Project access, tool output, network inactivity, and Orca-owned game processes are bounded.

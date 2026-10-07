@@ -52,6 +52,7 @@ Orca separates exploration from mutation:
 
 - **Plan mode** is read-only for project and external state.
 - **Work mode** can prepare changes and run supported workflows, but every model-requested project change still waits for an explicit **Apply** or **Reject** decision.
+- When implementation is requested during a Plan turn, Orca can ask once to switch modes. It waits for an explicit **Stay in Plan** or **Switch to Work** decision and never treats that decision as approval for a file change.
 - File proposals are hash-bound, validated, checked for stale or unsaved state, shown as a diff, and guarded against overwriting newer work.
 - Applied proposals can be reverted while their in-memory checkpoint remains valid and the target has not changed independently.
 

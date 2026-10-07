@@ -36,6 +36,7 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - Compact line-height-driven composer, transparent branded empty state, descriptive Plan/Work selector, and a current-model shortcut into model settings.
 - Transient five-square working states remain visible from submission until actual text or tool activity, distinguish initial thinking from post-tool response preparation, and reuse mode-aware animation for runtime observation and assessment.
 - Active turns use multi-frame feed following so newly inserted or late-resizing working, response, tool, and review cards remain at the visible bottom; sequential approvals automatically advance to the next pending card.
+- A Plan turn can show one inline, turn-bound Work-mode request with explicit `Stay in Plan` and `Switch to Work` actions. Approval continues the same task automatically; rejection stays in Plan and suppresses another request for that turn.
 - Two-row compact header that keeps session context usage and cost visible at narrow dock widths.
 - In-dock settings page with Provider and About tabs, API key configuration, searchable model discovery, provider-reported or conservative known-model reasoning effort, model metadata, release information sourced from `plugin.cfg`, and a Done action.
 - The About page can copy a memory-only strict-allowlist support report containing Orca/Godot versions and coarse provider/request lifecycle metadata without endpoint addresses, credentials, project or conversation content, model output, logs, process output, proposal data, or hashes.
@@ -114,6 +115,7 @@ Work is the default. Mode switching is blocked while a turn or edit approval is 
 | `get_editor_context` | Plan, Work | Captures active scene, selected nodes, active script, caret, selected code, and open/unsaved state. |
 | `get_diagnostics` | Plan, Work | Reports Orca validation records, observed editor-process errors, and play state. |
 | `update_tasks` | Plan, Work | Atomically replaces bounded session task metadata without modifying project files. |
+| `request_work_mode` | Plan only | Suspends once for explicit permission to continue the active task in Work mode. |
 | `apply_patch` | Work only | Materializes precise line edits into a reviewed and validated file proposal. |
 | `propose_input_map_changes` | Work only | Prepares bounded typed Input Map action changes for structured approval. |
 | `propose_main_scene_change` | Work only | Proposes a validated saved scene as the project launch scene through structured review. |
@@ -159,6 +161,7 @@ EditorPlugin (orca.gd)
        -> ChangeCard / InputMapChangeCard / MainSceneChangeCard / ProjectSettingsChangeCard / SceneChangeCard
        -> ToolActivityGroup -> ToolActivityCard children
        -> TaskListPanel
+       -> ModeSwitchCard
        -> SettingsView -> AgentCompatibilityProbe -> isolated APIClient
        -> HistoryView
        -> SessionStore (project-keyed user:// JSON)
@@ -216,6 +219,8 @@ The request-scoped context, including project instructions and skill catalog met
 The provider snapshot is also retained through all tool rounds so settings changes cannot mix endpoints or models inside one protocol turn.
 
 Each user submission receives one monotonic controller turn ID. Every initial provider request and tool follow-up receives a distinct monotonic provider request ID through private request options; `APIClient` carries that ID on all stream and terminal signals without serializing it into provider payloads. The controller reserves request ownership before publishing thinking/finalizing state and rechecks the captured turn/request pair before transport, so synchronous cancellation cannot launch an orphan request. It claims matching terminal events once and invalidates ending ownership before any busy/terminal signal can synchronously start a new turn. Awaited approval and run-observation continuations remain bound to the originating turn. `ChatWindow` independently checks the turn ID before changing working/stream cards, tool or review cards, session persistence, composer state, or Send/Stop controls.
+
+Plan exposes `request_work_mode` only when normal Agent tools are available. The request contains one bounded user-facing reason and may suspend at most once per turn. An exact approved decision changes the active mode and UI immediately, but every tool call in the provider response that requested the transition remains bound to the original Plan permission snapshot. The primary system prompt is regenerated for Work and the exact tool result records approval without inserting a system message inside the active protocol turn. Only after all matching tool results are appended does Orca issue a new provider request with Work schemas. Rejection continues in Plan without exposing another escalation request; Stop cancels the pending decision and leaves the mode unchanged. Pending decisions and reasons are never persisted.
 
 Before each provider request, `context_budget.gd` resolves the request-scoped model's known context window, preferring the provider-reported model identity during a tool continuation, and estimates the serialized messages and tool schemas conservatively from UTF-8 bytes plus structural overhead. It reserves bounded capacity for a final answer and, while tools are exposed, for a later tool result. If necessary it replaces the oldest contiguous completed turns with one system notice. Historical tool rounds are removable only when the assistant call, every matching tool result, and the terminal assistant response are complete. The active user turn, provider reasoning continuation, temporary editor context, and runtime observation remain protected. Unknown custom-model limits continue without speculative blocking; an oversized protected request for a known limit fails before transport.
 
@@ -497,6 +502,14 @@ Input:
 
 The tool is available in Plan and Work, changes session metadata only, never enters the patch approval path, and returns the normalized list to the controller. An empty list clears the checklist.
 
+### `request_work_mode`
+
+Input:
+
+- `reason`: One non-empty user-facing line, limited to 240 characters.
+
+This controller-owned tool is exposed only in Plan when the selected provider has Agent tools available. It is appropriate only when the user asked for implementation, execution, or another operation requiring Work. The controller permits one valid request per user turn and waits for an exact call/turn-bound `Stay in Plan` or `Switch to Work` decision. Approval changes mode but does not approve any mutation. The original response remains Plan-bound, including calls after the request; Work tools appear only on the next provider continuation. Rejection, malformed arguments, stale decisions, duplicate decisions, and cancellation cannot grant Work permission. Only a bounded resolved summary persists.
+
 ### `apply_patch`
 
 Input:
@@ -699,6 +712,7 @@ A committed automated suite exists under `tests/`:
 - The same suite verifies monotonic run identity/sequence, strict criteria normalization, clean-startup and expected-exit verdicts, nonzero-exit failure, truncation-driven inconclusive results, stale run rejection, and genuine multiline Godot diagnostic locations.
 - `diagnostics_service_test.gd` verifies validation contracts, warning/error normalization, stderr filtering, bounded oldest-to-newest retention of the latest records, field sanitation, monotonic sequences, and deep-copy report isolation.
 - `support_diagnostic_report_test.gd` verifies exact report key allowlists, closed-enum normalization, deterministic valid JSON, coarse endpoint classification, and adversarial exclusion of credentials, endpoints, project/session content, model output, tool payloads, reasoning, logs, proposal bytes, and hashes.
+- `mode_switch_card_test.gd` verifies explicit decisions, single emission, resolved non-actionable state, and the 300 px dock-width constraint. Controller and chat suites cover Plan-only disclosure, same-turn continuation, rejection, Stop, stale/mismatched decisions, mixed-batch permission snapshots, protocol ordering, and reason redaction.
 - `editor_unsaved_state_test.gd` uses public editor APIs to dirty real script and scene buffers and verifies exact current-editor source provenance, absent disk hashes, patch/apply/revert rejection, stale scene-inspection and structured-proposal rejection, and run blocking.
 - `diagnostics_editor_integration_test.gd` verifies real editor logger capture and proves that simultaneous diagnostics service instances share one logger without duplicate records.
 - `plugin_lifecycle_test.gd` verifies actual enable, disable, and re-enable behavior, single toolbar/dock/service ownership, dependency injection identity, and dock registration.
@@ -1224,6 +1238,12 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Kept the composer multiline while a turn is active, made the turn-owned UI state authoritative for Send/Stop presentation, and preserved typed follow-up drafts across matching completion, failure, cancellation, and stale callbacks.
 - Added a memory-only last-request support snapshot protected by provider-request ownership and a separate strict-positive-allowlist report builder; no session, diagnostics, process, transcript, or provider-output state is consumed.
 - Added an About-page copy action with explicit privacy disclosure plus permanent active-composer, Stop-path, request-lifecycle, exact-schema, adversarial-secret, and narrow-layout regressions.
+
+### 2026-10-07: Explicit Plan-To-Work Escalation
+
+- Added one bounded Plan-only `request_work_mode` decision per turn with explicit stay/switch actions, exact turn/call ownership, cancellation, and no persisted pending state or reason.
+- Bound every tool call to the mode under which its provider response was generated, preventing approval from authorizing later mutation calls smuggled into the original Plan batch. Approval regenerates the primary Work prompt and uses the matching tool result without splitting active protocol history.
+- Approval continues the same task with a fresh Work-schema provider request while preserving normal mutation approvals; rejection remains in Plan and users can switch manually after the turn without automatic replay.
 
 ## Handoff Checklist
 

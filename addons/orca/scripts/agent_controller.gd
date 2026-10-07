@@ -17,6 +17,8 @@ signal session_usage_changed(summary: Dictionary)
 signal model_metadata_requested(model: String, api_url: String)
 signal tasks_changed(tasks: Array)
 signal workflow_state_changed(turn_id: int, state: String, details: Dictionary)
+signal work_mode_requested(turn_id: int, request: Dictionary)
+signal work_mode_decision_received(resolution: Dictionary)
 
 const MAX_TOOL_ROUNDS := 12
 const MAX_TOOL_CALLS_PER_RESPONSE := 16
@@ -51,6 +53,7 @@ const MAX_RECOVERY_RECEIPTS := MAX_TOOL_ROUNDS * MAX_TOOL_CALLS_PER_RESPONSE
 const MAX_GUIDANCE_WARNING_CHARS := 240
 const LOOP_TRIGGER_ROUND_CAP := "round_cap"
 const MAX_FINAL_PROVIDER_TEXT_CHARS := 1200
+const WORK_MODE_REQUEST_TOOL := "request_work_mode"
 
 enum AgentMode {
 	PLAN,
@@ -111,6 +114,11 @@ var _executing_tool_call := false
 var _awaiting_edit_resolution := false
 var _pending_edit_resolution: Dictionary = {}
 var _last_support_request_metadata: Dictionary = {}
+var _work_mode_requested_this_turn := false
+var _pending_work_mode_call_id := ""
+var _pending_work_mode_turn_id := 0
+var _pending_work_mode_resolution: Dictionary = {}
+var _awaiting_work_mode_resolution := false
 
 func _ready() -> void:
 	api_client = preload("res://addons/orca/scripts/api_client.gd").new()
@@ -176,6 +184,8 @@ func send_user_message(text: String) -> void:
 	_baseline_criteria_id = ""
 	_baseline_criteria_initialized = false
 	_pending_run_observation.clear()
+	_clear_work_mode_request_state()
+	_work_mode_requested_this_turn = false
 	_turn_provider_config = Config.get_active_provider_config()
 	var turn_id := _active_turn_id
 	request_state_changed.emit(turn_id, true)
@@ -264,6 +274,8 @@ func start_new_session() -> bool:
 	_baseline_criteria_initialized = false
 	_pending_run_observation.clear()
 	_cancel_requested = false
+	_clear_work_mode_request_state()
+	_work_mode_requested_this_turn = false
 	_current_stream_content = ""
 	_reset_session_usage()
 	_tasks.clear()
@@ -316,6 +328,8 @@ func restore_session_state(mode: int, continuation: Array, usage: Dictionary, ta
 	_baseline_criteria_initialized = false
 	_pending_run_observation.clear()
 	_cancel_requested = false
+	_clear_work_mode_request_state()
+	_work_mode_requested_this_turn = false
 	_current_stream_content = ""
 	_restore_session_usage(usage)
 	_tasks.assign(task_validation.get("tasks", []))
@@ -345,7 +359,9 @@ func cancel_current_request() -> void:
 		return
 	_cancel_requested = true
 	_observation_generation += 1
-	if not _pending_change_id.is_empty():
+	if not _pending_work_mode_call_id.is_empty():
+		_cancel_pending_work_mode_request()
+	elif not _pending_change_id.is_empty():
 		_cancel_pending_edit()
 	elif api_client.is_requesting():
 		api_client.cancel_request()
@@ -353,6 +369,29 @@ func cancel_current_request() -> void:
 		return
 	else:
 		_finish_cancelled()
+
+
+func resolve_work_mode_request(call_id: String, origin_turn_id: int, approved: bool) -> void:
+	if not _awaiting_work_mode_resolution or call_id != _pending_work_mode_call_id or origin_turn_id != _pending_work_mode_turn_id or not _owns_turn(origin_turn_id):
+		return
+	var resolution := {
+		"call_id": call_id,
+		"approved": approved,
+		"outcome": "completed",
+		"result": "The user chose to stay in Plan mode. Finish with a useful plan and do not request Work mode again in this turn."
+	}
+	if approved:
+		if _mode != AgentMode.PLAN:
+			resolution["approved"] = false
+			resolution["outcome"] = "failed"
+			resolution["result"] = "Work mode could not be activated because the active mode changed before the decision was applied."
+		else:
+			_activate_work_mode_for_turn()
+			resolution["result"] = "The user approved Work mode. Continue the same task in Work mode. File mutations still require their normal explicit approval."
+	_pending_work_mode_resolution = resolution
+	_pending_work_mode_call_id = ""
+	_pending_work_mode_turn_id = 0
+	work_mode_decision_received.emit(resolution.duplicate(true))
 
 func resolve_edit(change_id: String, origin_turn_id: int, approved: bool) -> void:
 	if change_id != _pending_change_id or not _proposals.has(change_id):
@@ -449,6 +488,7 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 				assistant_message[continuation_field] = message[continuation_field]
 		
 		if message.has("tool_calls") and typeof(message.tool_calls) == TYPE_ARRAY and not message.tool_calls.is_empty():
+			var response_mode := _mode
 			if message.tool_calls.size() > MAX_TOOL_CALLS_PER_RESPONSE:
 				_set_support_request_failure({"category": "malformed_response", "phase": "receiving_response"})
 				turn_id = _invalidate_turn_ownership()
@@ -476,7 +516,7 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 
 			for tool_index in range(message.tool_calls.size()):
 				var tool_call: Dictionary = message.tool_calls[tool_index]
-				var tool_result: Dictionary = await _execute_tool_call(tool_call, turn_id)
+				var tool_result: Dictionary = await _execute_tool_call(tool_call, turn_id, response_mode)
 				if not _owns_turn(turn_id):
 					return
 				round_results.append(tool_result)
@@ -496,7 +536,6 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 						})
 					_finish_cancelled()
 					return
-
 			if not _pending_run_observation.is_empty():
 				var observed := await _begin_bounded_run_observation()
 				if not observed or not _owns_turn(turn_id) or _cancel_requested:
@@ -535,8 +574,9 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 		_record_request_usage(response)
 		_finish_request_error("Unexpected API response format.", turn_id)
 
-func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1) -> Dictionary:
+func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1, permission_mode: int = -1) -> Dictionary:
 	var signal_turn_id := _active_turn_id if expected_turn_id < 0 else expected_turn_id
+	var batch_mode := _mode if permission_mode < 0 else permission_mode
 	var call_id := str(tool_call.get("id", "tool_" + str(Time.get_ticks_usec())))
 	var function = tool_call.get("function", {})
 	var function_name := str(function.get("name", "")) if typeof(function) == TYPE_DICTIONARY else ""
@@ -582,10 +622,36 @@ func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1) -> Di
 				if _baseline_criteria_initialized and requested_criteria != _baseline_criteria_id:
 					result = "Error: A rerun in this turn must preserve the original verification criteria instead of moving the goalposts."
 					outcome = "failed"
-	if result.is_empty() and REVIEWED_MUTATION_TOOLS.has(function_name) and _mode != AgentMode.BUILD:
+	if result.is_empty() and function_name == WORK_MODE_REQUEST_TOOL:
+		var validation := _validate_work_mode_request(arguments, batch_mode)
+		if not validation.get("success", false):
+			result = "Error: " + str(validation.get("error", "Work mode could not be requested."))
+			outcome = "failed"
+		else:
+			_work_mode_requested_this_turn = true
+			_pending_work_mode_call_id = call_id
+			_pending_work_mode_turn_id = signal_turn_id
+			_pending_work_mode_resolution.clear()
+			_awaiting_work_mode_resolution = true
+			work_mode_requested.emit(signal_turn_id, {"call_id": call_id, "reason": validation.get("reason", "")})
+			if _pending_work_mode_resolution.is_empty():
+				await work_mode_decision_received
+			var mode_resolution := _pending_work_mode_resolution.duplicate(true)
+			_pending_work_mode_resolution.clear()
+			_awaiting_work_mode_resolution = false
+			if expected_turn_id >= 0 and not _owns_turn(expected_turn_id):
+				_executing_tool_call = false
+				return {"call_id": call_id, "name": function_name, "arguments": arguments, "result": "The originating turn is no longer active.", "outcome": "cancelled", "execution": {}}
+			if str(mode_resolution.get("call_id", "")) != call_id:
+				result = "Error: The Work mode decision did not match the pending request."
+				outcome = "failed"
+			else:
+				result = str(mode_resolution.get("result", "The Work mode decision was interrupted."))
+				outcome = str(mode_resolution.get("outcome", "failed"))
+	elif result.is_empty() and REVIEWED_MUTATION_TOOLS.has(function_name) and batch_mode != AgentMode.BUILD:
 		result = "Error: %s is unavailable in Plan mode. Switch to Work mode to propose changes." % function_name
 		outcome = "failed"
-	elif result.is_empty() and WORK_OPERATION_TOOLS.has(function_name) and _mode != AgentMode.BUILD:
+	elif result.is_empty() and WORK_OPERATION_TOOLS.has(function_name) and batch_mode != AgentMode.BUILD:
 		result = "Error: %s is unavailable in Plan mode. Switch to Work mode to control an Orca-owned game process." % function_name
 		outcome = "failed"
 	elif result.is_empty() and REVIEWED_MUTATION_TOOLS.has(function_name):
@@ -1041,7 +1107,7 @@ func _remap_context_indices(removed_start: int, removed_count: int, inserted_cou
 func _get_tool_definitions() -> Array:
 	if not _turn_allows_tools():
 		return []
-	return tools_script.get_tool_definitions(_mode == AgentMode.BUILD)
+	return tools_script.get_tool_definitions(_mode == AgentMode.BUILD, _mode == AgentMode.PLAN and not _work_mode_requested_this_turn)
 
 
 func _turn_allows_tools() -> bool:
@@ -1062,7 +1128,7 @@ func _turn_allows_tools() -> bool:
 func _get_system_prompt() -> String:
 	var shared := "You are Orca, an AI game-development assistant integrated into the Godot editor. Use project tools proactively to understand the user's Godot project. Prefer inspect_scene over raw file reads when understanding saved .tscn structure; it reports saved serialized state, does not include unsaved or runtime-generated nodes, and does not recursively expand scene instances. Prefer inspect_project_settings over reading project.godot when understanding project configuration; omit setting_path for the bounded overview or provide one exact non-sensitive path. Be concise, explain important decisions, and never claim a tool action succeeded unless its result confirms success. For genuinely multi-step work, maintain the session checklist with update_tasks; provide the complete desired list, keep at most one item in_progress, and do not use it for trivial one-step requests."
 	if _mode == AgentMode.PLAN:
-		return shared + " You are in Plan mode. Explore and analyze the project using read-only tools, identify relevant files, ask focused questions when needed, and produce a concrete implementation plan. You may update Orca's session checklist, but you must not create, edit, delete, apply changes, or start/stop game processes. If the user asks you to implement something, finish the plan and tell them to switch to Work mode."
+		return shared + " You are in Plan mode. Explore and analyze the project using read-only tools, identify relevant files, ask focused questions when needed, and produce a concrete implementation plan. You may update Orca's session checklist, but you must not create, edit, delete, apply changes, or start/stop game processes. If and only if the user asked you to implement, modify, run, or otherwise perform work that requires Work mode, use request_work_mode once with a concise reason. Wait for the user's decision. If they decline, remain in Plan mode and finish with a useful plan; do not ask again in that turn. Do not request Work mode for analysis-only or planning requests."
 	return shared + " You are in Work mode. You may search and read project files, inspect current editor context and diagnostics, propose reviewed changes, and run or stop only Orca-owned game processes. Read relevant line ranges first and use the SHA-256 returned by read_file as base_hash. Use propose_scene_changes for structured scene creation, nodes, typed properties, dependency-free scripts and child instances, and bindless signals instead of writing .tscn text. Script attach/detach requires a script_hash from read_file and two user decisions: trust to execute the exact script while constructing a candidate, then approval to apply it. Use propose_input_map_changes for typed Input Map changes, propose_main_scene_change to configure the launch scene, propose_project_settings_changes for allowlisted display settings, and apply_patch for minimal non-overlapping source edits. Use run_current_scene or run_main_scene only when execution advances the task. Declare clean_startup or expected_exit verification before launch when those narrow criteria match the task, preserve the same criteria across reruns, and use observe_game_run or get_diagnostics for later evidence. Orca automatically waits briefly for one bounded observation after launch. Only claim verified when verify_game_run returns passed; launch, a zero exit code, or absence of retained errors does not establish gameplay correctness. Visual behavior, input feel, animation, and rendering remain unverified without visual evidence. Use stop_game only for the current Orca-owned run. Every project file change requires explicit user approval before it is applied."
 
 func _get_mode_transition_prompt() -> String:
@@ -1075,6 +1141,7 @@ func _finish_cancelled(ending_turn_id: int = -1) -> void:
 		_set_support_request_outcome("cancelled")
 	var turn_id := _invalidate_turn_ownership() if ending_turn_id < 0 else ending_turn_id
 	_pending_change_id = ""
+	_clear_work_mode_request_state()
 	_pending_run_observation.clear()
 	_current_stream_content = ""
 	_clear_turn_context()
@@ -1088,6 +1155,7 @@ func _finish_request_error(message: String, ending_turn_id: int = -1) -> void:
 	if str(_last_support_request_metadata.get("outcome", "")) == "in_progress":
 		_set_support_request_failure({"category": "internal", "phase": "local"})
 	var turn_id := _invalidate_turn_ownership() if ending_turn_id < 0 else ending_turn_id
+	_clear_work_mode_request_state()
 	_clear_turn_context()
 	_last_failure_checkpointed = _checkpoint_failed_tool_turn()
 	var rendered := message
@@ -1145,6 +1213,50 @@ func _clear_turn_context() -> void:
 	_runtime_context_message_index = -1
 	_pending_run_observation.clear()
 	_clear_turn_loop_state()
+
+
+func _validate_work_mode_request(arguments: Dictionary, batch_mode: int) -> Dictionary:
+	if _work_mode_requested_this_turn:
+		return {"success": false, "error": "Work mode may be requested at most once per user turn."}
+	if batch_mode != AgentMode.PLAN or _mode != AgentMode.PLAN:
+		return {"success": false, "error": "Work mode can be requested only from an active Plan-mode response."}
+	if arguments.keys().any(func(key): return str(key) != "reason"):
+		return {"success": false, "error": "Work mode request arguments contain unsupported fields."}
+	if typeof(arguments.get("reason")) != TYPE_STRING:
+		return {"success": false, "error": "A user-facing reason is required."}
+	var reason := str(arguments.get("reason", "")).strip_edges()
+	if reason.is_empty() or reason.length() > tools_script.MAX_WORK_MODE_REASON_CHARS or reason.contains("\n") or reason.contains("\r") or reason.contains("\t"):
+		return {"success": false, "error": "The Work mode reason must be one bounded line."}
+	return {"success": true, "reason": reason}
+
+
+func _activate_work_mode_for_turn() -> void:
+	_mode = AgentMode.BUILD
+	if not message_history.is_empty() and message_history[0].get("role") == "system":
+		message_history[0]["content"] = _get_system_prompt()
+	mode_changed.emit(_mode)
+
+
+func _cancel_pending_work_mode_request() -> void:
+	if _pending_work_mode_call_id.is_empty():
+		return
+	var resolution := {
+		"call_id": _pending_work_mode_call_id,
+		"approved": false,
+		"outcome": "cancelled",
+		"result": "The Work mode request was cancelled. Orca remains in Plan mode."
+	}
+	_pending_work_mode_resolution = resolution
+	_pending_work_mode_call_id = ""
+	_pending_work_mode_turn_id = 0
+	work_mode_decision_received.emit(resolution.duplicate(true))
+
+
+func _clear_work_mode_request_state() -> void:
+	_pending_work_mode_call_id = ""
+	_pending_work_mode_turn_id = 0
+	_pending_work_mode_resolution.clear()
+	_awaiting_work_mode_resolution = false
 
 
 func _reset_session_usage() -> void:

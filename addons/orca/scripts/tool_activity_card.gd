@@ -175,6 +175,8 @@ func _display_name(tool_name: String) -> String:
 			return "Stop Orca game"
 		"update_tasks":
 			return "Update task checklist"
+		"request_work_mode":
+			return "Work mode decision"
 		"apply_patch":
 			return "Prepare file patch"
 		"propose_input_map_changes":
