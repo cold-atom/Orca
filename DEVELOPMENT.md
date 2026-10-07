@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-10-06
+Last updated: 2026-10-07
 
 ## Purpose
 
@@ -38,6 +38,7 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - Active turns use multi-frame feed following so newly inserted or late-resizing working, response, tool, and review cards remain at the visible bottom; sequential approvals automatically advance to the next pending card.
 - Two-row compact header that keeps session context usage and cost visible at narrow dock widths.
 - In-dock settings page with Provider and About tabs, API key configuration, searchable model discovery, provider-reported or conservative known-model reasoning effort, model metadata, release information sourced from `plugin.cfg`, and a Done action.
+- The About page can copy a memory-only strict-allowlist support report containing Orca/Godot versions and coarse provider/request lifecycle metadata without endpoint addresses, credentials, project or conversation content, model output, logs, process output, proposal data, or hashes.
 - First-class OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, and Local OpenAI-compatible profiles plus an advanced custom OpenAI-compatible profile.
 - Separate credentials, model, and reasoning-effort selection per provider, with migration from the former global URL/key/model settings.
 
@@ -162,6 +163,7 @@ EditorPlugin (orca.gd)
        -> HistoryView
        -> SessionStore (project-keyed user:// JSON)
        -> DiagnosticsService
+       -> SupportDiagnosticReport (strict allowlist and deterministic serialization)
        -> GameProcessService
        -> ModelCatalogService
        -> ProviderModelService
@@ -301,6 +303,8 @@ The public GDScript plugin API does not expose:
 - Script editor warning/error collections.
 
 Orca must not scrape private editor controls to imitate these APIs. The diagnostics tool states this limitation and reports only supported data. For a process started by `GameProcessService`, it additionally reports bounded stdout/stderr, conservative runtime-error records, elapsed state, timeout, and exit code from public process APIs.
+
+The user-copied support diagnostic report is a separate privacy boundary and never consumes `DiagnosticsService`, game-process snapshots, logs, sessions, transcripts, or provider output. `AgentController` retains one memory-only snapshot of the latest owned provider request using closed provider, outcome, mode, stage, failure-category, and transport-phase enums plus bounded status and boolean fields. Stale callbacks cannot replace that snapshot. `support_diagnostic_report.gd` constructs a new allowlisted dictionary rather than redacting arbitrary input, and the About page copies its deterministic JSON serialization. Exact models, operating-system details, credentials, endpoint components, IDs, prompts, source, tool payloads, reasoning, raw errors, output streams, proposal data, and hashes are excluded.
 
 ### Game Process Lifecycle
 
@@ -694,6 +698,7 @@ A committed automated suite exists under `tests/`:
 - `game_process_service_test.gd` verifies fixed launch arguments, one-process ownership, direct-PID stop, natural exit codes, timeout and kill-failure states, shutdown failure honesty, separate stdout/stderr bounds, safe diagnostic navigation, launch failure, and real nonblocking Godot pipe integration.
 - The same suite verifies monotonic run identity/sequence, strict criteria normalization, clean-startup and expected-exit verdicts, nonzero-exit failure, truncation-driven inconclusive results, stale run rejection, and genuine multiline Godot diagnostic locations.
 - `diagnostics_service_test.gd` verifies validation contracts, warning/error normalization, stderr filtering, bounded oldest-to-newest retention of the latest records, field sanitation, monotonic sequences, and deep-copy report isolation.
+- `support_diagnostic_report_test.gd` verifies exact report key allowlists, closed-enum normalization, deterministic valid JSON, coarse endpoint classification, and adversarial exclusion of credentials, endpoints, project/session content, model output, tool payloads, reasoning, logs, proposal bytes, and hashes.
 - `editor_unsaved_state_test.gd` uses public editor APIs to dirty real script and scene buffers and verifies exact current-editor source provenance, absent disk hashes, patch/apply/revert rejection, stale scene-inspection and structured-proposal rejection, and run blocking.
 - `diagnostics_editor_integration_test.gd` verifies real editor logger capture and proves that simultaneous diagnostics service instances share one logger without duplicate records.
 - `plugin_lifecycle_test.gd` verifies actual enable, disable, and re-enable behavior, single toolbar/dock/service ownership, dependency injection identity, and dock registration.
@@ -1213,6 +1218,12 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Added monotonic controller turn and provider-request ownership, distinct IDs for tool follow-ups, single-claim terminal handling, and turn-bound awaited continuations.
 - Added independent ChatWindow turn guards before request-scoped card, session, composer, and Send/Stop changes, plus focused stale, duplicate, cancellation, follow-up, probe, and synchronous-failure regressions.
 - Hardened synchronous signal reentrancy by reserving request ownership before workflow signals, rechecking before transport, and invalidating ending ownership before busy or terminal emissions.
+
+### 2026-10-07: Orca 1.2.1 Composer And Support Diagnostics
+
+- Kept the composer multiline while a turn is active, made the turn-owned UI state authoritative for Send/Stop presentation, and preserved typed follow-up drafts across matching completion, failure, cancellation, and stale callbacks.
+- Added a memory-only last-request support snapshot protected by provider-request ownership and a separate strict-positive-allowlist report builder; no session, diagnostics, process, transcript, or provider-output state is consumed.
+- Added an About-page copy action with explicit privacy disclosure plus permanent active-composer, Stop-path, request-lifecycle, exact-schema, adversarial-secret, and narrow-layout regressions.
 
 ## Handoff Checklist
 

@@ -206,6 +206,12 @@ Run bounded diagnostic retention, validation, sanitation, and report-isolation c
 "$GODOT_BIN" --headless --path . --script res://tests/diagnostics_service_test.gd
 ```
 
+Run privacy-safe support-report allowlist, normalization, and secret-exclusion checks:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/support_diagnostic_report_test.gd
+```
+
 Run the deterministic local transport checks by starting the server in one terminal:
 
 ```bash

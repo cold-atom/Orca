@@ -75,6 +75,7 @@ The project is currently a functional, foundational Godot Editor Plugin located 
    - Stores separate API key, endpoint, model, and reasoning-effort selections per provider and discovers bounded model lists from provider APIs. Editable profiles start in Chat mode; one isolated synthetic function-call probe and a separate user opt-in can enable tools only for the exact matching compatibility binding.
    - Uses Ollama `/api/tags` and LM Studio `/api/v1/models` metadata to hide known embedding models, with a conservative name fallback and unrestricted manual Model ID override.
    - Integrates with Godot's Editor Settings for persistence. Editor Settings is not an encrypted OS credential store.
+   - The About page copies a memory-only strict-allowlist support report with Orca/Godot versions and coarse provider/request state while excluding endpoint addresses, credentials, model IDs, project and conversation data, model output, logs, file changes, and hashes.
 
 ## What We Are Building (The Vision)
 We are building a truly autonomous copilot for game development in Godot, similar to GitHub Copilot or Roo Code (formerly Cline), but deeply integrated into the Godot ecosystem. The goal is to move beyond simple chat interfaces to an AI agent that understands the full context of a Godot project.

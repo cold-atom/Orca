@@ -13,12 +13,17 @@ const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 
 class FakeAgent:
 	extends RefCounted
+	var busy := true
+	var cancellations := 0
 
 	func get_mode() -> int:
 		return 1
 
 	func is_busy() -> bool:
-		return true
+		return busy
+
+	func cancel_current_request() -> void:
+		cancellations += 1
 
 
 var _failures := PackedStringArray()
@@ -46,6 +51,7 @@ func _run() -> void:
 	await process_frame
 	_test_ui_scale_math()
 	await _test_compact_composer(view)
+	_test_active_composer_lifecycle(view)
 	await _test_final_rendering(view)
 	await process_frame
 	await process_frame
@@ -251,13 +257,53 @@ func _test_working_indicator(view) -> void:
 	_expect(view.get_combined_minimum_size().x <= 300.0, "the working indicator must not widen the minimum dock beyond 300 px")
 
 
+func _test_active_composer_lifecycle(view) -> void:
+	var real_agent = view.agent_controller
+	var fake_agent := FakeAgent.new()
+	view.agent_controller = fake_agent
+	view._session = {"events": [], "clean": false, "resumable": true}
+	view._session_resumable = true
+	view._turn_had_tools = false
+	view.prompt_input.editable = true
+	view.prompt_input.text = "Draft while Orca works"
+	view._set_request_active(true)
+	var enter := InputEventKey.new()
+	enter.pressed = true
+	enter.keycode = KEY_ENTER
+	view._on_prompt_gui_input(enter)
+	_expect(fake_agent.cancellations == 0 and view.prompt_input.text == "Draft while Orca works" and not view.get_viewport().is_input_handled(), "plain Enter during an active request must remain unhandled composer input rather than being swallowed, submitted, or stopped")
+	var stop_handler := Callable(view, "_on_send_button_pressed")
+	if not view.send_button.pressed.is_connected(stop_handler):
+		view.send_button.pressed.connect(stop_handler)
+	view.send_button.emit_signal("pressed")
+	_expect(fake_agent.cancellations == 1 and view.prompt_input.text == "Draft while Orca works", "the actual Stop button path should cancel once without clearing the draft (cancellations: %d)" % fake_agent.cancellations)
+
+	view._active_turn_id = 31
+	view._on_turn_message_received(31, "assistant", "Completed")
+	_expect(view.prompt_input.text == "Draft while Orca works" and not view._request_active and not view.send_button.disabled, "matching completion should preserve the active-turn draft and restore Send")
+	view._session = {"events": [], "clean": false, "resumable": true}
+	view._active_turn_id = 32
+	view._set_request_active(true)
+	view._on_turn_error_occurred(32, "Synthetic failure")
+	_expect(view.prompt_input.text == "Draft while Orca works" and not view._request_active and not view.send_button.disabled, "matching failure should preserve the active-turn draft and restore Send")
+	view._session = {"events": [], "clean": false, "resumable": true}
+	view._active_turn_id = 33
+	view._set_request_active(true)
+	view._on_turn_request_cancelled(33)
+	_expect(view.prompt_input.text == "Draft while Orca works" and not view._request_active and not view.send_button.disabled, "matching cancellation should preserve the active-turn draft and restore Send")
+	view.agent_controller = real_agent
+
+
 func _test_turn_event_ownership(view) -> void:
 	view._clear_chat_feed()
 	view._session = {"events": [], "clean": false}
 	view._active_turn_id = 22
+	view.prompt_input.text = "Newer turn draft"
 	view._set_request_active(true)
 	view._show_working_indicator("Thinking")
 	var child_count: int = view.chat_feed.get_child_count()
+	var stop_texture: Texture2D = view.send_icon_view.texture
+	var stop_tooltip: String = view.send_button.tooltip_text
 	view._on_turn_message_stream_started(21)
 	view._on_turn_message_stream_delta(21, "stale")
 	view._on_turn_workflow_state_changed(21, "idle", {})
@@ -270,6 +316,8 @@ func _test_turn_event_ownership(view) -> void:
 	_expect(view._active_turn_id == 22 and view._request_active, "stale terminal and state events must not release the active newer turn")
 	_expect(view._stream_content.is_empty() and view.chat_feed.get_child_count() == child_count, "stale stream, tool, edit, and terminal events must not mutate cards")
 	_expect(view._session.get("events", []).is_empty() and not view._session.get("clean", false), "stale events must not mutate persisted session state")
+	_expect(view.prompt_input.text == "Newer turn draft" and view.prompt_input.editable, "stale events must not alter the newer turn draft or composer editability")
+	_expect(not view.send_button.disabled and view.send_icon_view.texture == stop_texture and view.send_button.tooltip_text == stop_tooltip, "stale events must not alter the newer turn Stop state")
 	view._on_turn_request_state_changed(22, false)
 	view._on_turn_request_state_changed(23, true)
 	view._on_turn_message_received(22, "assistant", "old terminal after reentry")

@@ -12,6 +12,7 @@ All notable changes to Orca are documented in this file.
 - Tool-loop finalization now has a distinct `Finalizing safely` state, retains the safety trigger reason, explains denied post-finalization tool calls accurately, and gives explicit non-replay continuation guidance.
 - Raw file patches now verify retained proposal integrity before Apply and reread, hash-check, and revalidate exact destination bytes after replacement.
 - Verified replacement now has explicit not-committed, committed, committed-with-cleanup-warning, and recovery-failure outcomes across file, scene, Input Map, main-scene, and ProjectSettings mutations.
+- The About page can copy a strict-allowlist diagnostic report containing Orca/Godot versions and coarse provider/request state without credentials, endpoint addresses, project data, conversation content, model output, logs, or file changes.
 
 ### Fixed
 
@@ -22,6 +23,7 @@ All notable changes to Orca are documented in this file.
 - Cleanup-only warnings no longer weaken typed live-state conflict checks; recovery-copy guidance is retained as bounded project-relative session metadata.
 - Fixed delayed stream and terminal callbacks from an older provider request being able to mutate a newer controller turn or chat UI state. Tool follow-ups now receive distinct provider request IDs while retaining one turn ID.
 - Fixed synchronous workflow and terminal signal handlers being able to launch an orphan request or have an ending turn clear ownership belonging to a reentrantly started turn.
+- Fixed plain Enter being silently swallowed while a request is active; follow-up drafts now remain editable and survive matching completion, failure, and cancellation while Stop remains explicit.
 
 ### Tests
 
@@ -31,6 +33,7 @@ All notable changes to Orca are documented in this file.
 - Added deterministic replacement, restoration, temporary-cleanup, post-write verification, cleanup-warning, recovery-classification, and retry-deadline fault coverage.
 - Added transport, compatibility-probe, controller, and chat-window ownership regressions for stale and duplicate callbacks, follow-up identity, cancellation, and synchronous configuration failures.
 - Added thinking/finalizing cancellation, terminal reentry, duplicate history/usage/message, and stale second-step probe failure/cancellation regressions.
+- Added active-composer, real Stop-button, draft-preservation, stale-control-state, request diagnostic lifecycle, and adversarial diagnostic privacy regressions.
 
 ## 1.2.0 - 2026-10-05
 

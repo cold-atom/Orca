@@ -36,9 +36,19 @@ func _run() -> void:
 	var compatibility := view.find_child("AboutCompatibility", true, false) as Label
 	var license := view.find_child("AboutLicense", true, false) as Label
 	var logo := view.find_child("AboutLogo", true, false) as TextureRect
+	var support_description := view.find_child("SupportReportDescription", true, false) as Label
+	var copy_report := view.find_child("CopySupportReport", true, false) as Button
 	_expect(compatibility != null and compatibility.text == "Godot 4.7.2", "the About page should state supported Godot compatibility")
 	_expect(license != null and license.text.contains("MIT License"), "the About page should state the plugin license")
 	_expect(logo != null and logo.texture != null, "the About page should display the Orca mark")
+	_expect(support_description != null and support_description.text.contains("strict-allowlist") and support_description.text.contains("excludes credentials"), "the About page should disclose the diagnostic report's privacy boundary")
+	_expect(copy_report != null, "the About page should expose the privacy-safe diagnostic copy action")
+	view.set_support_request_metadata({"provider_type": "openai", "outcome": "failed", "interaction_mode": "work", "stage": "initial", "tools_offered": true, "failure_category": "timeout", "transport_phase": "receiving_response", "message": "PRIVATE_ERROR_SENTINEL", "base_url": "https://private.example"})
+	var report_text: String = view.diagnostic_report_text()
+	_expect(report_text.contains("\"orca_version\": \"1.2.0\"") and report_text.contains("\"failure_category\": \"timeout\""), "the About action should generate versioned coarse request diagnostics")
+	_expect(not report_text.contains("PRIVATE_ERROR_SENTINEL") and not report_text.contains("private.example"), "the About report must not serialize unknown request or endpoint fields")
+	view._on_copy_support_report_pressed()
+	_expect(view.support_report_status.text == "Copied diagnostic report.", "copying diagnostics should provide visible confirmation")
 	_expect(view.get_combined_minimum_size().x <= 300.0, "the Settings and About pages should fit the 300 px dock width")
 
 	view.provider_tab_button.emit_signal("pressed")

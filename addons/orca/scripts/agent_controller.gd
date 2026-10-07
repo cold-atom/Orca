@@ -110,6 +110,7 @@ var _expected_provider_request_id := 0
 var _executing_tool_call := false
 var _awaiting_edit_resolution := false
 var _pending_edit_resolution: Dictionary = {}
+var _last_support_request_metadata: Dictionary = {}
 
 func _ready() -> void:
 	api_client = preload("res://addons/orca/scripts/api_client.gd").new()
@@ -241,6 +242,10 @@ func _bounded_context_warning(message: String) -> String:
 
 func is_busy() -> bool:
 	return _is_running
+
+
+func support_request_metadata() -> Dictionary:
+	return _last_support_request_metadata.duplicate(true)
 
 
 func start_new_session() -> bool:
@@ -426,6 +431,8 @@ func _cancel_pending_edit() -> void:
 func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 	if not _owns_provider_request(request_id):
 		return
+	_last_support_request_metadata["response_started"] = true
+	_set_support_request_outcome("completed")
 	_expected_provider_request_id = 0
 	var turn_id := _active_turn_id
 	if response.has("choices") and typeof(response.get("choices")) == TYPE_ARRAY and response.choices.size() > 0 and typeof(response.choices[0]) == TYPE_DICTIONARY and typeof(response.choices[0].get("message")) == TYPE_DICTIONARY:
@@ -443,6 +450,7 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 		
 		if message.has("tool_calls") and typeof(message.tool_calls) == TYPE_ARRAY and not message.tool_calls.is_empty():
 			if message.tool_calls.size() > MAX_TOOL_CALLS_PER_RESPONSE:
+				_set_support_request_failure({"category": "malformed_response", "phase": "receiving_response"})
 				turn_id = _invalidate_turn_ownership()
 				_record_request_usage(response)
 				_finish_request_error("The provider returned more than %d tool calls in one response." % MAX_TOOL_CALLS_PER_RESPONSE, turn_id)
@@ -522,6 +530,7 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 			workflow_state_changed.emit(turn_id, "idle", {})
 			message_received.emit(turn_id, "assistant", content)
 	else:
+		_set_support_request_failure({"category": "malformed_response", "phase": "receiving_response"})
 		turn_id = _invalidate_turn_ownership()
 		_record_request_usage(response)
 		_finish_request_error("Unexpected API response format.", turn_id)
@@ -902,6 +911,7 @@ func _bounded_visible_provider_text(content: String) -> String:
 func _on_api_request_failed(request_id: int, error: Dictionary) -> void:
 	if not _owns_provider_request(request_id):
 		return
+	_set_support_request_failure(error)
 	var turn_id := _invalidate_turn_ownership()
 	var error_message := str(error.get("message", "The API request failed."))
 	var phase := str(error.get("phase", ""))
@@ -933,6 +943,7 @@ func _on_api_request_failed(request_id: int, error: Dictionary) -> void:
 func _on_api_request_cancelled(request_id: int) -> void:
 	if not _owns_provider_request(request_id):
 		return
+	_set_support_request_outcome("cancelled")
 	var turn_id := _invalidate_turn_ownership()
 	if api_client.last_request_may_have_usage():
 		_latest_context_tokens = 0
@@ -950,6 +961,7 @@ func _on_api_request_cancelled(request_id: int) -> void:
 func _on_stream_started(request_id: int) -> void:
 	if not _owns_provider_request(request_id):
 		return
+	_last_support_request_metadata["response_started"] = true
 	_current_stream_content = ""
 	message_stream_started.emit(_active_turn_id)
 
@@ -970,12 +982,14 @@ func _set_running(value: bool, turn_id: int = -1) -> void:
 
 func _send_current_request() -> bool:
 	var definitions := [] if _loop_final_request else _get_tool_definitions()
+	_begin_support_request_snapshot(not definitions.is_empty())
 	var model := str(_turn_provider_config.get("model", ""))
 	var api_url := str(_turn_provider_config.get("base_url", ""))
 	var effective_model := _last_usage_model if _tool_rounds > 0 and not _last_usage_model.is_empty() else model
 	var metadata := ModelMetadata.resolve(effective_model, api_url, model)
 	var prepared := ContextBudget.prepare(message_history, definitions, int(metadata.get("context_window", 0)))
 	if not prepared.get("success", false):
+		_set_support_request_failure({"category": "context_budget", "phase": "local"}, "blocked_locally")
 		_finish_request_error("Orca could not send the request safely: " + str(prepared.get("error", "The context budget was exceeded.")))
 		return false
 	if prepared.get("compacted", false):
@@ -1057,6 +1071,8 @@ func _get_mode_transition_prompt() -> String:
 	return "MODE CHANGED: Orca is now in Work mode. This supersedes any earlier statement that Orca is in Plan mode. Continue the user's task now, use reviewed mutation tools when implementation is requested, and run only Orca-owned game processes when execution advances the task; every project file change still requires user approval."
 
 func _finish_cancelled(ending_turn_id: int = -1) -> void:
+	if str(_last_support_request_metadata.get("outcome", "")) == "in_progress":
+		_set_support_request_outcome("cancelled")
 	var turn_id := _invalidate_turn_ownership() if ending_turn_id < 0 else ending_turn_id
 	_pending_change_id = ""
 	_pending_run_observation.clear()
@@ -1069,6 +1085,8 @@ func _finish_cancelled(ending_turn_id: int = -1) -> void:
 
 
 func _finish_request_error(message: String, ending_turn_id: int = -1) -> void:
+	if str(_last_support_request_metadata.get("outcome", "")) == "in_progress":
+		_set_support_request_failure({"category": "internal", "phase": "local"})
 	var turn_id := _invalidate_turn_ownership() if ending_turn_id < 0 else ending_turn_id
 	_clear_turn_context()
 	_last_failure_checkpointed = _checkpoint_failed_tool_turn()
@@ -1080,6 +1098,41 @@ func _finish_request_error(message: String, ending_turn_id: int = -1) -> void:
 	_set_running(false, turn_id)
 	workflow_state_changed.emit(turn_id, "idle", {})
 	error_occurred.emit(turn_id, rendered)
+
+
+func _begin_support_request_snapshot(tools_offered: bool) -> void:
+	var provider_id := str(_turn_provider_config.get("provider", ""))
+	_last_support_request_metadata = {
+		"provider_type": provider_id if provider_id in ProviderRegistry.PROVIDER_IDS else "unknown",
+		"outcome": "in_progress",
+		"interaction_mode": "chat" if not _turn_allows_tools() else "plan" if _mode == AgentMode.PLAN else "work",
+		"stage": "safe_finalization" if _loop_final_request else "follow_up" if _tool_rounds > 0 else "initial",
+		"tools_offered": tools_offered,
+		"failure_category": "none",
+		"transport_phase": "none",
+		"http_status": 0,
+		"retryable": false,
+		"response_started": false,
+		"partial_response": false,
+	}
+
+
+func _set_support_request_outcome(outcome: String) -> void:
+	if _last_support_request_metadata.is_empty():
+		return
+	_last_support_request_metadata["outcome"] = outcome
+
+
+func _set_support_request_failure(error: Dictionary, outcome: String = "failed") -> void:
+	if _last_support_request_metadata.is_empty():
+		return
+	_last_support_request_metadata["outcome"] = outcome
+	_last_support_request_metadata["failure_category"] = str(error.get("category", "unknown"))
+	_last_support_request_metadata["transport_phase"] = str(error.get("phase", "unknown"))
+	_last_support_request_metadata["http_status"] = int(error.get("http_status", 0))
+	_last_support_request_metadata["retryable"] = bool(error.get("retryable", false))
+	_last_support_request_metadata["response_started"] = bool(error.get("response_started", false))
+	_last_support_request_metadata["partial_response"] = bool(error.get("partial_response", false))
 
 func _clear_turn_context() -> void:
 	var indices := [_context_message_index, _runtime_context_message_index, _loop_notice_message_index]

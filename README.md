@@ -165,6 +165,8 @@ Editable LAN and remote endpoints require confirmation for their exact scheme, h
 
 API credentials are saved through Godot Editor Settings. Project conversation history is stored locally as plaintext JSON under Godot's `user://` storage. Neither mechanism is an encrypted operating-system credential vault.
 
+The About page can copy a privacy-safe diagnostic report for support. It uses a strict allowlist containing Orca/Godot versions and coarse provider/request state; it excludes credentials, endpoint addresses, model IDs, project paths and content, conversations, model output, logs, process output, file changes, and hashes.
+
 When present, bounded root `res://AGENTS.md` instructions and project-skill catalog metadata are included in private request-scoped model context. A selected skill body is sent only after an explicit `read_project_skill` call. This temporary guidance is removed from resumable conversation history after the turn.
 
 See [SECURITY.md](SECURITY.md) for the complete security and operational model.

@@ -367,9 +367,8 @@ func _on_prompt_focus_changed(focused: bool) -> void:
 
 
 func _sync_send_availability() -> void:
-	var request_active: bool = agent_controller != null and agent_controller.is_busy()
-	send_button.disabled = not request_active and (not _session_resumable or prompt_input.text.strip_edges().is_empty())
-	_sync_send_icon_tint(request_active)
+	send_button.disabled = not _request_active and (not _session_resumable or prompt_input.text.strip_edges().is_empty())
+	_sync_send_icon_tint(_request_active)
 
 
 func _sync_send_icon_tint(request_active: bool) -> void:
@@ -405,17 +404,16 @@ func _clear_prompt_input() -> void:
 
 func _on_prompt_gui_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER):
-		if event.shift_pressed:
+		if event.shift_pressed or _request_active:
 			return
 		get_viewport().set_input_as_handled()
-		if agent_controller != null and agent_controller.is_busy():
-			return
 		_on_send_button_pressed()
 
 
 func _on_send_button_pressed() -> void:
-	if agent_controller != null and agent_controller.is_busy():
-		agent_controller.cancel_current_request()
+	if _request_active:
+		if agent_controller != null:
+			agent_controller.cancel_current_request()
 		return
 	if not _session_resumable:
 		return
@@ -842,8 +840,7 @@ func _set_request_active(active: bool) -> void:
 	_request_active = active
 	send_icon_view.texture = _stop_icon if active else _send_icon
 	send_button.tooltip_text = "Stop response (draft text is kept)" if active else "Send message"
-	send_button.disabled = false if active else prompt_input.text.strip_edges().is_empty()
-	_sync_send_icon_tint(active)
+	_sync_send_availability()
 	mode_button.disabled = active or not _session_resumable
 	new_session_button.disabled = active
 	history_button.disabled = active
@@ -1875,6 +1872,11 @@ func _open_settings(focus_model: bool) -> void:
 	if history_view != null:
 		history_view.hide()
 	main_content.hide()
+	if settings_view != null:
+		var support_metadata: Dictionary = {}
+		if agent_controller != null and agent_controller.has_method("support_request_metadata"):
+			support_metadata = agent_controller.support_request_metadata()
+		settings_view.set_support_request_metadata(support_metadata)
 	if focus_model:
 		settings_view.open_model_configuration()
 	else:
