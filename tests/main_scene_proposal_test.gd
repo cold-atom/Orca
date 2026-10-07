@@ -15,11 +15,13 @@ func _init() -> void:
 
 
 func _run() -> void:
+	OS.set_environment("ORCA_TEST_FAULT_INJECTION", "1")
 	_fixture_path = "res://.orca_main_scene_test_%d.godot" % Time.get_ticks_usec()
 	_test_candidate_generation()
 	_test_validation_and_no_op()
 	_test_reviewed_apply_and_revert()
 	_cleanup()
+	OS.unset_environment("ORCA_TEST_FAULT_INJECTION")
 	_finish()
 
 
@@ -75,9 +77,15 @@ func _test_reviewed_apply_and_revert() -> void:
 	var tampered: Dictionary = proposal.duplicate(true)
 	tampered["new_content"] = str(tampered["new_content"]) + "\n[unauthorized]\nvalue=true\n"
 	_expect(Tools.apply_reviewed_change(tampered).contains("reviewed hash"), "application should reject main scene candidate bytes changed after review")
+	Tools._set_replacement_test_faults({"backup_cleanup_failure": 1})
 	var applied := Tools.apply_reviewed_change(proposal)
-	_project_was_modified = applied.begins_with("Applied")
-	_expect(_project_was_modified, "an approved fresh main scene proposal should apply")
+	_project_was_modified = applied.begins_with("Cleanup required:") and applied.contains("Applied")
+	_expect(_project_was_modified, "a committed main-scene change with a cleanup warning should not be reported as an ordinary failure")
+	_expect(proposal.get("cleanup_required", false) and not proposal.get("recovery_required", false), "main-scene cleanup warnings must not bypass typed conflict validation")
+	_cleanup_reported_recovery_copy(applied)
+	proposal.erase("cleanup_required")
+	proposal.erase("cleanup_warnings")
+	Tools._clear_replacement_test_faults()
 	_expect(MainSceneProposal.resolve_setting_value(ProjectSettings.get_setting(MainSceneProposal.SETTING_PATH, null)) == SCENE_PATH, "application should synchronize live ProjectSettings")
 	_expect(_read(MainSceneProposal.PROJECT_PATH).sha256_text() == proposal.get("new_hash"), "application should write the exact reviewed candidate")
 	var tampered_revert: Dictionary = proposal.duplicate(true)
@@ -96,11 +104,19 @@ func _test_reviewed_apply_and_revert() -> void:
 
 
 func _cleanup() -> void:
+	Tools._clear_replacement_test_faults()
 	if _project_was_modified and not _original_project_content.is_empty():
 		_write(MainSceneProposal.PROJECT_PATH, _original_project_content)
 		ProjectSettings.set_setting(MainSceneProposal.SETTING_PATH, null)
 	if FileAccess.file_exists(_fixture_path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(_fixture_path))
+
+
+func _cleanup_reported_recovery_copy(result: String) -> void:
+	var marker := "Recovery copy: "
+	var marker_index := result.find(marker)
+	if marker_index >= 0:
+		DirAccess.remove_absolute(result.substr(marker_index + marker.length()))
 
 
 func _write(path: String, content: String) -> void:

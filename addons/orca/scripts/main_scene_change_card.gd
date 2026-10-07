@@ -91,7 +91,7 @@ func set_status(status: String, message: String) -> void:
 	_apply_button.visible = false
 	_reject_button.visible = false
 	_revert_button.visible = status in ["applied", "applied_recovery", "revert_failed"]
-	if status in ["applied_recovery", "reverted_recovery"]:
+	if status in ["applied_recovery", "reverted_recovery", "apply_recovery_required", "revert_recovery_required"]:
 		_validation_label.text = message
 	_status_label.add_theme_color_override("font_color", Color(0.45, 0.82, 0.55) if status == "applied" else Color(0.62, 0.65, 0.7) if status in ["rejected", "reverted"] else Color(0.95, 0.4, 0.4))
 

@@ -26,6 +26,16 @@ const MAX_SEARCH_RESULTS := 200
 const SEARCH_TIMEOUT_MS := 2500
 const MAX_SCENE_FILE_BYTES := 2 * 1024 * 1024
 
+enum SafeWriteOutcome {
+	NOT_COMMITTED_FAILURE,
+	COMMITTED_SUCCESS,
+	COMMITTED_CLEANUP_WARNING,
+	RECOVERY_FAILURE,
+}
+
+static var _replacement_test_faults := {}
+static var _replacement_test_write_index := 0
+
 static func get_tool_definitions(include_edit_tools: bool = true) -> Array:
 	var definitions := [
 		{
@@ -931,27 +941,33 @@ static func promote_script_trust(proposal: Dictionary) -> Dictionary:
 
 
 static func apply_reviewed_change(proposal: Dictionary) -> String:
+	var result := ""
 	if proposal.get("kind", "file_patch") == "scene":
-		return _apply_scene_change(proposal)
-	if proposal.get("kind", "file_patch") == "input_map":
-		return _apply_input_map_change(proposal)
-	if proposal.get("kind", "file_patch") == "main_scene":
-		return _apply_main_scene_change(proposal)
-	if proposal.get("kind", "file_patch") == "project_settings":
-		return _apply_project_settings_change(proposal)
-	return apply_file_edit(proposal)
+		result = _apply_scene_change(proposal)
+	elif proposal.get("kind", "file_patch") == "input_map":
+		result = _apply_input_map_change(proposal)
+	elif proposal.get("kind", "file_patch") == "main_scene":
+		result = _apply_main_scene_change(proposal)
+	elif proposal.get("kind", "file_patch") == "project_settings":
+		result = _apply_project_settings_change(proposal)
+	else:
+		result = _apply_file_edit(proposal)
+	return _append_recorded_cleanup(result, proposal)
 
 
 static func revert_reviewed_change(proposal: Dictionary) -> String:
+	var result := ""
 	if proposal.get("kind", "file_patch") == "scene":
-		return _revert_scene_change(proposal)
-	if proposal.get("kind", "file_patch") == "input_map":
-		return _revert_input_map_change(proposal)
-	if proposal.get("kind", "file_patch") == "main_scene":
-		return _revert_main_scene_change(proposal)
-	if proposal.get("kind", "file_patch") == "project_settings":
-		return _revert_project_settings_change(proposal)
-	return revert_file_edit(proposal)
+		result = _revert_scene_change(proposal)
+	elif proposal.get("kind", "file_patch") == "input_map":
+		result = _revert_input_map_change(proposal)
+	elif proposal.get("kind", "file_patch") == "main_scene":
+		result = _revert_main_scene_change(proposal)
+	elif proposal.get("kind", "file_patch") == "project_settings":
+		result = _revert_project_settings_change(proposal)
+	else:
+		result = _revert_file_edit(proposal)
+	return _append_recorded_cleanup(result, proposal)
 
 
 static func _apply_scene_change(proposal: Dictionary) -> String:
@@ -982,16 +998,29 @@ static func _apply_scene_change(proposal: Dictionary) -> String:
 	if not candidate_error.is_empty():
 		return "Error: " + candidate_error
 	var existed := bool(proposal.get("existed", false))
-	var write_error := _write_file_safely(filepath, str(proposal.get("new_content", "")), str(proposal.get("old_hash", "")), existed)
-	if not write_error.is_empty():
-		return "Error: " + write_error
+	var write_result := _write_file_safely(filepath, str(proposal.get("new_content", "")), str(proposal.get("old_hash", "")), existed)
+	_record_write_cleanup(proposal, write_result)
+	var write_block := _safe_write_blocking_result(write_result)
+	if not write_block.is_empty():
+		_mark_write_recovery(proposal, write_result)
+		return write_block
+	proposal["exact_applied_state"] = true
+	var write_warning := _safe_write_warning(write_result)
 	var final_error := SceneProposal.validate_current(proposal, true)
 	if not final_error.is_empty():
 		var current := _read_text_file(filepath)
 		if current.get("success", false) and str(current.get("content", "")).sha256_text() == str(proposal.get("new_hash", "")):
 			var rollback_error := ""
 			if existed:
-				rollback_error = _write_file_safely(filepath, str(proposal.get("old_content", "")), str(proposal.get("new_hash", "")), true)
+				var rollback_result := _write_file_safely(filepath, str(proposal.get("old_content", "")), str(proposal.get("new_hash", "")), true)
+				_record_write_cleanup(proposal, rollback_result)
+				if _is_safe_write_recovery_failure(rollback_result):
+					_mark_write_recovery(proposal, rollback_result)
+					_scan_filesystem()
+					return "Recovery required: Final scene validation failed, and rollback could not restore the destination. " + str(rollback_result.get("message", ""))
+				rollback_error = _safe_write_blocking_result(rollback_result)
+				if _safe_write_committed(rollback_result):
+					proposal["exact_applied_state"] = false
 			elif DirAccess.remove_absolute(ProjectSettings.globalize_path(filepath)) != OK:
 				rollback_error = "Could not remove the created scene."
 			var rollback_validation := SceneProposal.validate_current(proposal, false) if rollback_error.is_empty() else rollback_error
@@ -999,9 +1028,13 @@ static func _apply_scene_change(proposal: Dictionary) -> String:
 				_scan_filesystem()
 				return "Error: Final scene validation failed and the original disk state was restored: " + final_error
 		proposal["recovery_required"] = true
+		proposal["exact_applied_state"] = false
 		_scan_filesystem()
-		return "Recovery: The scene file was replaced but failed final validation and the original disk state could not be safely restored: " + final_error
+		return "Recovery required: The scene file was replaced but failed final validation and the original disk state could not be safely restored: " + final_error
 	_scan_filesystem()
+	if not write_warning.is_empty():
+		proposal["cleanup_required"] = true
+		return "Cleanup required: Applied the reviewed scene change, but cleanup requires attention. " + write_warning
 	return "Applied reviewed scene change to " + filepath
 
 
@@ -1029,17 +1062,33 @@ static func _revert_scene_change(proposal: Dictionary) -> String:
 			return "Conflict: " + state_error
 	var existed := bool(proposal.get("existed", false))
 	if existed:
-		var write_error := _write_file_safely(filepath, str(proposal.get("old_content", "")), str(proposal.get("new_hash", "")), true)
-		if not write_error.is_empty():
-			return "Error: " + write_error
+		var write_result := _write_file_safely(filepath, str(proposal.get("old_content", "")), str(proposal.get("new_hash", "")), true)
+		_record_write_cleanup(proposal, write_result)
+		var write_block := _safe_write_blocking_result(write_result)
+		if not write_block.is_empty():
+			_mark_write_recovery(proposal, write_result)
+			return write_block
+		var write_warning := _safe_write_warning(write_result)
 		var final_error := SceneProposal.validate_current(proposal, false)
 		if not final_error.is_empty():
-			var rollback_error := _write_file_safely(filepath, str(proposal.get("new_content", "")), str(proposal.get("old_hash", "")), true)
-			if rollback_error.is_empty():
+			var rollback_result := _write_file_safely(filepath, str(proposal.get("new_content", "")), str(proposal.get("old_hash", "")), true)
+			_record_write_cleanup(proposal, rollback_result)
+			if _is_safe_write_recovery_failure(rollback_result):
+				_mark_write_recovery(proposal, rollback_result)
+				_scan_filesystem()
+				return "Recovery required: Scene revert validation failed, and restoration could not recover the applied destination. " + str(rollback_result.get("message", ""))
+			if _safe_write_committed(rollback_result):
+				proposal["exact_applied_state"] = true
 				_scan_filesystem()
 				return "Error: Scene revert validation failed, so the applied bytes were restored: " + final_error
 			_scan_filesystem()
-			return "Recovery: Scene revert validation failed and the applied bytes could not be safely restored: " + final_error
+			proposal["recovery_required"] = true
+			proposal["exact_applied_state"] = false
+			return "Recovery required: Scene revert validation failed and the applied bytes could not be safely restored: " + final_error
+		if not write_warning.is_empty():
+			proposal["cleanup_required"] = true
+			_scan_filesystem()
+			return "Cleanup required: Reverted the scene change, but cleanup requires attention. " + write_warning
 	else:
 		var remove_error := DirAccess.remove_absolute(ProjectSettings.globalize_path(filepath))
 		if remove_error != OK or FileAccess.file_exists(filepath) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(filepath)):
@@ -1058,15 +1107,28 @@ static func _apply_input_map_change(proposal: Dictionary) -> String:
 	var candidate_error := InputMapProposal.validate_candidate(proposal)
 	if not candidate_error.is_empty():
 		return "Error: " + candidate_error
-	var write_error := _write_file_safely(InputMapProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
-	if not write_error.is_empty():
-		return "Error: " + write_error
+	var write_result := _write_file_safely(InputMapProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
+	_record_write_cleanup(proposal, write_result)
+	var write_block := _safe_write_blocking_result(write_result)
+	if not write_block.is_empty():
+		_mark_write_recovery(proposal, write_result)
+		return write_block
+	proposal["exact_applied_state"] = true
+	var write_warning := _safe_write_warning(write_result)
 	var sync_error := InputMapProposal.sync_live(proposal.get("new_values", {}))
 	if not sync_error.is_empty():
-		var rollback_error := _write_file_safely(InputMapProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
-		if rollback_error.is_empty():
+		var rollback_result := _write_file_safely(InputMapProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
+		_record_write_cleanup(proposal, rollback_result)
+		if _is_safe_write_recovery_failure(rollback_result):
+			_mark_write_recovery(proposal, rollback_result)
+			return "Recovery required: Input Map synchronization failed, and rollback could not restore project.godot. " + str(rollback_result.get("message", ""))
+		if _safe_write_committed(rollback_result):
+			proposal["exact_applied_state"] = false
 			var live_rollback_error := InputMapProposal.sync_live(proposal.get("old_values", {}))
-			return "Error: Could not synchronize the applied Input Map state: %s%s" % [sync_error, " Live rollback also failed: " + live_rollback_error if not live_rollback_error.is_empty() else ""]
+			var rollback_warning := _safe_write_warning(rollback_result)
+			if not rollback_warning.is_empty():
+				proposal["cleanup_required"] = true
+			return "Error: Could not synchronize the applied Input Map state: %s%s%s" % [sync_error, " Live rollback also failed: " + live_rollback_error if not live_rollback_error.is_empty() else "", " Cleanup requires attention: " + rollback_warning if not rollback_warning.is_empty() else ""]
 		var current := _read_text_file(InputMapProposal.PROJECT_PATH)
 		var current_hash := str(current.get("content", "")).sha256_text() if current.get("success", false) else ""
 		if current_hash == str(proposal.get("new_hash", "")):
@@ -1075,13 +1137,18 @@ static func _apply_input_map_change(proposal: Dictionary) -> String:
 			if candidate_retry_error.is_empty():
 				return "Applied reviewed Input Map changes to res://project.godot"
 			proposal["recovery_required"] = true
-			return "Recovery: The reviewed Input Map changes are on disk, but live synchronization still requires recovery: " + candidate_retry_error
+			return "Recovery required: The reviewed Input Map changes are on disk, but live synchronization still requires recovery: " + candidate_retry_error
 		if current_hash == str(proposal.get("old_hash", "")):
 			var old_retry_error := InputMapProposal.sync_live(proposal.get("old_values", {}))
 			return "Error: Input Map synchronization failed, but the original disk state remains intact.%s" % (" Live rollback also failed: " + old_retry_error if not old_retry_error.is_empty() else "")
 		var independent_sync_error := InputMapProposal.sync_live_from_content(str(current.get("content", "")), proposal.get("action_names", [])) if current.get("success", false) else "Could not read the independently changed file."
-		return "Error: project.godot changed independently during rollback; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_sync_error if not independent_sync_error.is_empty() else "")
+		proposal["recovery_required"] = true
+		proposal["exact_applied_state"] = false
+		return "Recovery required: project.godot changed independently during rollback; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_sync_error if not independent_sync_error.is_empty() else "")
 	_scan_filesystem()
+	if not write_warning.is_empty():
+		proposal["cleanup_required"] = true
+		return "Cleanup required: Applied the reviewed Input Map changes, but cleanup requires attention. " + write_warning
 	return "Applied reviewed Input Map changes to res://project.godot"
 
 
@@ -1095,15 +1162,27 @@ static func _revert_input_map_change(proposal: Dictionary) -> String:
 	var state_error := InputMapProposal.validate_current(proposal, true)
 	if not state_error.is_empty():
 		return "Error: " + state_error
-	var write_error := _write_file_safely(InputMapProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
-	if not write_error.is_empty():
-		return "Error: " + write_error
+	var write_result := _write_file_safely(InputMapProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
+	_record_write_cleanup(proposal, write_result)
+	var write_block := _safe_write_blocking_result(write_result)
+	if not write_block.is_empty():
+		_mark_write_recovery(proposal, write_result)
+		return write_block
+	var write_warning := _safe_write_warning(write_result)
 	var sync_error := InputMapProposal.sync_live(proposal.get("old_values", {}))
 	if not sync_error.is_empty():
-		var rollback_error := _write_file_safely(InputMapProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
-		if rollback_error.is_empty():
+		var rollback_result := _write_file_safely(InputMapProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
+		_record_write_cleanup(proposal, rollback_result)
+		if _is_safe_write_recovery_failure(rollback_result):
+			_mark_write_recovery(proposal, rollback_result)
+			return "Recovery required: Input Map revert synchronization failed, and restoration could not recover the applied project.godot. " + str(rollback_result.get("message", ""))
+		if _safe_write_committed(rollback_result):
+			proposal["exact_applied_state"] = true
 			var live_rollback_error := InputMapProposal.sync_live(proposal.get("new_values", {}))
-			return "Error: Could not synchronize the reverted Input Map state: %s%s" % [sync_error, " Live rollback also failed: " + live_rollback_error if not live_rollback_error.is_empty() else ""]
+			var rollback_warning := _safe_write_warning(rollback_result)
+			if not rollback_warning.is_empty():
+				proposal["cleanup_required"] = true
+			return "Error: Could not synchronize the reverted Input Map state: %s%s%s" % [sync_error, " Live rollback also failed: " + live_rollback_error if not live_rollback_error.is_empty() else "", " Cleanup requires attention: " + rollback_warning if not rollback_warning.is_empty() else ""]
 		var current := _read_text_file(InputMapProposal.PROJECT_PATH)
 		var current_hash := str(current.get("content", "")).sha256_text() if current.get("success", false) else ""
 		if current_hash == str(proposal.get("old_hash", "")):
@@ -1111,13 +1190,18 @@ static func _revert_input_map_change(proposal: Dictionary) -> String:
 			_scan_filesystem()
 			if old_retry_error.is_empty():
 				return "Reverted Input Map changes in res://project.godot"
-			return "Recovery: The Input Map was reverted on disk. Restart the editor to reload it: " + old_retry_error
+			proposal["recovery_required"] = true
+			proposal["exact_applied_state"] = false
+			return "Recovery required: The Input Map was reverted on disk. Restart the editor to reload it: " + old_retry_error
 		if current_hash == str(proposal.get("new_hash", "")):
 			var new_retry_error := InputMapProposal.sync_live(proposal.get("new_values", {}))
 			return "Error: Input Map revert synchronization failed, but the applied disk state remains intact.%s" % (" Live restoration also failed: " + new_retry_error if not new_retry_error.is_empty() else "")
 		var independent_sync_error := InputMapProposal.sync_live_from_content(str(current.get("content", "")), proposal.get("action_names", [])) if current.get("success", false) else "Could not read the independently changed file."
 		return "Conflict: project.godot changed independently during revert; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_sync_error if not independent_sync_error.is_empty() else "")
 	_scan_filesystem()
+	if not write_warning.is_empty():
+		proposal["cleanup_required"] = true
+		return "Cleanup required: Reverted the Input Map changes, but cleanup requires attention. " + write_warning
 	return "Reverted Input Map changes in res://project.godot"
 
 
@@ -1134,13 +1218,23 @@ static func _apply_main_scene_change(proposal: Dictionary) -> String:
 	var candidate_error := MainSceneProposal.validate_candidate(proposal)
 	if not candidate_error.is_empty():
 		return "Error: " + candidate_error
-	var write_error := _write_file_safely(MainSceneProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
-	if not write_error.is_empty():
-		return "Error: " + write_error
+	var write_result := _write_file_safely(MainSceneProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
+	_record_write_cleanup(proposal, write_result)
+	var write_block := _safe_write_blocking_result(write_result)
+	if not write_block.is_empty():
+		_mark_write_recovery(proposal, write_result)
+		return write_block
+	proposal["exact_applied_state"] = true
+	var write_warning := _safe_write_warning(write_result)
 	var sync_error := MainSceneProposal.sync_live(proposal.get("new_value"), proposal.get("new_scene_path", ""))
 	if not sync_error.is_empty():
-		var rollback_error := _write_file_safely(MainSceneProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
-		if rollback_error.is_empty():
+		var rollback_result := _write_file_safely(MainSceneProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
+		_record_write_cleanup(proposal, rollback_result)
+		if _is_safe_write_recovery_failure(rollback_result):
+			_mark_write_recovery(proposal, rollback_result)
+			return "Recovery required: Main-scene synchronization failed, and rollback could not restore project.godot. " + str(rollback_result.get("message", ""))
+		if _safe_write_committed(rollback_result):
+			proposal["exact_applied_state"] = false
 			var live_rollback_error := MainSceneProposal.sync_live(proposal.get("old_value"), proposal.get("old_scene_path", ""))
 			return "Error: Could not synchronize the applied main scene: %s%s" % [sync_error, " Live rollback also failed: " + live_rollback_error if not live_rollback_error.is_empty() else ""]
 		var current := _read_text_file(MainSceneProposal.PROJECT_PATH)
@@ -1151,13 +1245,18 @@ static func _apply_main_scene_change(proposal: Dictionary) -> String:
 			if retry_error.is_empty():
 				return "Applied reviewed main scene change to res://project.godot"
 			proposal["recovery_required"] = true
-			return "Recovery: The reviewed main scene is on disk, but live synchronization still requires recovery: " + retry_error
+			return "Recovery required: The reviewed main scene is on disk, but live synchronization still requires recovery: " + retry_error
 		if current_hash == str(proposal.get("old_hash", "")):
 			var old_retry_error := MainSceneProposal.sync_live(proposal.get("old_value"), proposal.get("old_scene_path", ""))
 			return "Error: Main scene synchronization failed, but the original disk state remains intact.%s" % (" Live rollback also failed: " + old_retry_error if not old_retry_error.is_empty() else "")
 		var independent_error := MainSceneProposal.sync_live_from_content(str(current.get("content", ""))) if current.get("success", false) else "Could not read the independently changed file."
-		return "Error: project.godot changed independently during rollback; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_error if not independent_error.is_empty() else "")
+		proposal["recovery_required"] = true
+		proposal["exact_applied_state"] = false
+		return "Recovery required: project.godot changed independently during rollback; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_error if not independent_error.is_empty() else "")
 	_scan_filesystem()
+	if not write_warning.is_empty():
+		proposal["cleanup_required"] = true
+		return "Cleanup required: Applied the reviewed main scene change, but cleanup requires attention. " + write_warning
 	return "Applied reviewed main scene change to res://project.godot"
 
 
@@ -1171,13 +1270,22 @@ static func _revert_main_scene_change(proposal: Dictionary) -> String:
 	var state_error := MainSceneProposal.validate_current(proposal, true)
 	if not state_error.is_empty():
 		return "Error: " + state_error
-	var write_error := _write_file_safely(MainSceneProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
-	if not write_error.is_empty():
-		return "Error: " + write_error
+	var write_result := _write_file_safely(MainSceneProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
+	_record_write_cleanup(proposal, write_result)
+	var write_block := _safe_write_blocking_result(write_result)
+	if not write_block.is_empty():
+		_mark_write_recovery(proposal, write_result)
+		return write_block
+	var write_warning := _safe_write_warning(write_result)
 	var sync_error := MainSceneProposal.sync_live(proposal.get("old_value"), proposal.get("old_scene_path", ""))
 	if not sync_error.is_empty():
-		var rollback_error := _write_file_safely(MainSceneProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
-		if rollback_error.is_empty():
+		var rollback_result := _write_file_safely(MainSceneProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
+		_record_write_cleanup(proposal, rollback_result)
+		if _is_safe_write_recovery_failure(rollback_result):
+			_mark_write_recovery(proposal, rollback_result)
+			return "Recovery required: Main-scene revert synchronization failed, and restoration could not recover the applied project.godot. " + str(rollback_result.get("message", ""))
+		if _safe_write_committed(rollback_result):
+			proposal["exact_applied_state"] = true
 			var live_rollback_error := MainSceneProposal.sync_live(proposal.get("new_value"), proposal.get("new_scene_path", ""))
 			return "Error: Could not synchronize the reverted main scene: %s%s" % [sync_error, " Live restoration also failed: " + live_rollback_error if not live_rollback_error.is_empty() else ""]
 		var current := _read_text_file(MainSceneProposal.PROJECT_PATH)
@@ -1187,13 +1295,18 @@ static func _revert_main_scene_change(proposal: Dictionary) -> String:
 			_scan_filesystem()
 			if old_retry_error.is_empty():
 				return "Reverted main scene change in res://project.godot"
-			return "Recovery: The main scene was reverted on disk. Restart the editor to reload the reverted setting: " + old_retry_error
+			proposal["recovery_required"] = true
+			proposal["exact_applied_state"] = false
+			return "Recovery required: The main scene was reverted on disk. Restart the editor to reload the reverted setting: " + old_retry_error
 		if current_hash == str(proposal.get("new_hash", "")):
 			var new_retry_error := MainSceneProposal.sync_live(proposal.get("new_value"), proposal.get("new_scene_path", ""))
 			return "Error: Main scene revert synchronization failed, but the applied disk state remains intact.%s" % (" Live restoration also failed: " + new_retry_error if not new_retry_error.is_empty() else "")
 		var independent_error := MainSceneProposal.sync_live_from_content(str(current.get("content", ""))) if current.get("success", false) else "Could not read the independently changed file."
 		return "Conflict: project.godot changed independently during main scene revert; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_error if not independent_error.is_empty() else "")
 	_scan_filesystem()
+	if not write_warning.is_empty():
+		proposal["cleanup_required"] = true
+		return "Cleanup required: Reverted the main scene change, but cleanup requires attention. " + write_warning
 	return "Reverted main scene change in res://project.godot"
 
 
@@ -1207,13 +1320,23 @@ static func _apply_project_settings_change(proposal: Dictionary) -> String:
 	var candidate_error := ProjectSettingsProposal.validate_candidate(proposal)
 	if not candidate_error.is_empty():
 		return "Error: " + candidate_error
-	var write_error := _write_file_safely(ProjectSettingsProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
-	if not write_error.is_empty():
-		return "Error: " + write_error
+	var write_result := _write_file_safely(ProjectSettingsProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
+	_record_write_cleanup(proposal, write_result)
+	var write_block := _safe_write_blocking_result(write_result)
+	if not write_block.is_empty():
+		_mark_write_recovery(proposal, write_result)
+		return write_block
+	proposal["exact_applied_state"] = true
+	var write_warning := _safe_write_warning(write_result)
 	var sync_error := ProjectSettingsProposal.sync_live(proposal.get("new_values", {}))
 	if not sync_error.is_empty():
-		var rollback_error := _write_file_safely(ProjectSettingsProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
-		if rollback_error.is_empty():
+		var rollback_result := _write_file_safely(ProjectSettingsProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
+		_record_write_cleanup(proposal, rollback_result)
+		if _is_safe_write_recovery_failure(rollback_result):
+			_mark_write_recovery(proposal, rollback_result)
+			return "Recovery required: ProjectSettings synchronization failed, and rollback could not restore project.godot. " + str(rollback_result.get("message", ""))
+		if _safe_write_committed(rollback_result):
+			proposal["exact_applied_state"] = false
 			var live_rollback_error := ProjectSettingsProposal.sync_live(proposal.get("old_values", {}))
 			return "Error: Could not synchronize the applied ProjectSettings: %s%s" % [sync_error, " Live rollback also failed: " + live_rollback_error if not live_rollback_error.is_empty() else ""]
 		var current := _read_text_file(ProjectSettingsProposal.PROJECT_PATH)
@@ -1224,13 +1347,18 @@ static func _apply_project_settings_change(proposal: Dictionary) -> String:
 			if retry_error.is_empty():
 				return "Applied reviewed ProjectSettings changes to res://project.godot"
 			proposal["recovery_required"] = true
-			return "Recovery: The reviewed ProjectSettings are on disk, but live synchronization still requires recovery: " + retry_error
+			return "Recovery required: The reviewed ProjectSettings are on disk, but live synchronization still requires recovery: " + retry_error
 		if current_hash == str(proposal.get("old_hash", "")):
 			var old_retry_error := ProjectSettingsProposal.sync_live(proposal.get("old_values", {}))
 			return "Error: ProjectSettings synchronization failed, but the original disk state remains intact.%s" % (" Live rollback also failed: " + old_retry_error if not old_retry_error.is_empty() else "")
 		var independent_error := ProjectSettingsProposal.sync_live_from_content(str(current.get("content", "")), proposal.get("setting_paths", [])) if current.get("success", false) else "Could not read the independently changed file."
-		return "Error: project.godot changed independently during rollback; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_error if not independent_error.is_empty() else "")
+		proposal["recovery_required"] = true
+		proposal["exact_applied_state"] = false
+		return "Recovery required: project.godot changed independently during rollback; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_error if not independent_error.is_empty() else "")
 	_scan_filesystem()
+	if not write_warning.is_empty():
+		proposal["cleanup_required"] = true
+		return "Cleanup required: Applied the reviewed ProjectSettings changes, but cleanup requires attention. " + write_warning
 	return "Applied reviewed ProjectSettings changes to res://project.godot"
 
 
@@ -1244,13 +1372,22 @@ static func _revert_project_settings_change(proposal: Dictionary) -> String:
 	var state_error := ProjectSettingsProposal.validate_current(proposal, true)
 	if not state_error.is_empty():
 		return "Error: " + state_error
-	var write_error := _write_file_safely(ProjectSettingsProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
-	if not write_error.is_empty():
-		return "Error: " + write_error
+	var write_result := _write_file_safely(ProjectSettingsProposal.PROJECT_PATH, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
+	_record_write_cleanup(proposal, write_result)
+	var write_block := _safe_write_blocking_result(write_result)
+	if not write_block.is_empty():
+		_mark_write_recovery(proposal, write_result)
+		return write_block
+	var write_warning := _safe_write_warning(write_result)
 	var sync_error := ProjectSettingsProposal.sync_live(proposal.get("old_values", {}))
 	if not sync_error.is_empty():
-		var rollback_error := _write_file_safely(ProjectSettingsProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
-		if rollback_error.is_empty():
+		var rollback_result := _write_file_safely(ProjectSettingsProposal.PROJECT_PATH, proposal.get("new_content", ""), proposal.get("old_hash", ""), true)
+		_record_write_cleanup(proposal, rollback_result)
+		if _is_safe_write_recovery_failure(rollback_result):
+			_mark_write_recovery(proposal, rollback_result)
+			return "Recovery required: ProjectSettings revert synchronization failed, and restoration could not recover the applied project.godot. " + str(rollback_result.get("message", ""))
+		if _safe_write_committed(rollback_result):
+			proposal["exact_applied_state"] = true
 			var live_rollback_error := ProjectSettingsProposal.sync_live(proposal.get("new_values", {}))
 			return "Error: Could not synchronize the reverted ProjectSettings: %s%s" % [sync_error, " Live restoration also failed: " + live_rollback_error if not live_rollback_error.is_empty() else ""]
 		var current := _read_text_file(ProjectSettingsProposal.PROJECT_PATH)
@@ -1260,17 +1397,26 @@ static func _revert_project_settings_change(proposal: Dictionary) -> String:
 			_scan_filesystem()
 			if old_retry_error.is_empty():
 				return "Reverted ProjectSettings changes in res://project.godot"
-			return "Recovery: The ProjectSettings were reverted on disk. Restart the editor to reload them: " + old_retry_error
+			proposal["recovery_required"] = true
+			proposal["exact_applied_state"] = false
+			return "Recovery required: The ProjectSettings were reverted on disk. Restart the editor to reload them: " + old_retry_error
 		if current_hash == str(proposal.get("new_hash", "")):
 			var new_retry_error := ProjectSettingsProposal.sync_live(proposal.get("new_values", {}))
 			return "Error: ProjectSettings revert synchronization failed, but the applied disk state remains intact.%s" % (" Live restoration also failed: " + new_retry_error if not new_retry_error.is_empty() else "")
 		var independent_error := ProjectSettingsProposal.sync_live_from_content(str(current.get("content", "")), proposal.get("setting_paths", [])) if current.get("success", false) else "Could not read the independently changed file."
 		return "Conflict: project.godot changed independently during ProjectSettings revert; Orca preserved those disk bytes.%s" % (" Live synchronization failed: " + independent_error if not independent_error.is_empty() else "")
 	_scan_filesystem()
+	if not write_warning.is_empty():
+		proposal["cleanup_required"] = true
+		return "Cleanup required: Reverted the ProjectSettings changes, but cleanup requires attention. " + write_warning
 	return "Reverted ProjectSettings changes in res://project.godot"
 
 
 static func apply_file_edit(proposal: Dictionary) -> String:
+	return _append_recorded_cleanup(_apply_file_edit(proposal), proposal)
+
+
+static func _apply_file_edit(proposal: Dictionary) -> String:
 	var filepath: String = proposal.get("filepath", "")
 	var validation_error := _validate_path(filepath, true)
 	if not validation_error.is_empty():
@@ -1313,23 +1459,32 @@ static func apply_file_edit(proposal: Dictionary) -> String:
 	if not source_validation.get("valid", false):
 		return "Error: Pre-write validation failed. " + _format_source_validation(source_validation)
 
-	var write_error := _write_file_safely(filepath, new_content, old_hash, proposal["existed"])
-	var post_write_warning := ""
-	if write_error.begins_with("Replacement succeeded"):
-		post_write_warning = write_error
-	elif not write_error.is_empty():
-		return "Error: " + write_error
-	var final_file := _read_text_file(filepath)
+	var write_result := _write_file_safely(filepath, new_content, old_hash, proposal["existed"])
+	_record_write_cleanup(proposal, write_result)
+	var write_block := _safe_write_blocking_result(write_result)
+	if not write_block.is_empty():
+		_mark_write_recovery(proposal, write_result)
+		return write_block
+	proposal["exact_applied_state"] = true
+	var post_write_warning := _safe_write_warning(write_result)
+	if _consume_replacement_test_fault("post_write_independent_change"):
+		var independent_file := FileAccess.open(filepath, FileAccess.WRITE)
+		if independent_file != null:
+			independent_file.store_string("independent fault-injected bytes\n")
+			independent_file.close()
+	var final_file := {"success": false, "error": "Could not reread the replaced file."} if _consume_replacement_test_fault("post_write_reread_failure") else _read_text_file(filepath)
 	var final_error := ""
 	if not final_file.get("success", false):
 		final_error = str(final_file.get("error", "Could not reread the replaced file."))
 	else:
 		var final_content := str(final_file.get("content", ""))
-		if final_content.sha256_text() != new_hash:
+		if _consume_replacement_test_fault("post_write_hash_mismatch") or final_content.sha256_text() != new_hash:
 			final_error = "The final destination hash does not match the reviewed candidate."
 		else:
 			var final_validation := DiagnosticsService.validate_source(filepath, final_content)
-			if not final_validation.get("valid", false):
+			if _consume_replacement_test_fault("post_write_validation_failure"):
+				final_error = "Final disk validation failed. Fault-injected validation failure."
+			elif not final_validation.get("valid", false):
 				final_error = "Final disk validation failed. " + _format_source_validation(final_validation)
 	if not final_error.is_empty():
 		var recovery := "Rollback was not attempted because the destination could not be verified as Orca's candidate; the current disk bytes were preserved."
@@ -1338,7 +1493,15 @@ static func apply_file_edit(proposal: Dictionary) -> String:
 		if recovery_file.get("success", false) and str(recovery_file.get("content", "")).sha256_text() == new_hash:
 			var rollback_error := ""
 			if proposal["existed"]:
-				rollback_error = _write_file_safely(filepath, old_content, new_hash, true)
+				var rollback_result := _write_file_safely(filepath, old_content, new_hash, true)
+				_record_write_cleanup(proposal, rollback_result)
+				if _is_safe_write_recovery_failure(rollback_result):
+					_mark_write_recovery(proposal, rollback_result)
+					_scan_filesystem()
+					return "Recovery required: Post-write verification failed, and rollback could not restore the destination. " + str(rollback_result.get("message", ""))
+				rollback_error = _safe_write_blocking_result(rollback_result)
+				if _safe_write_committed(rollback_result):
+					proposal["exact_applied_state"] = false
 			else:
 				var remove_error := DirAccess.remove_absolute(ProjectSettings.globalize_path(filepath))
 				if remove_error != OK or FileAccess.file_exists(filepath):
@@ -1354,16 +1517,21 @@ static func apply_file_edit(proposal: Dictionary) -> String:
 				recovery = "Rollback failed; manual recovery is required: " + rollback_error
 		if not recovered:
 			proposal["recovery_required"] = true
+			proposal["exact_applied_state"] = false
 		_scan_filesystem()
-		return "%s: %s %s" % ["Error" if recovered else "Recovery", final_error, recovery]
+		return "%s: %s %s" % ["Error" if recovered else "Recovery required", final_error, recovery]
 	_scan_filesystem()
 	if not post_write_warning.is_empty():
-		proposal["recovery_required"] = true
-		return "Recovery: Applied the reviewed changes, but cleanup requires attention. " + post_write_warning
+		proposal["cleanup_required"] = true
+		return "Cleanup required: Applied the reviewed changes, but cleanup requires attention. " + post_write_warning
 	return "Applied changes to " + filepath
 
 
 static func revert_file_edit(proposal: Dictionary) -> String:
+	return _append_recorded_cleanup(_revert_file_edit(proposal), proposal)
+
+
+static func _revert_file_edit(proposal: Dictionary) -> String:
 	var filepath: String = proposal.get("filepath", "")
 	var validation_error := _validate_path(filepath, true)
 	if not validation_error.is_empty():
@@ -1387,9 +1555,17 @@ static func revert_file_edit(proposal: Dictionary) -> String:
 		if remove_error != OK:
 			return "Error: Could not remove the file created by Orca."
 	else:
-		var write_error := _write_file_safely(filepath, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
-		if not write_error.is_empty():
-			return "Error: " + write_error
+		var write_result := _write_file_safely(filepath, proposal.get("old_content", ""), proposal.get("new_hash", ""), true)
+		_record_write_cleanup(proposal, write_result)
+		var write_block := _safe_write_blocking_result(write_result)
+		if not write_block.is_empty():
+			_mark_write_recovery(proposal, write_result)
+			return write_block
+		var write_warning := _safe_write_warning(write_result)
+		if not write_warning.is_empty():
+			proposal["cleanup_required"] = true
+			_scan_filesystem()
+			return "Cleanup required: Reverted the changes, but cleanup requires attention. " + write_warning
 	_scan_filesystem()
 	return "Reverted changes to " + filepath
 
@@ -1424,39 +1600,40 @@ static func _read_text_file(filepath: String) -> Dictionary:
 	return {"success": true, "content": content}
 
 
-static func _write_file_safely(filepath: String, content: String, expected_hash: String, expected_exists: bool) -> String:
+static func _write_file_safely(filepath: String, content: String, expected_hash: String, expected_exists: bool) -> Dictionary:
+	var test_write_index := 0
+	if OS.get_environment("ORCA_TEST_FAULT_INJECTION") == "1":
+		_replacement_test_write_index += 1
+		test_write_index = _replacement_test_write_index
 	var absolute_path := ProjectSettings.globalize_path(filepath)
 	var parent_path := absolute_path.get_base_dir()
 	if not DirAccess.dir_exists_absolute(parent_path):
 		var directory_error := DirAccess.make_dir_recursive_absolute(parent_path)
 		if directory_error != OK:
-			return "Could not create the destination directory."
+			return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "Could not create the destination directory.")
 
 	var temporary_path := absolute_path + ".orca_tmp_" + str(Time.get_ticks_usec())
 	var temporary_file := FileAccess.open(temporary_path, FileAccess.WRITE)
 	if temporary_file == null:
-		return "Could not create a temporary file."
+		return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "Could not create a temporary file.")
 	temporary_file.store_string(content)
 	temporary_file.close()
 
 	var verify_file := FileAccess.open(temporary_path, FileAccess.READ)
-	if verify_file == null or verify_file.get_as_text().sha256_text() != content.sha256_text():
+	if verify_file == null or verify_file.get_as_text().sha256_text() != content.sha256_text() or _consume_replacement_test_fault("temporary_verification_failure"):
 		if verify_file != null:
 			verify_file.close()
-		DirAccess.remove_absolute(temporary_path)
-		return "Temporary file verification failed."
+		return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "Temporary file verification failed." + _cleanup_temporary_file(temporary_path))
 	verify_file.close()
 	var current_exists := FileAccess.file_exists(absolute_path)
 	if current_exists != expected_exists:
-		DirAccess.remove_absolute(temporary_path)
-		return "The destination changed while the replacement was being prepared."
+		return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "The destination changed while the replacement was being prepared." + _cleanup_temporary_file(temporary_path))
 	if current_exists:
 		var current_file := FileAccess.open(absolute_path, FileAccess.READ)
 		if current_file == null or current_file.get_as_text().sha256_text() != expected_hash:
 			if current_file != null:
 				current_file.close()
-			DirAccess.remove_absolute(temporary_path)
-			return "The destination changed while the replacement was being prepared."
+			return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "The destination changed while the replacement was being prepared." + _cleanup_temporary_file(temporary_path))
 		current_file.close()
 
 	var backup_path := absolute_path + ".orca_backup_" + str(Time.get_ticks_usec())
@@ -1464,22 +1641,108 @@ static func _write_file_safely(filepath: String, content: String, expected_hash:
 	if target_exists:
 		var backup_error := DirAccess.rename_absolute(absolute_path, backup_path)
 		if backup_error != OK:
-			DirAccess.remove_absolute(temporary_path)
-			return "Could not prepare the existing file for replacement."
+			return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "Could not prepare the existing file for replacement." + _cleanup_temporary_file(temporary_path))
 
-	var replace_error := DirAccess.rename_absolute(temporary_path, absolute_path)
+	var replace_error := ERR_CANT_CREATE if _consume_replacement_test_fault("replacement_failure") or _consume_replacement_test_fault("replacement_failure_on_write_" + str(test_write_index)) else DirAccess.rename_absolute(temporary_path, absolute_path)
 	if replace_error != OK:
 		if target_exists:
-			var restore_error := DirAccess.rename_absolute(backup_path, absolute_path)
+			var restore_error := ERR_CANT_CREATE if _consume_replacement_test_fault("restore_failure") else DirAccess.rename_absolute(backup_path, absolute_path)
 			if restore_error != OK:
-				return "Replacement failed and the original could not be restored. Recovery copy: " + backup_path
-		DirAccess.remove_absolute(temporary_path)
-		return "Could not replace the destination file."
+				return _safe_write_result(SafeWriteOutcome.RECOVERY_FAILURE, "Replacement failed and the original could not be restored. Recovery copy: " + backup_path + _cleanup_temporary_file(temporary_path))
+		return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "Could not replace the destination file." + _cleanup_temporary_file(temporary_path))
 	if target_exists:
-		var cleanup_error := DirAccess.remove_absolute(backup_path)
+		var cleanup_error := ERR_CANT_CREATE if _consume_replacement_test_fault("backup_cleanup_failure") else DirAccess.remove_absolute(backup_path)
 		if cleanup_error != OK:
-			return "Replacement succeeded, but the private backup could not be removed. Recovery copy: " + backup_path
+			return _safe_write_result(SafeWriteOutcome.COMMITTED_CLEANUP_WARNING, "Replacement succeeded, but the private backup could not be removed. Recovery copy: " + backup_path)
+	return _safe_write_result(SafeWriteOutcome.COMMITTED_SUCCESS)
+
+
+static func _safe_write_result(outcome: SafeWriteOutcome, message: String = "") -> Dictionary:
+	return {"outcome": outcome, "message": message}
+
+
+static func _safe_write_committed(result: Dictionary) -> bool:
+	return int(result.get("outcome", SafeWriteOutcome.RECOVERY_FAILURE)) in [SafeWriteOutcome.COMMITTED_SUCCESS, SafeWriteOutcome.COMMITTED_CLEANUP_WARNING]
+
+
+static func _safe_write_blocking_result(result: Dictionary) -> String:
+	if _safe_write_committed(result):
+		return ""
+	var prefix := "Recovery required: " if int(result.get("outcome", SafeWriteOutcome.RECOVERY_FAILURE)) == SafeWriteOutcome.RECOVERY_FAILURE else "Error: "
+	return prefix + str(result.get("message", "File replacement failed."))
+
+
+static func _safe_write_warning(result: Dictionary) -> String:
+	return str(result.get("message", "")) if int(result.get("outcome", -1)) == SafeWriteOutcome.COMMITTED_CLEANUP_WARNING else ""
+
+
+static func _is_safe_write_recovery_failure(result: Dictionary) -> bool:
+	return int(result.get("outcome", -1)) == SafeWriteOutcome.RECOVERY_FAILURE
+
+
+static func _mark_write_recovery(proposal: Dictionary, result: Dictionary) -> void:
+	if not _is_safe_write_recovery_failure(result):
+		return
+	proposal["recovery_required"] = true
+	proposal["exact_applied_state"] = false
+
+
+static func _record_write_cleanup(proposal: Dictionary, result: Dictionary) -> void:
+	var warning := _safe_write_warning(result)
+	if warning.is_empty():
+		return
+	proposal["cleanup_required"] = true
+	var warnings: Array = proposal.get("cleanup_warnings", [])
+	if warning not in warnings:
+		warnings.append(warning)
+	proposal["cleanup_warnings"] = warnings
+
+
+static func _append_recorded_cleanup(result: String, proposal: Dictionary) -> String:
+	var missing := PackedStringArray()
+	for warning in proposal.get("cleanup_warnings", []):
+		var text := str(warning)
+		if not text.is_empty() and not result.contains(text):
+			missing.append(text)
+	if missing.is_empty():
+		return result
+	var details := " Cleanup required: " + " ".join(missing)
+	if result.begins_with("Applied") or result.begins_with("Reverted"):
+		return "Cleanup required: " + result + details
+	return result + details
+
+
+static func _cleanup_temporary_file(path: String) -> String:
+	if _consume_replacement_test_fault("temporary_cleanup_failure") or DirAccess.remove_absolute(path) != OK:
+		return " Temporary cleanup required. Retained temporary copy: " + path
 	return ""
+
+
+static func _set_replacement_test_faults(faults: Dictionary) -> void:
+	if OS.get_environment("ORCA_TEST_FAULT_INJECTION") != "1":
+		return
+	_replacement_test_faults = faults.duplicate(true)
+	_replacement_test_write_index = 0
+
+
+static func _clear_replacement_test_faults() -> void:
+	if OS.get_environment("ORCA_TEST_FAULT_INJECTION") != "1":
+		return
+	_replacement_test_faults.clear()
+	_replacement_test_write_index = 0
+
+
+static func _consume_replacement_test_fault(name: String) -> bool:
+	if OS.get_environment("ORCA_TEST_FAULT_INJECTION") != "1":
+		return false
+	var remaining := int(_replacement_test_faults.get(name, 0))
+	if remaining <= 0:
+		return false
+	if remaining == 1:
+		_replacement_test_faults.erase(name)
+	else:
+		_replacement_test_faults[name] = remaining - 1
+	return true
 
 
 static func _format_source_validation(validation: Dictionary) -> String:

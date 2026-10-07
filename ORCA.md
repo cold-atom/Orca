@@ -48,7 +48,7 @@ The project is currently a functional, foundational Godot Editor Plugin located 
       - `stop_game`: Stops only the active direct process started by Orca.
       - `observe_game_run`: Reads bounded evidence for an exact Orca run without waiting or changing process state.
       - `verify_game_run`: Evaluates immutable pre-launch startup or expected-exit criteria with explicit passed, failed, pending, inconclusive, or unverified results.
-   - **Built-in Safety:** Canonical path and symlink checks keep access inside the project and protect Orca's own plugin directory. Writes use conflict checks, validation, diff review, temporary-file replacement, and reversible checkpoints. Game runs accept no arbitrary commands or PIDs and are bounded to one Orca-owned direct process.
+   - **Built-in Safety:** Canonical path and symlink checks keep access inside the project and protect Orca's own plugin directory. Writes use conflict checks, validation, diff review, temporary-file replacement, explicit committed/recovery outcomes, final disk verification, and reversible checkpoints. Cleanup warnings remain distinct from uncertain recovery and never weaken live-state conflict checks. Game runs accept no arbitrary commands or PIDs and are bounded to one Orca-owned direct process.
    - **Project Guidance:** Orca automatically loads a bounded root `res://AGENTS.md` and bounded skill catalog metadata into private request-scoped context. Guidance is subordinate to Orca's permissions and safety rules, removed after the turn, and skill bodies require an explicit read-only tool call.
 5. **Agent Modes and Review**
    - Plan mode exposes only read-only tools.

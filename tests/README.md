@@ -218,7 +218,7 @@ Then run the integration test in another terminal:
 "$GODOT_BIN" --headless --path . --script res://tests/api_client_integration_test.gd
 ```
 
-The chat transport server accepts seventeen requests and exits. It receives only synthetic test keys and prompts, covers malformed and incomplete assistant completions, plain embedding errors, and local model substitution, and accepts no network traffic from outside `127.0.0.1`.
+The chat transport server accepts twenty-one requests and exits. It receives only synthetic test keys and prompts, covers malformed and incomplete assistant completions, active SSE streams exceeding short internal total-generation deadlines both directly and after a `stream_options` compatibility retry, plain embedding errors, and local model substitution, and accepts no network traffic from outside `127.0.0.1`.
 
 Run keyless native Ollama/LM Studio discovery, embedding filtering, cache sanitation, stale-request ownership, and redirect-rejection integration against a fresh three-request fixture:
 

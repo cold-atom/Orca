@@ -2,6 +2,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import os
+import time
 
 
 class ReusableHTTPServer(HTTPServer):
@@ -10,7 +11,7 @@ class ReusableHTTPServer(HTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    requests_remaining = int(os.environ.get("ORCA_TEST_REQUESTS", "17"))
+    requests_remaining = int(os.environ.get("ORCA_TEST_REQUESTS", "21"))
 
     def do_GET(self):
         try:
@@ -91,6 +92,34 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(b'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n')
                 self.wfile.flush()
                 self.close_connection = True
+            elif self.path.startswith("/generation-deadline/"):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Connection", "close")
+                self.end_headers()
+                for index in range(100):
+                    event = {"choices": [{"delta": {"reasoning_content": "hidden-%d" % index}, "finish_reason": None}]}
+                    self.wfile.write(("data: " + json.dumps(event) + "\n\n").encode())
+                    self.wfile.flush()
+                    time.sleep(0.04)
+            elif self.path.startswith("/retry-generation-deadline/"):
+                body = json.loads(request_body)
+                if "stream_options" in body:
+                    time.sleep(0.3)
+                    self._send_json_error(400, "stream_options are unsupported")
+                else:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                    self.send_header("Connection", "close")
+                    self.end_headers()
+                    for index in range(40):
+                        event = {"choices": [{"delta": {"reasoning_content": "retry-hidden-%d" % index}, "finish_reason": None}]}
+                        self.wfile.write(("data: " + json.dumps(event) + "\n\n").encode())
+                        self.wfile.flush()
+                        time.sleep(0.1)
+                    self.wfile.write(b'data: {"choices":[{"delta":{"content":"retry complete"},"finish_reason":"stop"}]}\n\n')
+                    self.wfile.write(b"data: [DONE]\n\n")
+                    self.wfile.flush()
             elif self.path.startswith("/oversized/"):
                 chunk = b": padding padding padding padding padding padding padding padding\n"
                 body = chunk * ((16 * 1024 * 1024 // len(chunk)) + 100)

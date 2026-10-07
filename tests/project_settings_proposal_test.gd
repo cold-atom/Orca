@@ -15,11 +15,13 @@ func _init() -> void:
 
 
 func _run() -> void:
+	OS.set_environment("ORCA_TEST_FAULT_INJECTION", "1")
 	_fixture_path = "res://.orca_project_settings_test_%d.godot" % Time.get_ticks_usec()
 	_test_candidate_generation()
 	_test_validation_and_defaults()
 	_test_reviewed_apply_and_revert()
 	_cleanup()
+	OS.unset_environment("ORCA_TEST_FAULT_INJECTION")
 	_finish()
 
 
@@ -90,9 +92,15 @@ func _test_reviewed_apply_and_revert() -> void:
 	omitted_path["new_values"].erase("display/window/size/viewport_height")
 	omitted_path["setting_paths"].erase("display/window/size/viewport_height")
 	_expect(Tools.apply_reviewed_change(omitted_path).contains("complete allowlisted"), "application should require metadata for every allowlisted setting changed in the candidate")
+	Tools._set_replacement_test_faults({"backup_cleanup_failure": 1})
 	var applied := Tools.apply_reviewed_change(proposal)
-	_project_was_modified = applied.begins_with("Applied")
-	_expect(_project_was_modified, "an approved fresh ProjectSettings proposal should apply")
+	_project_was_modified = applied.begins_with("Cleanup required:") and applied.contains("Applied")
+	_expect(_project_was_modified, "committed ProjectSettings with a cleanup warning should not be reported as an ordinary failure")
+	_expect(proposal.get("cleanup_required", false) and not proposal.get("recovery_required", false), "ProjectSettings cleanup warnings must not bypass typed conflict validation")
+	_cleanup_reported_recovery_copy(applied)
+	proposal.erase("cleanup_required")
+	proposal.erase("cleanup_warnings")
+	Tools._clear_replacement_test_faults()
 	_expect(ProjectSettings.get_setting("display/window/size/viewport_width") == 1600 and ProjectSettings.get_setting("display/window/size/viewport_height") == 900, "application should synchronize every live setting")
 	_expect(_read(ProjectSettingsProposal.PROJECT_PATH).sha256_text() == proposal.get("new_hash"), "application should write the exact reviewed candidate")
 	var reverted := Tools.revert_reviewed_change(proposal)
@@ -105,12 +113,20 @@ func _test_reviewed_apply_and_revert() -> void:
 
 
 func _cleanup() -> void:
+	Tools._clear_replacement_test_faults()
 	if _project_was_modified and not _original_project_content.is_empty():
 		_write(ProjectSettingsProposal.PROJECT_PATH, _original_project_content)
 	for path in _old_live_values:
 		ProjectSettings.set_setting(path, _old_live_values[path])
 	if FileAccess.file_exists(_fixture_path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(_fixture_path))
+
+
+func _cleanup_reported_recovery_copy(result: String) -> void:
+	var marker := "Recovery copy: "
+	var marker_index := result.find(marker)
+	if marker_index >= 0:
+		DirAccess.remove_absolute(result.substr(marker_index + marker.length()))
 
 
 func _write(path: String, content: String) -> void:

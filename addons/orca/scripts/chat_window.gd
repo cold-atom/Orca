@@ -638,7 +638,7 @@ func _proposal_summary(proposal: Dictionary) -> String:
 func _on_edit_resolved(change_id: String, status: String, message: String) -> void:
 	if _change_cards.has(change_id) and is_instance_valid(_change_cards[change_id]):
 		_change_cards[change_id].set_status(status, message)
-	_update_change_event(change_id, status)
+	_update_change_event(change_id, status, message)
 	_recount_changed_files()
 	_save_current_session()
 	_scroll_to_bottom()
@@ -1165,7 +1165,12 @@ func _update_tool_event(call_id: String, execution: Dictionary, duration_ms: int
 	elif str(event.get("name", "")) in ["run_current_scene", "run_main_scene", "stop_game"] and outcome == "completed":
 		event["summary"] = "Game process: " + str(data.get("state", "updated")).replace("_", " ")
 	else:
-		event["summary"] = "Failed. See the live session for details." if outcome == "failed" else "Completed successfully."
+		if outcome in ["failed", "apply_recovery_required", "revert_recovery_required", "conflict"]:
+			event["summary"] = "Recovery required. See the associated change record."
+		elif outcome in ["applied_recovery", "reverted_recovery"]:
+			event["summary"] = "Completed with cleanup required."
+		else:
+			event["summary"] = "Completed successfully."
 	if data.has("open_path"):
 		event["open_path"] = str(data.get("open_path", ""))
 		event["open_line"] = maxi(1, int(data.get("open_line", 1)))
@@ -1177,15 +1182,25 @@ func _update_tool_event(call_id: String, execution: Dictionary, duration_ms: int
 	_session["events"] = events
 
 
-func _update_change_event(change_id: String, status: String) -> void:
+func _update_change_event(change_id: String, status: String, message: String = "") -> void:
 	var events: Array = _session.get("events", [])
 	for index in range(events.size() - 1, -1, -1):
 		var event = events[index]
 		if typeof(event) == TYPE_DICTIONARY and event.get("type") == "change" and str(event.get("id", "")) == change_id:
 			event["status"] = status
+			if status in ["apply_recovery_required", "revert_recovery_required"]:
+				event["resolution_message"] = _persisted_recovery_message(message)
+			else:
+				event.erase("resolution_message")
 			events[index] = event
 			break
 	_session["events"] = events
+
+
+func _persisted_recovery_message(message: String) -> String:
+	var project_root := ProjectSettings.globalize_path("res://")
+	var sanitized := message.replace(project_root, "res://") if not project_root.is_empty() else message
+	return sanitized.replace("\r", " ").replace("\n", " ").replace("\t", " ").left(512)
 
 
 func _update_staged_change_event(proposal: Dictionary) -> void:
@@ -1266,6 +1281,9 @@ func _render_session_event(event: Dictionary) -> void:
 			_close_active_tool_group()
 			var filepath := str(event.get("filepath", ""))
 			var summary := "%s\n+%d  -%d · %s" % [filepath, int(event.get("additions", 0)), int(event.get("deletions", 0)), str(event.get("status", "unknown")).replace("_", " ").capitalize()]
+			var resolution_message := str(event.get("resolution_message", ""))
+			if not resolution_message.is_empty():
+				summary += "\n" + resolution_message
 			_add_message("Change", summary, Color(0.62, 0.78, 0.68), "status")
 
 

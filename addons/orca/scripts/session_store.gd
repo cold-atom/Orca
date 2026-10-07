@@ -238,8 +238,8 @@ func _sanitize_event(raw) -> Dictionary:
 				event["help_topic"] = help_topic
 			return event
 		"change":
-			for field in ["id", "filepath", "kind", "summary", "status", "validation_message"]:
-				event[field] = _bounded_text(str(raw.get(field, "")), MAX_SUMMARY_CHARS if field == "validation_message" else 256)
+			for field in ["id", "filepath", "kind", "summary", "status", "validation_message", "resolution_message"]:
+				event[field] = _bounded_text(str(raw.get(field, "")), MAX_SUMMARY_CHARS if field in ["validation_message", "resolution_message"] else 256)
 			event["additions"] = maxi(0, int(raw.get("additions", 0)))
 			event["deletions"] = maxi(0, int(raw.get("deletions", 0)))
 			event["existed"] = bool(raw.get("existed", false))

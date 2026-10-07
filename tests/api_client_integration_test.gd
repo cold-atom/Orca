@@ -19,6 +19,9 @@ func _run() -> void:
 		_expect(success_choices[0].get("message", {}).get("content") == "ok", "valid SSE content should be reconstructed")
 		_expect(success_choices[0].get("finish_reason") == "stop", "stream completion should preserve finish_reason")
 	_expect(success.get("response", {}).get("usage", {}).get("total_tokens") == 7, "stream completion should preserve usage-only events")
+	_expect(success.get("response", {}).get("requested_model") == "test-model", "transport completion should preserve the request model snapshot")
+	_expect(success.get("response", {}).get("requested_provider") == "custom", "transport completion should preserve the provider snapshot")
+	_expect(success.get("response", {}).get("requested_api_url") == TEST_BASE_URL + "/success/chat/completions", "transport completion should preserve the endpoint snapshot")
 
 	var empty_done := await _request("empty-done")
 	_expect_malformed(empty_done, "an empty DONE stream")
@@ -48,6 +51,33 @@ func _run() -> void:
 	_expect(disconnect.get("error", {}).get("category") == "connection", "a truncated stream should be categorized as a connection failure")
 	_expect(disconnect.get("error", {}).get("partial_response") == true, "a truncated stream should report partial output")
 	_expect(disconnect.get("buffers_cleared") == true, "failure cleanup should release stream buffers")
+
+	var deadline := await _request("generation-deadline", "custom", "deadline-model", "default", false, "local-test-key", {
+		ApiClient.INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION: 250
+	})
+	_expect(deadline.get("kind") == "failed", "an active stream exceeding the total generation deadline should fail: " + str(deadline))
+	_expect(deadline.get("error", {}).get("category") == "timeout", "the total generation deadline should report the timeout category")
+	_expect(str(deadline.get("error", {}).get("message", "")).contains("generation deadline"), "the total generation deadline should report its specific cause")
+	_expect(deadline.get("error", {}).get("response_started") == true, "deadline metadata should record that the response started")
+	_expect(deadline.get("error", {}).get("partial_response") == true, "hidden reasoning received before the deadline should be marked partial")
+	_expect(int(deadline.get("error", {}).get("bytes_received", 0)) > 0, "deadline metadata should retain received transport bytes")
+	_expect(deadline.get("failed_count") == 1, "the deadline should emit exactly one failure signal")
+	_expect(deadline.get("completed_count") == 0 and deadline.get("cancelled_count") == 0, "the deadline must not emit completion or cancellation")
+	_expect(deadline.get("request_cleaned") == true and deadline.get("buffers_cleared") == true, "deadline failure should close the client and clear request state")
+
+	var retry_deadline := await _request("retry-generation-deadline", "custom", "retry-deadline-model", "default", false, "local-test-key", {
+		ApiClient.INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION: 2000
+	})
+	_expect(retry_deadline.get("kind") == "failed", "a stream_options retry must remain bound by the original generation deadline: " + str(retry_deadline))
+	_expect(retry_deadline.get("error", {}).get("category") == "timeout", "the compatibility retry should fail with the timeout category")
+	_expect(retry_deadline.get("error", {}).get("message") == ApiClient.GENERATION_TIMEOUT_MESSAGE, "generation timeout wording should not depend on the configured duration")
+	_expect(retry_deadline.get("error", {}).get("http_status") == 200, "the compatibility retry should begin its active SSE response before timing out")
+	_expect(retry_deadline.get("error", {}).get("partial_response") == true, "active retry reasoning should be retained as partial-response metadata")
+	_expect(retry_deadline.get("failed_count") == 1 and retry_deadline.get("completed_count") == 0, "the compatibility retry deadline should emit one terminal failure and no completion")
+	_expect(retry_deadline.get("request_cleaned") == true and retry_deadline.get("buffers_cleared") == true, "compatibility retry timeout should clean up the client")
+
+	var after_deadline := await _request("success")
+	_expect(after_deadline.get("kind") == "completed", "the fixture server should accept a new client after deadline cleanup")
 
 	var framed := await _request("framed")
 	_expect(framed.get("kind") == "completed", "a valid stream with more than 4 MiB of provider framing should complete")
@@ -94,17 +124,27 @@ func _run() -> void:
 	quit(1)
 
 
-func _request(scenario: String, provider: String = "custom", model: String = "test-model", effort: String = "default", include_tools: bool = false, api_key: String = "local-test-key") -> Dictionary:
+func _request(scenario: String, provider: String = "custom", model: String = "test-model", effort: String = "default", include_tools: bool = false, api_key: String = "local-test-key", request_options: Dictionary = {}) -> Dictionary:
 	var client = ApiClient.new()
 	get_root().add_child(client)
 	var result: Dictionary = {}
+	var terminal_counts := {"completed": 0, "failed": 0, "cancelled": 0}
 	client.request_completed.connect(func(response: Dictionary):
-		result["kind"] = "completed"
-		result["response"] = response
+		terminal_counts["completed"] += 1
+		if result.is_empty():
+			result["kind"] = "completed"
+			result["response"] = response
 	)
 	client.request_failed.connect(func(error: Dictionary):
-		result["kind"] = "failed"
-		result["error"] = error
+		terminal_counts["failed"] += 1
+		if result.is_empty():
+			result["kind"] = "failed"
+			result["error"] = error
+	)
+	client.request_cancelled.connect(func():
+		terminal_counts["cancelled"] += 1
+		if result.is_empty():
+			result["kind"] = "cancelled"
 	)
 	client.send_chat_completion(
 		[{"role": "user", "content": "test"}],
@@ -116,13 +156,19 @@ func _request(scenario: String, provider: String = "custom", model: String = "te
 			"model": model,
 			"reasoning_effort": effort,
 			"confirmed_origin": "http://127.0.0.1:18473"
-		}
+		},
+		request_options
 	)
 	var deadline := Time.get_ticks_msec() + 10000
 	while result.is_empty() and Time.get_ticks_msec() < deadline:
 		await process_frame
 	if result.is_empty():
 		result = {"kind": "timeout"}
+	await process_frame
+	result["completed_count"] = terminal_counts["completed"]
+	result["failed_count"] = terminal_counts["failed"]
+	result["cancelled_count"] = terminal_counts["cancelled"]
+	result["request_cleaned"] = not client.is_requesting() and client._http_client == null and client._generation_deadline_ms == 0 and client._response_generation_timeout_ms == ApiClient.RESPONSE_GENERATION_TIMEOUT_MS
 	result["buffers_cleared"] = client._raw_response.is_empty() and client._line_buffer.is_empty() and client._assistant_content.is_empty()
 	client.queue_free()
 	await process_frame
