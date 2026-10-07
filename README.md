@@ -32,7 +32,11 @@ Use a hosted model or bring your own local model through **Ollama**, **LM Studio
 
 ## Why Orca?
 
-### AI assistance that belongs in the editor
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cold-atom/Orca/main/docs/assets/brand/orca-animated.svg" width="200">
+</p>
+
+### AI agent that belongs in the editor
 
 Orca runs as a Godot `EditorPlugin`, not as a separate desktop application or browser tab. Its dock follows Godot's editor scale and workflow, understands the active scene and script, and opens relevant files, resources, project settings, and Godot Help topics in the editor where they belong.
 
