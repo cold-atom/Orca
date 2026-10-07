@@ -60,6 +60,7 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - Compaction never splits the active turn or an assistant tool-call batch from its complete matching tool results. If the protected request alone exceeds the safe budget, Orca fails before transport rather than sending a predictably oversized request.
 - DeepSeek/xAI `reasoning_content` and OpenRouter `reasoning_details` are reconstructed and preserved for tool-call continuation without displaying private chain-of-thought.
 - Bounded opaque streamed tool-call metadata is retained so Gemini thought signatures survive multi-round tool continuation.
+- Gemini's OpenAI-compatible endpoint may label a complete valid tool-call response with `finish_reason: stop`; its adapter explicitly permits that provider quirk while other providers retain strict contradictory-finish rejection.
 - Transport failures retain structured category, phase, HTTP status, byte count, retryability, and partial-response metadata through the controller boundary.
 - Failed partial responses are marked incomplete in the transcript and are not committed to model history.
 - Completed conversations, bounded activity summaries, changed-file summaries, mode, and usage are persisted per project.
@@ -250,7 +251,7 @@ Each completed HTTP request contributes its reported input, output, and cached t
 
 `provider_model_service.gd` requests the selected provider's model-discovery endpoint with a 30-second timeout and 8 MB response limit. Hosted profiles require authentication; local profiles omit Authorization when their optional key is empty and are contacted only after an explicit Refresh action. Ollama uses one same-origin `/api/tags` request, LM Studio uses `/api/v1/models`, generic compatible servers use `/v1/models`, and Gemini uses native `v1beta/models`. Native type/capability metadata excludes known embedding models; absent metadata falls back to a case-insensitive `embed` name filter while manual Model ID remains unrestricted. No per-model `/api/show` fan-out occurs. Normalization retains at most 200 models and bounds display/reasoning metadata and cached records. Model lists are cached for one hour in a v3 cache keyed by provider, final endpoint hash, and one-way API-key fingerprint. Discovery failures remain inline settings errors and do not alter the active provider profile.
 
-`provider_registry.gd` is the extension point for provider support. Each adapter defines its canonical endpoint, key help URL, model-list normalization, request headers, reasoning request shape, and provider-specific reasoning-history sanitation. Native non-Chat-Completions providers still require separate transport adapters.
+`provider_registry.gd` is the extension point for provider support. Each adapter defines its canonical endpoint, key help URL, model-list normalization, request headers, reasoning request shape, provider-specific reasoning-history sanitation, and narrowly scoped response-compatibility capabilities. Gemini alone currently permits a valid tool-call response labeled with the otherwise contradictory `stop` finish reason; malformed calls and known incomplete finish reasons remain rejected. Native non-Chat-Completions providers still require separate transport adapters.
 
 `endpoint_policy.gd` is the shared trust boundary for editable provider URLs. It rejects userinfo, queries, fragments, ambiguous separators, malformed ports, dot segments, and already-complete chat/model endpoints; normalizes scheme, host, effective port, and path; and classifies loopback, LAN, or remote scope without DNS resolution. Loopback may use HTTP directly. LAN and remote origins require explicit confirmation persisted per provider as the normalized scheme/host/effective-port origin. Chat and discovery independently reauthorize before creating headers, validate that adapter-generated endpoints retain the authorized origin, and never follow provider redirects. Confirmation is informed consent rather than DNS or certificate pinning.
 
@@ -678,10 +679,10 @@ Do not describe the current credential storage or execution model as fully secur
 
 A committed automated suite exists under `tests/`:
 
-- `api_client_test.gd` verifies media-type recognition, fragmented SSE reconstruction, clean-EOF event flushing, bounded opaque tool-call metadata, structured failure metadata, raw-buffer behavior, tool-call validation, terminal ownership, and lifecycle signal IDs.
+- `api_client_test.gd` verifies media-type recognition, fragmented SSE reconstruction, clean-EOF event flushing, bounded opaque tool-call metadata, provider-scoped finish-reason compatibility, structured failure metadata, raw-buffer behavior, tool-call validation, terminal ownership, and lifecycle signal IDs.
 - `provider_test.gd` verifies hosted/local registration, native Ollama/LM Studio discovery URLs and filtering, generic embedding-name fallback, loaded context selection, required/optional authentication, bounded model normalization, reasoning options, pricing conversion, endpoint-aware cache identities, and public metadata mapping.
 - `context_budget_test.gd` verifies unknown-limit behavior, conservative reserves, complete-turn removal, historical and active tool-group integrity, repeated compaction, malformed protocol refusal, and oversized protected-turn failure.
-- `api_client_integration_test.gd` uses `http_test_server.py` on `127.0.0.1` to verify successful SSE, keyless local chat without an Authorization header, Gemini thought-signature reconstruction, xAI reasoning requests, mid-stream disconnect metadata, aggregate response limits, buffer cleanup, and unexpected content types.
+- `api_client_integration_test.gd` uses `http_test_server.py` on `127.0.0.1` to verify successful SSE, keyless local chat without an Authorization header, Gemini stop-finished tool calls and thought-signature reconstruction, xAI reasoning requests, mid-stream disconnect metadata, aggregate response limits, buffer cleanup, and unexpected content types.
 - `provider_model_service_integration_test.gd` verifies keyless native Ollama/LM Studio discovery, embedding exclusion, loaded context, absent Authorization headers, redirect rejection, stale-request ownership, and cached-record sanitation against localhost fixtures.
 - `agent_compatibility_probe_integration_test.gd` verifies the complete isolated two-request function-call and matching tool-result continuation through the real local HTTP/SSE transport.
 - `patch_utils_test.gd` verifies replacement, insertion, deletion, append, empty-file creation, multiple edits, overlap rejection, and LF/CRLF preservation.
@@ -1244,6 +1245,12 @@ Decision: use a compact unified diff in the narrow dock and an expanded side-by-
 - Added one bounded Plan-only `request_work_mode` decision per turn with explicit stay/switch actions, exact turn/call ownership, cancellation, and no persisted pending state or reason.
 - Bound every tool call to the mode under which its provider response was generated, preventing approval from authorizing later mutation calls smuggled into the original Plan batch. Approval regenerates the primary Work prompt and uses the matching tool result without splitting active protocol history.
 - Approval continues the same task with a fresh Work-schema provider request while preserving normal mutation approvals; rejection remains in Plan and users can switch manually after the turn without automatic replay.
+
+### 2026-10-07: Gemini Tool Finish Compatibility
+
+- Accepted Gemini's observed OpenAI-compatible `stop` finish reason when the same response contains structurally valid tool calls, allowing Plan-mode `request_work_mode` calls to reach the existing confirmation flow.
+- Kept the exception adapter-scoped: other providers still reject `stop` plus tool calls, while malformed, empty, truncated, filtered, and blocked responses remain failures.
+- Added unit and localhost SSE regressions that preserve Gemini's raw finish reason and opaque thought signature.
 
 ## Handoff Checklist
 

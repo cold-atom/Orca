@@ -135,6 +135,9 @@ func _test_completion_validation() -> void:
 	_expect(client._validate_completion("visible", [], null).is_empty(), "meaningful content should remain compatible with providers that omit finish reasons")
 	_expect(client._validate_completion("visible", [], "end_turn").is_empty(), "meaningful content should remain compatible with provider-specific successful finish reasons")
 	_expect(not client._validate_completion("", [valid_call], "stop").is_empty(), "tool calls with a stop finish must fail as contradictory")
+	client._configured_provider = "gemini"
+	_expect(client._validate_completion("", [valid_call], "stop").is_empty(), "Gemini tool calls should accept the provider's stop finish reason")
+	_expect(client._validate_json_response({"choices": [{"message": {"content": null, "tool_calls": [valid_call]}, "finish_reason": "stop"}]}).is_empty(), "Gemini JSON tool calls should accept the provider's stop finish reason")
 	_expect(not client._validate_completion("visible", [], "tool_calls").is_empty(), "tool-call finishes without calls must fail as contradictory")
 	_expect(not client._json_has_partial_response({"choices": [{"message": {"content": "", "reasoning_content": null, "reasoning_details": []}}]}), "empty optional reasoning fields must not claim partial output")
 	client._generation_deadline_ms = Time.get_ticks_msec() - 1

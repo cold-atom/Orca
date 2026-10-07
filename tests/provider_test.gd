@@ -111,6 +111,7 @@ func _test_gemini_provider() -> void:
 	_expect(provider.models_url(config) == "https://generativelanguage.googleapis.com/v1beta/models", "Gemini should use the native model-list endpoint")
 	_expect("Authorization: Bearer secret" in provider.request_headers("secret"), "Gemini chat should use bearer authentication")
 	_expect("x-goog-api-key: secret" in provider.model_headers("secret"), "Gemini model discovery should use Google's API-key header")
+	_expect(provider.allows_stop_finish_with_tool_calls(), "Gemini should declare its stop-finished tool-call compatibility behavior")
 	var body := {}
 	provider.apply_chat_options(body, "high")
 	_expect(body.get("reasoning_effort") == "high", "Gemini reasoning effort should use the compatibility field")

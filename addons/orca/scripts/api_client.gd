@@ -744,7 +744,9 @@ func _validate_completion(content: String, tool_calls, finish_reason) -> String:
 		return "The provider stopped before completing the response (finish reason: %s)." % normalized_reason
 	if normalized_reason == "stop":
 		if has_tool_calls:
-			return "The provider returned tool calls with a contradictory stop finish reason."
+			var provider = ProviderRegistry.get_provider(_configured_provider)
+			if not provider.allows_stop_finish_with_tool_calls():
+				return "The provider returned tool calls with a contradictory stop finish reason."
 		return ""
 	if normalized_reason == "tool_calls":
 		if not has_tool_calls:
