@@ -25,6 +25,7 @@ The project is currently a functional, foundational Godot Editor Plugin located 
    - Handles streamed `HTTPClient` communication with OpenAI-compatible APIs, including OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, and compatible local servers.
    - Streams text and tool calls incrementally and supports cancellation.
    - Uses request-scoped provider profiles so one turn cannot switch endpoint, model, or reasoning configuration during tool follow-ups.
+   - Binds every transport event to a controller-owned provider request ID and every request-scoped UI event to one turn ID, preventing delayed callbacks from changing a newer turn.
    - Strictly normalizes editable endpoints, allows loopback directly, requires exact-origin confirmation for LAN/remote destinations, and refuses provider redirects.
 4. **Autonomous Tools (`tools.gd`)**
    - Provides specific capabilities to the AI:

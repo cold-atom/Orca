@@ -24,6 +24,8 @@ var _binding: Dictionary = {}
 var _provider_config: Dictionary = {}
 var _messages: Array = []
 var _challenge := ""
+var _request_id_serial := 0
+var _expected_request_id := 0
 
 
 func _ready() -> void:
@@ -59,8 +61,7 @@ func start_probe(provider_config: Dictionary) -> bool:
 	]
 	_state = "first_request"
 	_timer.start()
-	probe_step_changed.emit(1)
-	_api_client.send_chat_completion(_messages, [_probe_tool()], _provider_config, {"allow_stream_options_retry": false})
+	_begin_probe_request(1, "first_request")
 	return true
 
 
@@ -117,7 +118,10 @@ func _connect_client() -> void:
 	_api_client.request_cancelled.connect(_on_request_cancelled)
 
 
-func _on_request_completed(response: Dictionary) -> void:
+func _on_request_completed(request_id: int, response: Dictionary) -> void:
+	if request_id != _expected_request_id or not is_running():
+		return
+	_expected_request_id = 0
 	if _state == "first_request":
 		var validated := _validate_first_response(response)
 		if not validated.get("success", false):
@@ -128,8 +132,7 @@ func _on_request_completed(response: Dictionary) -> void:
 		_messages.append(assistant_message)
 		_messages.append({"role": "tool", "tool_call_id": call_id, "content": JSON.stringify({"accepted": true, "challenge": _challenge, "required_reply": "ORCA_AGENT_PROBE_OK " + _challenge})})
 		_state = "second_request"
-		probe_step_changed.emit(2)
-		_api_client.send_chat_completion(_messages, [_probe_tool()], _provider_config, {"allow_stream_options_retry": false})
+		_begin_probe_request(2, "second_request")
 		return
 	if _state == "second_request":
 		var error := _validate_final_response(response)
@@ -195,13 +198,29 @@ func _generate_challenge() -> String:
 	return Crypto.new().generate_random_bytes(16).hex_encode()
 
 
-func _on_request_failed(error: Dictionary) -> void:
-	if is_running():
-		_fail(str(error.get("message", "Compatibility request failed.")))
+func _on_request_failed(request_id: int, error: Dictionary) -> void:
+	if request_id != _expected_request_id or not is_running():
+		return
+	_expected_request_id = 0
+	_fail(str(error.get("message", "Compatibility request failed.")))
 
 
-func _on_request_cancelled() -> void:
-	pass
+func _on_request_cancelled(request_id: int) -> void:
+	if request_id == _expected_request_id:
+		_expected_request_id = 0
+
+
+func _begin_probe_request(step: int, expected_state: String) -> void:
+	_request_id_serial += 1
+	_expected_request_id = _request_id_serial
+	var request_id := _expected_request_id
+	probe_step_changed.emit(step)
+	if _state != expected_state or _expected_request_id != request_id:
+		return
+	_api_client.send_chat_completion(_messages, [_probe_tool()], _provider_config, {
+		"allow_stream_options_retry": false,
+		ApiClient.LIFECYCLE_REQUEST_ID_OPTION: request_id
+	})
 
 
 func _on_timeout() -> void:
@@ -223,3 +242,4 @@ func _clear_sensitive_state() -> void:
 	_provider_config.clear()
 	_binding.clear()
 	_challenge = ""
+	_expected_request_id = 0

@@ -50,6 +50,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_test_working_indicator(view)
+	_test_turn_event_ownership(view)
 	await process_frame
 	await _test_active_feed_follow(view)
 	await process_frame
@@ -248,6 +249,34 @@ func _test_working_indicator(view) -> void:
 	view.prompt_input.text = ""
 	view._set_request_active(false)
 	_expect(view.get_combined_minimum_size().x <= 300.0, "the working indicator must not widen the minimum dock beyond 300 px")
+
+
+func _test_turn_event_ownership(view) -> void:
+	view._clear_chat_feed()
+	view._session = {"events": [], "clean": false}
+	view._active_turn_id = 22
+	view._set_request_active(true)
+	view._show_working_indicator("Thinking")
+	var child_count: int = view.chat_feed.get_child_count()
+	view._on_turn_message_stream_started(21)
+	view._on_turn_message_stream_delta(21, "stale")
+	view._on_turn_workflow_state_changed(21, "idle", {})
+	view._on_turn_tool_execution_started(21, "stale_call", "read_file", {})
+	view._on_turn_edit_proposed(21, _scroll_test_proposal("stale_change", "res://stale.gd"))
+	view._on_turn_request_state_changed(21, false)
+	view._on_turn_message_received(21, "assistant", "stale completion")
+	view._on_turn_error_occurred(21, "stale error")
+	view._on_turn_request_cancelled(21)
+	_expect(view._active_turn_id == 22 and view._request_active, "stale terminal and state events must not release the active newer turn")
+	_expect(view._stream_content.is_empty() and view.chat_feed.get_child_count() == child_count, "stale stream, tool, edit, and terminal events must not mutate cards")
+	_expect(view._session.get("events", []).is_empty() and not view._session.get("clean", false), "stale events must not mutate persisted session state")
+	view._on_turn_request_state_changed(22, false)
+	view._on_turn_request_state_changed(23, true)
+	view._on_turn_message_received(22, "assistant", "old terminal after reentry")
+	view._on_turn_request_cancelled(22)
+	_expect(view._active_turn_id == 23 and view._request_active, "old terminal UI events must not clear reentrant new-turn ownership")
+	view._on_turn_request_cancelled(23)
+	_expect(view._active_turn_id == 0 and not view._request_active, "the matching cancellation should release the active UI turn")
 
 
 func _test_active_feed_follow(view) -> void:

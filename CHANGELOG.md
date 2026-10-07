@@ -20,6 +20,8 @@ All notable changes to Orca are documented in this file.
 - Fixed file-patch recovery states hiding the guarded Revert action.
 - Fixed committed writes being reported as failed when private-backup cleanup failed, and fixed uncertain replacement failures being reported or persisted as successful mutations.
 - Cleanup-only warnings no longer weaken typed live-state conflict checks; recovery-copy guidance is retained as bounded project-relative session metadata.
+- Fixed delayed stream and terminal callbacks from an older provider request being able to mutate a newer controller turn or chat UI state. Tool follow-ups now receive distinct provider request IDs while retaining one turn ID.
+- Fixed synchronous workflow and terminal signal handlers being able to launch an orphan request or have an ending turn clear ownership belonging to a reentrantly started turn.
 
 ### Tests
 
@@ -27,6 +29,8 @@ All notable changes to Orca are documented in this file.
 - Added real GDScript patch lifecycle coverage and exact duplicate class/local variable validation regressions.
 - Added tool-loop trigger, finalization-state, denied-provider-text, explicit-continuation, and empty-finalization coverage.
 - Added deterministic replacement, restoration, temporary-cleanup, post-write verification, cleanup-warning, recovery-classification, and retry-deadline fault coverage.
+- Added transport, compatibility-probe, controller, and chat-window ownership regressions for stale and duplicate callbacks, follow-up identity, cancellation, and synchronous configuration failures.
+- Added thinking/finalizing cancellation, terminal reentry, duplicate history/usage/message, and stale second-step probe failure/cancellation regressions.
 
 ## 1.2.0 - 2026-10-05
 

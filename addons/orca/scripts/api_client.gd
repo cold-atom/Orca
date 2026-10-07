@@ -4,17 +4,18 @@ extends Node
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 
-signal request_completed(response: Dictionary)
-signal request_failed(error: Dictionary)
-signal request_cancelled
-signal stream_started
-signal stream_delta(content: String)
+signal request_completed(request_id: int, response: Dictionary)
+signal request_failed(request_id: int, error: Dictionary)
+signal request_cancelled(request_id: int)
+signal stream_started(request_id: int)
+signal stream_delta(request_id: int, content: String)
 
 const CONNECT_TIMEOUT_MS := 30000
 const INACTIVITY_TIMEOUT_MS := 60000
 # Long reasoning models may be active continuously, but an editor request must still terminate.
 const RESPONSE_GENERATION_TIMEOUT_MS := 10 * 60 * 1000
 const INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION := "_orca_internal_generation_timeout_ms"
+const LIFECYCLE_REQUEST_ID_OPTION := "lifecycle_request_id"
 const GENERATION_TIMEOUT_MESSAGE := "The response exceeded the total generation deadline."
 const MAX_RESPONSE_BYTES := 16 * 1024 * 1024
 const MAX_SSE_LINE_BYTES := 1024 * 1024
@@ -34,6 +35,7 @@ const MAX_CONNECT_RETRIES := 1
 var _config
 var _http_client: HTTPClient
 var _request_serial := 0
+var _lifecycle_request_id := 0
 var _is_requesting := false
 var _cancel_requested := false
 var _raw_response := PackedByteArray()
@@ -82,8 +84,9 @@ func last_request_may_have_usage() -> bool:
 
 
 func send_chat_completion(messages: Array, tools: Array = [], provider_config: Dictionary = {}, request_options: Dictionary = {}) -> void:
+	var lifecycle_request_id := int(request_options.get(LIFECYCLE_REQUEST_ID_OPTION, 0))
 	if _is_requesting:
-		request_failed.emit(_make_error("A request is already in progress.", "state", false))
+		request_failed.emit(lifecycle_request_id, _make_error("A request is already in progress.", "state", false))
 		return
 	_request_may_have_usage = false
 
@@ -91,28 +94,28 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 	var provider_id := str(request_config.get("provider", "custom"))
 	var authorization := EndpointPolicy.authorize_profile(provider_id, request_config)
 	if not authorization.get("success", false):
-		request_failed.emit(_make_error(str(authorization.get("error", "Endpoint is not authorized.")), "configuration", false))
+		request_failed.emit(lifecycle_request_id, _make_error(str(authorization.get("error", "Endpoint is not authorized.")), "configuration", false))
 		return
 	request_config = authorization.get("config", request_config)
 	var provider = ProviderRegistry.get_provider(provider_id)
 	var api_key = str(request_config.get("api_key", "")).strip_edges()
 	if api_key.is_empty() and not bool(provider.definition().get("auth_optional", false)):
-		request_failed.emit(_make_error("API Key is missing. Please set it in Settings.", "configuration", false))
+		request_failed.emit(lifecycle_request_id, _make_error("API Key is missing. Please set it in Settings.", "configuration", false))
 		return
 	if str(request_config.get("model", "")).is_empty():
-		request_failed.emit(_make_error("No model is selected. Choose a model in Settings.", "configuration", false))
+		request_failed.emit(lifecycle_request_id, _make_error("No model is selected. Choose a model in Settings.", "configuration", false))
 		return
 
 	var url = provider.chat_url(request_config)
 	var generated_endpoint := EndpointPolicy.validate_generated_endpoint(url, str(authorization.get("origin", "")))
 	if not generated_endpoint.get("success", false):
-		request_failed.emit(_make_error(str(generated_endpoint.get("error", "Invalid API endpoint.")), "configuration", false))
+		request_failed.emit(lifecycle_request_id, _make_error(str(generated_endpoint.get("error", "Invalid API endpoint.")), "configuration", false))
 		return
 	_configured_api_url = url
 
 	var endpoint := _parse_url(url)
 	if endpoint.is_empty():
-		request_failed.emit(_make_error("Invalid API URL. Use a complete http:// or https:// URL.", "configuration", false))
+		request_failed.emit(lifecycle_request_id, _make_error("Invalid API URL. Use a complete http:// or https:// URL.", "configuration", false))
 		return
 
 	var body = {
@@ -137,6 +140,7 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 	_configured_provider = str(request_config.get("provider", "custom"))
 	_is_requesting = true
 	_cancel_requested = false
+	_lifecycle_request_id = lifecycle_request_id
 	_request_serial += 1
 	_generation_deadline_ms = Time.get_ticks_msec() + _response_generation_timeout_ms
 	_perform_request(_request_serial, endpoint, provider.request_headers(api_key), body, bool(request_options.get("allow_stream_options_retry", true)), MAX_CONNECT_RETRIES)
@@ -145,6 +149,7 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 func cancel_request() -> void:
 	if not _is_requesting:
 		return
+	var lifecycle_request_id := _lifecycle_request_id
 	_cancel_requested = true
 	_request_serial += 1
 	_is_requesting = false
@@ -154,7 +159,7 @@ func cancel_request() -> void:
 	_reset_stream_state()
 	_generation_deadline_ms = 0
 	_response_generation_timeout_ms = RESPONSE_GENERATION_TIMEOUT_MS
-	request_cancelled.emit()
+	request_cancelled.emit(lifecycle_request_id)
 
 
 func _perform_request(request_id: int, endpoint: Dictionary, base_headers: PackedStringArray, body: Dictionary, allow_usage_retry: bool, connect_retries_remaining: int) -> void:
@@ -233,7 +238,7 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 	var is_json := _is_json_media_type(media_type)
 	if response_code == HTTPClient.RESPONSE_OK:
 		if is_sse:
-			stream_started.emit()
+			stream_started.emit(_lifecycle_request_id)
 
 	_request_phase = "receiving_response"
 	var last_activity := Time.get_ticks_msec()
@@ -430,7 +435,7 @@ func _dispatch_sse_event() -> void:
 			_stream_done = true
 			return
 		_assistant_content += content
-		stream_delta.emit(content)
+		stream_delta.emit(_lifecycle_request_id, content)
 	var reasoning_content = delta.get("reasoning_content", delta.get("reasoning", null))
 	if typeof(reasoning_content) == TYPE_STRING and not reasoning_content.is_empty():
 		_reasoning_content_bytes += reasoning_content.to_utf8_buffer().size()
@@ -589,7 +594,7 @@ func _complete_stream(request_id: int) -> void:
 		_fail_request(request_id, model_error, "model_mismatch", false)
 		return
 	if _finish_request(request_id):
-		request_completed.emit(response)
+		request_completed.emit(_lifecycle_request_id, response)
 
 
 func _complete_json_response(request_id: int) -> void:
@@ -618,7 +623,7 @@ func _complete_json_response(request_id: int) -> void:
 		_fail_request(request_id, model_error, "model_mismatch", false)
 		return
 	if _finish_request(request_id):
-		request_completed.emit(data)
+		request_completed.emit(_lifecycle_request_id, data)
 
 
 func _finish_request(request_id: int) -> bool:
@@ -640,7 +645,7 @@ func _fail_request(request_id: int, message: String, category: String, retryable
 		return
 	var error := _make_error(message, category, retryable)
 	if _finish_request(request_id):
-		request_failed.emit(error)
+		request_failed.emit(_lifecycle_request_id, error)
 
 
 func _retry_connection_or_fail(request_id: int, endpoint: Dictionary, base_headers: PackedStringArray, body: Dictionary, allow_usage_retry: bool, retries_remaining: int, message: String, category: String) -> void:
