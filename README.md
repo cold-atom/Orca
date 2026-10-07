@@ -32,7 +32,7 @@ Use a hosted model or bring your own local model through **Ollama**, **LM Studio
 
 ## Why Orca?
 
-<p align="center">
+<p align="left">
   <img src="https://raw.githubusercontent.com/cold-atom/Orca/main/docs/assets/brand/orca-animated.svg" width="200">
 </p>
 
