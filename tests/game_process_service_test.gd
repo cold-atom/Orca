@@ -173,7 +173,29 @@ func _test_verification_contract(scene_path: String, stdout_path: String, stderr
 	_expect(passed.get("status") == "passed" and passed.get("scope") == "startup_only", "clean startup should pass only its predeclared scoped criterion")
 	var observation := service.observe_run(run_id, 1)
 	_expect(observation.get("success", false) and observation.get("changed_since", false), "observation cursors should report sequence changes")
-	service.stop_game()
+	var stopped := service.stop_game()
+	_expect(str(stopped.get("content", "")).contains("Final run") and str(stopped.get("content", "")).contains("Final stdout:\nREADY"), "stop should return bounded final run evidence without requiring a diagnostics round")
+	_expect(stopped.get("data", {}).get("stdout") == "READY\n" and stopped.get("data", {}).has("diagnostics"), "stop data should retain bounded final output and diagnostics without exposing process ownership internals")
+	var truncated_snapshot := service.get_snapshot()
+	truncated_snapshot["output_truncated"] = true
+	truncated_snapshot["dropped_bytes"] = 42
+	truncated_snapshot["stdout"] = "x".repeat(GameProcessService.MAX_STOP_OUTPUT_CHARS + 1)
+	var many_diagnostics: Array = []
+	for index in range(GameProcessService.MAX_STOP_DIAGNOSTICS + 1):
+		many_diagnostics.append({"severity": "error", "message": "diagnostic %d" % index, "file": "res://fixture.gd", "line": index + 1})
+	truncated_snapshot["diagnostics"] = many_diagnostics
+	var bounded_data: Dictionary = service._final_run_data(truncated_snapshot)
+	var bounded_text: String = service._format_stop_evidence(truncated_snapshot)
+	_expect(bounded_data.get("diagnostics_truncated", false) and bounded_data.get("output_truncated", false), "bounded final stop data should disclose diagnostic and output truncation introduced by its own limits")
+	_expect(bounded_text.contains("shown; truncated") and bounded_text.contains("Output is truncated") and bounded_text.contains("Final stdout tail (truncated)"), "model-facing stop evidence should label incomplete diagnostic and output tails explicitly")
+	var aggregate_snapshot := truncated_snapshot.duplicate(true)
+	var verbose_diagnostics: Array = []
+	for index in range(GameProcessService.MAX_STOP_DIAGNOSTICS):
+		verbose_diagnostics.append({"severity": "error", "message": "m".repeat(500), "file": "res://fixture.gd", "line": index + 1})
+	aggregate_snapshot["diagnostics"] = verbose_diagnostics
+	aggregate_snapshot["stderr"] = "e".repeat(GameProcessService.MAX_STOP_OUTPUT_CHARS)
+	var aggregate_text: String = service._format_stop_evidence(aggregate_snapshot)
+	_expect(aggregate_text.length() <= GameProcessService.MAX_STOP_CONTENT_CHARS and aggregate_text.ends_with("[Final stop evidence truncated to the response limit.]"), "aggregate stop-evidence truncation should retain an explicit terminal marker")
 
 	var exit_criteria := {"kind": "expected_exit", "claim": "Fixture exits as expected", "expected_exit_code": 7, "require_no_runtime_errors": false}
 	started = service.start_scene("current_scene", scene_path, exit_criteria)

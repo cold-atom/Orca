@@ -20,7 +20,7 @@ Run strict endpoint parsing, normalization, scope classification, and exact-orig
 "$GODOT_BIN" --headless --path . --script res://tests/endpoint_policy_test.gd
 ```
 
-Run protocol-aware context estimation, reserve, compaction-boundary, and oversized-active-turn checks:
+Run protocol-aware context estimation, reserve, compaction-boundary, oversized-active-turn, and no-tools-finalization budget checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/context_budget_test.gd
@@ -38,7 +38,7 @@ Run filesystem path, proposal, conflict, application, and revert safety checks:
 "$GODOT_BIN" --headless --path . --script res://tests/tools_test.gd
 ```
 
-Run Plan/Work permission, approval, rejection, cancellation, request/turn ownership, synchronous reentrancy, guidance, tool-loop, and recoverable-interruption protocol checks:
+Run Plan/Work permission, approval, rejection, cancellation, conservative tool-batch barriers, checklist reconciliation, request/turn ownership, synchronous reentrancy, full run/fix/verify orchestration, context-pressure finalization, tool-loop, and recoverable-interruption protocol checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
@@ -170,7 +170,7 @@ Run serialized forward/reverse resource dependency traversal, ordering, limit, a
 "$GODOT_BIN" --headless --path . --script res://tests/dependency_inspector_test.gd
 ```
 
-Run repeated-call, alternating-cycle, repeated-round, and no-progress tool-loop guard checks:
+Run repeated-call, alternating-cycle, repeated-round, semantic-progress, volatile-runtime-observation, and no-progress tool-loop guard checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/tool_loop_guard_test.gd
@@ -200,7 +200,7 @@ Run typed-root creation, node/property/structure operations, two-stage dependenc
 "$GODOT_BIN" --headless --path . --script res://tests/scene_proposal_test.gd
 ```
 
-Run Orca-owned nonblocking process lifecycle, output bounds, multiline diagnostics, run identity, immutable verification criteria, timeout, ownership, and real pipe integration checks:
+Run Orca-owned nonblocking process lifecycle, output bounds, multiline diagnostics, run identity, immutable verification criteria, bounded final stop evidence, timeout, ownership, and real pipe integration checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/game_process_service_test.gd
@@ -230,7 +230,7 @@ Then run the integration test in another terminal:
 "$GODOT_BIN" --headless --path . --script res://tests/api_client_integration_test.gd
 ```
 
-The chat transport server accepts twenty-one requests and exits. It receives only synthetic test keys and prompts, checks lifecycle IDs on every observed API signal, covers malformed and incomplete assistant completions, active SSE streams exceeding short internal total-generation deadlines both directly and after a `stream_options` compatibility retry, plain embedding errors, and local model substitution, and accepts no network traffic from outside `127.0.0.1`.
+The chat transport server accepts twenty-nine requests and exits. It receives only synthetic test keys and prompts, checks lifecycle IDs on every observed API signal, enforces exact two-request Gemini, DeepSeek, xAI, and OpenRouter tool-call continuations with fragmented thought-signature or reasoning reconstruction and provider-specific history sanitation, covers malformed and incomplete assistant completions, active SSE streams exceeding short internal total-generation deadlines both directly and after a `stream_options` compatibility retry, plain embedding errors, and local model substitution, and accepts no network traffic from outside `127.0.0.1`.
 
 Run keyless native Ollama/LM Studio discovery, embedding filtering, cache sanitation, stale-request ownership, and redirect-rejection integration against a fresh three-request fixture:
 

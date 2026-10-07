@@ -47,7 +47,7 @@ func _run() -> void:
 		"new_hash": secret,
 		"session": {"content": secret},
 	}
-	var report := SupportDiagnosticReport.build("1.2.0", profile, request)
+	var report := SupportDiagnosticReport.build("1.2.1", profile, request)
 	var serialized := SupportDiagnosticReport.serialize(report)
 	var parsed = JSON.parse_string(serialized)
 	_expect(typeof(parsed) == TYPE_DICTIONARY, "the diagnostic report should serialize as valid JSON")

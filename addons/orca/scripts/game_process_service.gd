@@ -17,6 +17,9 @@ const MAX_DIAGNOSTIC_LINE_BYTES := 8192
 const MAX_VERIFICATION_CLAIM_CHARS := 240
 const MAX_VERIFICATION_MARKERS := 5
 const MAX_VERIFICATION_MARKER_CHARS := 200
+const MAX_STOP_OUTPUT_CHARS := 4000
+const MAX_STOP_DIAGNOSTICS := 20
+const MAX_STOP_CONTENT_CHARS := 12000
 const MIN_STARTUP_VERIFICATION_MS := 250
 const MAX_STARTUP_VERIFICATION_MS := 10000
 
@@ -134,7 +137,7 @@ func stop_game() -> Dictionary:
 	if kill_error != OK:
 		return _failure("Godot could not stop the Orca-owned game process: " + error_string(kill_error))
 	_finalize("stopped", null, "Stopped by Orca.")
-	return _success("Stopped the Orca-started game process.", _public_run_data(_last_snapshot))
+	return _success(_format_stop_evidence(_last_snapshot), _final_run_data(_last_snapshot))
 
 
 func poll() -> void:
@@ -591,6 +594,48 @@ func _public_run_data(snapshot: Dictionary) -> Dictionary:
 	data.erase("diagnostics")
 	data.erase("verification")
 	return data
+
+
+func _final_run_data(snapshot: Dictionary) -> Dictionary:
+	var data := _public_run_data(snapshot)
+	var stdout := str(snapshot.get("stdout", ""))
+	var stderr := str(snapshot.get("stderr", ""))
+	var diagnostics: Array = snapshot.get("diagnostics", [])
+	data["stdout"] = stdout.right(MAX_STOP_OUTPUT_CHARS)
+	data["stderr"] = stderr.right(MAX_STOP_OUTPUT_CHARS)
+	data["diagnostics"] = diagnostics.slice(0, MAX_STOP_DIAGNOSTICS).duplicate(true)
+	data["output_truncated"] = bool(snapshot.get("output_truncated", false)) or stdout.length() > MAX_STOP_OUTPUT_CHARS or stderr.length() > MAX_STOP_OUTPUT_CHARS
+	data["diagnostics_truncated"] = bool(snapshot.get("diagnostics_truncated", false)) or diagnostics.size() > MAX_STOP_DIAGNOSTICS
+	return data
+
+
+func _format_stop_evidence(snapshot: Dictionary) -> String:
+	var diagnostics: Array = snapshot.get("diagnostics", [])
+	var shown_diagnostics := mini(diagnostics.size(), MAX_STOP_DIAGNOSTICS)
+	var diagnostics_incomplete := bool(snapshot.get("diagnostics_truncated", false)) or diagnostics.size() > MAX_STOP_DIAGNOSTICS
+	var lines := PackedStringArray([
+		"Stopped the Orca-started game process.",
+		"Final run %d snapshot %d: %s" % [int(snapshot.get("run_id", 0)), int(snapshot.get("sequence", 0)), str(snapshot.get("state", "unknown"))],
+		"Verification: " + str(snapshot.get("verification_status", "unverified")),
+		"Diagnostics: %d%s" % [diagnostics.size(), " (%d shown; truncated)" % shown_diagnostics if diagnostics_incomplete else ""],
+	])
+	if bool(snapshot.get("output_truncated", false)) or int(snapshot.get("dropped_bytes", 0)) > 0:
+		lines.append("Output is truncated; dropped bytes: %d." % int(snapshot.get("dropped_bytes", 0)))
+	if snapshot.get("exit_code") != null:
+		lines.append("Exit code: " + str(snapshot.get("exit_code")))
+	for diagnostic_value in diagnostics.slice(0, MAX_STOP_DIAGNOSTICS):
+		var diagnostic: Dictionary = diagnostic_value if diagnostic_value is Dictionary else {}
+		lines.append("- %s: %s (%s:%d)" % [str(diagnostic.get("severity", "error")), str(diagnostic.get("message", "Runtime diagnostic")).left(500), str(diagnostic.get("file", "")), int(diagnostic.get("line", 0))])
+	for stream_name in ["stdout", "stderr"]:
+		var output := str(snapshot.get(stream_name, ""))
+		if not output.is_empty():
+			var tail_truncated := bool(snapshot.get("output_truncated", false)) or output.length() > MAX_STOP_OUTPUT_CHARS
+			lines.append("Final %s%s:\n%s" % [stream_name, " tail (truncated)" if tail_truncated else "", output.right(MAX_STOP_OUTPUT_CHARS)])
+	var rendered := "\n".join(lines)
+	if rendered.length() <= MAX_STOP_CONTENT_CHARS:
+		return rendered
+	var marker := "\n[Final stop evidence truncated to the response limit.]"
+	return rendered.left(MAX_STOP_CONTENT_CHARS - marker.length()) + marker
 
 
 func _idle_snapshot() -> Dictionary:

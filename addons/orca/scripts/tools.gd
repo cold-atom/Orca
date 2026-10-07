@@ -504,6 +504,7 @@ static func execute_tool(tool_name: String, arguments: Dictionary, game_process_
 			var snapshot: Dictionary = observation.get("snapshot", {})
 			var data := snapshot.duplicate(true)
 			data["changed_since"] = bool(observation.get("changed_since", true))
+			data["recommended_next_action"] = _recommended_run_action(snapshot, bool(observation.get("changed_since", true)))
 			data.erase("verification")
 			return _tool_success(_format_game_observation(snapshot, bool(observation.get("changed_since", true))), data)
 		"verify_game_run":
@@ -1806,11 +1807,13 @@ static func _only_arguments(arguments: Dictionary, allowed: Array) -> bool:
 
 
 static func _format_game_observation(snapshot: Dictionary, changed_since: bool) -> String:
+	var recommendation := _recommended_run_action(snapshot, changed_since)
 	var lines := PackedStringArray([
 		"Run %d snapshot %d (%s): %s" % [int(snapshot.get("run_id", 0)), int(snapshot.get("sequence", 0)), "changed" if changed_since else "unchanged", str(snapshot.get("state", "unknown"))],
 		"Scene: " + str(snapshot.get("scene_path", "")),
 		"Elapsed: %d ms" % int(snapshot.get("elapsed_ms", 0)),
-		"Verification: " + str(snapshot.get("verification_status", "unverified"))
+		"Verification: " + str(snapshot.get("verification_status", "unverified")),
+		"Recommended next action: " + recommendation,
 	])
 	if snapshot.get("exit_code") != null:
 		lines.append("Exit code: " + str(snapshot.get("exit_code")))
@@ -1821,6 +1824,20 @@ static func _format_game_observation(snapshot: Dictionary, changed_since: bool) 
 	if bool(snapshot.get("output_truncated", false)) or bool(snapshot.get("diagnostics_truncated", false)):
 		lines.append("Evidence is truncated; absence-based checks may be inconclusive.")
 	return "\n".join(lines)
+
+
+static func _recommended_run_action(snapshot: Dictionary, changed_since: bool) -> String:
+	var state := str(snapshot.get("state", "unknown"))
+	var verification_status := str(snapshot.get("verification_status", "unverified"))
+	if state not in ["running", "timeout_stop_failed", "shutdown_stop_failed"]:
+		return "verify" if bool(snapshot.get("verification_configured", false)) else "finalize"
+	if verification_status in ["passed", "failed", "inconclusive"]:
+		return "stop"
+	if not Array(snapshot.get("diagnostics", [])).is_empty():
+		return "stop_then_inspect_error"
+	if changed_since and bool(snapshot.get("verification_configured", false)):
+		return "verify"
+	return "stop_or_wait_for_new_evidence"
 
 
 static func _format_game_verification(verdict: Dictionary) -> String:

@@ -2,7 +2,7 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory is the complete installable Orca 1.2.0 addon for Godot 4.7.2.
+This directory is the complete installable Orca 1.2.1 addon for Godot 4.7.2.
 
 ## Install
 

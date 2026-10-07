@@ -13,6 +13,7 @@ func _init() -> void:
 	_test_repeated_compaction_notice()
 	_test_oversized_active_turn_fails()
 	_test_malformed_history_is_not_split()
+	_test_no_tools_finalization_budget()
 	_finish()
 
 
@@ -110,6 +111,35 @@ func _test_malformed_history_is_not_split() -> void:
 	var result := ContextBudget.prepare(messages, _tools(), 4096)
 	_expect(not result.get("success", true), "malformed historical tool protocol should fail rather than split a tool group")
 	_expect(result.get("messages") == messages, "malformed history failure must preserve exact history")
+
+
+func _test_no_tools_finalization_budget() -> void:
+	var call := {"id": "current_call", "type": "function", "function": {"name": "read_file", "arguments": "{}"}}
+	var selected_messages: Array = []
+	var full_result: Dictionary = {}
+	var final_result: Dictionary = {}
+	for padding in range(4000, 14000, 100):
+		var messages := [
+			{"role": "system", "content": "system"},
+			{"role": "user", "content": "current " + "x".repeat(padding)},
+			{"role": "assistant", "content": "", "tool_calls": [call]},
+			{"role": "tool", "tool_call_id": "current_call", "content": "result"},
+			{"role": "system", "content": "ORCA TOOL LOOP NOTICE: finalize safely"},
+		]
+		var with_tools := ContextBudget.prepare(messages, _tools(), 4096)
+		var without_tools := ContextBudget.prepare(messages, [], 4096)
+		if not with_tools.get("success", true) and without_tools.get("success", false):
+			selected_messages = messages
+			full_result = with_tools
+			final_result = without_tools
+			break
+	_expect(not selected_messages.is_empty(), "the known context budget should expose a range where tools do not fit but finalization does")
+	if selected_messages.is_empty():
+		return
+	_expect(full_result.get("messages") == selected_messages, "failed full-tools preparation must preserve exact protocol history")
+	_expect(int(full_result.get("tool_reserve", 0)) > 0 and int(final_result.get("tool_reserve", -1)) == 0, "no-tools finalization should release only the tool reserve while keeping the final-answer reserve")
+	_expect(int(final_result.get("final_reserve", 0)) > 0, "no-tools finalization must retain a bounded final-answer reserve")
+	_expect(_tool_result_count(final_result.get("messages", []), "current_call") == 1, "no-tools finalization must preserve the complete active tool group")
 
 
 func _tools() -> Array:

@@ -69,16 +69,16 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
-## What's New In 1.2.0
+## What's New In 1.2.1
 
-Orca 1.2.0 expands model choice and strengthens editor reliability:
+Orca 1.2.1 is a reliability-focused release for long, stateful Godot workflows:
 
-- First-class **Ollama**, **LM Studio**, and **Local OpenAI-compatible** provider profiles.
-- Editable local endpoints, optional authentication, keyless model discovery, and manual Model ID fallback.
-- Native Ollama and LM Studio model discovery that hides models identified as embeddings.
-- An isolated, project-free compatibility probe before Agent tools can be enabled for an editable provider configuration.
-- Exact-origin confirmation for editable LAN and remote endpoints, with redirect rejection and endpoint revalidation.
-- Stronger dirty-script, dirty-scene, diagnostics, editor scaling, and plugin lifecycle coverage in Godot 4.7.2.
+- Strict provider completion validation, bounded total-generation deadlines, and provider/turn lifecycle ownership.
+- Explicit Plan-to-Work requests without weakening normal mutation approval.
+- Atomic conservative tool batches, semantic loop detection, and safe context-pressure finalization.
+- Deterministic mutation recovery outcomes with retained proposal and post-write verification.
+- Exact same-turn game-process cleanup, bounded final evidence, and a tested run/fix/rerun/verify workflow.
+- Privacy-safe support diagnostics, resilient active composer behavior, and corrected Expanded Diff window ownership.
 
 Read the complete release notes in the [changelog](CHANGELOG.md) or download the latest build from [GitHub Releases](https://github.com/cold-atom/Orca/releases/latest).
 
@@ -174,19 +174,19 @@ See [SECURITY.md](SECURITY.md) for the complete security and operational model.
 
 ## Current Limits
 
-- Orca 1.2.0 supports Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
+- Orca 1.2.1 supports Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
 - Runtime verification uses bounded process output and predeclared startup or exit criteria. It cannot prove visual or gameplay correctness.
 - Pending approvals and revert checkpoints do not survive an editor or plugin restart.
 - Structured scene operations deliberately support a constrained set of nodes, values, dependencies, and signals.
 - Script attach and detach require a separate Trust and Prepare decision because Godot may execute project code while constructing a candidate. This is informed consent, not sandboxing.
 - Custom compatible providers may expose incomplete model or capability metadata.
-- Progressive tool-schema disclosure is not implemented in 1.2.0.
+- Progressive tool-schema disclosure is not currently implemented.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for the full architecture, tool contracts, safety model, test coverage, and known limitations.
 
 ## Project Status
 
-The current release is **Orca 1.2.0** for **Godot 4.7.2**. Orca is a functional development-stage agent with permanent automated tests and CI, but it is still evolving. Review proposals carefully and use version control on real projects.
+The current release is **Orca 1.2.1** for **Godot 4.7.2**. Orca is a functional development-stage agent with permanent automated tests and CI, but it is still evolving. Review proposals carefully and use version control on real projects.
 
 ## Contributing
 

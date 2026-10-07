@@ -818,6 +818,32 @@ func _test_expanded_diff_content() -> void:
 	if editors.size() == 2:
 		_expect(editors[0].text == old_content, "expanded diff previous pane should retain exact old content")
 		_expect(editors[1].text == new_content, "expanded diff proposed pane should retain exact new content")
+	var dialogs := _collect_type(card, Window)
+	var apply_visibility := []
+	card.action_requested.connect(func(_id: String, action: String):
+		if action == "apply" and not dialogs.is_empty():
+			apply_visibility.append(dialogs[0].visible)
+	)
+	var expanded_buttons := _collect_type(dialogs[0], Button) if not dialogs.is_empty() else []
+	var apply_buttons := expanded_buttons.filter(func(button): return button.text == "Apply")
+	if not apply_buttons.is_empty():
+		apply_buttons[0].pressed.emit()
+	_expect(apply_visibility == [false], "expanded diff should release exclusive ownership before emitting Apply")
+	await process_frame
+	card._show_expanded_diff()
+	await process_frame
+	dialogs = _collect_type(card, Window)
+	var reject_visibility := []
+	card.action_requested.connect(func(_id: String, action: String):
+		if action == "reject" and not dialogs.is_empty():
+			reject_visibility.append(dialogs[0].visible)
+	)
+	expanded_buttons = _collect_type(dialogs[0], Button) if not dialogs.is_empty() else []
+	var reject_buttons := expanded_buttons.filter(func(button): return button.text == "Reject")
+	if not reject_buttons.is_empty():
+		reject_buttons[0].pressed.emit()
+	_expect(reject_visibility == [false], "expanded diff should release exclusive ownership before emitting Reject")
+	await process_frame
 	card.set_status("applied_recovery", "Cleanup required: applied with a retained backup.")
 	_expect(card._revert_button.visible, "a committed file patch with cleanup required should retain its guarded Revert action")
 	card.set_status("apply_recovery_required", "Recovery required: destination state is uncertain.")

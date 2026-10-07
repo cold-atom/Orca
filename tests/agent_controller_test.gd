@@ -56,11 +56,24 @@ class FakeGameProcessService:
 	var run_id := 0
 	var snapshot := {"run_id": 0, "sequence": 0, "state": "idle", "scene_path": "", "verification_status": "unverified", "diagnostics": [], "stdout": "", "stderr": ""}
 	var terminal_on_observe := false
+	var active := false
+	var scripted_run_results: Array[Dictionary] = []
+	var start_verifications: Array[Dictionary] = []
+	var started_criteria_ids: Array[String] = []
+	var observe_calls: Array[Dictionary] = []
+	var verify_calls: Array[int] = []
+	var operation_log: Array[String] = []
+	var observed_runs: Dictionary = {}
 
 	func start_current_scene(verification: Dictionary = {}) -> Dictionary:
 		starts += 1
+		active = true
 		run_id += 1
-		snapshot = {"run_id": run_id, "sequence": 1, "state": "running", "scene_path": "res://main.tscn", "verification_status": "pending" if not verification.is_empty() else "unverified", "diagnostics": [], "stdout": "", "stderr": "", "criteria_id": JSON.stringify(verification).sha256_text() if not verification.is_empty() else ""}
+		var criteria_id := JSON.stringify(verification).sha256_text() if not verification.is_empty() else ""
+		start_verifications.append(verification.duplicate(true))
+		started_criteria_ids.append(criteria_id)
+		operation_log.append("start:%d" % run_id)
+		snapshot = {"run_id": run_id, "sequence": 1, "state": "running", "scene_path": "res://main.tscn", "verification_status": "pending" if not verification.is_empty() else "unverified", "verification_configured": not verification.is_empty(), "diagnostics": [], "stdout": "", "stderr": "", "criteria_id": criteria_id}
 		return {"success": true, "content": "started current", "outcome": "completed", "data": snapshot.duplicate(true)}
 
 	func start_main_scene(verification: Dictionary = {}) -> Dictionary:
@@ -68,7 +81,13 @@ class FakeGameProcessService:
 
 	func stop_game() -> Dictionary:
 		stops += 1
-		return {"success": true, "content": "stopped", "outcome": "completed", "data": {"state": "stopped"}}
+		operation_log.append("stop:%d" % run_id)
+		active = false
+		snapshot["state"] = "stopped"
+		return {"success": true, "content": "stopped with final evidence", "outcome": "completed", "data": {"state": "stopped"}}
+
+	func is_running() -> bool:
+		return active
 
 	func get_snapshot() -> Dictionary:
 		return snapshot.duplicate(true)
@@ -76,6 +95,16 @@ class FakeGameProcessService:
 	func observe_run(requested_run_id: int, after_sequence: int = -1) -> Dictionary:
 		if requested_run_id != run_id:
 			return {"success": false, "error": "unknown"}
+		observe_calls.append({"run_id": requested_run_id, "after_sequence": after_sequence})
+		if not scripted_run_results.is_empty() and requested_run_id <= scripted_run_results.size() and not observed_runs.has(requested_run_id):
+			observed_runs[requested_run_id] = true
+			operation_log.append("observe:%d" % requested_run_id)
+			var scripted_snapshot: Dictionary = scripted_run_results[requested_run_id - 1].get("snapshot", {})
+			for key in scripted_snapshot:
+				snapshot[key] = scripted_snapshot[key]
+			snapshot["run_id"] = requested_run_id
+			if str(snapshot.get("state", "running")) not in ["running", "timeout_stop_failed", "shutdown_stop_failed"]:
+				active = false
 		if terminal_on_observe:
 			snapshot["state"] = "exited"
 			snapshot["sequence"] = int(snapshot.get("sequence", 0)) + 1
@@ -88,6 +117,13 @@ class FakeGameProcessService:
 	func verify_run(requested_run_id: int) -> Dictionary:
 		if requested_run_id != run_id:
 			return {"success": false, "error": "unknown"}
+		verify_calls.append(requested_run_id)
+		operation_log.append("verify:%d" % requested_run_id)
+		if not scripted_run_results.is_empty() and requested_run_id <= scripted_run_results.size():
+			var verification: Dictionary = scripted_run_results[requested_run_id - 1].get("verification", {}).duplicate(true)
+			verification["run_id"] = requested_run_id
+			verification["criteria_id"] = str(snapshot.get("criteria_id", ""))
+			return {"success": true, "verification": verification}
 		return {"success": true, "verification": {"run_id": run_id, "status": str(snapshot.get("verification_status", "unverified")), "claim": "fixture", "checks": []}}
 
 
@@ -102,6 +138,12 @@ class FakeTools:
 	var changing_results := false
 	var apply_result := "Applied changes to res://fixture.txt"
 	var revert_result := "Reverted changes to res://fixture.txt"
+	var execute_log: Array[Dictionary] = []
+	var prepared_change_ids: Array[String] = []
+	var applied_change_ids: Array[String] = []
+	var enforce_patch_hashes := false
+	var current_patch_hash := "old-hash"
+	var patch_hash_serial := 0
 
 	func get_tool_definitions(include_edit_tools: bool = true, include_work_mode_request: bool = false) -> Array:
 		var definitions := [
@@ -127,6 +169,7 @@ class FakeTools:
 
 	func execute_tool(tool_name: String, _arguments: Dictionary, game_process_service = null) -> Dictionary:
 		execute_calls += 1
+		execute_log.append({"name": tool_name, "arguments": _arguments.duplicate(true)})
 		if tool_name == "run_current_scene":
 			return game_process_service.start_current_scene(_arguments.get("verification", {}))
 		if tool_name == "run_main_scene":
@@ -138,25 +181,31 @@ class FakeTools:
 			return {"success": observed.get("success", false), "content": "observed", "outcome": "completed" if observed.get("success", false) else "failed", "data": observed.get("snapshot", {})}
 		if tool_name == "verify_game_run":
 			var verified: Dictionary = game_process_service.verify_run(int(_arguments.get("run_id", 0)))
-			return {"success": verified.get("success", false), "content": "verified", "outcome": "completed" if verified.get("success", false) else "failed", "data": verified.get("verification", {})}
+			return {"success": verified.get("success", false), "content": "Verification: " + JSON.stringify(verified.get("verification", {})), "outcome": "completed" if verified.get("success", false) else "failed", "data": verified.get("verification", {})}
 		if tool_name == "update_tasks":
 			var validation := TaskUtils.validate_tasks(_arguments.get("tasks", null))
 			if not validation.get("success", false):
 				return {"success": false, "content": "Error: " + str(validation.get("error", "invalid")), "outcome": "failed", "data": {}}
 			return {"success": true, "content": "updated", "outcome": "completed", "data": {"tasks": validation.get("tasks", [])}}
+		if tool_name == "read_file" and enforce_patch_hashes:
+			return {"success": true, "content": "fixture sha256: " + current_patch_hash, "outcome": "completed", "data": {"sha256": current_patch_hash}}
 		var suffix := " " + str(execute_calls) if changing_results else ""
 		return {"success": true, "content": "executed " + tool_name + suffix, "outcome": "completed", "data": {}}
 
 	func prepare_file_patch(change_id: String, filepath: String, _base_hash: String, edits: Array) -> Dictionary:
 		prepare_calls += 1
+		prepared_change_ids.append(change_id)
+		if enforce_patch_hashes and _base_hash != current_patch_hash:
+			return {"success": false, "error": "stale fixture hash"}
+		patch_hash_serial += 1
 		return {
 			"success": true,
 			"id": change_id,
 			"filepath": filepath,
 			"old_content": "old\n",
 			"new_content": "new\n",
-			"old_hash": "old-hash",
-			"new_hash": "new-hash",
+			"old_hash": current_patch_hash,
+			"new_hash": "new-hash-%d" % patch_hash_serial,
 			"existed": true,
 			"edits": edits,
 			"diff": {"additions": 1, "deletions": 1},
@@ -245,6 +294,9 @@ class FakeTools:
 
 	func apply_file_edit(proposal: Dictionary) -> String:
 		apply_calls += 1
+		applied_change_ids.append(str(proposal.get("id", "")))
+		if enforce_patch_hashes:
+			current_patch_hash = str(proposal.get("new_hash", current_patch_hash))
 		if apply_result.begins_with("Cleanup required:"):
 			proposal["cleanup_required"] = true
 			proposal["exact_applied_state"] = true
@@ -321,6 +373,7 @@ func _run() -> void:
 	await _test_work_rejection_protocol()
 	await _test_cancellation_protocol()
 	await _test_task_state()
+	await _test_task_context_refresh()
 	await _test_scene_inspection_permission()
 	await _test_project_settings_inspection_permission()
 	await _test_input_map_approval_and_plan_denial()
@@ -331,8 +384,12 @@ func _run() -> void:
 	await _test_scene_script_second_stage_resolution()
 	await _test_game_process_permissions()
 	await _test_bounded_run_observation()
+	await _test_long_task_run_fix_verify()
 	await _test_tool_call_count_bound()
+	await _test_tool_batch_barriers()
+	await _test_malformed_tool_batch_regeneration()
 	await _test_project_guidance_context()
+	await _test_runtime_progress_normalization()
 	await _test_loop_guard_duplicate_denial()
 	await _test_loop_guard_cycle_final_response()
 	await _test_loop_guard_empty_final_response()
@@ -341,6 +398,7 @@ func _run() -> void:
 	await _test_recoverable_provider_failure()
 	await _test_applied_change_recovery_does_not_replay()
 	await _test_incomplete_protocol_refuses_recovery()
+	await _test_context_pressure_finalization()
 	await _test_context_budget_integration()
 	await _test_plan_revert_denial()
 	_finish()
@@ -391,17 +449,15 @@ func _test_work_mode_escalation() -> void:
 	api = fixture["api"]
 	var tools: FakeTools = fixture["tools"]
 	controller.set_mode(AgentController.AgentMode.PLAN)
-	controller.work_mode_requested.connect(func(turn_id: int, request: Dictionary): controller.resolve_work_mode_request(str(request.get("call_id", "")), turn_id, true))
+	var mixed_requests := [0]
+	controller.work_mode_requested.connect(func(_turn_id: int, _request: Dictionary): mixed_requests[0] += 1)
 	controller.send_user_message("Try a mixed batch")
 	api.complete(_tool_response([_work_mode_call("mode_mixed", "Work is needed."), _work_mode_call("mode_duplicate", "Ask again."), _patch_call("smuggled_patch")]))
 	await process_frame
-	_expect(controller.get_mode() == AgentController.AgentMode.BUILD and tools.prepare_calls == 0, "approval must not authorize mutation calls from the original Plan-generated batch")
-	_expect(_tool_result_count(controller.message_history, "mode_mixed") == 1 and _tool_result_count(controller.message_history, "mode_duplicate") == 1 and _tool_result_count(controller.message_history, "smuggled_patch") == 1, "mixed Plan batches should remain protocol-complete")
-	_expect(JSON.stringify(controller.message_history).contains("unavailable in Plan mode"), "a mutation after escalation in the same Plan batch should be denied")
-	_expect(JSON.stringify(controller.message_history).contains("at most once per user turn"), "a second escalation request in the same turn should be denied without another decision")
-	var call_batch_index := _assistant_call_index(controller.message_history, "mode_mixed")
-	var final_tool_index := _tool_result_index(controller.message_history, "smuggled_patch")
-	_expect(call_batch_index >= 0 and final_tool_index == call_batch_index + 3, "the original Plan-generated batch should retain contiguous matching tool results")
+	_expect(controller.get_mode() == AgentController.AgentMode.PLAN and mixed_requests[0] == 0 and tools.prepare_calls == 0, "a mixed escalation batch must be rejected before a decision or mutation preparation")
+	_expect(api.requests.size() == 2 and controller.is_busy(), "a mixed escalation batch should receive one fresh correction request")
+	_expect(_tool_result_count(controller.message_history, "mode_mixed") == 0 and _tool_result_count(controller.message_history, "mode_duplicate") == 0 and _tool_result_count(controller.message_history, "smuggled_patch") == 0, "a rejected escalation batch must not enter tool protocol history")
+	_expect(not JSON.stringify(controller.message_history).contains("mode_mixed") and not JSON.stringify(controller.message_history).contains("smuggled_patch"), "rejected Plan batch details must remain absent from retained history")
 	controller.cancel_current_request()
 	await _free_controller(controller)
 
@@ -825,18 +881,14 @@ func _test_cancellation_protocol() -> void:
 		controller.call_deferred("cancel_current_request")
 	)
 	controller._is_running = true
-	await _deliver_completion(controller, _tool_response([
-		_patch_call("cancel_patch"),
-		{"id": "cancel_read", "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":\"res://fixture.txt\"}"}}
-	]))
+	await _deliver_completion(controller, _tool_response([_patch_call("cancel_patch")]))
 	_expect(cancelled_count[0] == 1, "cancelling a pending approval should emit request_cancelled once")
 	_expect(not controller.is_busy(), "cancelling a pending approval should finish the request")
 	_expect(tools.apply_calls == 0, "cancelled approval must not apply")
-	_expect(tools.execute_calls == 0, "remaining tools must not execute after cancellation")
+	_expect(tools.execute_calls == 0, "cancelling approval must not execute another tool")
 	_expect(controller._proposals.is_empty(), "cancelled proposals should release private retained content")
 	_expect(api.requests.is_empty(), "cancelled tool rounds must not send a follow-up request")
 	_expect(_tool_result_count(controller.message_history, "cancel_patch") == 1, "cancelled proposal should receive one tool result")
-	_expect(_tool_result_count(controller.message_history, "cancel_read") == 1, "unexecuted remaining call should receive one cancellation result")
 	_expect(_protocol_is_valid(controller.message_history), "cancellation history should remain protocol-valid")
 	await _free_controller(controller)
 
@@ -863,6 +915,55 @@ func _test_task_state() -> void:
 	var restored: bool = controller.restore_session_state(AgentController.AgentMode.BUILD, [], {}, [{"content": "Restored", "status": "pending"}])
 	_expect(restored, "valid persisted tasks should restore")
 	_expect(controller.snapshot_session_state().get("tasks", [])[0].get("content") == "Restored", "restored task state should be retained")
+	await _free_controller(controller)
+
+
+func _test_task_context_refresh() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var old_tasks := [{"content": "Old task", "status": "in_progress"}]
+	var new_tasks := [{"content": "New task", "status": "completed"}, {"content": "Continue", "status": "in_progress"}]
+	controller._tasks.assign(old_tasks)
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller._add_turn_context()
+	controller.message_history.append({"role": "user", "content": "Maintain the checklist"})
+	var invalid_tasks := [{"content": "One", "status": "in_progress"}, {"content": "Two", "status": "in_progress"}]
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("tasks_invalid_context", "update_tasks", {"tasks": invalid_tasks})]))
+	_expect(controller._tasks == old_tasks and _task_context_count(controller.message_history) == 1, "a failed task update should preserve exactly one prior checklist context")
+	_expect(_task_context_content(controller.message_history).contains("Old task") and not _task_context_content(controller.message_history).contains("One"), "failed task arguments must not replace model-facing checklist context")
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("tasks_refresh", "update_tasks", {"tasks": new_tasks})]))
+	_expect(controller._tasks == new_tasks and _task_context_count(controller.message_history) == 1, "a successful task update should replace the checklist context without duplication")
+	_expect(_task_context_content(controller.message_history).contains("New task") and not _task_context_content(controller.message_history).contains("Old task"), "the refreshed checklist should contain only current task state")
+	_expect(_tool_result_index(controller.message_history, "tasks_refresh") == _assistant_call_index(controller.message_history, "tasks_refresh") + 1, "checklist refresh must not split the matching tool protocol group")
+	_expect(_protocol_is_valid(controller.message_history), "task context refresh must preserve complete tool protocol")
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("tasks_clear", "update_tasks", {"tasks": []})]))
+	_expect(controller._tasks.is_empty() and controller._task_context_message_index == -1 and _task_context_count(controller.message_history) == 0, "a successful empty task update should remove checklist context")
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Checklist reconciled."}}]})
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	controller._tasks.assign(old_tasks)
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller._add_turn_context()
+	controller.message_history.append({"role": "user", "content": "Finish at the action boundary"})
+	controller._tool_rounds = AgentController.MAX_TOOL_ROUNDS - 1
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("tasks_before_finalization", "update_tasks", {"tasks": new_tasks})]))
+	_expect(api.requests.size() == 1 and api.requests[0].get("tools", [1]).is_empty(), "the boundary task update should enter no-tools finalization")
+	if api.requests.size() == 1:
+		var finalization_history: Array = api.requests[0].get("messages", [])
+		_expect(_task_context_count(finalization_history) == 1 and _task_context_content(finalization_history).contains("New task"), "safe finalization should receive exactly one current checklist")
+		_expect(not _task_context_content(finalization_history).contains("Old task"), "safe finalization must not receive stale checklist state")
+		_expect(_protocol_is_valid(finalization_history), "checklist reconciliation before finalization must preserve tool protocol")
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Finalized with the current checklist."}}]})
+	_expect(controller._task_context_message_index == -1 and _task_context_count(controller.message_history) == 0, "terminal finalization should remove request-scoped checklist context")
+	_expect(controller.snapshot_session_state().get("tasks") == new_tasks, "terminal cleanup must retain the durable current checklist")
 	await _free_controller(controller)
 
 
@@ -1192,6 +1293,86 @@ func _test_bounded_run_observation() -> void:
 	await _free_controller(controller)
 
 
+func _test_long_task_run_fix_verify() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var tools: FakeTools = fixture["tools"]
+	var game: FakeGameProcessService = fixture["game"]
+	tools.enforce_patch_hashes = true
+	var initial_tasks := [
+		{"content": "Inspect the startup failure", "status": "in_progress"},
+		{"content": "Apply reviewed fixes", "status": "pending"},
+		{"content": "Verify clean startup", "status": "pending"},
+	]
+	var completed_tasks := [
+		{"content": "Inspect the startup failure", "status": "completed"},
+		{"content": "Apply reviewed fixes", "status": "completed"},
+		{"content": "Verify clean startup", "status": "completed"},
+	]
+	var criteria := {"kind": "clean_startup", "claim": "Starts without runtime errors", "minimum_runtime_ms": 250, "require_no_runtime_errors": true}
+	game.scripted_run_results = [
+		{
+			"snapshot": {"sequence": 2, "state": "running", "elapsed_ms": 300, "exit_code": null, "verification_status": "failed", "verification_configured": true, "stdout": "BOOT\n", "stderr": "SCRIPT ERROR: startup fixture failure\n", "diagnostics": [{"origin": "game", "severity": "error", "file": "res://fixture.gd", "line": 3, "message": "startup fixture failure"}], "output_truncated": false, "diagnostics_truncated": false, "dropped_bytes": 0},
+			"verification": {"status": "failed", "scope": "startup_only", "claim": "Starts without runtime errors", "checks": [{"name": "minimum_runtime_ms", "status": "passed", "expected": 250, "observed": 300}, {"name": "runtime_errors", "status": "failed", "expected": 0, "observed": 1}]},
+		},
+		{
+			"snapshot": {"sequence": 2, "state": "exited", "elapsed_ms": 300, "exit_code": 0, "verification_status": "passed", "verification_configured": true, "stdout": "READY\n", "stderr": "", "diagnostics": [], "output_truncated": false, "diagnostics_truncated": false, "dropped_bytes": 0},
+			"verification": {"status": "passed", "scope": "startup_only", "claim": "Starts without runtime errors", "checks": [{"name": "minimum_runtime_ms", "status": "passed", "expected": 250, "observed": 300}, {"name": "runtime_errors", "status": "passed", "expected": 0, "observed": 0}]},
+		},
+	]
+	var proposed_apply_counts: Array[int] = []
+	var completed_executions: Dictionary = {}
+	var task_emissions: Array = []
+	var workflow_states: Array[String] = []
+	var visible_messages: Array[String] = []
+	var errors: Array[String] = []
+	controller.edit_proposed.connect(func(turn_id: int, proposal: Dictionary):
+		proposed_apply_counts.append(tools.apply_calls)
+		controller.call_deferred("resolve_edit", str(proposal.get("id", "")), turn_id, true)
+	)
+	controller.tool_execution_completed.connect(func(_turn_id: int, call_id: String, _tool_name: String, execution: Dictionary, _duration_ms: int): completed_executions[call_id] = execution.duplicate(true))
+	controller.tasks_changed.connect(func(tasks: Array): task_emissions.append(tasks.duplicate(true)))
+	controller.workflow_state_changed.connect(func(_turn_id: int, state: String, _details: Dictionary): workflow_states.append(state))
+	controller.message_received.connect(func(_turn_id: int, _role: String, content: String): visible_messages.append(content))
+	controller.error_occurred.connect(func(_turn_id: int, message: String): errors.append(message))
+	_expect(controller.restore_session_state(AgentController.AgentMode.BUILD, [], {}, initial_tasks), "the long-task fixture should restore its initial checklist")
+	controller.send_user_message("Fix and verify the startup failure")
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("inspect_source", "read_file", {"filepath": "res://fixture.gd"})]))
+	await _deliver_completion(controller, _tool_response([_patch_call("fix_before_run")]))
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("run_first", "run_current_scene", {"verification": criteria})]))
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("verify_first", "verify_game_run", {"run_id": 1})]))
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("stop_first", "stop_game")]))
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("reread_after_failure", "read_file", {"filepath": "res://fixture.gd"})]))
+	await _deliver_completion(controller, _tool_response([_patch_call_with_hash("fix_after_failure", "new-hash-1")]))
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("run_second", "run_current_scene", {"verification": criteria})]))
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("verify_second", "verify_game_run", {"run_id": 2})]))
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("tasks_complete", "update_tasks", {"tasks": completed_tasks})]))
+	var final_text := "Applied both approved fixes. Run 1 failed the predeclared clean-startup criterion, and I stopped it. Run 2 passed the same startup-only criterion after the second fix. This does not verify visual or general gameplay behavior."
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": final_text}}]})
+
+	_expect(api.requests.size() == 11 and controller._tool_rounds == 10, "the long task should complete ten tool rounds and one terminal provider request")
+	var expected_ids := ["inspect_source", "fix_before_run", "run_first", "verify_first", "stop_first", "reread_after_failure", "fix_after_failure", "run_second", "verify_second", "tasks_complete"]
+	for call_id in expected_ids:
+		_expect(_tool_result_count(controller.message_history, call_id) == 1 and _tool_result_index(controller.message_history, call_id) == _assistant_call_index(controller.message_history, call_id) + 1, "the long task should retain one adjacent result for " + call_id)
+	_expect(_protocol_is_valid(controller.message_history), "the complete long-task history should remain protocol-valid")
+	_expect(tools.prepare_calls == 2 and tools.apply_calls == 2 and tools.prepared_change_ids == ["fix_before_run", "fix_after_failure"] and tools.applied_change_ids == ["fix_before_run", "fix_after_failure"], "both fixes should be prepared, reviewed, and applied exactly once")
+	_expect(_tool_result_content(controller.message_history, "reread_after_failure").contains("new-hash-1") and str(_tool_call_arguments(controller.message_history, "fix_after_failure").get("base_hash", "")) == "new-hash-1", "the second patch must use the exact hash returned by the post-failure reread")
+	_expect(proposed_apply_counts == [0, 1] and tools.revert_calls == 0, "each long-task proposal should appear before its own application without revert")
+	_expect(game.operation_log == ["start:1", "observe:1", "verify:1", "stop:1", "start:2", "observe:2", "verify:2"], "run observation, verification, stop, fix, and rerun operations should occur in exact order")
+	_expect(game.starts == 2 and game.stops == 1 and not game.active and game.verify_calls == [1, 2], "the failed first run should be stopped and the passing second run should exit naturally")
+	_expect(game.start_verifications.size() == 2 and game.start_verifications.all(func(value): return value.get("kind") == "clean_startup" and float(value.get("minimum_runtime_ms", 0)) == 250.0) and game.started_criteria_ids.size() == 2 and game.started_criteria_ids[0] == game.started_criteria_ids[1], "both runs must use identical predeclared verification criteria")
+	_expect(completed_executions.get("verify_first", {}).get("data", {}).get("status") == "failed" and completed_executions.get("verify_second", {}).get("data", {}).get("status") == "passed", "the model-visible verification sequence should fail first and pass after the second fix")
+	_expect(workflow_states.count("observing") == 2 and workflow_states.count("assessment_ready") == 2 and not workflow_states.has("finalizing"), "both launches should receive one automatic observation without forced finalization")
+	_expect(task_emissions == [completed_tasks] and controller.snapshot_session_state().get("tasks") == completed_tasks, "the long task should reconcile and persist one completed checklist")
+	_expect(api.requests[8].get("messages", []).any(func(message): return str(message.get("content", "")).contains("ORCA ACTION BUDGET")), "the eighth tool round should add one early action-budget warning")
+	_expect(_task_context_count(api.requests[10].get("messages", [])) == 1 and _task_context_content(api.requests[10].get("messages", [])).contains("completed"), "the final provider request should receive exactly one completed checklist")
+	_expect(not controller.is_busy() and errors.is_empty() and visible_messages == [final_text], "the deterministic long task should end once with its scoped final response")
+	_expect(controller._context_message_index == -1 and controller._task_context_message_index == -1 and controller._runtime_context_message_index == -1 and controller._round_budget_message_index == -1, "terminal completion should clear every long-task request-scoped context index")
+	_expect(not JSON.stringify(controller.snapshot_session_state()).contains("ORCA GAME RUN OBSERVATION") and not JSON.stringify(controller.snapshot_session_state()).contains("ORCA ACTION BUDGET"), "runtime evidence and budget notices must not persist in resumable continuation")
+	await _free_controller(controller)
+
+
 func _test_tool_call_count_bound() -> void:
 	var fixture := await _new_controller()
 	var controller = fixture["controller"]
@@ -1208,6 +1389,164 @@ func _test_tool_call_count_bound() -> void:
 	await _free_controller(controller)
 
 
+func _test_tool_batch_barriers() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var tools: FakeTools = fixture["tools"]
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller._reset_tool_batch_regeneration_state()
+	controller.message_history.append({"role": "user", "content": "Inspect two independent resources"})
+	var read_calls := [
+		_simple_tool_call("read_batch_file", "read_file"),
+		_simple_tool_call("read_batch_scene", "inspect_scene"),
+	]
+	await _deliver_completion(controller, _tool_response(read_calls))
+	_expect(tools.execute_calls == 2, "independent read-only tools should remain batchable")
+	_expect(api.requests.size() == 1, "an allowed read-only batch should continue with one provider request")
+	_expect(_tool_result_count(controller.message_history, "read_batch_file") == 1 and _tool_result_count(controller.message_history, "read_batch_scene") == 1 and _protocol_is_valid(controller.message_history), "an allowed read-only batch should retain one protocol-valid result per call")
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Inspection complete."}}]})
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	tools = fixture["tools"]
+	var started_calls := [0]
+	var batch_errors := []
+	controller.tool_execution_started.connect(func(_turn_id: int, _call_id: String, _tool_name: String, _arguments: Dictionary): started_calls[0] += 1)
+	controller.error_occurred.connect(func(_turn_id: int, message: String): batch_errors.append(message))
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller._reset_tool_batch_regeneration_state()
+	controller.message_history.append({"role": "user", "content": "Change and inspect"})
+	await _deliver_completion(controller, _tool_response([_patch_call("unsafe_batched_patch"), _simple_tool_call("unsafe_batched_read", "read_file")]))
+	_expect(tools.prepare_calls == 0 and tools.execute_calls == 0 and started_calls[0] == 0, "a valid but unsafe mixed batch must be rejected before activity, reads, or mutation preparation")
+	_expect(api.requests.size() == 1 and controller.is_busy(), "the first unsafe batch should receive one side-effect-free correction request")
+	if api.requests.size() == 1:
+		var retry_history: String = JSON.stringify(api.requests[0].get("messages", []))
+		_expect(retry_history.contains(AgentController.TOOL_BATCH_CORRECTION_NOTICE), "unsafe batch correction should explain the singleton barrier")
+		_expect(not retry_history.contains("unsafe_batched_patch") and not retry_history.contains("unsafe_batched_read"), "an unsafe batch must be absent from regenerated history")
+	await _deliver_completion(controller, _tool_response([_simple_tool_call("unsafe_batched_tasks", "update_tasks"), _simple_tool_call("unsafe_second_read", "read_file")]))
+	_expect(api.requests.size() == 1 and not controller.is_busy(), "a second unsafe batch must stop without another correction request")
+	_expect(batch_errors.size() == 1 and str(batch_errors[0]).contains("No tool from either rejected batch was executed"), "repeated unsafe batches should end with an explicit atomic non-execution error")
+	_expect(tools.prepare_calls == 0 and tools.execute_calls == 0 and started_calls[0] == 0, "repeated unsafe batches must remain side-effect-free")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	var batchable_tools := [
+		"list_directory",
+		"read_file",
+		"search_files",
+		"inspect_scene",
+		"inspect_project_settings",
+		"read_project_skill",
+		"inspect_godot_api",
+		"read_gdscript_function",
+		"discover_dependencies",
+		"get_editor_context",
+		"get_diagnostics",
+	]
+	for tool_name in batchable_tools:
+		var validation: Dictionary = controller._validate_tool_batch([_simple_tool_call("read_anchor_" + tool_name, "read_file"), _simple_tool_call("read_allowed_" + tool_name, tool_name)])
+		_expect(validation.get("success", false), "%s should remain available in a multi-call read-only batch" % tool_name)
+	var singleton_tools := [
+		"request_work_mode",
+		"update_tasks",
+		"apply_patch",
+		"propose_input_map_changes",
+		"propose_main_scene_change",
+		"propose_project_settings_changes",
+		"propose_scene_changes",
+		"run_current_scene",
+		"run_main_scene",
+		"stop_game",
+		"observe_game_run",
+		"verify_game_run",
+		"future_unknown_tool",
+	]
+	for tool_name in singleton_tools:
+		var singleton_call := _simple_tool_call("single_" + tool_name, tool_name)
+		_expect(controller._validate_tool_batch([singleton_call]).get("success", false), "%s should be accepted when it is the only tool call" % tool_name)
+		var validation: Dictionary = controller._validate_tool_batch([_simple_tool_call("read_before_" + tool_name, "read_file"), singleton_call])
+		_expect(not validation.get("success", true) and validation.get("reason") == "singleton_required" and validation.get("tool_name") == tool_name, "%s should require a singleton batch" % tool_name)
+	await _free_controller(controller)
+
+
+func _test_malformed_tool_batch_regeneration() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	var tools: FakeTools = fixture["tools"]
+	var started_calls := [0]
+	controller.tool_execution_started.connect(func(_turn_id: int, _call_id: String, _tool_name: String, _arguments: Dictionary): started_calls[0] += 1)
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller._reset_tool_batch_regeneration_state()
+	controller.message_history.append({"role": "user", "content": "Inspect safely"})
+	var malformed_call := {"id": "malformed_once", "type": "function", "function": {"name": "read_file", "arguments": "{\"filepath\":"}}
+	await _deliver_completion(controller, _tool_response([malformed_call]))
+	_expect(tools.execute_calls == 0 and started_calls[0] == 0, "a malformed tool batch must be rejected before tool activity or side effects")
+	_expect(api.requests.size() == 1 and controller.is_busy(), "the first malformed batch should issue exactly one side-effect-free regeneration request")
+	if api.requests.size() == 1:
+		var retry_history: Array = api.requests[0].get("messages", [])
+		var serialized_retry := JSON.stringify(retry_history)
+		_expect(serialized_retry.contains(AgentController.TOOL_BATCH_CORRECTION_NOTICE), "the regeneration request should explain the rejected batch")
+		_expect(not serialized_retry.contains("malformed_once") and not serialized_retry.contains("tool_calls") and not serialized_retry.contains("\"role\":\"tool\""), "the regeneration request must not replay malformed tool protocol")
+		_expect(api.requests[0].get("request_options", {}).get("allow_stream_options_retry") == true, "a pre-execution regeneration may retain initial-request transport compatibility fallback")
+
+	var valid_call := {"id": "valid_after_regeneration", "type": "function", "function": {"name": "read_file", "arguments": "{}"}}
+	await _deliver_completion(controller, _tool_response([valid_call]))
+	_expect(tools.execute_calls == 1 and started_calls[0] == 1, "a valid regenerated batch should execute once")
+	_expect(api.requests.size() == 2, "a valid regenerated batch should continue with one tool-result request")
+	if api.requests.size() == 2:
+		var continuation: Array = api.requests[1].get("messages", [])
+		_expect(_tool_result_count(continuation, "valid_after_regeneration") == 1 and _protocol_is_valid(continuation), "the regenerated batch should produce one protocol-valid tool result")
+		_expect(not JSON.stringify(continuation).contains("malformed_once"), "malformed provider output must remain absent from later continuation history")
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Inspection complete."}}]})
+	_expect(not controller.is_busy() and not JSON.stringify(controller.message_history).contains(AgentController.TOOL_BATCH_CORRECTION_NOTICE), "the temporary correction notice should be removed when the turn completes")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	tools = fixture["tools"]
+	var errors := []
+	controller.error_occurred.connect(func(_turn_id: int, message: String): errors.append(message))
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller._reset_tool_batch_regeneration_state()
+	controller.message_history.append({"role": "user", "content": "Inspect safely"})
+	await _deliver_completion(controller, _tool_response([malformed_call]))
+	var non_object_call := {"id": "malformed_twice", "type": "function", "function": {"name": "read_file", "arguments": "[]"}}
+	await _deliver_completion(controller, _tool_response([non_object_call]))
+	_expect(tools.execute_calls == 0 and api.requests.size() == 1, "a second invalid batch must stop without execution or another regeneration")
+	_expect(not controller.is_busy() and errors.size() == 1 and str(errors[0]).contains("No tool from either rejected batch was executed"), "repeated malformed batches should end with an explicit non-execution error")
+	_expect(not JSON.stringify(controller.message_history).contains("malformed_once") and not JSON.stringify(controller.message_history).contains("malformed_twice"), "repeated malformed output must not enter retained conversation history")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	tools = fixture["tools"]
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	controller._reset_turn_recovery_state()
+	controller._reset_tool_batch_regeneration_state()
+	controller.message_history.append({"role": "user", "content": "Prepare and inspect"})
+	await _deliver_completion(controller, _tool_response([_patch_call("valid_mutation_in_rejected_batch"), malformed_call]))
+	_expect(tools.prepare_calls == 0 and tools.execute_calls == 0, "one malformed call must atomically reject a mixed batch before valid mutation or read calls execute")
+	_expect(api.requests.size() == 1 and not JSON.stringify(api.requests[0].get("messages", [])).contains("valid_mutation_in_rejected_batch"), "mixed rejected batches must be regenerated from pre-tool history")
+	controller.cancel_current_request()
+	await _free_controller(controller)
+
+
 func _test_project_guidance_context() -> void:
 	var controller := GuidanceController.new()
 	get_root().add_child(controller)
@@ -1216,27 +1555,50 @@ func _test_project_guidance_context() -> void:
 	controller.tools_script = FakeTools.new()
 	controller._tasks.assign([{"content": "Fixture task", "status": "pending"}])
 	controller._add_turn_context()
-	var context := str(controller.message_history[-1].get("content", ""))
+	var context := str(controller.message_history[controller._context_message_index].get("content", ""))
 	_expect(context.contains("WRAPPED EXACT GUIDANCE"), "turn context should include the service's exact wrapped AGENTS content")
 	_expect(context.contains("Fixture Skill") and context.contains("Catalog description"), "turn context should include bounded skill catalog metadata")
 	_expect(not context.contains("SECRET SKILL BODY") and not context.contains("SECRET WRAPPER") and not context.contains("wrapped_body"), "turn context must redact skill bodies and non-catalog fields")
-	_expect(context.contains("CURRENT GODOT EDITOR CONTEXT") and context.contains("CURRENT ORCA TASK CHECKLIST"), "guidance should share the single existing editor/task context message")
-	_expect(controller._context_message_index == controller.message_history.size() - 1, "guidance should use one tracked request-scoped message")
+	_expect(not context.contains(AgentController.TASK_CONTEXT_HEADING), "the immutable guidance context should not retain checklist state")
+	_expect(controller._task_context_message_index == controller.message_history.size() - 1 and _task_context_count(controller.message_history) == 1, "tasks should use one separately tracked refreshable context message")
 	controller._clear_turn_context()
 	_expect(not JSON.stringify(controller.message_history).contains("WRAPPED EXACT GUIDANCE"), "request-scoped guidance should be removed when a turn ends")
 	controller.instruction_result = {"success": false, "error": "root failed\n" + "x".repeat(1000)}
 	controller.skill_result = {"success": false, "error": "catalog failed"}
 	controller._add_turn_context()
-	context = str(controller.message_history[-1].get("content", ""))
+	context = str(controller.message_history[controller._context_message_index].get("content", ""))
 	_expect(context.contains("PROJECT GUIDANCE WARNING: root failed") and context.contains("PROJECT SKILL CATALOG WARNING: catalog failed"), "guidance service errors should become request context warnings instead of aborting")
 	_expect(not context.contains("\nxxxxxxxx"), "guidance warnings should be normalized and bounded")
 	controller._is_running = true
 	controller._finish_cancelled()
-	_expect(controller._context_message_index == -1 and not JSON.stringify(controller.message_history).contains("root failed"), "cancellation should remove guidance and reset its index")
+	_expect(controller._context_message_index == -1 and controller._task_context_message_index == -1 and not JSON.stringify(controller.message_history).contains("root failed"), "cancellation should remove guidance and task context and reset their indexes")
 	controller._add_turn_context()
 	controller._is_running = true
 	_deliver_failure(controller, {"message": "fixture failure"})
 	_expect(controller._context_message_index == -1 and controller._tool_loop_guard == null, "request failure should remove guidance and reset loop state")
+	await _free_controller(controller)
+
+
+func _test_runtime_progress_normalization() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	controller._reset_turn_loop_state()
+	var first := _runtime_observation_result(4200, 4, 2)
+	var elapsed_only := _runtime_observation_result(9100, 4, 3)
+	var advanced := _runtime_observation_result(9300, 5, 4)
+	_expect(ToolLoopGuard.fingerprint(controller._tool_loop_view(first)) == ToolLoopGuard.fingerprint(controller._tool_loop_view(elapsed_only)), "elapsed time and observation cursors must not change runtime loop identity")
+	_expect(ToolLoopGuard.fingerprint(controller._tool_loop_view(first)) != ToolLoopGuard.fingerprint(controller._tool_loop_view(advanced)), "a new runtime evidence sequence should change runtime loop identity")
+	controller._record_tool_progress([first])
+	var epoch: int = controller._tool_progress_epoch
+	controller._record_tool_progress([elapsed_only])
+	_expect(controller._tool_progress_epoch == epoch, "elapsed-only observations must not advance semantic progress")
+	controller._record_tool_progress([advanced])
+	_expect(controller._tool_progress_epoch == epoch + 1, "a new runtime sequence should advance semantic progress")
+	var guard := ToolLoopGuard.new()
+	guard.record_round([controller._tool_loop_view(first)], epoch)
+	guard.record_round([controller._tool_loop_view(elapsed_only)], epoch)
+	var trigger := guard.record_round([controller._tool_loop_view(_runtime_observation_result(15000, 4, 9))], epoch)
+	_expect(trigger.get("triggered", false) and trigger.get("reason") == ToolLoopGuard.REASON_IDENTICAL_CALL_RESULT, "elapsed-only runtime polling should trigger identical-call finalization")
 	await _free_controller(controller)
 
 
@@ -1369,10 +1731,19 @@ func _test_tool_round_cap_finalization() -> void:
 	var fixture := await _new_controller()
 	var controller = fixture["controller"]
 	var api: FakeApiClient = fixture["api"]
+	var game: FakeGameProcessService = fixture["game"]
 	var errors := []
+	var visible_messages := []
 	controller.error_occurred.connect(func(_turn_id: int, message: String): errors.append(message))
+	controller.message_received.connect(func(_turn_id: int, _role: String, content: String): visible_messages.append(content))
 	controller._is_running = true
 	controller._reset_turn_loop_state()
+	game.active = true
+	game.run_id = 7
+	game.snapshot["run_id"] = 7
+	controller._run_attempts = 1
+	controller._turn_run_ids[7] = true
+	game.snapshot["state"] = "running"
 	for index in range(AgentController.MAX_TOOL_ROUNDS):
 		await _deliver_completion(controller, _tool_response([{
 			"id": "bounded_%d" % index,
@@ -1380,11 +1751,30 @@ func _test_tool_round_cap_finalization() -> void:
 			"function": {"name": "read_file", "arguments": JSON.stringify({"filepath": "res://bounded_%d.gd" % index})}
 		}]))
 	_expect(api.requests.size() == AgentController.MAX_TOOL_ROUNDS, "the hard tool-round boundary should request one final response instead of failing")
+	_expect(JSON.stringify(api.requests[AgentController.ROUND_BUDGET_WARNING_THRESHOLD - 1].get("messages", [])).contains("ORCA ACTION BUDGET"), "long turns should receive an early remaining-round warning")
 	_expect(api.requests[-1].get("tools", [1]).is_empty(), "the hard tool-round boundary must remove the tool schema")
+	_expect(game.stops == 1 and not game.active, "the hard cap should spend one controller-owned cleanup slot on the exact active Orca process")
+	_expect(JSON.stringify(api.requests[-1].get("messages", [])).contains("ORCA CONTROLLER CLEANUP BEFORE FINALIZATION"), "safe finalization should tell the provider about controller-owned process cleanup")
 	_expect(controller._loop_final_trigger_reason == AgentController.LOOP_TRIGGER_ROUND_CAP, "the hard cap should remain distinct from repetitive/no-progress triggers")
 	_expect(errors.is_empty() and controller.is_busy(), "reaching the tool-round boundary should remain active while awaiting the final response")
 	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Bounded summary."}}]})
 	_expect(not controller.is_busy() and errors.is_empty(), "a final answer at the tool-round boundary should complete without a system error")
+	_expect(visible_messages.size() == 1 and str(visible_messages[0]).contains("Cleanup: Stopped the same-turn Orca-owned game process"), "the final user-visible result should retain a privacy-safe cleanup outcome")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	game = fixture["game"]
+	controller._is_running = true
+	controller._reset_turn_loop_state()
+	game.active = true
+	game.run_id = 8
+	game.snapshot["run_id"] = 8
+	controller._run_attempts = 1
+	controller._turn_run_ids[7] = true
+	controller._begin_loop_finalization(AgentController.LOOP_TRIGGER_ROUND_CAP)
+	_expect(game.stops == 0 and game.active, "finalization must not stop a newer Orca process whose exact run ID was not launched in the active turn")
+	controller.cancel_current_request()
 	await _free_controller(controller)
 
 
@@ -1431,6 +1821,87 @@ func _test_incomplete_protocol_refuses_recovery() -> void:
 	controller._finish_request_error("fixture malformed history")
 	_expect(not controller.last_failure_was_checkpointed(), "a tool call without its exact result must refuse recovery")
 	_expect(JSON.stringify(controller.message_history).contains("missing_result"), "unsafe protocol should remain in memory for inspection rather than being misrepresented as recovered")
+	await _free_controller(controller)
+
+
+func _test_context_pressure_finalization() -> void:
+	var fixture := await _new_controller()
+	var controller = fixture["controller"]
+	var api: FakeApiClient = fixture["api"]
+	ModelMetadata.set_runtime_metadata("openai", "orca-pressure-test", {"context_window": 4096})
+	controller._turn_provider_config = {"provider": "openai", "base_url": "https://api.openai.com/v1", "model": "orca-pressure-test", "api_key": "test"}
+	var call := _simple_tool_call("pressure_read", "read_file")
+	var selected_history: Array = []
+	for padding in range(0, 14000, 100):
+		var history := [
+			{"role": "system", "content": "system"},
+			{"role": "user", "content": "current " + "x".repeat(padding)},
+			{"role": "assistant", "content": "", "tool_calls": [call]},
+			{"role": "tool", "tool_call_id": "pressure_read", "content": "read completed"},
+		]
+		var final_history: Array = history.duplicate(true)
+		final_history.append({"role": "system", "content": AgentController.LOOP_FINAL_NOTICE})
+		if not ContextBudget.prepare(history, controller._get_tool_definitions(), 4096).get("success", true) and ContextBudget.prepare(final_history, [], 4096).get("success", false):
+			selected_history = history
+			break
+	_expect(not selected_history.is_empty(), "the controller fixture should find a tools-full/no-tools-fitting context range")
+	controller.message_history = selected_history
+	controller._is_running = true
+	controller._turn_id_serial = 1
+	controller._active_turn_id = 1
+	controller._tool_rounds = 1
+	controller._reset_turn_loop_state()
+	controller._turn_tool_receipts.append({"name": "read_file", "outcome": "completed"})
+	_expect(controller._send_current_request(), "context pressure after a complete tool round should send one safe finalization request")
+	_expect(api.requests.size() == 1 and api.requests[0].get("tools", [1]).is_empty(), "context-pressure fallback should send no tool schemas")
+	_expect(controller._loop_final_request and controller._loop_final_trigger_reason == AgentController.LOOP_TRIGGER_CONTEXT_PRESSURE, "context pressure should retain its distinct finalization trigger")
+	_expect(controller.support_request_metadata().get("stage") == "safe_finalization" and not controller.support_request_metadata().get("tools_offered", true), "support state should identify no-tools context-pressure finalization")
+	_expect(_tool_result_count(api.requests[0].get("messages", []), "pressure_read") == 1 and _protocol_is_valid(api.requests[0].get("messages", [])), "context-pressure finalization must retain one complete tool result without replay")
+	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Safely summarized completed work."}}]})
+	_expect(not controller.is_busy() and str(controller.message_history[-1].get("content", "")).contains("A new request is needed"), "the provider-assisted pressure finalization should complete with explicit continuation guidance")
+	await _free_controller(controller)
+
+	fixture = await _new_controller()
+	controller = fixture["controller"]
+	api = fixture["api"]
+	var game: FakeGameProcessService = fixture["game"]
+	var errors := []
+	controller.error_occurred.connect(func(_turn_id: int, message: String): errors.append(message))
+	ModelMetadata.set_runtime_metadata("openai", "orca-pressure-local-test", {"context_window": 2048})
+	controller._turn_provider_config = {"provider": "openai", "base_url": "https://api.openai.com/v1", "model": "orca-pressure-local-test", "api_key": "test"}
+	controller.message_history = [
+		{"role": "system", "content": "system"},
+		{"role": "user", "content": "Preserve completed state"},
+		{"role": "assistant", "content": "", "tool_calls": [_simple_tool_call("pressure_too_large", "read_file")]},
+		{"role": "tool", "tool_call_id": "pressure_too_large", "content": "private-result-" + "z".repeat(24000)},
+	]
+	controller._tasks.assign([{"content": "Inspect failure", "status": "completed"}, {"content": "Continue safely", "status": "in_progress"}])
+	controller._is_running = true
+	controller._turn_id_serial = 1
+	controller._active_turn_id = 1
+	controller._tool_rounds = 1
+	controller._reset_turn_loop_state()
+	controller._turn_tool_receipts.append({"name": "read_file", "outcome": "completed"})
+	controller._run_attempts = 1
+	game.active = true
+	game.run_id = 9
+	game.snapshot["run_id"] = 9
+	controller._turn_run_ids[9] = true
+	game.snapshot["state"] = "running"
+	_expect(not controller._send_current_request(), "an active tool turn that cannot fit even without tools should stop locally")
+	_expect(api.requests.is_empty() and game.stops == 1 and not game.active, "local pressure fallback should avoid transport and clean up only the same-turn owned run")
+	_expect(controller.last_failure_was_checkpointed() and errors.size() == 1, "local pressure fallback should emit one resumable deterministic checkpoint")
+	var rendered_error := str(errors[0]) if not errors.is_empty() else ""
+	var serialized := JSON.stringify(controller.message_history)
+	_expect(rendered_error.contains(AgentController.RECOVERY_CHECKPOINT_HEADING) and rendered_error.contains("[completed] \"Inspect failure\"") and rendered_error.contains("controller_owned_run_cleanup: completed"), "the visible local checkpoint should contain bounded receipts, tasks, and normalized cleanup state")
+	_expect(not serialized.contains("pressure_too_large") and not serialized.contains("private-result") and not serialized.contains("tool_calls") and not serialized.contains("\"role\":\"tool\""), "local pressure recovery must collapse call IDs, raw results, and replayable protocol")
+	_expect(controller.snapshot_session_state().get("tasks") == controller._tasks and controller.support_request_metadata().get("failure_category") == "context_budget", "local pressure recovery should preserve tasks separately and report a local budget failure")
+	ModelMetadata.set_runtime_metadata("openai", "orca-pressure-local-test", {"context_window": 32768})
+	controller.send_user_message("Continue the unfinished work after re-inspection")
+	_expect(api.requests.size() == 1 and not JSON.stringify(api.requests[0].get("messages", [])).contains("pressure_too_large"), "a later explicit request should retain the checkpoint without replaying prior tools")
+	controller.cancel_current_request()
+	ModelMetadata.remove_runtime_metadata("openai", "orca-pressure-test")
+	ModelMetadata.remove_runtime_metadata("openai", "orca-pressure-local-test")
 	await _free_controller(controller)
 
 
@@ -1526,6 +1997,10 @@ func _free_controller(controller) -> void:
 
 
 func _patch_call(id: String) -> Dictionary:
+	return _patch_call_with_hash(id, "old-hash")
+
+
+func _patch_call_with_hash(id: String, base_hash: String) -> Dictionary:
 	return {
 		"id": id,
 		"type": "function",
@@ -1533,7 +2008,7 @@ func _patch_call(id: String) -> Dictionary:
 			"name": "apply_patch",
 			"arguments": JSON.stringify({
 				"filepath": "res://fixture.txt",
-				"base_hash": "old-hash",
+				"base_hash": base_hash,
 				"edits": [{"start_line": 1, "end_line": 1, "replacement": "new"}]
 			})
 		}
@@ -1544,6 +2019,10 @@ func _work_mode_call(id: String, reason: String) -> Dictionary:
 	return {"id": id, "type": "function", "function": {"name": "request_work_mode", "arguments": JSON.stringify({"reason": reason})}}
 
 
+func _simple_tool_call(id: String, tool_name: String, arguments: Dictionary = {}) -> Dictionary:
+	return {"id": id, "type": "function", "function": {"name": tool_name, "arguments": JSON.stringify(arguments)}}
+
+
 func _tool_response(tool_calls: Array) -> Dictionary:
 	return {
 		"model": "test-model",
@@ -1551,6 +2030,31 @@ func _tool_response(tool_calls: Array) -> Dictionary:
 		"requested_api_url": "https://example.invalid/v1/chat/completions",
 		"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
 		"choices": [{"message": {"role": "assistant", "content": "", "tool_calls": tool_calls}}]
+	}
+
+
+func _runtime_observation_result(elapsed_ms: int, sequence: int, after_sequence: int) -> Dictionary:
+	var data := {
+		"run_id": 7,
+		"sequence": sequence,
+		"state": "running",
+		"elapsed_ms": elapsed_ms,
+		"verification_status": "pending",
+		"exit_code": null,
+		"stdout": "",
+		"stderr": "",
+		"diagnostics": [],
+		"output_truncated": false,
+		"diagnostics_truncated": false,
+		"dropped_bytes": 0,
+		"changed_since": false,
+	}
+	return {
+		"name": "observe_game_run",
+		"arguments": {"run_id": 7, "after_sequence": after_sequence},
+		"outcome": "completed",
+		"result": "Run 7 snapshot %d: running\nElapsed: %d ms" % [sequence, elapsed_ms],
+		"execution": {"success": true, "content": "observation", "outcome": "completed", "data": data},
 	}
 
 
@@ -1575,6 +2079,41 @@ func _tool_result_index(history: Array, call_id: String) -> int:
 		if typeof(message) == TYPE_DICTIONARY and message.get("role") == "tool" and message.get("tool_call_id") == call_id:
 			return index
 	return -1
+
+
+func _tool_result_content(history: Array, call_id: String) -> String:
+	var index := _tool_result_index(history, call_id)
+	return str(history[index].get("content", "")) if index >= 0 else ""
+
+
+func _tool_call_arguments(history: Array, call_id: String) -> Dictionary:
+	var index := _assistant_call_index(history, call_id)
+	if index < 0:
+		return {}
+	for call_value in history[index].get("tool_calls", []):
+		var call: Dictionary = call_value if call_value is Dictionary else {}
+		if str(call.get("id", "")) != call_id:
+			continue
+		var function: Dictionary = call.get("function", {}) if typeof(call.get("function")) == TYPE_DICTIONARY else {}
+		var json := JSON.new()
+		if json.parse(str(function.get("arguments", "{}"))) == OK and typeof(json.get_data()) == TYPE_DICTIONARY:
+			return json.get_data()
+	return {}
+
+
+func _task_context_count(history: Array) -> int:
+	var count := 0
+	for message in history:
+		if typeof(message) == TYPE_DICTIONARY and message.get("role") == "system" and str(message.get("content", "")).begins_with(AgentController.TASK_CONTEXT_HEADING):
+			count += 1
+	return count
+
+
+func _task_context_content(history: Array) -> String:
+	for message in history:
+		if typeof(message) == TYPE_DICTIONARY and message.get("role") == "system" and str(message.get("content", "")).begins_with(AgentController.TASK_CONTEXT_HEADING):
+			return str(message.get("content", ""))
+	return ""
 
 
 func _assistant_call_index(history: Array, call_id: String) -> int:
