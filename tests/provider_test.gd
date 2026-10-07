@@ -15,6 +15,7 @@ func _init() -> void:
 	_test_deepseek_provider()
 	_test_gemini_provider()
 	_test_xai_provider()
+	_test_openrouter_provider()
 	_test_metadata_mapping()
 	if _failures.is_empty():
 		print("provider_test: PASS")
@@ -102,6 +103,11 @@ func _test_deepseek_provider() -> void:
 	provider.apply_chat_options(off_body, "off")
 	_expect(off_body.get("thinking", {}).get("type") == "disabled", "DeepSeek off should disable thinking")
 	_expect(off_body.get("max_tokens") == 8192 and not off_body.has("reasoning_effort"), "DeepSeek non-thinking output should remain bounded without reasoning effort")
+	var source_messages := [{"role": "assistant", "reasoning_content": "keep", "reasoning": "drop", "reasoning_details": [{"type": "drop"}]}]
+	var sanitized: Array = provider.sanitize_messages(source_messages)
+	_expect(sanitized[0].get("reasoning_content") == "keep", "DeepSeek should preserve reasoning_content for tool continuation")
+	_expect(not sanitized[0].has("reasoning") and not sanitized[0].has("reasoning_details"), "DeepSeek should strip incompatible reasoning fields")
+	_expect(source_messages[0].has("reasoning") and source_messages[0].has("reasoning_details"), "DeepSeek sanitation should not mutate controller history")
 
 
 func _test_gemini_provider() -> void:
@@ -136,9 +142,11 @@ func _test_xai_provider() -> void:
 	var body := {}
 	provider.apply_chat_options(body, "xhigh")
 	_expect(body.get("reasoning_effort") == "xhigh", "xAI reasoning effort should use the documented request field")
-	var sanitized: Array = provider.sanitize_messages([{"role": "assistant", "reasoning_content": "keep", "reasoning": "drop", "reasoning_details": []}])
+	var source_messages := [{"role": "assistant", "reasoning_content": "keep", "reasoning": "drop", "reasoning_details": []}]
+	var sanitized: Array = provider.sanitize_messages(source_messages)
 	_expect(sanitized[0].get("reasoning_content") == "keep", "xAI should preserve reasoning_content for continuation")
 	_expect(not sanitized[0].has("reasoning") and not sanitized[0].has("reasoning_details"), "xAI should remove unrelated reasoning formats")
+	_expect(source_messages[0].has("reasoning") and source_messages[0].has("reasoning_details"), "xAI sanitation should not mutate controller history")
 	var models: Array[Dictionary] = provider.normalize_models({"data": [
 		{
 			"id": "grok-420-reasoning",
@@ -155,6 +163,19 @@ func _test_xai_provider() -> void:
 		_expect(is_equal_approx(float(models[0].get("input_per_million")), 2.0), "xAI input pricing should convert to dollars per million tokens")
 		_expect(is_equal_approx(float(models[0].get("output_per_million")), 8.0), "xAI output pricing should convert to dollars per million tokens")
 		_expect(models[0].get("default_effort") == "high", "xAI discovery should retain the default reasoning effort")
+
+
+func _test_openrouter_provider() -> void:
+	var provider = ProviderRegistry.get_provider("openrouter")
+	var body := {}
+	provider.apply_chat_options(body, "high")
+	_expect(body.get("reasoning", {}).get("effort") == "high", "OpenRouter reasoning effort should use its provider-specific request object")
+	var source_messages := [{"role": "assistant", "reasoning_content": "keep-content", "reasoning": {"keep": true}, "reasoning_details": [{"id": "keep-details"}]}]
+	var sanitized: Array = provider.sanitize_messages(source_messages)
+	_expect(sanitized[0].get("reasoning_content") == "keep-content" and sanitized[0].get("reasoning", {}).get("keep") == true, "OpenRouter should preserve provider reasoning fields for continuation")
+	_expect(sanitized[0].get("reasoning_details", [])[0].get("id") == "keep-details", "OpenRouter should preserve reasoning_details for continuation")
+	sanitized[0]["reasoning_details"][0]["id"] = "changed-copy"
+	_expect(source_messages[0].get("reasoning_details", [])[0].get("id") == "keep-details", "OpenRouter sanitation should deep-copy controller history")
 
 
 func _test_metadata_mapping() -> void:

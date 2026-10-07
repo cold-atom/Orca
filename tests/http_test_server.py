@@ -11,7 +11,11 @@ class ReusableHTTPServer(HTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    requests_remaining = int(os.environ.get("ORCA_TEST_REQUESTS", "21"))
+    requests_remaining = int(os.environ.get("ORCA_TEST_REQUESTS", "29"))
+    gemini_loop_started = False
+    deepseek_loop_started = False
+    xai_loop_started = False
+    openrouter_loop_started = False
 
     def do_GET(self):
         try:
@@ -151,6 +155,107 @@ class Handler(BaseHTTPRequestHandler):
                         b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"gemini_call","type":"function","function":{"name":"read_file","arguments":"{}"},"extra_content":{"google":{"thought_signature":"test-signature"}}}]},"finish_reason":"stop"}]}\n\n',
                         b"data: [DONE]\n\n",
                     ])
+            elif self.path == "/gemini-loop/chat/completions":
+                body = json.loads(request_body)
+                messages = body.get("messages", [])
+                tool_messages = [message for message in messages if message.get("role") == "tool"]
+                if (
+                    self.headers.get("Authorization") != "Bearer local-test-key"
+                    or body.get("model") != "gemini-3-flash-preview"
+                    or body.get("tool_choice") != "auto"
+                ):
+                    self._send_json_error(400, "Invalid Gemini loop request")
+                elif not tool_messages:
+                    if Handler.gemini_loop_started:
+                        self._send_json_error(409, "Gemini loop was started twice")
+                    else:
+                        Handler.gemini_loop_started = True
+                        self._send_sse([
+                            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"gemini_loop_call","type":"function","function":{"name":"read_file","arguments":"{}"},"extra_content":{"google":{"thought_signature":"loop-"}}}]},"finish_reason":null}]}\n\n',
+                            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"extra_content":{"google":{"thought_signature":"signature"}}}]},"finish_reason":"stop"}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ])
+                else:
+                    assistant_messages = [message for message in messages if message.get("role") == "assistant" and message.get("tool_calls")]
+                    assistant_call = assistant_messages[-1].get("tool_calls", [{}])[0] if assistant_messages else {}
+                    function = assistant_call.get("function", {})
+                    signature = assistant_call.get("extra_content", {}).get("google", {}).get("thought_signature")
+                    tool_message = tool_messages[-1]
+                    valid_continuation = (
+                        Handler.gemini_loop_started
+                        and len(assistant_messages) == 1
+                        and len(assistant_messages[-1].get("tool_calls", [])) == 1
+                        and assistant_call.get("id") == "gemini_loop_call"
+                        and assistant_call.get("type") == "function"
+                        and function.get("name") == "read_file"
+                        and function.get("arguments") == "{}"
+                        and signature == "loop-signature"
+                        and tool_message.get("tool_call_id") == "gemini_loop_call"
+                        and tool_message.get("content") == '{"success":true,"path":"res://game.gd"}'
+                        and messages.index(assistant_messages[-1]) < messages.index(tool_message)
+                    )
+                    if not valid_continuation:
+                        self._send_json_error(400, "Invalid Gemini tool continuation")
+                    else:
+                        Handler.gemini_loop_started = False
+                        self._send_sse([
+                            b'data: {"choices":[{"delta":{"content":"gemini loop complete"},"finish_reason":"stop"}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ])
+            elif self.path == "/deepseek-loop/chat/completions":
+                body = json.loads(request_body)
+                messages = body.get("messages", [])
+                tool_messages = [message for message in messages if message.get("role") == "tool"]
+                valid_options = (
+                    self.headers.get("Authorization") == "Bearer local-test-key"
+                    and body.get("model") == "deepseek-chat"
+                    and body.get("tool_choice") == "auto"
+                    and body.get("thinking", {}).get("type") == "enabled"
+                    and body.get("reasoning_effort") == "high"
+                    and body.get("max_tokens") == 8192
+                )
+                if not valid_options:
+                    self._send_json_error(400, "Invalid DeepSeek loop request")
+                elif not tool_messages:
+                    if Handler.deepseek_loop_started:
+                        self._send_json_error(409, "DeepSeek loop was started twice")
+                    else:
+                        Handler.deepseek_loop_started = True
+                        self._send_sse([
+                            b'data: {"choices":[{"delta":{"reasoning_content":"plan-"},"finish_reason":null}]}\n\n',
+                            b'data: {"choices":[{"delta":{"reasoning_content":"tool","tool_calls":[{"index":0,"id":"deepseek_loop_call","type":"function","function":{"name":"read_file","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ])
+                else:
+                    assistant_messages = [message for message in messages if message.get("role") == "assistant" and message.get("tool_calls")]
+                    assistant_message = assistant_messages[-1] if assistant_messages else {}
+                    assistant_call = assistant_message.get("tool_calls", [{}])[0] if assistant_messages else {}
+                    function = assistant_call.get("function", {})
+                    tool_message = tool_messages[-1]
+                    valid_continuation = (
+                        Handler.deepseek_loop_started
+                        and len(assistant_messages) == 1
+                        and len(assistant_message.get("tool_calls", [])) == 1
+                        and assistant_message.get("reasoning_content") == "plan-tool"
+                        and "reasoning" not in assistant_message
+                        and "reasoning_details" not in assistant_message
+                        and assistant_call.get("id") == "deepseek_loop_call"
+                        and assistant_call.get("type") == "function"
+                        and function.get("name") == "read_file"
+                        and function.get("arguments") == "{}"
+                        and tool_message.get("tool_call_id") == "deepseek_loop_call"
+                        and tool_message.get("content") == '{"success":true,"path":"res://player.gd"}'
+                        and messages.index(assistant_message) < messages.index(tool_message)
+                    )
+                    if not valid_continuation:
+                        self._send_json_error(400, "Invalid DeepSeek tool continuation")
+                    else:
+                        Handler.deepseek_loop_started = False
+                        self._send_sse([
+                            b'data: {"choices":[{"delta":{"reasoning_content":"final-hidden"},"finish_reason":null}]}\n\n',
+                            b'data: {"choices":[{"delta":{"content":"deepseek loop complete"},"finish_reason":"stop"}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ])
             elif self.path == "/xai/chat/completions":
                 body = json.loads(request_body)
                 if (
@@ -164,6 +269,114 @@ class Handler(BaseHTTPRequestHandler):
                         b'data: {"choices":[{"delta":{"content":"grok ok","reasoning_content":"hidden"},"finish_reason":"stop"}]}\n\n',
                         b"data: [DONE]\n\n",
                     ])
+            elif self.path == "/xai-loop/chat/completions":
+                body = json.loads(request_body)
+                messages = body.get("messages", [])
+                tool_messages = [message for message in messages if message.get("role") == "tool"]
+                valid_options = (
+                    self.headers.get("Authorization") == "Bearer local-test-key"
+                    and body.get("model") == "grok-4"
+                    and body.get("tool_choice") == "auto"
+                    and body.get("reasoning_effort") == "high"
+                )
+                if not valid_options:
+                    self._send_json_error(400, "Invalid xAI loop request")
+                elif not tool_messages:
+                    if Handler.xai_loop_started:
+                        self._send_json_error(409, "xAI loop was started twice")
+                    else:
+                        Handler.xai_loop_started = True
+                        self._send_sse([
+                            b'data: {"choices":[{"delta":{"reasoning_content":"grok-"},"finish_reason":null}]}\n\n',
+                            b'data: {"choices":[{"delta":{"reasoning_content":"plan","tool_calls":[{"index":0,"id":"xai_loop_call","type":"function","function":{"name":"inspect_scene","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ])
+                else:
+                    assistant_messages = [message for message in messages if message.get("role") == "assistant" and message.get("tool_calls")]
+                    assistant_message = assistant_messages[-1] if assistant_messages else {}
+                    assistant_call = assistant_message.get("tool_calls", [{}])[0] if assistant_messages else {}
+                    function = assistant_call.get("function", {})
+                    tool_message = tool_messages[-1]
+                    valid_continuation = (
+                        Handler.xai_loop_started
+                        and len(assistant_messages) == 1
+                        and len(assistant_message.get("tool_calls", [])) == 1
+                        and assistant_message.get("reasoning_content") == "grok-plan"
+                        and "reasoning" not in assistant_message
+                        and "reasoning_details" not in assistant_message
+                        and assistant_call.get("id") == "xai_loop_call"
+                        and assistant_call.get("type") == "function"
+                        and function.get("name") == "inspect_scene"
+                        and function.get("arguments") == "{}"
+                        and tool_message.get("tool_call_id") == "xai_loop_call"
+                        and tool_message.get("content") == '{"success":true,"scene":"res://game.tscn"}'
+                        and messages.index(assistant_message) < messages.index(tool_message)
+                    )
+                    if not valid_continuation:
+                        self._send_json_error(400, "Invalid xAI tool continuation")
+                    else:
+                        Handler.xai_loop_started = False
+                        self._send_sse([
+                            b'data: {"choices":[{"delta":{"content":"xai loop complete"},"finish_reason":"stop"}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ])
+            elif self.path == "/openrouter-loop/chat/completions":
+                body = json.loads(request_body)
+                messages = body.get("messages", [])
+                tool_messages = [message for message in messages if message.get("role") == "tool"]
+                valid_options = (
+                    self.headers.get("Authorization") == "Bearer local-test-key"
+                    and self.headers.get("X-Title") == "Orca"
+                    and body.get("model") == "anthropic/claude-sonnet-test"
+                    and body.get("tool_choice") == "auto"
+                    and body.get("reasoning", {}).get("effort") == "high"
+                )
+                if not valid_options:
+                    self._send_json_error(400, "Invalid OpenRouter loop request")
+                elif not tool_messages:
+                    if Handler.openrouter_loop_started:
+                        self._send_json_error(409, "OpenRouter loop was started twice")
+                    else:
+                        Handler.openrouter_loop_started = True
+                        self._send_sse([
+                            b'data: {"choices":[{"delta":{"reasoning_details":[{"index":0,"id":"reasoning-1","type":"reasoning.text","text":"route-","signature":"sig-"}]},"finish_reason":null}]}\n\n',
+                            b'data: {"choices":[{"delta":{"reasoning_details":[{"index":0,"id":"reasoning-1","type":"reasoning.text","text":"plan","signature":"value"}],"tool_calls":[{"index":0,"id":"openrouter_loop_call","type":"function","function":{"name":"search_files","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ])
+                else:
+                    assistant_messages = [message for message in messages if message.get("role") == "assistant" and message.get("tool_calls")]
+                    assistant_message = assistant_messages[-1] if assistant_messages else {}
+                    assistant_call = assistant_message.get("tool_calls", [{}])[0] if assistant_messages else {}
+                    function = assistant_call.get("function", {})
+                    details = assistant_message.get("reasoning_details", [])
+                    detail = details[0] if len(details) == 1 else {}
+                    tool_message = tool_messages[-1]
+                    valid_continuation = (
+                        Handler.openrouter_loop_started
+                        and len(assistant_messages) == 1
+                        and len(assistant_message.get("tool_calls", [])) == 1
+                        and len(details) == 1
+                        and detail.get("index") == 0
+                        and detail.get("id") == "reasoning-1"
+                        and detail.get("type") == "reasoning.text"
+                        and detail.get("text") == "route-plan"
+                        and detail.get("signature") == "sig-value"
+                        and assistant_call.get("id") == "openrouter_loop_call"
+                        and assistant_call.get("type") == "function"
+                        and function.get("name") == "search_files"
+                        and function.get("arguments") == "{}"
+                        and tool_message.get("tool_call_id") == "openrouter_loop_call"
+                        and tool_message.get("content") == '{"success":true,"matches":2}'
+                        and messages.index(assistant_message) < messages.index(tool_message)
+                    )
+                    if not valid_continuation:
+                        self._send_json_error(400, "Invalid OpenRouter tool continuation")
+                    else:
+                        Handler.openrouter_loop_started = False
+                        self._send_sse([
+                            b'data: {"choices":[{"delta":{"content":"openrouter loop complete"},"finish_reason":"stop"}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ])
             elif self.path == "/local/v1/chat/completions":
                 body = json.loads(request_body)
                 if self.headers.get("Authorization") is not None or body.get("model") != "local-model":

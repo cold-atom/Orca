@@ -4,6 +4,8 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+## 1.2.1 - 2026-10-07
+
 ### Changed
 
 - Provider responses must now contain visible non-whitespace assistant text or at least one valid tool call; empty, whitespace-only, reasoning-only, usage-only, truncated, filtered, and contradictory completions fail visibly instead of silently ending a turn.
@@ -14,6 +16,12 @@ All notable changes to Orca are documented in this file.
 - Verified replacement now has explicit not-committed, committed, committed-with-cleanup-warning, and recovery-failure outcomes across file, scene, Input Map, main-scene, and ProjectSettings mutations.
 - The About page can copy a strict-allowlist diagnostic report containing Orca/Godot versions and coarse provider/request state without credentials, endpoint addresses, project data, conversation content, model output, logs, or file changes.
 - Plan turns can request one explicit, turn-bound transition to Work mode when the user asked for implementation or execution. Approval continues the same task with Work tools on the next provider request; rejection remains in Plan, and every project mutation still requires its normal separate approval.
+- Runtime loop detection now ignores elapsed-time and observation-cursor churn, warns before the tool-round boundary, gives each observation a recommended next action, and performs one controller-owned cleanup of an exact same-turn Orca process before safe finalization.
+- `stop_game` now returns bounded final run output, diagnostics, state, and verification evidence so routine cleanup does not require another diagnostics round.
+- Multi-call tool batches are now limited to known independent read-only operations. Work-mode requests, task updates, reviewed mutations, process control, observations, verifications, and unknown tools require singleton batches and are rejected atomically otherwise.
+- Successful task updates now refresh exactly one request-scoped checklist before continuation or finalization, while failed and cleared updates preserve or remove that context correctly.
+- Completed tool turns that exceed the full-schema context budget now attempt one no-tools safe finalization; if that cannot fit, Orca emits a deterministic sanitized local checkpoint containing only bounded receipts, tasks, and coarse cleanup outcome.
+- Automatic finalization cleanup is now bound to the exact active run ID launched in that turn, exposes only a fixed coarse outcome, and cannot stop a newer replacement run. Bounded `stop_game` evidence explicitly labels omitted diagnostics and truncated output tails.
 
 ### Fixed
 
@@ -25,6 +33,7 @@ All notable changes to Orca are documented in this file.
 - Fixed delayed stream and terminal callbacks from an older provider request being able to mutate a newer controller turn or chat UI state. Tool follow-ups now receive distinct provider request IDs while retaining one turn ID.
 - Fixed synchronous workflow and terminal signal handlers being able to launch an orphan request or have an ending turn clear ownership belonging to a reentrantly started turn.
 - Fixed plain Enter being silently swallowed while a request is active; follow-up drafts now remain editable and survive matching completion, failure, and cancellation while Stop remains explicit.
+- Fixed Expanded Diff retaining exclusive window ownership while Apply or Reject synchronously triggered editor work, which could collide with Godot reload or confirmation dialogs.
 
 ### Tests
 
@@ -36,6 +45,9 @@ All notable changes to Orca are documented in this file.
 - Added thinking/finalizing cancellation, terminal reentry, duplicate history/usage/message, and stale second-step probe failure/cancellation regressions.
 - Added active-composer, real Stop-button, draft-preservation, stale-control-state, request diagnostic lifecycle, and adversarial diagnostic privacy regressions.
 - Added Plan-to-Work schema, approval, rejection, cancellation, stale-decision, one-request, mixed-batch permission, protocol-ordering, session-redaction, and narrow-card regressions.
+- Added real-shaped volatile-observation, semantic-progress, early round-budget, exact-process cleanup, and bounded stop-evidence regressions.
+- Added successful read-only batching, singleton-only category, unknown-tool, mixed escalation, atomic rejection, and correction-request regressions.
+- Added checklist refresh/finalization, context-pressure fallback, complete inspect/fix/run/fail/stop/reread/fix/rerun/pass orchestration, exact cleanup ownership/privacy, stop-evidence truncation, and expanded-dialog ownership regressions.
 
 ## 1.2.0 - 2026-10-05
 

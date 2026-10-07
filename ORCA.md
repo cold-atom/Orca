@@ -88,6 +88,6 @@ We are building a truly autonomous copilot for game development in Godot, simila
 - **Local-First Focus:** Ensuring the plugin works flawlessly with locally-hosted, fast open-source models (like Llama 3 or Qwen) for privacy-conscious developers.
 - **Robustness:** Refining error handling for complex edge cases (e.g., massive files, connection timeouts) and creating better syntax parsing.
 
-Progressive tool-schema disclosure remains a future optimization; Orca 1.2.0 does not implement it.
+Progressive tool-schema disclosure remains a future optimization and is not currently implemented.
 
 Orca aims to be an essential sidekick for Godot developers, handling boilerplate code, exploring unfamiliar APIs, and accelerating the game development workflow securely and efficiently.

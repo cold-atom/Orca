@@ -44,7 +44,6 @@ func record_round(calls: Array, progress_epoch: int) -> Dictionary:
 			"arguments": fingerprint(call.get("arguments")),
 			"name": fingerprint(call.get("name", "")),
 			"outcome": fingerprint(call.get("outcome")),
-			"progress_epoch": progress_epoch,
 			"result": fingerprint(call.get("result")),
 		})
 		_call_fingerprints.append(call_fingerprint)
@@ -52,10 +51,7 @@ func record_round(calls: Array, progress_epoch: int) -> Dictionary:
 		if call_trigger.is_empty():
 			call_trigger = _detect_call_loop()
 
-	var round_fingerprint := fingerprint({
-		"calls": Array(round_calls),
-		"progress_epoch": progress_epoch,
-	})
+	var round_fingerprint := fingerprint({"calls": Array(round_calls)})
 	_round_fingerprints.append(round_fingerprint)
 	var round_trigger := _detect_round_loop()
 	var progress_trigger := _record_progress(progress_epoch)

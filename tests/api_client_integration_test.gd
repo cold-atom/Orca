@@ -101,9 +101,79 @@ func _run() -> void:
 	if gemini_calls.size() == 1:
 		_expect(gemini_calls[0].get("extra_content", {}).get("google", {}).get("thought_signature") == "test-signature", "Gemini thought signatures should survive SSE reconstruction")
 
+	var gemini_loop := await _request("gemini-loop", "gemini", "gemini-3-flash-preview", "default", true)
+	_expect(gemini_loop.get("kind") == "completed", "Gemini's first multi-round response should complete")
+	var loop_message: Dictionary = gemini_loop.get("response", {}).get("choices", [{}])[0].get("message", {})
+	var loop_calls: Array = loop_message.get("tool_calls", [])
+	_expect(loop_calls.size() == 1, "Gemini's first multi-round response should contain one tool call")
+	if loop_calls.size() == 1:
+		_expect(loop_calls[0].get("extra_content", {}).get("google", {}).get("thought_signature") == "loop-signature", "fragmented Gemini thought signatures should reconstruct before continuation")
+		var continuation_messages := [
+			{"role": "user", "content": "test"},
+			loop_message,
+			{"role": "tool", "tool_call_id": str(loop_calls[0].get("id", "")), "content": "{\"success\":true,\"path\":\"res://game.gd\"}"},
+		]
+		var gemini_final := await _request("gemini-loop", "gemini", "gemini-3-flash-preview", "default", true, "local-test-key", {"allow_stream_options_retry": false}, continuation_messages)
+		_expect(gemini_final.get("kind") == "completed", "Gemini should accept the exact assistant-call/tool-result continuation: " + str(gemini_final))
+		_expect(gemini_final.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content") == "gemini loop complete", "Gemini's validated continuation should return final assistant text")
+
+	var deepseek_loop := await _request("deepseek-loop", "deepseek", "deepseek-chat", "high", true)
+	_expect(deepseek_loop.get("kind") == "completed", "DeepSeek's first reasoning tool response should complete")
+	var deepseek_message: Dictionary = deepseek_loop.get("response", {}).get("choices", [{}])[0].get("message", {})
+	var deepseek_calls: Array = deepseek_message.get("tool_calls", [])
+	_expect(deepseek_message.get("reasoning_content") == "plan-tool", "fragmented DeepSeek reasoning should reconstruct for continuation")
+	_expect(deepseek_calls.size() == 1, "DeepSeek's first multi-round response should contain one tool call")
+	if deepseek_calls.size() == 1:
+		deepseek_message["reasoning"] = "strip-generic-reasoning"
+		deepseek_message["reasoning_details"] = [{"type": "strip-openrouter-details"}]
+		var deepseek_continuation := [
+			{"role": "user", "content": "test"},
+			deepseek_message,
+			{"role": "tool", "tool_call_id": str(deepseek_calls[0].get("id", "")), "content": "{\"success\":true,\"path\":\"res://player.gd\"}"},
+		]
+		var deepseek_final := await _request("deepseek-loop", "deepseek", "deepseek-chat", "high", true, "local-test-key", {"allow_stream_options_retry": false}, deepseek_continuation)
+		_expect(deepseek_final.get("kind") == "completed", "DeepSeek should accept preserved reasoning_content with sanitized incompatible fields: " + str(deepseek_final))
+		_expect(deepseek_final.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content") == "deepseek loop complete", "DeepSeek's validated continuation should return final assistant text")
+		_expect(deepseek_final.get("response", {}).get("choices", [{}])[0].get("message", {}).get("reasoning_content") == "final-hidden", "DeepSeek final hidden reasoning should remain available to the controller without becoming visible text")
+
 	var xai := await _request("xai", "xai", "grok-4", "high")
 	_expect(xai.get("kind") == "completed", "xAI-compatible SSE should complete")
 	_expect(xai.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content") == "grok ok", "xAI-compatible content should be reconstructed")
+
+	var xai_loop := await _request("xai-loop", "xai", "grok-4", "high", true)
+	_expect(xai_loop.get("kind") == "completed", "xAI's first reasoning tool response should complete")
+	var xai_message: Dictionary = xai_loop.get("response", {}).get("choices", [{}])[0].get("message", {})
+	var xai_calls: Array = xai_message.get("tool_calls", [])
+	_expect(xai_message.get("reasoning_content") == "grok-plan", "fragmented xAI reasoning should reconstruct for continuation")
+	_expect(xai_calls.size() == 1, "xAI's first multi-round response should contain one tool call")
+	if xai_calls.size() == 1:
+		xai_message["reasoning"] = "strip-generic-reasoning"
+		xai_message["reasoning_details"] = [{"type": "strip-openrouter-details"}]
+		var xai_continuation := [
+			{"role": "user", "content": "test"},
+			xai_message,
+			{"role": "tool", "tool_call_id": str(xai_calls[0].get("id", "")), "content": "{\"success\":true,\"scene\":\"res://game.tscn\"}"},
+		]
+		var xai_final := await _request("xai-loop", "xai", "grok-4", "high", true, "local-test-key", {"allow_stream_options_retry": false}, xai_continuation)
+		_expect(xai_final.get("kind") == "completed", "xAI should accept preserved reasoning_content with sanitized incompatible fields: " + str(xai_final))
+		_expect(xai_final.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content") == "xai loop complete", "xAI's validated continuation should return final assistant text")
+
+	var openrouter_loop := await _request("openrouter-loop", "openrouter", "anthropic/claude-sonnet-test", "high", true)
+	_expect(openrouter_loop.get("kind") == "completed", "OpenRouter's first reasoning tool response should complete")
+	var openrouter_message: Dictionary = openrouter_loop.get("response", {}).get("choices", [{}])[0].get("message", {})
+	var openrouter_calls: Array = openrouter_message.get("tool_calls", [])
+	var reasoning_details: Array = openrouter_message.get("reasoning_details", [])
+	_expect(openrouter_calls.size() == 1, "OpenRouter's first multi-round response should contain one tool call")
+	_expect(reasoning_details.size() == 1 and reasoning_details[0].get("text") == "route-plan" and reasoning_details[0].get("signature") == "sig-value", "indexed OpenRouter reasoning details should reconstruct fragmented text and signatures")
+	if openrouter_calls.size() == 1 and reasoning_details.size() == 1:
+		var openrouter_continuation := [
+			{"role": "user", "content": "test"},
+			openrouter_message,
+			{"role": "tool", "tool_call_id": str(openrouter_calls[0].get("id", "")), "content": "{\"success\":true,\"matches\":2}"},
+		]
+		var openrouter_final := await _request("openrouter-loop", "openrouter", "anthropic/claude-sonnet-test", "high", true, "local-test-key", {"allow_stream_options_retry": false}, openrouter_continuation)
+		_expect(openrouter_final.get("kind") == "completed", "OpenRouter should accept reconstructed reasoning_details verbatim on continuation: " + str(openrouter_final))
+		_expect(openrouter_final.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content") == "openrouter loop complete", "OpenRouter's validated continuation should return final assistant text")
 
 	var local := await _request("local", "ollama", "local-model", "default", false, "")
 	_expect(local.get("kind") == "completed", "a keyless local OpenAI-compatible request should complete")
@@ -125,7 +195,7 @@ func _run() -> void:
 	quit(1)
 
 
-func _request(scenario: String, provider: String = "custom", model: String = "test-model", effort: String = "default", include_tools: bool = false, api_key: String = "local-test-key", request_options: Dictionary = {}) -> Dictionary:
+func _request(scenario: String, provider: String = "custom", model: String = "test-model", effort: String = "default", include_tools: bool = false, api_key: String = "local-test-key", request_options: Dictionary = {}, messages: Array = []) -> Dictionary:
 	var client = ApiClient.new()
 	get_root().add_child(client)
 	var result: Dictionary = {}
@@ -158,7 +228,7 @@ func _request(scenario: String, provider: String = "custom", model: String = "te
 			result["request_id"] = request_id
 	)
 	client.send_chat_completion(
-		[{"role": "user", "content": "test"}],
+		[{"role": "user", "content": "test"}] if messages.is_empty() else messages,
 		[{"type": "function", "function": {"name": "read_file", "parameters": {"type": "object"}}}] if include_tools else [],
 		{
 			"provider": provider,

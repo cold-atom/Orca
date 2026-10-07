@@ -118,6 +118,7 @@ func _test_tool_permissions() -> void:
 	_expect(diagnostics.get("data", {}).get("open_path") == DIAGNOSTIC_SCRIPT_PATH and diagnostics.get("data", {}).get("open_line") == 2, "game diagnostics should expose safe project navigation metadata")
 	var observation := Tools.execute_tool("observe_game_run", {"run_id": 4, "after_sequence": 2}, FakeGameProcessService.new())
 	_expect(observation.get("success", false) and str(observation.get("content", "")).contains("Run 4 snapshot 3") and observation.get("data", {}).get("changed_since"), "observe_game_run should return bounded exact-run evidence")
+	_expect(observation.get("data", {}).has("recommended_next_action") and str(observation.get("content", "")).contains("Recommended next action"), "observations should provide one bounded next-action recommendation")
 	var verification := Tools.execute_tool("verify_game_run", {"run_id": 4}, FakeGameProcessService.new())
 	_expect(verification.get("success", false) and verification.get("data", {}).get("status") == "failed", "verify_game_run should preserve objective verdict states")
 	var fake_run := FakeGameProcessService.new()

@@ -87,8 +87,8 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 7. Validate proposed GDScript before showing or applying a change. Revalidate immediately before writing.
 8. Preserve the approval diff, old content, new content, hashes, and revert information for every proposed change.
 9. Keep tool messages valid for the Chat Completions protocol. Every assistant tool call needs exactly one matching `role: "tool"` result, including cancellation paths.
-10. Keep editor context request-scoped. Do not permanently accumulate stale scene, selection, script, or caret snapshots in conversation history.
-11. Bound recursive search, file reads, response sizes, tool rounds, and network inactivity. Editor tools run on the main thread and must not perform unbounded work.
+10. Keep editor context and model-facing checklist context request-scoped. Refresh exactly one checklist context after successful task updates, and do not permanently accumulate stale snapshots in conversation history.
+11. Bound recursive search, file reads, response sizes, tool rounds, context pressure, and network inactivity. If a completed tool continuation cannot fit with tools, prefer one no-tools safe finalization; if that cannot fit, checkpoint only sanitized receipts and tasks without replay. Editor tools run on the main thread and must not perform unbounded work.
 12. Do not scrape private Godot editor controls for diagnostics. Use public APIs and state limitations honestly.
 13. Do not overwrite unrelated user changes, generated changes, or work from another agent.
 14. Do not weaken approval, conflict, validation, or path protections to make a feature easier to implement.
@@ -118,7 +118,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 - Uses green assistant headings in the UI.
 - Is the default mode.
 
-Manual mode changes are disabled while a request or approval is active. During a Plan turn, `request_work_mode` may suspend once for an exact turn-bound user decision. Approval affects only the next provider request after every call in the original Plan-generated batch receives its result; rejection or cancellation remains in Plan. Approval regenerates the primary Work prompt and returns an explicit matching tool result without inserting a system message inside the active protocol turn.
+Manual mode changes are disabled while a request or approval is active. During a Plan turn, `request_work_mode` may suspend once for an exact turn-bound user decision and must be the only call in its provider batch. Approval affects only the next provider request; rejection or cancellation remains in Plan. Approval regenerates the primary Work prompt and returns an explicit matching tool result without inserting a system message inside the active protocol turn.
 
 ## Development Workflow
 

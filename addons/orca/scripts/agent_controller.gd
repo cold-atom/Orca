@@ -37,6 +37,19 @@ const WORK_OPERATION_TOOLS := {
 	"run_main_scene": true,
 	"stop_game": true
 }
+const BATCHABLE_READ_ONLY_TOOLS := {
+	"list_directory": true,
+	"read_file": true,
+	"search_files": true,
+	"inspect_scene": true,
+	"inspect_project_settings": true,
+	"read_project_skill": true,
+	"inspect_godot_api": true,
+	"read_gdscript_function": true,
+	"discover_dependencies": true,
+	"get_editor_context": true,
+	"get_diagnostics": true
+}
 const EditorContext = preload("res://addons/orca/scripts/editor_context.gd")
 const Config = preload("res://addons/orca/scripts/config.gd")
 const ContextBudget = preload("res://addons/orca/scripts/context_budget.gd")
@@ -52,8 +65,14 @@ const RECOVERY_CHECKPOINT_HEADING := "ORCA RECOVERY CHECKPOINT"
 const MAX_RECOVERY_RECEIPTS := MAX_TOOL_ROUNDS * MAX_TOOL_CALLS_PER_RESPONSE
 const MAX_GUIDANCE_WARNING_CHARS := 240
 const LOOP_TRIGGER_ROUND_CAP := "round_cap"
+const LOOP_TRIGGER_CONTEXT_PRESSURE := "context_pressure"
 const MAX_FINAL_PROVIDER_TEXT_CHARS := 1200
 const WORK_MODE_REQUEST_TOOL := "request_work_mode"
+const TASK_CONTEXT_HEADING := "CURRENT ORCA TASK CHECKLIST:"
+const MAX_TOOL_BATCH_REGENERATION_ATTEMPTS := 1
+const TOOL_BATCH_CORRECTION_NOTICE := "ORCA TOOL CALL CORRECTION: The previous assistant response contained an invalid tool-call batch. No tool from that batch was executed. Regenerate the complete batch with each function.arguments value as one valid JSON object. Multiple calls are allowed only when every call is an independent read-only tool. Request Work mode, task updates, reviewed mutations, run/stop operations, observations, and verifications must each be the only call in their batch. Do not refer to the rejected batch as completed."
+const ROUND_BUDGET_WARNING_THRESHOLD := 8
+const REQUEST_CONTEXT_INDEX_FIELDS := ["_context_message_index", "_task_context_message_index", "_runtime_context_message_index", "_loop_notice_message_index", "_tool_batch_correction_message_index", "_round_budget_message_index", "_loop_cleanup_message_index"]
 
 enum AgentMode {
 	PLAN,
@@ -72,10 +91,12 @@ var _proposals: Dictionary = {}
 var _tool_rounds := 0
 var _mode: AgentMode = AgentMode.BUILD
 var _context_message_index := -1
+var _task_context_message_index := -1
 var _runtime_context_message_index := -1
 var _pending_run_observation: Dictionary = {}
 var _observation_generation := 0
 var _run_attempts := 0
+var _turn_run_ids: Dictionary = {}
 var _baseline_criteria_id := ""
 var _baseline_criteria_initialized := false
 var _session_input_tokens := 0
@@ -119,6 +140,12 @@ var _pending_work_mode_call_id := ""
 var _pending_work_mode_turn_id := 0
 var _pending_work_mode_resolution: Dictionary = {}
 var _awaiting_work_mode_resolution := false
+var _tool_batch_regeneration_attempts := 0
+var _tool_batch_correction_message_index := -1
+var _round_budget_message_index := -1
+var _loop_cleanup_message_index := -1
+var _loop_cleanup_summary := ""
+var _loop_cleanup_outcome := ""
 
 func _ready() -> void:
 	api_client = preload("res://addons/orca/scripts/api_client.gd").new()
@@ -181,11 +208,13 @@ func send_user_message(text: String) -> void:
 	_reset_turn_loop_state()
 	_reset_turn_recovery_state()
 	_run_attempts = 0
+	_turn_run_ids.clear()
 	_baseline_criteria_id = ""
 	_baseline_criteria_initialized = false
 	_pending_run_observation.clear()
 	_clear_work_mode_request_state()
 	_work_mode_requested_this_turn = false
+	_reset_tool_batch_regeneration_state()
 	_turn_provider_config = Config.get_active_provider_config()
 	var turn_id := _active_turn_id
 	request_state_changed.emit(turn_id, true)
@@ -226,16 +255,36 @@ func _add_turn_context() -> void:
 	else:
 		sections.append("PROJECT SKILL CATALOG WARNING: " + _bounded_context_warning(str(skill_result.get("error", "Project skills could not be discovered."))))
 	var editor_context := EditorContext.capture()
-	if not editor_context.is_empty() or not _tasks.is_empty():
+	if not editor_context.is_empty():
 		sections.append("CURRENT GODOT EDITOR CONTEXT FOR THIS TURN:\n" + EditorContext.format_for_model(editor_context))
-	if not _tasks.is_empty():
-		sections.append("CURRENT ORCA TASK CHECKLIST:\n" + JSON.stringify(_tasks, "  "))
 	if not sections.is_empty():
 		_context_message_index = message_history.size()
 		message_history.append({
 			"role": "system",
 			"content": "\n\n".join(sections)
 		})
+	_refresh_task_context()
+
+
+func _refresh_task_context() -> void:
+	if _task_context_message_index >= 0 and _task_context_message_index < message_history.size():
+		if _tasks.is_empty():
+			_remove_request_context_message(_task_context_message_index)
+		else:
+			message_history[_task_context_message_index] = {"role": "system", "content": TASK_CONTEXT_HEADING + "\n" + JSON.stringify(_tasks, "  ")}
+		return
+	_task_context_message_index = -1
+	if _tasks.is_empty():
+		return
+	_task_context_message_index = message_history.size()
+	message_history.append({"role": "system", "content": TASK_CONTEXT_HEADING + "\n" + JSON.stringify(_tasks, "  ")})
+
+
+func _remove_request_context_message(index: int) -> void:
+	if index < 0 or index >= message_history.size():
+		return
+	message_history.remove_at(index)
+	_remap_context_indices(index, 1, 0)
 
 
 func _load_project_instructions() -> Dictionary:
@@ -265,17 +314,20 @@ func start_new_session() -> bool:
 	_proposals.clear()
 	_pending_change_id = ""
 	_context_message_index = -1
+	_task_context_message_index = -1
 	_runtime_context_message_index = -1
 	_tool_rounds = 0
 	_reset_turn_loop_state()
 	_reset_turn_recovery_state()
 	_run_attempts = 0
+	_turn_run_ids.clear()
 	_baseline_criteria_id = ""
 	_baseline_criteria_initialized = false
 	_pending_run_observation.clear()
 	_cancel_requested = false
 	_clear_work_mode_request_state()
 	_work_mode_requested_this_turn = false
+	_reset_tool_batch_regeneration_state()
 	_current_stream_content = ""
 	_reset_session_usage()
 	_tasks.clear()
@@ -319,17 +371,20 @@ func restore_session_state(mode: int, continuation: Array, usage: Dictionary, ta
 	_proposals.clear()
 	_pending_change_id = ""
 	_context_message_index = -1
+	_task_context_message_index = -1
 	_runtime_context_message_index = -1
 	_tool_rounds = 0
 	_reset_turn_loop_state()
 	_reset_turn_recovery_state()
 	_run_attempts = 0
+	_turn_run_ids.clear()
 	_baseline_criteria_id = ""
 	_baseline_criteria_initialized = false
 	_pending_run_observation.clear()
 	_cancel_requested = false
 	_clear_work_mode_request_state()
 	_work_mode_requested_this_turn = false
+	_reset_tool_batch_regeneration_state()
 	_current_stream_content = ""
 	_restore_session_usage(usage)
 	_tasks.assign(task_validation.get("tasks", []))
@@ -500,6 +555,11 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 				_record_request_usage(response)
 				_finish_denied_loop_calls(assistant_message, message.tool_calls, turn_id)
 				return
+			var batch_validation := _validate_tool_batch(message.tool_calls)
+			if not batch_validation.get("success", false):
+				_record_request_usage(response)
+				_handle_invalid_tool_batch(batch_validation, turn_id)
+				return
 			_tool_rounds += 1
 			if _tool_rounds > MAX_TOOL_ROUNDS:
 				_loop_final_trigger_reason = LOOP_TRIGGER_ROUND_CAP
@@ -513,6 +573,7 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 			assistant_message["tool_calls"] = message.tool_calls
 			message_history.append(assistant_message)
 			var round_results: Array = []
+			var task_context_refresh_needed := false
 
 			for tool_index in range(message.tool_calls.size()):
 				var tool_call: Dictionary = message.tool_calls[tool_index]
@@ -525,6 +586,8 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 					"tool_call_id": tool_result["call_id"],
 					"content": tool_result["result"]
 				})
+				if str(tool_result.get("name", "")) == "update_tasks" and bool(tool_result.get("execution", {}).get("success", false)):
+					task_context_refresh_needed = true
 				_record_recovery_receipt(tool_result)
 				if _cancel_requested:
 					for remaining_index in range(tool_index + 1, message.tool_calls.size()):
@@ -536,6 +599,8 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 						})
 					_finish_cancelled()
 					return
+			if task_context_refresh_needed:
+				_refresh_task_context()
 			if not _pending_run_observation.is_empty():
 				var observed := await _begin_bounded_run_observation()
 				if not observed or not _owns_turn(turn_id) or _cancel_requested:
@@ -550,6 +615,7 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 				_begin_loop_finalization(LOOP_TRIGGER_ROUND_CAP)
 			else:
 				if _owns_turn(turn_id):
+					_ensure_round_budget_notice()
 					_send_current_request()
 		else:
 			turn_id = _invalidate_turn_ownership()
@@ -558,7 +624,10 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 				if not _has_meaningful_content(str(assistant_message.get("content", ""))):
 					assistant_message["content"] = _empty_finalization_fallback()
 				else:
-					assistant_message["content"] = str(assistant_message.get("content", "")).strip_edges() + "\n\n" + _continuation_guidance()
+					assistant_message["content"] = str(assistant_message.get("content", "")).strip_edges()
+					if not _loop_cleanup_summary.is_empty():
+						assistant_message["content"] += "\n\nCleanup: " + _loop_cleanup_summary
+					assistant_message["content"] += "\n\n" + _continuation_guidance()
 			message_history.append(assistant_message)
 			var content = assistant_message.get("content", "")
 			if typeof(content) != TYPE_STRING:
@@ -573,6 +642,44 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 		turn_id = _invalidate_turn_ownership()
 		_record_request_usage(response)
 		_finish_request_error("Unexpected API response format.", turn_id)
+
+
+func _validate_tool_batch(tool_calls: Array) -> Dictionary:
+	for call_index in range(tool_calls.size()):
+		var tool_call = tool_calls[call_index]
+		if typeof(tool_call) != TYPE_DICTIONARY:
+			return {"success": false, "call_index": call_index, "reason": "invalid_call"}
+		var function = tool_call.get("function", {})
+		if typeof(function) != TYPE_DICTIONARY or typeof(function.get("arguments")) != TYPE_STRING:
+			return {"success": false, "call_index": call_index, "reason": "invalid_arguments_field"}
+		var json := JSON.new()
+		if json.parse(str(function["arguments"])) != OK:
+			return {"success": false, "call_index": call_index, "reason": "malformed_json"}
+		if typeof(json.get_data()) != TYPE_DICTIONARY:
+			return {"success": false, "call_index": call_index, "reason": "non_object_json"}
+	if tool_calls.size() > 1:
+		for call_index in range(tool_calls.size()):
+			var function: Dictionary = tool_calls[call_index].get("function", {})
+			var tool_name := str(function.get("name", ""))
+			if not BATCHABLE_READ_ONLY_TOOLS.has(tool_name):
+				return {"success": false, "call_index": call_index, "reason": "singleton_required", "tool_name": tool_name}
+	return {"success": true}
+
+
+func _handle_invalid_tool_batch(validation: Dictionary, turn_id: int) -> void:
+	if not _owns_turn(turn_id):
+		return
+	if _tool_batch_regeneration_attempts < MAX_TOOL_BATCH_REGENERATION_ATTEMPTS:
+		_tool_batch_regeneration_attempts += 1
+		_tool_batch_correction_message_index = message_history.size()
+		message_history.append({"role": "system", "content": TOOL_BATCH_CORRECTION_NOTICE})
+		_send_current_request()
+		return
+	_set_support_request_failure({"category": "malformed_response", "phase": "receiving_response", "response_started": true})
+	turn_id = _invalidate_turn_ownership()
+	var call_number := int(validation.get("call_index", 0)) + 1
+	_finish_request_error("The provider returned invalid tool-call batches twice. The latest error was in call %d. No tool from either rejected batch was executed. Try again or choose a different model." % call_number, turn_id)
+
 
 func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1, permission_mode: int = -1) -> Dictionary:
 	var signal_turn_id := _active_turn_id if expected_turn_id < 0 else expected_turn_id
@@ -700,6 +807,9 @@ func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1, permi
 		if function_name in ["run_current_scene", "run_main_scene"] and execution.get("success", false):
 			_run_attempts += 1
 			var run_data: Dictionary = execution.get("data", {})
+			var launched_run_id := int(run_data.get("run_id", 0))
+			if launched_run_id > 0:
+				_turn_run_ids[launched_run_id] = true
 			var criteria_id := str(run_data.get("criteria_id", ""))
 			if not _baseline_criteria_initialized:
 				_baseline_criteria_id = criteria_id
@@ -773,11 +883,26 @@ func _begin_bounded_run_observation() -> bool:
 
 func _append_runtime_context(snapshot: Dictionary, changed_since: bool) -> void:
 	if _runtime_context_message_index >= 0 and _runtime_context_message_index < message_history.size():
-		message_history.remove_at(_runtime_context_message_index)
+		_remove_request_context_message(_runtime_context_message_index)
 	_runtime_context_message_index = message_history.size()
 	var bounded := snapshot.duplicate(true)
 	bounded.erase("verification")
-	message_history.append({"role": "system", "content": "ORCA GAME RUN OBSERVATION FOR THIS TURN:\n" + JSON.stringify({"changed_since_launch": changed_since, "snapshot": bounded}, "  ") + "\nThis is bounded process evidence, not proof of gameplay correctness. Use verify_game_run only for criteria declared before launch. Do not repeatedly poll an unchanged run."})
+	var recommendation := _recommended_run_action(bounded, changed_since)
+	message_history.append({"role": "system", "content": "ORCA GAME RUN OBSERVATION FOR THIS TURN:\n" + JSON.stringify({"changed_since_launch": changed_since, "recommended_next_action": recommendation, "snapshot": bounded}, "  ") + "\nThis automatic checkpoint is the first observation and is bounded process evidence, not proof of gameplay correctness. Do not immediately call observe_game_run again. Use verify_game_run only for criteria declared before launch; use get_diagnostics for editor or runtime errors, not routine polling."})
+
+
+func _recommended_run_action(snapshot: Dictionary, changed_since: bool) -> String:
+	var state := str(snapshot.get("state", "unknown"))
+	var verification_status := str(snapshot.get("verification_status", "unverified"))
+	if state not in ["running", "timeout_stop_failed", "shutdown_stop_failed"]:
+		return "verify" if bool(snapshot.get("verification_configured", false)) else "finalize"
+	if verification_status in ["passed", "failed", "inconclusive"]:
+		return "stop"
+	if not Array(snapshot.get("diagnostics", [])).is_empty():
+		return "stop_then_inspect_error"
+	if changed_since and bool(snapshot.get("verification_configured", false)):
+		return "verify"
+	return "stop_or_wait_for_new_evidence"
 
 
 func _proposal_for_review(proposal: Dictionary) -> Dictionary:
@@ -796,6 +921,10 @@ func _reset_turn_loop_state() -> void:
 	_loop_final_request = false
 	_loop_final_trigger_reason = ""
 	_loop_notice_message_index = -1
+	_round_budget_message_index = -1
+	_loop_cleanup_message_index = -1
+	_loop_cleanup_summary = ""
+	_loop_cleanup_outcome = ""
 
 
 func _clear_turn_loop_state() -> void:
@@ -805,11 +934,20 @@ func _clear_turn_loop_state() -> void:
 	_loop_final_request = false
 	_loop_final_trigger_reason = ""
 	_loop_notice_message_index = -1
+	_round_budget_message_index = -1
+	_loop_cleanup_message_index = -1
+	_loop_cleanup_summary = ""
+	_loop_cleanup_outcome = ""
 
 
 func _reset_turn_recovery_state() -> void:
 	_turn_tool_receipts.clear()
 	_last_failure_checkpointed = false
+
+
+func _reset_tool_batch_regeneration_state() -> void:
+	_tool_batch_regeneration_attempts = 0
+	_tool_batch_correction_message_index = -1
 
 
 func last_failure_was_checkpointed() -> bool:
@@ -825,7 +963,7 @@ func _record_recovery_receipt(tool_result: Dictionary) -> void:
 	})
 
 
-func _checkpoint_failed_tool_turn() -> bool:
+func _checkpoint_failed_tool_turn(checkpoint_content: String = "") -> bool:
 	if _turn_tool_receipts.is_empty() or not _pending_change_id.is_empty():
 		return false
 	var user_index := -1
@@ -837,18 +975,22 @@ func _checkpoint_failed_tool_turn() -> bool:
 		return false
 	for index in range(message_history.size() - 1, user_index, -1):
 		message_history.remove_at(index)
-	message_history.append({"role": "assistant", "content": _format_recovery_checkpoint()})
+	message_history.append({"role": "assistant", "content": checkpoint_content if not checkpoint_content.is_empty() else _format_recovery_checkpoint()})
 	return true
 
 
 func _active_tool_protocol_is_complete(start: int) -> bool:
-	if start < 0 or start >= message_history.size():
+	return _active_tool_protocol_is_complete_in(message_history, start)
+
+
+func _active_tool_protocol_is_complete_in(history: Array, start: int) -> bool:
+	if start < 0 or start >= history.size():
 		return false
 	var cursor := start
 	var batch_count := 0
 	var all_call_ids: Dictionary = {}
-	while cursor < message_history.size():
-		var assistant = message_history[cursor]
+	while cursor < history.size():
+		var assistant = history[cursor]
 		if typeof(assistant) != TYPE_DICTIONARY or str(assistant.get("role", "")) != "assistant":
 			return false
 		var calls = assistant.get("tool_calls", [])
@@ -868,9 +1010,9 @@ func _active_tool_protocol_is_complete(start: int) -> bool:
 		cursor += 1
 		var seen_results: Dictionary = {}
 		for _result_index in range(calls.size()):
-			if cursor >= message_history.size():
+			if cursor >= history.size():
 				return false
-			var tool_message = message_history[cursor]
+			var tool_message = history[cursor]
 			if typeof(tool_message) != TYPE_DICTIONARY or str(tool_message.get("role", "")) != "tool":
 				return false
 			var result_id := str(tool_message.get("tool_call_id", "")).strip_edges()
@@ -887,10 +1029,24 @@ func _active_tool_protocol_is_complete(start: int) -> bool:
 func _format_recovery_checkpoint() -> String:
 	var lines := PackedStringArray([
 		RECOVERY_CHECKPOINT_HEADING + ":",
-		"The provider response was interrupted after these tool actions completed. This is local historical state; do not replay these actions automatically.",
+		"Orca stopped locally after these actions completed. This is historical state; do not replay these actions automatically.",
+		"Completed action receipts:",
 	])
 	for receipt in _turn_tool_receipts:
-		lines.append("- %s: %s" % [str(receipt.get("name", "unknown")), str(receipt.get("outcome", "completed"))])
+		var name := str(receipt.get("name", "unknown_tool"))
+		if not name.is_valid_identifier():
+			name = "unknown_tool"
+		var outcome := str(receipt.get("outcome", "unknown"))
+		if outcome not in ["completed", "failed", "cancelled", "applied", "applied_recovery", "apply_recovery_required", "rejected", "no_changes"]:
+			outcome = "unknown"
+		lines.append("- %s: %s" % [name, outcome])
+	if not _loop_cleanup_outcome.is_empty():
+		lines.append("- controller_owned_run_cleanup: " + _loop_cleanup_outcome)
+	var safe_tasks: Array[Dictionary] = TaskUtils.sanitize_tasks(_tasks)
+	if not safe_tasks.is_empty():
+		lines.append("Current task checklist:")
+		for task in safe_tasks:
+			lines.append("- [%s] %s" % [str(task.get("status", "pending")), JSON.stringify(str(task.get("content", "")))])
 	lines.append(_continuation_guidance() + " Obtain normal approval before any new mutation or external operation.")
 	return "\n".join(lines)
 
@@ -898,25 +1054,82 @@ func _format_recovery_checkpoint() -> String:
 func _record_tool_progress(round_results: Array) -> void:
 	for result_value in round_results:
 		var result: Dictionary = result_value if result_value is Dictionary else {}
-		var fingerprint := ToolLoopGuardScript.fingerprint({
-			"arguments": result.get("arguments", {}),
-			"name": result.get("name", ""),
-			"outcome": result.get("outcome", ""),
-			"result": result.get("result", ""),
-		})
+		var fingerprint := ToolLoopGuardScript.fingerprint(_tool_loop_view(result))
 		if not _tool_progress_fingerprints.has(fingerprint):
 			_tool_progress_fingerprints[fingerprint] = true
 			_tool_progress_epoch += 1
 
 
-func _begin_loop_finalization(trigger_reason: String) -> void:
-	if _loop_final_request:
+func _tool_loop_view(result: Dictionary) -> Dictionary:
+	var name := str(result.get("name", ""))
+	var view := {
+		"arguments": result.get("arguments", {}),
+		"name": name,
+		"outcome": result.get("outcome", ""),
+		"result": result.get("result", ""),
+	}
+	var execution: Dictionary = result.get("execution", {}) if typeof(result.get("execution")) == TYPE_DICTIONARY else {}
+	var data: Dictionary = execution.get("data", {}) if typeof(execution.get("data")) == TYPE_DICTIONARY else {}
+	if name == "observe_game_run" and not data.is_empty():
+		view["arguments"] = {"run_id": int(result.get("arguments", {}).get("run_id", 0))}
+		view["result"] = {
+			"run_id": int(data.get("run_id", 0)),
+			"sequence": int(data.get("sequence", 0)),
+			"state": str(data.get("state", "")),
+			"verification_status": str(data.get("verification_status", "unverified")),
+			"exit_code": data.get("exit_code"),
+			"stdout": str(data.get("stdout", "")).sha256_text(),
+			"stderr": str(data.get("stderr", "")).sha256_text(),
+			"diagnostics": ToolLoopGuardScript.fingerprint(data.get("diagnostics", [])),
+			"output_truncated": bool(data.get("output_truncated", false)),
+			"diagnostics_truncated": bool(data.get("diagnostics_truncated", false)),
+			"dropped_bytes": int(data.get("dropped_bytes", 0)),
+		}
+	elif name == "verify_game_run" and not data.is_empty():
+		var checks: Array = []
+		for check_value in data.get("checks", []):
+			var check: Dictionary = check_value if check_value is Dictionary else {}
+			checks.append({"name": str(check.get("name", "")), "status": str(check.get("status", "")), "expected": check.get("expected")})
+		view["result"] = {"run_id": int(data.get("run_id", 0)), "status": str(data.get("status", "unverified")), "checks": checks}
+	return view
+
+
+func _ensure_round_budget_notice() -> void:
+	if _tool_rounds < ROUND_BUDGET_WARNING_THRESHOLD or _round_budget_message_index >= 0:
 		return
+	var active_run: bool = game_process_service != null and game_process_service.has_method("is_running") and game_process_service.is_running()
+	_round_budget_message_index = message_history.size()
+	message_history.append({"role": "system", "content": "ORCA ACTION BUDGET: %d normal tool rounds remain. Consolidate only independent reads, do not repeat unchanged observations, and finish the highest-priority unresolved work. Orca-owned game active: %s. Reserve cleanup and finalization capacity." % [MAX_TOOL_ROUNDS - _tool_rounds, "yes" if active_run else "no"]})
+
+
+func _begin_loop_finalization(trigger_reason: String) -> void:
+	if _enter_loop_finalization(trigger_reason):
+		_send_current_request()
+
+
+func _enter_loop_finalization(trigger_reason: String) -> bool:
+	if _loop_final_request:
+		return false
 	_loop_final_request = true
 	_loop_final_trigger_reason = trigger_reason.left(64)
+	_cleanup_owned_run_for_finalization()
 	_loop_notice_message_index = message_history.size()
 	message_history.append({"role": "system", "content": LOOP_FINAL_NOTICE})
-	_send_current_request()
+	return true
+
+
+func _cleanup_owned_run_for_finalization() -> void:
+	if _run_attempts <= 0 or game_process_service == null or not game_process_service.has_method("is_running") or not game_process_service.has_method("get_snapshot") or not game_process_service.has_method("stop_game") or not game_process_service.is_running():
+		return
+	var active_snapshot: Dictionary = game_process_service.get_snapshot()
+	var active_run_id := int(active_snapshot.get("run_id", 0))
+	if active_run_id <= 0 or not _turn_run_ids.has(active_run_id):
+		return
+	var cleanup: Dictionary = game_process_service.stop_game()
+	_loop_cleanup_outcome = "completed" if cleanup.get("success", false) else "failed"
+	_loop_cleanup_summary = "Stopped the same-turn Orca-owned game process before finalization." if cleanup.get("success", false) else "Could not stop the same-turn Orca-owned game process before finalization."
+	_loop_cleanup_message_index = message_history.size()
+	message_history.append({"role": "system", "content": "ORCA CONTROLLER CLEANUP BEFORE FINALIZATION:\n" + _loop_cleanup_summary + "\nThis controller-owned cleanup targeted only the retained Orca process; it was not a model tool call."})
 
 
 func _finish_denied_loop_calls(assistant_message: Dictionary, tool_calls: Array, ending_turn_id: int = -1) -> void:
@@ -930,6 +1143,8 @@ func _finish_denied_loop_calls(assistant_message: Dictionary, tool_calls: Array,
 			"content": "The tool call was denied because the provider attempted another tool after Orca disabled tools for safe finalization. No action was executed."
 		})
 	var final_content := "The provider attempted another tool after Orca disabled tools for safe finalization (%s). No additional action was executed. Completed actions were kept." % _loop_trigger_description()
+	if not _loop_cleanup_summary.is_empty():
+		final_content += "\n\nCleanup: " + _loop_cleanup_summary
 	var provider_text := _bounded_visible_provider_text(str(assistant_message.get("content", "")))
 	if not provider_text.is_empty():
 		final_content += "\n\nProvider text before the denied tool call:\n" + provider_text
@@ -944,7 +1159,8 @@ func _finish_denied_loop_calls(assistant_message: Dictionary, tool_calls: Array,
 
 
 func _empty_finalization_fallback() -> String:
-	return "Orca finalized safely (%s), but the provider returned no summary. Completed actions were kept. %s" % [_loop_trigger_description(), _continuation_guidance()]
+	var cleanup := " Cleanup: " + _loop_cleanup_summary if not _loop_cleanup_summary.is_empty() else ""
+	return "Orca finalized safely (%s), but the provider returned no summary. Completed actions were kept.%s %s" % [_loop_trigger_description(), cleanup, _continuation_guidance()]
 
 
 func _continuation_guidance() -> String:
@@ -963,6 +1179,8 @@ func _loop_trigger_description() -> String:
 			return "no tool progress"
 		LOOP_TRIGGER_ROUND_CAP:
 			return "%d-round tool limit" % MAX_TOOL_ROUNDS
+		LOOP_TRIGGER_CONTEXT_PRESSURE:
+			return "context-window pressure"
 	return "tool-loop safety trigger"
 
 
@@ -1053,7 +1271,13 @@ func _send_current_request() -> bool:
 	var api_url := str(_turn_provider_config.get("base_url", ""))
 	var effective_model := _last_usage_model if _tool_rounds > 0 and not _last_usage_model.is_empty() else model
 	var metadata := ModelMetadata.resolve(effective_model, api_url, model)
-	var prepared := ContextBudget.prepare(message_history, definitions, int(metadata.get("context_window", 0)))
+	var context_window := int(metadata.get("context_window", 0))
+	var prepared := ContextBudget.prepare(message_history, definitions, context_window)
+	if not prepared.get("success", false) and _can_finalize_for_context_pressure(definitions):
+		if _enter_loop_finalization(LOOP_TRIGGER_CONTEXT_PRESSURE):
+			definitions = []
+			_begin_support_request_snapshot(false)
+			prepared = ContextBudget.prepare(message_history, definitions, context_window)
 	if not prepared.get("success", false):
 		_set_support_request_failure({"category": "context_budget", "phase": "local"}, "blocked_locally")
 		_finish_request_error("Orca could not send the request safely: " + str(prepared.get("error", "The context budget was exceeded.")))
@@ -1078,6 +1302,31 @@ func _send_current_request() -> bool:
 	return true
 
 
+func _can_finalize_for_context_pressure(definitions: Array) -> bool:
+	if definitions.is_empty() or _loop_final_request or _tool_rounds <= 0 or _turn_tool_receipts.is_empty() or not _owns_turn(_active_turn_id):
+		return false
+	if not _pending_change_id.is_empty() or not _pending_work_mode_call_id.is_empty() or _awaiting_edit_resolution or _awaiting_work_mode_resolution or _executing_tool_call or not _pending_run_observation.is_empty():
+		return false
+	var safe_history := message_history.duplicate(true)
+	var seen: Dictionary = {}
+	var indices: Array = []
+	for field in REQUEST_CONTEXT_INDEX_FIELDS:
+		var index: int = get(field)
+		if index >= 0 and index < safe_history.size() and not seen.has(index):
+			seen[index] = true
+			indices.append(index)
+	indices.sort()
+	indices.reverse()
+	for index in indices:
+		safe_history.remove_at(int(index))
+	var user_index := -1
+	for index in range(safe_history.size() - 1, 0, -1):
+		if typeof(safe_history[index]) == TYPE_DICTIONARY and str(safe_history[index].get("role", "")) == "user":
+			user_index = index
+			break
+	return user_index >= 0 and _active_tool_protocol_is_complete_in(safe_history, user_index + 1)
+
+
 func _owns_provider_request(request_id: int) -> bool:
 	return _is_running and request_id > 0 and request_id == _expected_provider_request_id
 
@@ -1097,7 +1346,7 @@ func _remap_context_indices(removed_start: int, removed_count: int, inserted_cou
 	if removed_start < 0 or removed_count <= 0:
 		return
 	var removed_end := removed_start + removed_count
-	for field in ["_context_message_index", "_runtime_context_message_index", "_loop_notice_message_index"]:
+	for field in REQUEST_CONTEXT_INDEX_FIELDS:
 		var index: int = get(field)
 		if index >= removed_end:
 			set(field, index - removed_count + inserted_count)
@@ -1155,12 +1404,17 @@ func _finish_request_error(message: String, ending_turn_id: int = -1) -> void:
 	if str(_last_support_request_metadata.get("outcome", "")) == "in_progress":
 		_set_support_request_failure({"category": "internal", "phase": "local"})
 	var turn_id := _invalidate_turn_ownership() if ending_turn_id < 0 else ending_turn_id
+	var context_pressure_failure := _loop_final_trigger_reason == LOOP_TRIGGER_CONTEXT_PRESSURE
+	var checkpoint_content := _format_recovery_checkpoint()
 	_clear_work_mode_request_state()
 	_clear_turn_context()
-	_last_failure_checkpointed = _checkpoint_failed_tool_turn()
+	_last_failure_checkpointed = _checkpoint_failed_tool_turn(checkpoint_content)
 	var rendered := message
 	if _last_failure_checkpointed:
-		rendered += "\n\nCompleted tool actions were saved in a sanitized recovery checkpoint. " + _continuation_guidance()
+		if context_pressure_failure:
+			rendered += "\n\n" + checkpoint_content
+		else:
+			rendered += "\n\nCompleted tool actions were saved in a sanitized recovery checkpoint. " + _continuation_guidance()
 	elif _tool_rounds > 0:
 		rendered += "\n\nCompleted tool actions were kept, but Orca could not prove that the interrupted turn is safe to resume. Start a new conversation to avoid repeating side effects."
 	_set_running(false, turn_id)
@@ -1203,14 +1457,20 @@ func _set_support_request_failure(error: Dictionary, outcome: String = "failed")
 	_last_support_request_metadata["partial_response"] = bool(error.get("partial_response", false))
 
 func _clear_turn_context() -> void:
-	var indices := [_context_message_index, _runtime_context_message_index, _loop_notice_message_index]
+	var indices := []
+	for field in REQUEST_CONTEXT_INDEX_FIELDS:
+		indices.append(get(field))
 	indices.sort()
 	indices.reverse()
 	for index in indices:
 		if int(index) >= 0 and int(index) < message_history.size():
 			message_history.remove_at(int(index))
 	_context_message_index = -1
+	_task_context_message_index = -1
 	_runtime_context_message_index = -1
+	_tool_batch_correction_message_index = -1
+	_round_budget_message_index = -1
+	_loop_cleanup_message_index = -1
 	_pending_run_observation.clear()
 	_clear_turn_loop_state()
 

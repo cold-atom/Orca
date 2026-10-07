@@ -187,7 +187,7 @@ func _show_expanded_diff() -> void:
 	)
 	dialog.transient = true
 	dialog.exclusive = true
-	dialog.close_requested.connect(dialog.queue_free)
+	dialog.close_requested.connect(func(): _dismiss_expanded_diff(dialog))
 	add_child(dialog)
 
 	var margin := MarginContainer.new()
@@ -216,24 +216,29 @@ func _show_expanded_diff() -> void:
 	layout.add_child(actions)
 	var close_button := Button.new()
 	close_button.text = "Close"
-	close_button.pressed.connect(dialog.queue_free)
+	close_button.pressed.connect(func(): _dismiss_expanded_diff(dialog))
 	actions.add_child(close_button)
 	if _proposal.get("status", "pending") == "pending":
 		var reject_button := Button.new()
 		reject_button.text = "Reject"
 		reject_button.pressed.connect(func():
+			_dismiss_expanded_diff(dialog)
 			action_requested.emit(_proposal.get("id", ""), "reject")
-			dialog.queue_free()
 		)
 		actions.add_child(reject_button)
 		var apply_button := Button.new()
 		apply_button.text = "Apply"
 		apply_button.pressed.connect(func():
+			_dismiss_expanded_diff(dialog)
 			action_requested.emit(_proposal.get("id", ""), "apply")
-			dialog.queue_free()
 		)
 		actions.add_child(apply_button)
 	dialog.popup_centered()
+
+
+func _dismiss_expanded_diff(dialog: Window) -> void:
+	dialog.hide()
+	dialog.queue_free()
 
 
 func _open_changed_file() -> void:
