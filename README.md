@@ -88,7 +88,7 @@ Read the complete release notes in the [changelog](CHANGELOG.md) or download the
 
 ## Demo
 
-[![Watch the Orca demo](https://img.youtube.com/vi/JZJ4gUgwPHw/maxresdefault.jpg)](https://www.youtube.com/watch?v=JZJ4gUgwPHw)
+[![Watch the Orca demo on YouTube](https://img.youtube.com/vi/bgKvO-VXM1Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=bgKvO-VXM1Y&t=2s)
 
 Watch Orca inspect a Godot project, propose reviewed changes, and validate the result.
 
