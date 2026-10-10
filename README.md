@@ -89,12 +89,12 @@ Read the complete release notes in the [changelog](CHANGELOG.md) or download the
 ## Demo
 
 <p align="center">
-  <video src="docs/assets/videos/plan-work-mode.mp4" autoplay loop muted playsinline controls width="100%">
-    <a href="docs/assets/videos/plan-work-mode.mp4">Watch the Plan-to-Work demo</a>
-  </video>
+  <a href="docs/assets/videos/plan-work-mode.mp4">
+    <img src="docs/assets/videos/plan-work-mode.gif" alt="Orca Plan-to-Work workflow demo" width="100%">
+  </a>
 </p>
 
-<p align="center"><em>Move from read-only planning to reviewed implementation without losing control of the workflow.</em></p>
+<p align="center"><em>Move from read-only planning to reviewed implementation without losing control of the workflow. Click the animation to open the full-resolution video.</em></p>
 
 [![Watch the Orca demo on YouTube](https://img.youtube.com/vi/bgKvO-VXM1Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=bgKvO-VXM1Y&t=2s)
 
