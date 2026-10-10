@@ -24,6 +24,14 @@ Inspect your project, understand editor context, propose Godot-aware changes, an
 
 </div>
 
+<p align="center">
+  <a href="docs/assets/videos/plan-work-mode.mp4">
+    <img src="docs/assets/videos/plan-work-mode.gif" alt="Orca Plan-to-Work workflow demo" width="100%">
+  </a>
+</p>
+
+<p align="center"><em>Move from read-only planning to reviewed implementation without losing control of the workflow. Click the animation to open the full-resolution video.</em></p>
+
 Orca is an MIT-licensed AI agent built directly into the Godot editor. It combines project exploration, editor awareness, Godot-specific tools, reviewed changes, and bounded runtime workflows in one native editor dock.
 
 Use a hosted model or bring your own local model through **Ollama**, **LM Studio**, or another OpenAI-compatible server. Orca keeps the workflow visible: it shows what it is inspecting, presents changes for review, validates supported edits, and waits for approval before writing to your project.
@@ -87,14 +95,6 @@ Orca 1.2.1 is a reliability-focused release for long, stateful Godot workflows:
 Read the complete release notes in the [changelog](CHANGELOG.md) or download the latest build from [GitHub Releases](https://github.com/cold-atom/Orca/releases/latest).
 
 ## Demo
-
-<p align="center">
-  <a href="docs/assets/videos/plan-work-mode.mp4">
-    <img src="docs/assets/videos/plan-work-mode.gif" alt="Orca Plan-to-Work workflow demo" width="100%">
-  </a>
-</p>
-
-<p align="center"><em>Move from read-only planning to reviewed implementation without losing control of the workflow. Click the animation to open the full-resolution video.</em></p>
 
 [![Watch the Orca demo on YouTube](https://img.youtube.com/vi/bgKvO-VXM1Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=bgKvO-VXM1Y&t=2s)
 
