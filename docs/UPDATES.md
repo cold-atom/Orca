@@ -1,7 +1,6 @@
 # Orca plugin updates (1.4.0)
 
-Orca 1.4.0 is a prepared release candidate. GitHub publication and Windows/macOS
-native/update acceptance are pending owner-run CI and platform checks.
+Orca 1.4.0 is released. Windows/macOS native/update acceptance remains pending.
 
 Orca checks the latest **stable GitHub Release** from `cold-atom/Orca`. GitHub
 publication can precede Asset Library moderation. The updater is user-owned

@@ -11,7 +11,7 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-The project currently prepares the Orca 1.4.0 release candidate for Godot 4.7.2 in `addons/orca/`. Publication remains owner-controlled; Windows/macOS native CI and downloaded-plugin/update acceptance are pending.
+Orca 1.4.0 is released for Godot 4.7.2 in `addons/orca/`. Windows/macOS native CI and downloaded-plugin/update acceptance remain pending.
 
 ### Key Features & Components
 1. **Editor Integration (`orca.gd`, `orca.tscn`, `chat_window.tscn`)**

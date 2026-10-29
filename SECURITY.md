@@ -2,8 +2,8 @@
 
 ## Supported Version
 
-Security work targets the 1.4.x release line. Orca 1.4.0 is currently a prepared
-release candidate; publication and Windows/macOS distribution acceptance are pending.
+Security work targets the 1.4.x release line. Orca 1.4.0 is released; Windows/macOS
+distribution acceptance remains pending.
 
 ## Reporting A Vulnerability
 

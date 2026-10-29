@@ -8,19 +8,18 @@ This directory contains public documentation media used by the repository README
 docs/
 └── assets/
     ├── brand/
-    │   ├── orca.png
-    │   ├── orca-logo.svg
-    │   ├── orca-mark.svg
-    │   └── orca-wordmark.svg
-    ├── hero/
-    │   └── orca-editor-overview.png
-    └── screenshots/
-        ├── settings.png
-        ├── plan-mode.png
-        ├── change-review.png
-        ├── structured-scene-review.png
-        ├── run-verification.png
-        └── session-history.png
+    │   ├── orca-animated.svg
+    │   └── orca.png
+    ├── screenshots/
+    │   ├── 2026-09-29_12-35_1.png
+    │   ├── 2026-09-29_14-39.png
+    │   ├── 2026-09-29_14-40.png
+    │   └── 2026-09-29_14-40_1.png
+    └── videos/
+        ├── error-fix.mp4
+        ├── plan-work-mode.gif
+        ├── plan-work-mode.mp4
+        └── rename.mp4
 ```
 
 Add files only when they are final, accurate, and cleared for public use. Do not commit empty placeholder images.
@@ -39,14 +38,14 @@ Add files only when they are final, accurate, and cleared for public use. Do not
 - Use a clean synthetic demo project with no customer code, API keys, personal paths, or private session content visible.
 - Show actual supported workflows only; do not create mockups that imply unavailable capabilities.
 - Use PNG for UI screenshots. Keep each image as small as practical while preserving readable interface text.
-- Name screenshots by the workflow they demonstrate, not by date or screen number.
+- Prefer descriptive workflow names for new screenshots instead of dates or screen numbers.
 
 ## Release Packaging
 
 GitHub documentation can reference media with paths such as:
 
 ```md
-![Orca reviewing a change](docs/assets/screenshots/change-review.png)
+![Orca screenshot](docs/assets/screenshots/2026-09-29_14-40.png)
 ```
 
 The Godot Asset Library and user-installable release archive must package only:
