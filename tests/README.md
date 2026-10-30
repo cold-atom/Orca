@@ -97,6 +97,11 @@ saved inspector to verify compact tool history, readable activity output, exact 
 IDs, budget-signal cancellation and memory-only request estimates. Chat/editor-scale
 tests distinguish a blocked follow-up estimate from the last provider-reported
 usage and keep the clipped header/cost inside a 300px dock with larger label fonts.
+The editor-scale layout check injects UI-only usage and temporarily disconnects
+the controller's usage renderer while measuring it. A deferred model-metadata
+refresh is forced at every font size to reproduce the idle-usage overwrite race;
+strict estimate/budget tooltip checks remain, and reconnection is verified with a
+subsequent controller usage signal. This does not change production signal wiring.
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/account_service_test.gd

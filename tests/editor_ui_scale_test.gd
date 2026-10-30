@@ -172,20 +172,34 @@ func _test_request_budget_header(view) -> void:
 	var original_usage: Dictionary = view._last_usage_summary.duplicate(true)
 	var context_font: int = view.context_label.get_theme_font_size("font_size")
 	var cost_font: int = view.cost_label.get_theme_font_size("font_size")
+	var usage_signal: Signal = view.agent_controller.session_usage_changed
+	var usage_callback := Callable(view, "_sync_session_usage")
+	var was_connected := usage_signal.is_connected(usage_callback)
+	_expect(was_connected, "the editor fixture must begin with normal controller usage updates connected")
+	# This layout check injects UI-only usage, not a controller request. Catalog
+	# completion can emit the idle controller's real usage between deferred sorts.
+	if was_connected:
+		usage_signal.disconnect(usage_callback)
 	view.metrics_row.show()
 	view._sync_session_usage({"context_tokens": 4088, "context_limit": 32768, "completed_requests": 5, "cost_available": true, "cost_usd": 0.0012, "request_budget": {"estimated_tokens": 38000, "context_limit": 32768, "input_budget": 24576, "output_reserve": 8192, "tool_reserve": 0, "status": "blocked", "active": false}})
 	for multiplier in [1.0, 1.5, 2.0]:
 		view.context_label.add_theme_font_size_override("font_size", roundi(context_font * multiplier))
 		view.cost_label.add_theme_font_size_override("font_size", roundi(cost_font * multiplier))
+		# Exercise the refresh race at every font size without depending on HTTP timing.
+		view.model_catalog_service.call_deferred("emit_signal", "metadata_updated")
 		for frame in 8:
 			await process_frame
 		var bounds: Rect2 = view.metrics_row.get_global_rect().grow(0.5)
 		_expect(bounds.encloses(view.context_label.get_global_rect()) and bounds.encloses(view.cost_label.get_global_rect()), "estimated request and cost labels must remain inside the narrow header at larger fonts")
 		_expect(view.context_label.get_global_rect().end.x <= view.cost_label.get_global_rect().position.x and view.get_combined_minimum_size().x <= UiMetrics.scaled(300), "long request estimates must clip without overlapping cost or widening the dock")
-		_expect(view.context_label.tooltip_text.contains("38000") and view.context_label.tooltip_text.contains("24576"), "clipped request estimates must retain complete tooltip details")
+		_expect(view.context_label.tooltip_text.contains("38000") and view.context_label.tooltip_text.contains("24576"), "clipped request estimates must retain complete tooltip details at %.1fx fonts: %s" % [multiplier, view.context_label.tooltip_text])
 	view.context_label.add_theme_font_size_override("font_size", context_font)
 	view.cost_label.add_theme_font_size_override("font_size", cost_font)
-	view._sync_session_usage(original_usage)
+	if was_connected:
+		usage_signal.connect(usage_callback)
+	usage_signal.emit({"context_tokens": 2048, "completed_requests": 1})
+	_expect(view.context_label.text == "Context 2.0k", "normal controller usage updates must resume after the isolated layout check")
+	usage_signal.emit(original_usage)
 	view.metrics_row.visible = was_visible
 
 

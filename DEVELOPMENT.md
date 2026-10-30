@@ -20,13 +20,18 @@ tag/assets stable; users of 1.3.0 can upgrade directly to 1.4.1. Publication and
 Asset Store approval remain pending, including reviewer confirmation of the
 post-install helper flow and separate thumbnail/prior-download corrections.
 The owner controls commit, push, tag, GitHub publication and Asset Library submission.
-All four native build/acceptance jobs passed in Tests run #42; acceptance of the
-new separate downloaded-helper flow and Windows/macOS updater remains pending.
+All four native build/acceptance jobs and binary-free packaging/artifact uploads
+passed in [Tests run #49](https://github.com/cold-atom/Orca/actions/runs/41042858660)
+at `502d838`. The full run failed in the editor-scale synthetic tooltip check.
+This checkout corrects that fixture race; a new complete CI run remains required
+before publication. Real downloaded-helper flow and Windows/macOS updater
+acceptance remain pending.
 Push-triggered builds now produce a binary-free `orca-package` ZIP/checksum plus
 separate `orca-native-release-assets` after native acceptance. The complete Tests
 run must pass before publication. Source-based Asset Store distributions require
 the exact packaged helper catalog/update manifest and exclude compiled helpers.
-The changed release pipeline has not been pushed/dispatched/published by this work.
+The owner pushed the 1.4.1 candidate; the CI correction is local and no release
+publication has been performed by this work.
 
 ## Product Direction
 
@@ -1695,6 +1700,13 @@ Next owner action: restart the updated editor, open **Settings → Account → S
 - Release notes now link directly to `CHANGELOG.md` at the selected tag. Build/archive/catalog naming remains derived from `plugin.cfg`. Extended update metadata checks verify 1.4.1 is newer than both 1.3.0 and 1.4.0, while an installed 1.4.1 receives no same-version update. Project permissions, approvals, vault scope and update protections are retained.
 - Verification on Godot 4.7.2: clean `--headless --editor --path . --quit`; `settings_view_test.gd`, `support_diagnostic_report_test.gd`, `update_service_test.gd`, `native_helper_service_test.gd`, `update_editor_test.gd` and `native_helper_editor_test.gd` passed. All eight `native_helper_packaging_test.py` and seven `update_package_test.py` tests passed without skips, including actual-source 1.4.1 manifest validation, historical install/rollback and independent display-free editor relaunch. Actionlint 1.7.12 for all three workflows and diff/artifact checks passed. Tests set `ORCA_DISABLE_ACCOUNT_RESTORE=1`, `ORCA_DISABLE_UPDATE_CHECKS=1`, `ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1`; Python tests used disposable `/tmp/opencode` projects with bytecode writing disabled. Existing editor-fixture shutdown RID/ObjectDB diagnostics remain; ordinary initialization is clean.
 - Publication, complete 1.4.1 native CI/package/catalog generation, real downloaded-helper/platform acceptance and Store approval remain pending owner actions. Reviewer confirmation of post-install downloads, corrected thumbnail and previous affected Store downloads remain separate. No commit, push, tag, workflow dispatch, published-release edit or Store submission occurred.
+
+### 2026-10-30: Editor-scale synthetic usage refresh race correction
+
+- Read-only inspection of [Tests run #49](https://github.com/cold-atom/Orca/actions/runs/41042858660), commit `502d838`, confirmed successful four-platform native acceptance, binary-free packaging/artifact uploads and component tests. Editor integration stopped at two request-estimate tooltip assertions; subsequent editor/localhost/final checks were skipped.
+- The test injected a synthetic blocked-request summary directly into the UI, but normal asynchronous model-metadata completion refreshed the real idle controller and replaced it during deferred font sizing. Forcing the deferred metadata signal reproduced the zero-usage tooltip failure before the correction. The fixture now disconnects only its controller-to-UI usage callback while measuring synthetic data, forces the race at every 1×/1.5×/2× font size, retains strict tooltip/containment assertions, reconnects and verifies subsequent signal delivery. Production request/usage/tooltip behavior and permissions are unchanged.
+- Verification on Godot 4.7.2 with all three startup suppressions: `--headless --editor --path . --script res://tests/editor_ui_scale_test.gd` passed with the forced race; all nine remaining editor suites in `.github/workflows/tests.yml` passed in their existing order. `--headless --path . --script res://tests/chat_window_test.gd` and clean `--headless --editor --path . --quit` passed. Diff and replacement-artifact checks passed. Existing editor-fixture RID/ObjectDB/scan shutdown diagnostics remain visible; ordinary initialization is clean. No owner authentication, native-helper download or live inference was used. Graphical/platform checks and localhost transport suites were not rerun for this fixture-only correction.
+- Correction and verification guidance remain local/uncommitted. The owner must push it for a new complete CI run before tagging/preparing 1.4.1; rerunning `502d838` retains the race. No commit, push, tag, workflow dispatch or release publication occurred in this correction.
 
 ## Handoff Checklist
 
