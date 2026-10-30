@@ -11,7 +11,12 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-Orca 1.4.0 is released for Godot 4.7.2 in `addons/orca/`. Windows/macOS native CI and downloaded-plugin/update acceptance remain pending.
+This checkout prepares Orca 1.4.1 for Godot 4.7.2 in `addons/orca/`, a packaging
+follow-up to 1.4.0's Godot Asset Store rejection for bundled executables. The plugin
+ZIP is binary-free and native helpers are separately published, verified and cached.
+See [1.4.1](CHANGELOG.md#141---2026-10-30) for the fixes and
+[1.4.0](CHANGELOG.md#140---2026-10-29) for the full feature list. Publication, Asset
+Store approval and downloaded-helper/platform updater acceptance remain pending.
 
 ### Key Features & Components
 1. **Editor Integration (`orca.gd`, `orca.tscn`, `chat_window.tscn`)**
@@ -118,10 +123,10 @@ Official packages are bounded and verified against release/file manifests; local
 changes are preserved. A trusted independent installer waits for editor exit, retains
 the original addon and reopens the same project. The first updater-equipped package
 is installed manually once. This is user-owned maintenance, separate from agent tools.
-Complete build downloads use `orca-package`, containing `orca-v1.4.0.zip` and its
-checksum. The optional helper bundle supports local source packaging; commit-based
-Asset Library releases need the tested helpers and generated manifest in their
-selected commit. See `docs/UPDATES.md` for manual and workflow publication steps.
+Build downloads use `orca-package`, containing the binary-free versioned ZIP and
+checksum, plus `orca-native-release-assets` with separately published helpers.
+Commit-based Asset Library distributions need the exact ZIP's helper catalog and
+update manifest, never compiled helpers. See `docs/UPDATES.md` for publication steps.
 
 ### Orca Account integration
 
@@ -132,8 +137,13 @@ Hosted requests retain exact tool compatibility, turn binding, private continuat
 and normal project approvals. Linux native persistence and real two-process
 Godot/FastAPI fixtures are verified, and Godot HTTPS health checks pass. The native
 Actions workflow now builds/tests Linux/Windows x86_64 and Apple Silicon/Intel Mac
-helpers and assembles one complete plugin ZIP plus a reusable helper bundle.
-Windows/macOS CI execution and downloaded-plugin acceptance remain pending.
+helpers and assembles a binary-free plugin ZIP plus separate native release assets.
+Startup quietly prepares the exact platform helper in a verified external cache,
+with no additional install prompt or updater-style notice. Early Cloud sign-in
+waits with **Preparing connection…**; cancelling sign-in leaves preparation running,
+and BYOK/local use is available throughout. Preparation alone never opens a browser.
+Earlier four-platform native build/acceptance jobs passed; complete 1.4.1 CI and
+real downloaded-plugin acceptance remain pending.
 After the localhost-to-production switch, sign in again against the deployed
 account database. See the addon setup guide for the account workflow.
 

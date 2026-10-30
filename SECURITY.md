@@ -2,8 +2,10 @@
 
 ## Supported Version
 
-Security work targets the 1.4.x release line. Orca 1.4.0 is released; Windows/macOS
-distribution acceptance remains pending.
+Security work targets the 1.4.x release line. This checkout prepares Orca 1.4.1,
+the binary-free packaging follow-up to the GitHub-published 1.4.0 release.
+Publication, Godot Asset Store approval and Windows/macOS distribution acceptance
+remain pending.
 
 ## Reporting A Vulnerability
 
@@ -26,6 +28,7 @@ Orca is designed to reduce accidental project changes, not to sandbox arbitrary 
 - Work-mode project changes require explicit approval and are checked against hashes and editor state before application.
 - Project paths are restricted to `res://`; symbolic links and Orca's own addon directory are rejected by agent tools.
 - BYOK provider API keys are stored in Godot Editor Settings, which is not an encrypted OS credential manager.
+- New plugin ZIPs contain no compiled executables. Enabling Orca automatically prepares the missing fixed platform credential helper in the background, with no install prompt or updater notice. Its exact release version/name/size/SHA-256 is pinned in the packaged catalog; bounded unauthenticated downloads allow only official GitHub asset redirects, three transient attempts and a shared preparation deadline. The content-addressed user cache is outside the addon/project, refuses symlinks/changed bytes, coordinates installers and revalidates before execution. Preparation alone never opens a browser or sends a model request. Early explicit sign-in waits for readiness; navigation/cancellation invalidates that intent without stopping background preparation. Startup account restoration remains OS-vault/origin-bound. BYOK/local use does not wait. Tests suppress downloads with `ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1`. Public checksums are not an independent signing authority.
 - Orca account refresh/session credentials instead use the native OS vault; access tokens remain in memory. The fixed helper uses bounded private pipes and an OS refresh lock, with no shared client secret/plaintext fallback. Native CI covers Linux/Windows x86_64 and macOS arm64/x86_64; Linux is verified locally, while Windows/macOS execution and downloaded-package acceptance remain pending. Windows uses LF-only binary pipes and a static CRT; Mac builds are ad-hoc signed, not notarized. Account credentials cannot be saved as BYOK keys or sent through arbitrary endpoint overrides. Managed tools are automatically available only through authenticated operator-verified capability/tool-contract records and fixed-origin runtime checks. Local/custom probe requirements and all project approvals remain; subscription metadata is not project authorization. Context estimates do not replace byte-upper-bound billing reservation. Unknown/accepted usage is never assumed zero or replayed.
 - Session transcripts are stored locally as plaintext JSON and can contain prompts and visible assistant responses.
 - Per-answer attribution retains only the bounded configured model ID and response mode in visible history. It is separate from model continuation/provider payloads, and the strict-allowlist support report still excludes exact model identifiers and conversation metadata.

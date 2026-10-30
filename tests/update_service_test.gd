@@ -35,6 +35,10 @@ func _run() -> void:
 		check(Package.version_parts(invalid).is_empty(), "malformed/prerelease versions rejected")
 	var normalized := Service.normalize_release(release(), "1.3.0")
 	check(normalized.get("success", false) and normalized["release"]["version"] == "1.4.0", "new official stable asset accepted")
+	for installed in ["1.3.0", "1.4.0"]:
+		var patch := Service.normalize_release(release("1.4.1"), installed)
+		check(patch.get("success", false) and patch.get("release", {}).get("version") == "1.4.1", "packaging follow-up is newer than installed " + installed)
+	check(Service.normalize_release(release("1.4.1"), "1.4.1").get("release", {"bad": true}).is_empty(), "installed packaging follow-up gives no update")
 	check(Service.normalize_release(release("1.3.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "same version gives no update")
 	check(Service.normalize_release(release("1.2.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "older release never downgrades")
 	for field in ["draft", "prerelease"]:

@@ -6,3 +6,5 @@
 /** export-ignore
 /addons !export-ignore
 /addons/** !export-ignore
+# Native source is public; compiled helpers are separate Release assets.
+/addons/orca/native/credential_helper_* export-ignore

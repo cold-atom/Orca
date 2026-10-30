@@ -2,20 +2,29 @@
 extends Node
 
 const MAX_BYTES := 16384
+const NativeHelper = preload("res://addons/orca/scripts/native_helper_service.gd")
+var helper_service
 var _process: Dictionary = {}
 var _buffer := PackedByteArray()
 var _scope := ""
 
 
+func _ready() -> void:
+	if helper_service == null:
+		helper_service = NativeHelper.new()
+		add_child(helper_service)
+
+
 func available() -> bool:
-	return FileAccess.file_exists(_executable())
+	return not _executable().is_empty()
 
 
 func acquire(scope: String) -> bool:
-	if not _process.is_empty() or not available() or scope.length() != 64:
+	var executable := _executable()
+	if not _process.is_empty() or executable.is_empty() or scope.length() != 64:
 		return false
 	_scope = scope
-	_process = OS.execute_with_pipe(ProjectSettings.globalize_path(_executable()), [scope], false)
+	_process = OS.execute_with_pipe(executable, [scope], false)
 	if _process.is_empty():
 		return false
 	if await _read_line(50000) != "READY":
@@ -93,5 +102,4 @@ func _read_line(timeout_ms: int) -> String:
 
 
 func _executable() -> String:
-	var platform := {"Linux": "linux", "macOS": "macos", "Windows": "windows"}.get(OS.get_name(), "unsupported")
-	return "res://addons/orca/native/credential_helper_%s.%s%s" % [platform, Engine.get_architecture_name(), ".exe" if platform == "windows" else ""]
+	return helper_service.executable() if helper_service != null else ""

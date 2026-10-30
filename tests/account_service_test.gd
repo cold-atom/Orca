@@ -161,7 +161,7 @@ func _run() -> void:
 	check(malformed.is_empty(), "malformed catalog denied")
 	var store := Store.new()
 	root.add_child(store)
-	check(store.available(), "native helper packaged on development platform")
+	check(store.helper_service != null and not store._executable().begins_with("res://"), "credential store resolves only verified user-cache helpers, never a bundled executable")
 	store.free()
 	print("Account service tests: " + ("PASS" if failures == 0 else "FAIL"))
 	quit(0 if failures == 0 else 1)

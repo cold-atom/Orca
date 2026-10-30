@@ -1,6 +1,17 @@
 extends SceneTree
 
 const Store = preload("res://addons/orca/scripts/credential_store.gd")
+const Helper = preload("res://addons/orca/scripts/native_helper_service.gd")
+
+class FixtureHelper extends Helper:
+	func cache_root() -> String:
+		return OS.get_environment("ORCA_TEST_HELPER_CACHE")
+
+func _new_store():
+	var store := Store.new()
+	store.helper_service = FixtureHelper.new()
+	store.add_child(store.helper_service)
+	return store
 
 func _init() -> void:
 	call_deferred("_run")
@@ -10,7 +21,7 @@ func _run() -> void:
 	if not phase.is_empty():
 		await _run_persistence(phase)
 		return
-	var store := Store.new()
+	var store = _new_store()
 	root.add_child(store)
 	var scope := _test_scope()
 	if not await store.acquire(scope):
@@ -21,7 +32,7 @@ func _run() -> void:
 	var before: Dictionary = await store.read_record()
 	var saved: bool = await store.write_record(record)
 	var restored: Dictionary = await store.read_record()
-	var second := Store.new()
+	var second = _new_store()
 	root.add_child(second)
 	var lock_state := {"acquired": false}
 	_acquire_second(second, scope, lock_state)
@@ -63,7 +74,7 @@ func _run_persistence(phase: String) -> void:
 	if scope.length() != 64 or phase not in ["save", "restore", "erase", "cleanup"]:
 		quit(1)
 		return
-	var store := Store.new()
+	var store = _new_store()
 	root.add_child(store)
 	if not await store.acquire(scope):
 		store.free()

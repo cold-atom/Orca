@@ -97,6 +97,8 @@ func _update_readiness() -> String:
 		return "Save all open scenes and scripts before installing an update."
 	if account_service != null and (account_service._refreshing or account_service.state in ["connecting", "pairing", "restoring", "signing_out"]):
 		return "Finish or cancel account sign-in/refresh before restarting."
+	if account_service != null and account_service.native_helper != null and account_service.native_helper.busy():
+		return "Secure connection preparation is still running. Try updating again when it finishes."
 	if chat_window != null:
 		return chat_window.update_readiness()
 	return ""

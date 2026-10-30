@@ -548,7 +548,7 @@ func _render_account() -> void:
 	account_sign_in_button.visible = not connected and not pairing
 	var locked: bool = account_service != null and account_service.state in ["restoring", "signing_out"]
 	account_sign_in_button.disabled = account_service == null or locked
-	account_reopen_button.visible = pairing
+	account_reopen_button.visible = account_service != null and account_service.state == "pairing"
 	account_cancel_button.visible = pairing
 	for button in [account_use_models_button, account_console_button, account_sign_out_button]:
 		button.visible = connected
@@ -556,7 +556,7 @@ func _render_account() -> void:
 	account_refresh_button.disabled = account_service == null or locked
 	_account_name_label.visible = connected
 	_account_usage_label.visible = connected
-	_account_code_label.visible = pairing
+	_account_code_label.visible = account_service != null and account_service.state == "pairing"
 	_account_status_label.text = str(account_service.status) if account_service != null else "Account service is unavailable."
 	if pairing:
 		_account_code_label.text = "Pairing code: " + str(account_service.pairing_code)

@@ -27,3 +27,5 @@ HANDOVER.md
 dist/
 __pycache__/
 .orca_update_editor_test_*/
+# Native build products are published separately, never committed/bundled.
+/addons/orca/native/credential_helper_*

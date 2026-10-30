@@ -18,6 +18,7 @@ var models: Array[Dictionary] = []
 var account: Dictionary = {}
 var _tokens: Dictionary = {}
 var _vault
+var native_helper
 var _generation := 0
 var _refreshing := false
 var _pairing_secret := ""
@@ -27,6 +28,7 @@ var _closed := false
 var _signing_out := false
 var _requests: Array[HTTPRequest] = []
 var _account_refresh_serial := 0
+var _startup_restore_pending := false
 var browser_opener := Callable()
 
 
@@ -34,13 +36,32 @@ func _ready() -> void:
 	if _vault == null:
 		_vault = CredentialStore.new()
 		add_child(_vault)
+		native_helper = _vault.helper_service
+	if native_helper != null and not native_helper.changed.is_connected(_on_native_helper_changed):
+		native_helper.changed.connect(_on_native_helper_changed)
 	# OS vaults are per-user. Share one connection across projects; the native
 	# lock serializes refresh rotation across all editor processes.
 	_scope = ("dev.aiorca.EditorAccount.v1|" + CloudProvider.ORIGIN).sha256_text()
 	# The vault is authoritative; an EditorSettings marker can be stale when
 	# several editors save preferences. Tests can explicitly suppress owner login.
-	if Engine.is_editor_hint() and OS.get_environment("ORCA_DISABLE_ACCOUNT_RESTORE") != "1" and _vault.available():
-		call_deferred("restore_connection")
+	if Engine.is_editor_hint() and OS.get_environment("ORCA_DISABLE_ACCOUNT_RESTORE") != "1" and (_vault.available() or (native_helper != null and not native_helper.entry.is_empty() and native_helper.automatic_downloads_enabled())):
+		_startup_restore_pending = true
+		call_deferred("_restore_after_helper", _generation)
+
+
+func _restore_after_helper(generation: int) -> void:
+	if not _closed and generation == _generation and not _vault.available() and native_helper != null:
+		await native_helper.prepare()
+	if not _closed and generation == _generation and _vault.available():
+		await restore_connection()
+	_startup_restore_pending = false
+	if not _closed:
+		changed.emit()
+
+
+func onboarding_restoration_pending() -> bool:
+	# A configured Cloud model is an onboarding hint only, never vault authority.
+	return state == "restoring" or (_startup_restore_pending and not str(Config.get_provider_config("orca_cloud").get("model", "")).is_empty())
 
 
 func connected() -> bool:
@@ -85,10 +106,17 @@ func begin_pairing() -> void:
 		return
 	_generation += 1
 	var generation := _generation
-	_set_state("connecting", "Preparing browser sign-in…")
-	if not _vault.available():
-		_set_state("signed_out", "Secure credential storage is unavailable. Install the Orca credential bridge and enable your OS credential vault.")
+	_startup_restore_pending = false
+	_set_state("connecting", "Preparing connection…")
+	if generation != _generation or _closed:
 		return
+	if not _vault.available():
+		var prepared: bool = await native_helper.prepare() if native_helper != null else false
+		if generation != _generation or _closed:
+			return
+		if not prepared or not _vault.available():
+			_set_state("signed_out", str(native_helper.status) if native_helper != null else "Secure credential storage is unavailable. Enable your OS credential vault.")
+			return
 	var result := await _request("/v1/auth/device/code", HTTPClient.METHOD_POST, {"client_id": "orca-godot", "device_label": "Godot editor"})
 	if generation != _generation or _closed:
 		return
@@ -145,6 +173,7 @@ func begin_pairing() -> void:
 
 func cancel_pairing() -> void:
 	_generation += 1
+	_startup_restore_pending = false
 	var secret := _pairing_secret
 	_pairing_secret = ""
 	_pairing_url = ""
@@ -152,6 +181,10 @@ func cancel_pairing() -> void:
 	_set_state("connected" if connected() else "signed_out", "Connected." if connected() else "Sign-in cancelled.")
 	if not secret.is_empty():
 		await _request("/v1/auth/device/cancel", HTTPClient.METHOD_POST, {"device_code": secret})
+
+
+func _on_native_helper_changed() -> void:
+	changed.emit()
 
 
 func open_pairing_browser() -> void:

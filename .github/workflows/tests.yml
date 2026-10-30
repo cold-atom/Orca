@@ -19,6 +19,7 @@ jobs:
       GODOT_BIN: ${{ github.workspace }}/.ci/Godot_v4.7.2-stable_linux.x86_64
       ORCA_DISABLE_ACCOUNT_RESTORE: "1"
       ORCA_DISABLE_UPDATE_CHECKS: "1"
+      ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS: "1"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -50,6 +51,8 @@ jobs:
           "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
           python3 -m unittest discover -s tests -p update_package_test.py
           python3 -m unittest discover -s tests -p native_helper_packaging_test.py
+          "$GODOT_BIN" --headless --path . --script res://tests/native_helper_service_test.gd
+          python3 -m unittest discover -s tests -p native_helper_download_test.py
           "$GODOT_BIN" --headless --path . --script res://tests/account_service_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/hosted_defaults_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/responses_protocol_test.gd
@@ -103,6 +106,7 @@ jobs:
           "$GODOT_BIN" --headless --editor --path . --script res://tests/provider_settings_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/managed_settings_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/onboarding_editor_test.gd
+          "$GODOT_BIN" --headless --editor --path . --script res://tests/native_helper_editor_test.gd
 
       - name: Run local transport integration
         shell: bash

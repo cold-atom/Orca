@@ -38,9 +38,21 @@ uses the disposable runner user's Credential Manager with a random erased scope.
 All fixtures suppress owner account restoration/update checks. No real sign-in,
 provider key or account token is required by CI.
 
-The aggregate artifacts are `orca-native-helpers` (a permissions-preserving tar.gz
-with `addons/orca/native/` paths) and `orca-package` (complete `orca-v<version>.zip`
-and checksum, named from `plugin.cfg`). Download/unzip `orca-package` for installation.
+Compiled helpers are not committed or bundled into plugin ZIPs. Plugin startup
+quietly prepares the missing helper for this OS/architecture, without an install
+prompt or updater notice. The plugin verifies size,
+SHA-256/native architecture against its packaged `native_helpers.json`, then caches
+the executable at `OS.get_data_dir()/Orca/native/<sha256>/<asset>`. No restart or
+account token is needed to download. Early explicit sign-in waits for verification;
+background completion alone never starts browser pairing. Missing/changed/symlinked
+helpers cannot execute. Cancelling sign-in leaves preparation running; disabling
+the plugin cancels it. BYOK/local use is available throughout.
+
+The aggregate artifacts are `orca-native-helpers` (a local-preparation tar.gz),
+`orca-native-release-assets` (four separate raw executables) and `orca-package`
+(binary-free `orca-v<version>.zip` and checksum, named from `plugin.cfg`). Publish
+the raw executables alongside their matching ZIP under the same official tag;
+submit only the ZIP to Godot. Download/unzip `orca-package` for installation.
 For local source preparation, download the helper bundle from the matching source
 commit, unzip its Actions wrapper, then extract its tar.gz at the repository root.
 See the [release/Asset Library procedure](https://github.com/cold-atom/Orca/blob/main/docs/UPDATES.md#builds-and-downloads-from-github-actions).
@@ -58,7 +70,7 @@ The fixture checks LF/bounds, read/write/delete, two-helper locking and save/res
 rotation in separate Godot processes. Test projects and keyrings are temporary;
 only random synthetic test records are accessed.
 
-Linux's shipped helper is verified locally. Windows/macOS CI execution and real
+Linux's isolated cached-helper flow is verified locally. Windows/macOS CI execution and real
 downloaded-plugin acceptance are still required before declaring those builds
 supported. Ad-hoc signing is not Developer ID signing/notarization; Gatekeeper and
 Keychain prompts on a real downloaded package remain platform acceptance checks.

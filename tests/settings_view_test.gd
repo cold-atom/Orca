@@ -43,7 +43,7 @@ func _run() -> void:
 	_expect(not view.settings_scroll.visible and not view.system_scroll.visible and view.about_scroll.visible, "the About tab should replace other settings")
 	_expect(view.about_tab_button.button_pressed, "the About tab should show its selected state")
 	_expect(not view.about_scroll.is_ancestor_of(view.update_panel), "About should not contain update controls")
-	_expect(view.about_version_label.text == "Version 1.4.0", "the About page should read the release version from plugin.cfg")
+	_expect(view.about_version_label.text == "Version 1.4.1", "the About page should read the release version from plugin.cfg")
 	var compatibility := view.find_child("AboutCompatibility", true, false) as Label
 	var license := view.find_child("AboutLicense", true, false) as Label
 	var logo := view.find_child("AboutLogo", true, false) as TextureRect
@@ -68,7 +68,7 @@ func _run() -> void:
 			_expect(connections.size() == 1 and connections[0]["callable"].get_bound_arguments() == [link[1]], "each About action should open its exact static URL only on click")
 	view.set_support_request_metadata({"provider_type": "openai", "outcome": "failed", "interaction_mode": "work", "stage": "initial", "tools_offered": true, "failure_category": "timeout", "transport_phase": "receiving_response", "message": "PRIVATE_ERROR_SENTINEL", "base_url": "https://private.example"})
 	var report_text: String = view.diagnostic_report_text()
-	_expect(report_text.contains("\"orca_version\": \"1.4.0\"") and report_text.contains("\"failure_category\": \"timeout\""), "the About action should generate versioned coarse request diagnostics")
+	_expect(report_text.contains("\"orca_version\": \"1.4.1\"") and report_text.contains("\"failure_category\": \"timeout\""), "the About action should generate versioned coarse request diagnostics")
 	_expect(not report_text.contains("PRIVATE_ERROR_SENTINEL") and not report_text.contains("private.example"), "the About report must not serialize unknown request or endpoint fields")
 	view._on_copy_support_report_pressed()
 	_expect(view.support_report_status.text == "Copied diagnostic report.", "copying diagnostics should provide visible confirmation")

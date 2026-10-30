@@ -4,7 +4,29 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+## 1.4.1 - 2026-10-30
+
+Packaging follow-up to [1.4.0](#140---2026-10-29), which was published on GitHub
+but rejected by the Godot Asset Store because its ZIP included compiled executables.
+This release candidate retains the 1.4.0 features; users upgrading from 1.3.0 should
+read that entry for the full feature list. GitHub publication and Asset Store
+approval of 1.4.1 remain pending.
+
+### Fixed
+
+- Plugin ZIPs and Git source exports exclude compiled native helpers. Release builds publish the four platform helpers separately alongside the plugin ZIP/checksum, with an exact version/size/SHA-256 catalog generated from the tested assets.
+- Orca quietly downloads and verifies a missing platform helper on plugin enable, caching it outside projects/addons. Early Cloud sign-in waits with **Preparing connection…**; BYOK/local providers remain usable. Saved-account restoration waits for readiness, retries are bounded, and plugin shutdown cancels preparation.
+- GitHub release notes now link **Full Changelog** directly to the released version's `CHANGELOG.md`.
+
+### Changed
+
+- Plugin/About/support-report metadata and release guidance now identify 1.4.1, giving existing 1.4.0 GitHub installations a newer version without replacing published assets. Godot Asset Store users can upgrade directly from 1.3.0.
+
 ## 1.4.0 - 2026-10-29
+
+Published on GitHub; the Godot Asset Store submission was rejected for bundled
+compiled executables. See [1.4.1](#141---2026-10-30) for the packaging follow-up.
+The entries below describe the original 1.4.0 release.
 
 ### Added
 

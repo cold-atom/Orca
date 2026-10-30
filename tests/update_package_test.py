@@ -70,7 +70,7 @@ class UpdateTests(unittest.TestCase):
         binary = os.environ.get("GODOT_BIN")
         if not binary:
             self.skipTest("Set GODOT_BIN for actual Godot updater acceptance")
-        env = {**os.environ, "ORCA_DISABLE_ACCOUNT_RESTORE": "1", "ORCA_DISABLE_UPDATE_CHECKS": "1"}
+        env = {**os.environ, "ORCA_DISABLE_ACCOUNT_RESTORE": "1", "ORCA_DISABLE_UPDATE_CHECKS": "1", "ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS": "1"}
         # Match display-free CI even when these tests run on a developer desktop.
         # A mistakenly graphical relaunch must fail rather than masking the bug.
         env.pop("DISPLAY", None)
@@ -99,8 +99,8 @@ class UpdateTests(unittest.TestCase):
             for entry in manifest["files"]:
                 data = archive.read("addons/orca/" + entry["path"])
                 self.assertEqual(hashlib.sha256(data).hexdigest(), entry["sha256"])
-            permissions = archive.getinfo("addons/orca/native/credential_helper_linux.x86_64").external_attr >> 16
-            self.assertTrue(permissions & stat.S_IXUSR)
+            self.assertNotIn("addons/orca/native/credential_helper_linux.x86_64", archive.namelist())
+            self.assertTrue(all(not entry["executable"] for entry in manifest["files"]))
         self.assertFalse((source / "update_manifest.json").exists())
 
     def test_packaging_refuses_bad_versions_symlinks_and_overwrite(self) -> None:
@@ -145,6 +145,28 @@ class UpdateTests(unittest.TestCase):
             bad.append(str(path))
         self.godot({"project": str(project), "archive": str(archive), "digest": result["sha256"], "bad_archives": bad})
         self.assertEqual((project / "user-game.txt").read_bytes(), b"unrelated project work")
+
+    def test_legacy_bundled_helper_survives_guarded_rollback(self) -> None:
+        project, old, new, result = self.archives()
+        legacy_name = "addons/orca/native/credential_helper_linux.x86_64"
+        legacy_bytes = b"old-reviewed-helper-never-executed"
+        with zipfile.ZipFile(old) as reader:
+            files = {name: reader.read(name) for name in reader.namelist()}
+        manifest = json.loads(files["addons/orca/update_manifest.json"])
+        manifest["files"].append({"path": legacy_name.removeprefix("addons/orca/"), "size": len(legacy_bytes), "sha256": hashlib.sha256(legacy_bytes).hexdigest(), "executable": True})
+        files["addons/orca/update_manifest.json"] = json.dumps(manifest).encode()
+        files[legacy_name] = legacy_bytes
+        with zipfile.ZipFile(old, "w", compression=zipfile.ZIP_DEFLATED) as writer:
+            for name, data in files.items():
+                info = zipfile.ZipInfo(name)
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | (0o755 if name == legacy_name else 0o644)) << 16
+                writer.writestr(info, data)
+        install_archive(old, project)
+        (project / legacy_name).chmod(0o755)
+        self.godot({"project": str(project), "archive": str(new), "digest": result["sha256"], "bad_archives": []})
+        self.assertEqual((project / legacy_name).read_bytes(), legacy_bytes)
 
     def test_actual_repository_release_package(self) -> None:
         archive = self.root / "repository.zip"
@@ -248,7 +270,7 @@ class UpdateTests(unittest.TestCase):
             self.assertEqual(manifest["version"], "1.4.0")
             self.assertEqual(backup["version"], "1.3.0")
             self.assertEqual((project / "user-game.txt").read_bytes(), b"unrelated project work")
-            self.assertTrue((project / "addons/orca/native/credential_helper_linux.x86_64").stat().st_mode & stat.S_IXUSR)
+            self.assertFalse((project / "addons/orca/native/credential_helper_linux.x86_64").exists())
             self.assertEqual([path for path, _ in events], ["/latest", "/download", "/cdn"])
             self.assertTrue(all("Authorization" not in headers for _, headers in events))
         finally:

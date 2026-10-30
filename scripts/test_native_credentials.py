@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
+import json
 import os
 import platform
 import secrets
@@ -92,10 +94,20 @@ def acceptance(godot: str, directory: Path) -> None:
     shutil.copy2(ROOT / "addons/orca/native" / helper.name, helper)
     helper.chmod(0o755)
     shutil.copy2(ROOT / "addons/orca/scripts/credential_store.gd", scripts)
+    for name in ("native_helper_service.gd", "update_package.gd"):
+        shutil.copy2(ROOT / "addons/orca/scripts" / name, scripts)
     shutil.copy2(ROOT / "tests/credential_store_test.gd", tests)
+    digest = hashlib.sha256(helper.read_bytes()).hexdigest()
+    cache = directory / "native-cache"
+    cached = cache / digest / helper.name
+    cached.parent.mkdir(parents=True)
+    shutil.copy2(helper, cached)
+    system, arch = helper.name.removeprefix("credential_helper_").removesuffix(".exe").split(".")
+    (project / "addons/orca/plugin.cfg").write_text('[plugin]\nname="Orca"\nversion="1.4.0"\nscript="orca.gd"\n')
+    (project / "addons/orca/native_helpers.json").write_text(json.dumps({"format": "orca-native-helpers-v1", "version": "1.4.0", "helpers": [{"platform": system, "architecture": arch, "asset": helper.name, "size": helper.stat().st_size, "sha256": digest}]}))
     (project / "project.godot").write_text('config_version=5\n[application]\nconfig/name="Orca native vault fixture"\n', encoding="utf-8")
     scope = secrets.token_hex(32)
-    environment = {**os.environ, "ORCA_DISABLE_ACCOUNT_RESTORE": "1", "ORCA_DISABLE_UPDATE_CHECKS": "1", "ORCA_TEST_VAULT_SCOPE": scope}
+    environment = {**os.environ, "ORCA_DISABLE_ACCOUNT_RESTORE": "1", "ORCA_DISABLE_UPDATE_CHECKS": "1", "ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS": "1", "ORCA_TEST_VAULT_SCOPE": scope, "ORCA_TEST_HELPER_CACHE": str(cache)}
     arguments = [godot, "--headless", "--path", str(project), "--script", "res://tests/credential_store_test.gd"]
     try:
         # Exact bytes catch CRT CRLF conversion before exercising the GDScript pipe.

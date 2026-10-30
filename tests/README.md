@@ -1,12 +1,13 @@
 # Orca Tests
 
-Set `ORCA_DISABLE_ACCOUNT_RESTORE=1` and `ORCA_DISABLE_UPDATE_CHECKS=1` for ordinary
-editor tests so startup neither restores owner credentials nor sends update checks.
+Set `ORCA_DISABLE_ACCOUNT_RESTORE=1`, `ORCA_DISABLE_UPDATE_CHECKS=1` and
+`ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1` for ordinary editor tests so startup neither
+restores owner credentials nor sends update checks/background component downloads.
 
 ## Connection onboarding
 
 ```bash
-export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1
+export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
 "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
 "$GODOT_BIN" --headless --editor --path . --script res://tests/onboarding_editor_test.gd
 ```
@@ -38,7 +39,7 @@ draft Send after returning, light themes and other native platforms.
 ## Plugin updater
 
 ```bash
-export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1
+export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
 "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
 "$GODOT_BIN" --headless --editor --path . --script res://tests/update_editor_test.gd
 python3 -m unittest discover -s tests -p update_package_test.py -v
@@ -76,8 +77,8 @@ single-flight refresh, account/capability drift denial, chat-only gating, and St
 during auth without orphan inference. CI runs this component suite and a separate
 four-platform native-helper workflow. `hosted_defaults_test.gd` uses the actual root guide and full Work
 schemas; `managed_settings_editor_test.gd` checks automatic included-model selection
-and the absence of subscriber compatibility/reasoning controls. Set `ORCA_DISABLE_ACCOUNT_RESTORE=1` during ordinary editor tests
-so they never restore an owner's real account.
+and the absence of subscriber compatibility/reasoning controls. Use all three
+startup-suppression flags during ordinary editor tests.
 
 Production-origin regressions verify `https://cloud.aiorca.dev` pairing/Console
 URLs, isolation from localhost vault records, rejection of confirmed noncanonical
@@ -99,17 +100,18 @@ usage and keep the clipped header/cost inside a 300px dock with larger label fon
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/account_service_test.gd
-"$GODOT_BIN" --headless --path . --script res://tests/credential_store_test.gd
 ```
 
-The second command needs a usable desktop OS vault and uses a random isolated
-scope. It tests real secure read/write/delete and two-helper refresh serialization.
-For isolated CI/local native acceptance, prefer:
+Run the credential-store fixture through the isolated Python runner, which supplies
+a disposable project, verified test cache/catalog and private vault scope:
 
 ```bash
 python3 scripts/build_native_helper.py
 GODOT_BIN=/path/to/Godot python3 scripts/test_native_credentials.py
 python3 -m unittest discover -s tests -p native_helper_packaging_test.py -v
+"$GODOT_BIN" --headless --path . --script res://tests/native_helper_service_test.gd
+"$GODOT_BIN" --headless --editor --path . --script res://tests/native_helper_editor_test.gd
+python3 -m unittest discover -s tests -p native_helper_download_test.py -v
 ```
 
 The native workflow runs on Linux/Windows x86_64 and macOS arm64/x86_64. Its Python
@@ -125,10 +127,19 @@ to choose a temporary parent. All native jobs must pass before aggregate artifac
 or release packaging are allowed. Native Windows/macOS execution remains pending
 until Actions runs; compilation/header checks do not establish platform acceptance.
 
-The Python packaging suite covers all four filenames, per-platform executable
-permissions, missing/wrong-architecture/truncated-PE refusal, source-addon output
-denial and explicitly regenerated Asset Library manifests. It uses synthetic
-headers only for assembly checks; real native execution is the separate suite.
+The packaging suite proves binary-free ZIPs, separate exact-hash assets/catalogs,
+native header checks, disguised executable denial, output/overwrite protection and
+explicit source manifest/catalog regeneration. Header fixtures never execute.
+The helper component/editor/HTTP fixtures cover catalog/platform validation,
+automatic quiet startup, early sign-in coalescing, sign-in cancellation/navigation
+without stopping preparation, saved-account restoration and narrow inline status.
+HTTP fixtures cover redirects/hash/size/disconnect, transient bounded retries,
+shutdown/cancellation, cache reuse/tamper/symlinks and cooperating installer waits.
+Deadline fixtures also bound lock polling/backoff and cancellation during retry.
+Native tests execute only real helpers in isolated caches.
+`ORCA_TEST_HELPER_CACHE` belongs only to the vault fixture subclass, not production
+path configuration. Background fixtures opt in only through test subclasses and
+isolated transports. Production startup-download suppression remains required.
 
 Real Godot/FastAPI/PostgreSQL acceptance lives in the backend's
 `tests/test_godot_client.py`. From that repository, use its disposable test database
@@ -155,13 +166,15 @@ real user browser registration/verification, live hosted models, OS-vault unlock
 other platforms, session expiry and deployed HTTPS pairing/inference. Public HTTPS
 health responses establish reachability only, not authenticated or metered acceptance.
 
-## 1.4.0 release-candidate verification
+## 1.4.1 release-candidate verification
 
-The About/support-report expectations follow plugin version 1.4.0. Synthetic
+The About/support-report expectations follow plugin version 1.4.1. Synthetic
 1.3.0 → 1.4.0 installation/rollback fixtures intentionally retain both versions.
+Update metadata checks also verify that 1.4.1 is newer than both 1.3.0 and 1.4.0,
+and actual-source packaging reads the current version from `plugin.cfg`.
 Before publication, run the version-sensitive settings/support checks, updater
 component/editor/package tests, native helper acceptance and clean initialization
-with both startup suppressions. GitHub's complete Tests workflow and Windows/Mac
+with all three startup suppressions. GitHub's complete Tests workflow and Windows/Mac
 native jobs remain required after the owner pushes the candidate. Native/graphical
 acceptance is not established by changing metadata or preparing release notes.
 

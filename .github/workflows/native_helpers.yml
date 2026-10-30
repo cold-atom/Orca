@@ -32,6 +32,7 @@ jobs:
     env:
       ORCA_DISABLE_ACCOUNT_RESTORE: "1"
       ORCA_DISABLE_UPDATE_CHECKS: "1"
+      ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS: "1"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,17 +74,24 @@ jobs:
           pattern: orca-helper-*
           merge-multiple: true
           path: addons/orca/native
-      - name: Validate the complete platform set and package the addon
+      - name: Package binary-free addon and separate tested helpers
         run: |
           mkdir -p .ci
           chmod 755 addons/orca/native/credential_helper_linux.x86_64 addons/orca/native/credential_helper_windows.x86_64.exe addons/orca/native/credential_helper_macos.arm64 addons/orca/native/credential_helper_macos.x86_64
           version=$(python -c 'import configparser; config = configparser.ConfigParser(interpolation=None); config.read("addons/orca/plugin.cfg", encoding="utf-8"); print(config["plugin"]["version"].strip("\""))')
-          python scripts/package_release.py --version "$version" --require-platform-helpers --output ".ci/orca-v${version}.zip"
+          python scripts/package_release.py --version "$version" --require-platform-helpers --helper-assets .ci/helper-assets --output ".ci/orca-v${version}.zip"
           tar -czf .ci/orca-native-helpers.tar.gz addons/orca/native/credential_helper_linux.x86_64 addons/orca/native/credential_helper_windows.x86_64.exe addons/orca/native/credential_helper_macos.arm64 addons/orca/native/credential_helper_macos.x86_64
       - uses: actions/upload-artifact@v4
         with:
           name: orca-native-helpers
           path: .ci/orca-native-helpers.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orca-native-release-assets
+          path: .ci/helper-assets/*
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@v4

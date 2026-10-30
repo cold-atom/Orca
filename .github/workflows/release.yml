@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing stable tag matching plugin.cfg (e.g. v1.4.0)
+        description: Existing stable tag matching plugin.cfg (e.g. v1.4.1)
         required: true
         type: string
       publish:
@@ -29,6 +29,7 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag }}
       ORCA_DISABLE_ACCOUNT_RESTORE: "1"
       ORCA_DISABLE_UPDATE_CHECKS: "1"
+      ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS: "1"
       GODOT_BIN: ${{ github.workspace }}/.ci/Godot_v4.7.2-stable_linux.x86_64
     steps:
       - uses: actions/checkout@v4
@@ -56,8 +57,11 @@ jobs:
           "$GODOT_BIN" --headless --editor --path . --script res://tests/update_editor_test.gd
           python3 -m unittest discover -s tests -p update_package_test.py
           python3 -m unittest discover -s tests -p native_helper_packaging_test.py
+          "$GODOT_BIN" --headless --path . --script res://tests/native_helper_service_test.gd
+          python3 -m unittest discover -s tests -p native_helper_download_test.py
+          "$GODOT_BIN" --headless --editor --path . --script res://tests/native_helper_editor_test.gd
       - name: Build addon-only archive
-        run: python3 scripts/package_release.py --version "${RELEASE_TAG#v}" --require-platform-helpers --output "dist/orca-${RELEASE_TAG}.zip"
+        run: python3 scripts/package_release.py --version "${RELEASE_TAG#v}" --require-platform-helpers --helper-assets dist --output "dist/orca-${RELEASE_TAG}.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: orca-release
@@ -79,4 +83,5 @@ jobs:
           name: orca-release
           path: dist
       - name: Publish selected tag
-        run: gh release create "$RELEASE_TAG" "dist/orca-${RELEASE_TAG}.zip" "dist/orca-${RELEASE_TAG}.zip.sha256" --verify-tag --title "Orca ${RELEASE_TAG}" --generate-notes
+        run: |
+          gh release create "$RELEASE_TAG" "dist/orca-${RELEASE_TAG}.zip" "dist/orca-${RELEASE_TAG}.zip.sha256" dist/credential_helper_* --verify-tag --title "Orca ${RELEASE_TAG}" --notes "**Full Changelog:** [CHANGELOG.md](https://github.com/${GH_REPO}/blob/${RELEASE_TAG}/CHANGELOG.md)"

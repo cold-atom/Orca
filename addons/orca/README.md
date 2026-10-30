@@ -2,9 +2,15 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory contains the Orca 1.4.0 release-candidate addon for Godot 4.7.2.
-Complete cross-platform ZIPs include the four native helpers assembled by GitHub
-Actions. Publication and Windows/macOS platform acceptance remain pending.
+This directory contains the Orca 1.4.1 release-candidate addon for Godot 4.7.2,
+a packaging follow-up to 1.4.0's Godot Asset Store rejection for bundled executables.
+Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
+platform's credential helper from the matching official GitHub Release if missing.
+Helpers are cached outside the project, with no install prompt or update notice.
+Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
+usable. Publication, Asset Store approval and Windows/macOS downloaded-helper
+acceptance remain pending. For the full feature list, see the
+[1.4.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#140---2026-10-29).
 
 ## Install
 
@@ -92,11 +98,13 @@ checkouts and older packages without a manifest use manual installation. See the
    conversation JSON. Refresh rotation is locked across editors. Sign-out erases
    the owned saved connection and attempts backend revocation with a current token.
 
-Linux x86_64 includes the native helper and needs a running Secret Service/libsecret
-collection. Unlock the OS vault if requested. There is no plaintext fallback.
-The native GitHub Actions workflow builds/tests Windows x86_64 and Apple Silicon/
-Intel Mac helpers and packages all four in one addon ZIP; their CI execution and
-downloaded-plugin acceptance remain pending. See [native bridge builds](native/README.md).
+Linux x86_64 needs a running Secret Service/libsecret collection. Unlock the OS
+vault if requested. There is no plaintext fallback. The native GitHub Actions
+workflow builds/tests Linux/Windows x86_64 and Apple Silicon/Intel Mac helpers,
+then publishes them separately from the binary-free addon ZIP. Orca downloads only
+the matching platform helper. Earlier native build/acceptance jobs passed; complete
+1.4.1 CI and real downloaded-plugin acceptance remain pending.
+See [native bridge builds](native/README.md).
 The HTTPS origin is fixed in the
 hosted adapter. **Open Console** opens `https://cloud.aiorca.dev/account`.
 Saved credentials are bound to this origin: after switching from local development,

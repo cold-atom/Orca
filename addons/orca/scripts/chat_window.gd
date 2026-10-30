@@ -2747,7 +2747,7 @@ func _maybe_show_first_connection_setup() -> void:
 		return
 	# Wait for the vault restoration decision without changing the empty state
 	# or consuming first-open intent while the dock is hidden.
-	if account_service != null and account_service.state == "restoring":
+	if account_service != null and account_service.onboarding_restoration_pending():
 		return
 	var setup: Dictionary = agent_controller.connection_setup()
 	_connection_first_open_checked = true

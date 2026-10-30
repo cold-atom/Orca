@@ -119,9 +119,16 @@ func _run() -> void:
 	await _settle()
 	check(not chat._connection_overlay.visible and not chat._connection_first_open_checked, "first-open overlay waits for account restoration")
 	account.state = "signed_out"
+	account._startup_restore_pending = true
+	editor.set_setting("orca/providers/orca_cloud/model", "fixture-returning-model")
+	account.changed.emit()
+	await _settle()
+	check(not chat._connection_overlay.visible and not chat._connection_first_open_checked, "returning Cloud onboarding waits for background-helper restoration")
+	editor.set_setting("orca/providers/orca_cloud/model", "")
 	account.changed.emit()
 	await _settle()
 	check(chat._connection_overlay.visible and chat._connection_setup_card.title_label.text == "Get started with Orca", "first visible unconfigured open shows a separate connection overlay")
+	account._startup_restore_pending = false
 	check(chat.prompt_input.editable and account.pairings == 0 and client.requests == 0, "overlay leaves composer available and starts no pairing or inference")
 	check(chat.empty_state.visible and not chat.chat_feed.is_ancestor_of(chat._connection_setup_card) and normal_layout == _normal_layout_snapshot(chat), "overlay does not resize or replace the original empty state/feed/composer")
 	await _layout_checks(chat._connection_setup_card, chat)
