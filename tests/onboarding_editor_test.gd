@@ -86,7 +86,7 @@ func _run() -> void:
 	editor = EditorInterface.get_editor_settings()
 	_remember(Config.SETTING_PROVIDER)
 	for provider in Providers.PROVIDER_IDS:
-		for field in ["api_key", "model", "reasoning_effort", "base_url", "api_mode", "continuation_style", "image_input_override"]:
+		for field in ["api_key", "model", "reasoning_effort", "base_url", "api_mode", "continuation_style", "image_input_override", "response_start_timeout_seconds", "stream_inactivity_timeout_seconds", "custom_timeouts_enabled"]:
 			_remember("orca/providers/%s/%s" % [provider, field])
 		editor.set_setting("orca/providers/%s/api_key" % provider, "")
 		editor.set_setting("orca/providers/%s/model" % provider, "")

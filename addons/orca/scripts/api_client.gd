@@ -8,6 +8,7 @@ const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const ResponsesProtocol = preload("res://addons/orca/scripts/responses_protocol.gd")
 const DeepSeekCompatibility = preload("res://addons/orca/scripts/deepseek_response_compatibility.gd")
+const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 
 signal request_completed(request_id: int, response: Dictionary)
 signal request_failed(request_id: int, error: Dictionary)
@@ -16,10 +17,10 @@ signal stream_started(request_id: int)
 signal stream_delta(request_id: int, content: String)
 signal cloud_metadata_received(request_id: int, metadata: Dictionary)
 
-const CONNECT_TIMEOUT_MS := 30000
+const CONNECT_TIMEOUT_MS := RequestTimeouts.CONNECT_SECONDS * 1000
 const INACTIVITY_TIMEOUT_MS := 60000
 # Long reasoning models may be active continuously, but an editor request must still terminate.
-const RESPONSE_GENERATION_TIMEOUT_MS := 10 * 60 * 1000
+const RESPONSE_GENERATION_TIMEOUT_MS := RequestTimeouts.TOTAL_GENERATION_MS
 const INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION := "_orca_internal_generation_timeout_ms"
 const LIFECYCLE_REQUEST_ID_OPTION := "lifecycle_request_id"
 const INCLUDE_HISTORY_IMAGES_OPTION := "_orca_include_history_images"
@@ -75,6 +76,9 @@ var _request_phase := "idle"
 var _response_code := 0
 var _generation_deadline_ms := 0
 var _response_generation_timeout_ms := RESPONSE_GENERATION_TIMEOUT_MS
+var _response_start_timeout_ms := CONNECT_TIMEOUT_MS
+var _inactivity_timeout_ms := INACTIVITY_TIMEOUT_MS
+var _legacy_timeout_defaults := false
 var _partial_response_detected := false
 var _configured_api_mode := "chat_completions"
 var _request_config_snapshot: Dictionary = {}
@@ -114,6 +118,10 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 		request_failed.emit(lifecycle_request_id, _make_error(str(authorization.get("error", "Endpoint is not authorized.")), "configuration", false))
 		return
 	request_config = authorization.get("config", request_config)
+	var timeouts := RequestTimeouts.resolve(request_config)
+	if not timeouts.get("success", false):
+		request_failed.emit(lifecycle_request_id, _make_error(str(timeouts["error"]), "configuration", false))
+		return
 	var provider = ProviderRegistry.get_provider(provider_id)
 	_configured_api_mode = provider.api_mode(request_config)
 	var api_key = str(request_config.get("api_key", "")).strip_edges()
@@ -216,6 +224,9 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 	_reset_stream_state()
 	_generation_deadline_ms = 0
 	_response_generation_timeout_ms = RESPONSE_GENERATION_TIMEOUT_MS
+	_response_start_timeout_ms = int(timeouts["response_start_ms"])
+	_inactivity_timeout_ms = int(timeouts["inactivity_ms"])
+	_legacy_timeout_defaults = bool(timeouts["legacy_defaults"])
 	if request_options.has(INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION):
 		_response_generation_timeout_ms = clampi(int(request_options[INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION]), 1, RESPONSE_GENERATION_TIMEOUT_MS)
 	_partial_response_detected = false
@@ -266,6 +277,9 @@ func cancel_request() -> void:
 	_request_config_snapshot.clear()
 	_generation_deadline_ms = 0
 	_response_generation_timeout_ms = RESPONSE_GENERATION_TIMEOUT_MS
+	_response_start_timeout_ms = CONNECT_TIMEOUT_MS
+	_inactivity_timeout_ms = INACTIVITY_TIMEOUT_MS
+	_legacy_timeout_defaults = false
 	request_cancelled.emit(lifecycle_request_id)
 
 
@@ -319,16 +333,18 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 	_request_may_have_usage = true
 
 	_request_phase = "waiting_for_response"
-	deadline = Time.get_ticks_msec() + CONNECT_TIMEOUT_MS
+	# Custom/local response-start budgets span headers and the first body bytes.
+	# The default hosted policy restores its separate body wait after headers.
+	deadline = Time.get_ticks_msec() + _response_start_timeout_ms
 	while _is_current_request(request_id) and _http_client.get_status() == HTTPClient.STATUS_REQUESTING:
 		error = _http_client.poll()
 		if error != OK:
 			_fail_request(request_id, "HTTP request failed: " + error_string(error), "connection", true)
 			return
-		if Time.get_ticks_msec() > deadline:
-			_fail_request(request_id, "The API did not begin responding in time.", "timeout", true)
-			return
 		if _fail_if_generation_timed_out(request_id):
+			return
+		if Time.get_ticks_msec() > deadline:
+			_fail_request(request_id, _response_start_timeout_message(), "timeout", true)
 			return
 		await get_tree().process_frame
 
@@ -371,7 +387,16 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 
 	_request_phase = "receiving_response"
 	var last_activity := Time.get_ticks_msec()
+	if _legacy_timeout_defaults:
+		# Default hosted/managed requests retain the original separate 30-second
+		# header wait and 60-second body wait, including before the first bytes.
+		deadline = last_activity + _inactivity_timeout_ms
 	while _is_current_request(request_id):
+		if _fail_if_generation_timed_out(request_id):
+			return
+		if _response_bytes_received == 0 and Time.get_ticks_msec() > deadline:
+			_fail_request(request_id, _inactivity_timeout_message() if _legacy_timeout_defaults else _response_start_timeout_message(), "timeout", false)
+			return
 		error = _http_client.poll()
 		if error != OK:
 			_fail_request(request_id, "Connection failed while receiving the response: " + error_string(error), "connection", false)
@@ -414,8 +439,8 @@ func _perform_request(request_id: int, endpoint: Dictionary, base_headers: Packe
 			return
 		if status in [HTTPClient.STATUS_CONNECTED, HTTPClient.STATUS_DISCONNECTED]:
 			break
-		if not received_data and Time.get_ticks_msec() - last_activity > INACTIVITY_TIMEOUT_MS:
-			_fail_request(request_id, "The response stream timed out due to inactivity.", "timeout", false)
+		if _response_bytes_received > 0 and not received_data and Time.get_ticks_msec() - last_activity > _inactivity_timeout_ms:
+			_fail_request(request_id, _inactivity_timeout_message(), "timeout", false)
 			return
 		if _fail_if_generation_timed_out(request_id):
 			return
@@ -964,6 +989,9 @@ func _finish_request(request_id: int) -> bool:
 	_reset_stream_state()
 	_generation_deadline_ms = 0
 	_response_generation_timeout_ms = RESPONSE_GENERATION_TIMEOUT_MS
+	_response_start_timeout_ms = CONNECT_TIMEOUT_MS
+	_inactivity_timeout_ms = INACTIVITY_TIMEOUT_MS
+	_legacy_timeout_defaults = false
 	_partial_response_detected = false
 	_request_config_snapshot.clear()
 	return true
@@ -1200,6 +1228,19 @@ func _make_error(message: String, category: String, retryable: bool) -> Dictiona
 
 func _response_generation_timed_out() -> bool:
 	return _generation_deadline_ms > 0 and Time.get_ticks_msec() > _generation_deadline_ms
+
+
+func _response_start_timeout_message() -> String:
+	var waiting_for := "return response headers" if _legacy_timeout_defaults else "begin sending response data"
+	return "The API did not %s within %.1f seconds.%s" % [waiting_for, _response_start_timeout_ms / 1000.0, _timeout_settings_guidance()]
+
+
+func _inactivity_timeout_message() -> String:
+	return "The response stream timed out after %.1f seconds without data.%s" % [_inactivity_timeout_ms / 1000.0, _timeout_settings_guidance()]
+
+
+func _timeout_settings_guidance() -> String:
+	return "" if _configured_provider == "orca_cloud" else " For slow model loading or generation, adjust %s. The total request limit is 10 minutes." % RequestTimeouts.SETTINGS_LOCATION
 
 
 func _fail_if_generation_timed_out(request_id: int) -> bool:

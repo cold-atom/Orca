@@ -382,6 +382,7 @@ func _run() -> void:
 	await _test_request_workflow_state()
 	await _test_request_ownership()
 	await _test_response_attribution()
+	await _test_timeout_snapshot()
 	await _test_responses_continuation()
 	await _test_support_request_metadata()
 	await _test_reentrant_request_lifecycle()
@@ -2112,6 +2113,41 @@ func _test_context_budget_integration() -> void:
 		_expect(not continuation.any(func(message): return message.get("content") == ContextBudget.COMPACTION_NOTICE), "the internal compaction notice should not enter persisted user/assistant continuation")
 	ModelMetadata.remove_runtime_metadata("openai", "orca-budget-test")
 	await _free_controller(controller)
+
+
+func _test_timeout_snapshot() -> void:
+	var profile := {"provider": "azure", "base_url": "http://127.0.0.1:18473/v1", "model": "fixture-model", "api_key": "synthetic-key", "api_mode": "chat_completions", "response_start_timeout_seconds": 300, "stream_inactivity_timeout_seconds": 60, "custom_timeouts_enabled": true}
+	var binding: Dictionary = AgentCompatibilityProbe.create_binding(profile)["binding"]
+	binding["enabled"] = true
+	profile["agent_compatibility"] = binding
+	for outcome in ["completed", "failed", "cancelled"]:
+		var fixture := await _new_controller(profile)
+		var controller = fixture["controller"]
+		var api: FakeApiClient = fixture["api"]
+		controller.set_mode(AgentController.AgentMode.PLAN)
+		controller.send_user_message("Read the synthetic file")
+		controller.profile["response_start_timeout_seconds"] = 600
+		controller.profile["stream_inactivity_timeout_seconds"] = 120
+		controller.profile["custom_timeouts_enabled"] = false
+		api.complete({"choices": [{"message": {"role": "assistant", "content": null, "tool_calls": [{"id": "timeout-read", "type": "function", "function": {"name": "read_file", "arguments": "{}"}}]}, "finish_reason": "tool_calls"}]})
+		await process_frame
+		_expect(api.requests.size() == 2, "timeout snapshot test should exercise a real controller read-tool continuation")
+		for request in api.requests:
+			_expect(request["provider_config"].get("response_start_timeout_seconds") == 300 and request["provider_config"].get("stream_inactivity_timeout_seconds") == 60, "active follow-ups must retain turn-start timeout values")
+			_expect(request["provider_config"].get("custom_timeouts_enabled") == true, "active follow-ups must retain custom/default policy even after preferences change")
+		_expect(not JSON.stringify(controller.snapshot_session_state()).contains("response_start_timeout_seconds"), "provider timing preferences must not enter conversation persistence")
+		if outcome == "completed":
+			api.complete({"choices": [{"message": {"content": "done"}, "finish_reason": "stop"}]})
+		elif outcome == "failed":
+			api.fail({"message": "synthetic timeout", "category": "timeout"})
+		else:
+			controller.cancel_current_request()
+		controller.send_user_message("Next turn")
+		_expect(api.requests[-1]["provider_config"].get("response_start_timeout_seconds") == 600 and api.requests[-1]["provider_config"].get("stream_inactivity_timeout_seconds") == 120, "the next turn should refresh timeout preferences after " + outcome)
+		_expect(api.requests[-1]["provider_config"].get("custom_timeouts_enabled") == false, "the next turn must use the newly selected built-in policy after " + outcome)
+		_expect(fixture["tools"].execute_calls == 1 and fixture["tools"].prepare_calls == 0, "timeout changes must preserve Plan read-only tool execution")
+		controller.cancel_current_request()
+		await _free_controller(controller)
 
 
 func _owned_request_id(controller) -> int:

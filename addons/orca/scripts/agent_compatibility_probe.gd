@@ -10,6 +10,7 @@ const ApiClient = preload("res://addons/orca/scripts/api_client.gd")
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
 const DeepSeekCompatibility = preload("res://addons/orca/scripts/deepseek_response_compatibility.gd")
+const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 
 const PROBE_VERSION := 2
 const PROBE_TIMEOUT_SECONDS := 45.0
@@ -53,6 +54,10 @@ func set_api_client_for_testing(client) -> void:
 func start_probe(provider_config: Dictionary) -> bool:
 	if is_running():
 		return false
+	var timeouts := RequestTimeouts.resolve(provider_config)
+	if not timeouts.get("success", false):
+		probe_failed.emit({}, str(timeouts["error"]))
+		return false
 	var binding_result := create_binding(provider_config)
 	if not binding_result.get("success", false):
 		probe_failed.emit({}, str(binding_result.get("error", "Could not bind compatibility probe.")))
@@ -65,7 +70,7 @@ func start_probe(provider_config: Dictionary) -> bool:
 		{"role": "user", "content": "Call %s exactly once with challenge \"%s\"." % [PROBE_FUNCTION, _challenge]}
 	]
 	_state = "first_request"
-	_timer.start()
+	_timer.start(RequestTimeouts.probe_timeout_seconds(_provider_config))
 	_begin_probe_request(1, "first_request")
 	return true
 
@@ -274,8 +279,10 @@ func _begin_probe_request(step: int, expected_state: String) -> void:
 
 func _on_timeout() -> void:
 	if is_running():
+		var guidance := "" if _provider_config.get("provider") == "orca_cloud" else " Adjust %s for slow models." % RequestTimeouts.SETTINGS_LOCATION
+		var message := "Compatibility probe timed out after %.0f seconds.%s" % [_timer.wait_time, guidance]
 		_api_client.cancel_request()
-		_fail("Compatibility probe timed out.")
+		_fail(message)
 
 
 func _fail(message: String) -> void:

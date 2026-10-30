@@ -4,6 +4,7 @@ const Config = preload("res://addons/orca/scripts/config.gd")
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const Probe = preload("res://addons/orca/scripts/agent_compatibility_probe.gd")
 const SettingsView = preload("res://addons/orca/scripts/settings_view.gd")
+const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 
 class FakeProbe extends Node:
 	signal probe_step_changed(step: int)
@@ -50,12 +51,19 @@ func _run() -> void:
 	_expect(Engine.is_editor_hint(), "this test must run with --editor")
 	var settings := EditorInterface.get_editor_settings()
 	var keys := PackedStringArray([Config.SETTING_PROVIDER, Config.SETTING_PROVIDER_MODEL_CACHE])
-	for provider_id in ["ollama", "lmstudio", "local_openai", "custom", "azure"]:
-		for field in ["api_key", "model", "reasoning_effort", "base_url", "confirmed_origin", "agent_compatibility", "api_mode", "continuation_style"]:
+	for provider_id in ["ollama", "lmstudio", "local_openai", "custom", "azure", "openai", "gemini", "deepseek", "orca_cloud"]:
+		for field in ["api_key", "model", "reasoning_effort", "base_url", "confirmed_origin", "agent_compatibility", "api_mode", "continuation_style", RequestTimeouts.RESPONSE_START_FIELD, RequestTimeouts.INACTIVITY_FIELD, RequestTimeouts.CUSTOM_ENABLED_FIELD]:
 			keys.append(Config._provider_setting(provider_id, field))
 	var original := {}
 	for key in keys:
 		original[key] = settings.get_setting(key) if settings.has_setting(key) else null
+	for provider_id in ["ollama", "lmstudio", "local_openai", "custom", "azure", "orca_cloud"]:
+		settings.set_setting(Config._provider_setting(provider_id, RequestTimeouts.RESPONSE_START_FIELD), null)
+		settings.set_setting(Config._provider_setting(provider_id, RequestTimeouts.INACTIVITY_FIELD), null)
+		settings.set_setting(Config._provider_setting(provider_id, RequestTimeouts.CUSTOM_ENABLED_FIELD), null)
+	for provider_id in ["openai", "gemini", "deepseek"]:
+		settings.set_setting(Config._provider_setting(provider_id, "api_key"), "")
+	settings.set_setting(Config.SETTING_PROVIDER, "ollama")
 
 	Config.save_provider_profile("ollama", "", "qwen-fixture", "default", "http://127.0.0.1:11434/v1")
 	Config.save_provider_profile("lmstudio", "lm-secret", "llama-fixture", "low", "http://127.0.0.1:1234/v1")
@@ -97,6 +105,7 @@ func _run() -> void:
 	var bounded_cache := Config.get_cached_provider_models("ollama", "http://127.0.0.1:11434/api/tags", "empty")
 	_expect(bounded_cache.keys().size() == 2 and bounded_cache.get("fetched_at") == 0.0 and bounded_cache.get("models", []).size() == Config.MAX_CACHED_PROVIDER_MODELS, "provider cache envelopes should retain only bounded models and a type-checked timestamp")
 	await _test_one_click_enablement()
+	await _test_timeout_settings(settings)
 
 	for key in keys:
 		settings.set_setting(key, original[key])
@@ -148,6 +157,23 @@ func _test_one_click_enablement() -> void:
 	view.agent_probe_button.pressed.emit()
 	_expect(view._agent_enable_intent.is_empty() and not view.agent_enable_toggle.button_pressed and not view.done_button.disabled, "a rejected start must discard intent and restore controls")
 	fake.reject_start = false
+	view.custom_timeouts_toggle.button_pressed = true
+	view.agent_probe_button.pressed.emit()
+	var timeout_stale := fake.binding.duplicate(true)
+	view.response_start_timeout_input.value = 90
+	fake.probe_passed.emit(timeout_stale)
+	_expect(not fake.running and not view.agent_enable_toggle.button_pressed and view._agent_enable_intent.is_empty(), "editing timeout values must cancel a running check and reject late enablement")
+	view.agent_probe_button.pressed.emit()
+	timeout_stale = fake.binding.duplicate(true)
+	view.stream_inactivity_timeout_input.get_line_edit().text_changed.emit("120")
+	fake.probe_passed.emit(timeout_stale)
+	_expect(not fake.running and not view.agent_enable_toggle.button_pressed, "typed timeout edits must invalidate probe intent before their SpinBox value commits")
+	view.agent_probe_button.pressed.emit()
+	timeout_stale = fake.binding.duplicate(true)
+	view.custom_timeouts_toggle.button_pressed = false
+	fake.probe_passed.emit(timeout_stale)
+	_expect(not fake.running and view._agent_enable_intent.is_empty() and not view.agent_enable_toggle.button_pressed, "turning custom timing off during a check must cancel pending enablement and reject late success")
+	view.custom_timeouts_toggle.button_pressed = true
 	view.agent_probe_button.pressed.emit()
 	var mismatched := fake.binding.duplicate(true)
 	mismatched["model"] = "wrong-result-model"
@@ -198,6 +224,76 @@ func _test_one_click_enablement() -> void:
 	view._on_endpoint_trust_confirmed()
 	fake.pass_check()
 	_expect(fake.starts == starts + 1 and view.agent_enable_toggle.button_pressed, "unchanged explicit intent should survive origin confirmation and enable only on pass")
+	view.queue_free()
+	await process_frame
+
+
+func _test_timeout_settings(settings: EditorSettings) -> void:
+	for provider_id in ["ollama", "lmstudio", "local_openai", "custom", "azure", "openai", "gemini", "deepseek", "orca_cloud"]:
+		settings.set_setting(Config._provider_setting(provider_id, RequestTimeouts.RESPONSE_START_FIELD), null)
+		settings.set_setting(Config._provider_setting(provider_id, RequestTimeouts.INACTIVITY_FIELD), null)
+		settings.set_setting(Config._provider_setting(provider_id, RequestTimeouts.CUSTOM_ENABLED_FIELD), null)
+	var view := SettingsView.new()
+	get_root().add_child(view)
+	await process_frame
+	view._load_provider("ollama")
+	_expect(view.request_timeouts_section.visible and view.response_start_timeout_input.value == 300 and view.stream_inactivity_timeout_input.value == 60, "existing local profiles should acquire generous startup defaults without migration")
+	_expect(not view._custom_timeouts_row.visible and view._timeout_fields.visible and not view._timeout_summary.visible, "local response controls must remain directly available without an opt-in switch")
+	view.response_start_timeout_input.get_line_edit().text = "420"
+	view.stream_inactivity_timeout_input.get_line_edit().text = "120"
+	view._save_current_profile()
+	_expect(Config.get_request_timeouts("ollama") == {RequestTimeouts.RESPONSE_START_FIELD: 420, RequestTimeouts.INACTIVITY_FIELD: 120, RequestTimeouts.CUSTOM_ENABLED_FIELD: true}, "typed timeout values must save even before pressing Enter")
+	view._load_provider("lmstudio")
+	_expect(view.response_start_timeout_input.value == 300 and view.stream_inactivity_timeout_input.value == 60, "local timeout preferences must remain isolated per provider")
+	view._load_provider("azure")
+	_expect(view.response_start_timeout_input.value == 30 and view.stream_inactivity_timeout_input.value == 60, "remote/BYOK profiles should retain existing defaults")
+	_expect(view._custom_timeouts_row.visible and not view.custom_timeouts_toggle.button_pressed and not view._timeout_fields.visible and view._timeout_summary.visible, "hosted customization must start off with a compact default summary")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	view.find_child("CustomTimeoutsLabel", true, false).gui_input.emit(click)
+	_expect(view.custom_timeouts_toggle.button_pressed and view._timeout_fields.visible and not view._timeout_summary.visible, "clicking the switch label must enable custom timing and reveal its controls")
+	view.response_start_timeout_input.get_line_edit().text = "180"
+	view.stream_inactivity_timeout_input.get_line_edit().text = "90"
+	view._on_done_pressed()
+	_expect(Config.get_active_provider_config().get(RequestTimeouts.RESPONSE_START_FIELD) == 180 and Config.get_active_provider_config().get(RequestTimeouts.INACTIVITY_FIELD) == 90 and Config.get_active_provider_config().get(RequestTimeouts.CUSTOM_ENABLED_FIELD) == true, "Done must commit typed values and opt-in into active request snapshots")
+	view.response_start_timeout_input.get_line_edit().text = "240"
+	view.custom_timeouts_toggle.button_pressed = false
+	view._save_current_profile()
+	view._load_provider("azure")
+	var saved := Config.get_provider_config("azure")
+	_expect(saved.get(RequestTimeouts.CUSTOM_ENABLED_FIELD) == false and saved.get(RequestTimeouts.RESPONSE_START_FIELD) == 240 and saved.get(RequestTimeouts.INACTIVITY_FIELD) == 90 and not view._timeout_fields.visible, "turning off must commit and retain typed custom values through restoration")
+	_expect(RequestTimeouts.resolve(saved).get("response_start_ms") == 30000 and RequestTimeouts.probe_timeout_seconds(saved) == 45.0, "off must actually restore the original transport and probe policy")
+	view.custom_timeouts_toggle.button_pressed = true
+	_expect(view.response_start_timeout_input.value == 240 and view.stream_inactivity_timeout_input.value == 90, "turning back on must restore the retained values")
+	view._save_current_profile()
+	for provider_id in ["openai", "gemini", "deepseek"]:
+		view._load_provider(provider_id)
+		_expect(not view.custom_timeouts_toggle.button_pressed and not view._timeout_fields.visible and view._timeout_summary.visible, "hosted opt-in must remain isolated from Azure: " + provider_id)
+		_expect(not view._timeout_description.text.contains("model loading"), "hosted help must not describe local loading")
+	view._load_provider("azure")
+	_expect(view.custom_timeouts_toggle.button_pressed and view.response_start_timeout_input.value == 240, "provider switching must retain the hosted override state and values")
+	settings.set_setting(Config._provider_setting("azure", RequestTimeouts.CUSTOM_ENABLED_FIELD), null)
+	_expect(Config.get_request_timeouts("azure")[RequestTimeouts.CUSTOM_ENABLED_FIELD], "pre-toggle non-default preferences must preserve the earlier candidate's override")
+	settings.set_setting(Config._provider_setting("azure", RequestTimeouts.CUSTOM_ENABLED_FIELD), false)
+	_expect(not Config.get_request_timeouts("azure")[RequestTimeouts.CUSTOM_ENABLED_FIELD], "explicit off must win over non-default stored values")
+	settings.set_setting(Config._provider_setting("azure", RequestTimeouts.CUSTOM_ENABLED_FIELD), "bad")
+	_expect(not Config.get_request_timeouts("azure")[RequestTimeouts.CUSTOM_ENABLED_FIELD], "corrupt persisted opt-in flags must fall back to built-in timing")
+	settings.set_setting(Config._provider_setting("azure", RequestTimeouts.CUSTOM_ENABLED_FIELD), false)
+	view._load_provider("ollama")
+	_expect(view.response_start_timeout_input.value == 420 and view.stream_inactivity_timeout_input.value == 120, "reopening a provider should restore its saved controls")
+	var before := Config.get_provider_config("ollama")
+	_expect(not Config.save_provider_config("ollama", "replacement", "replacement", "high", "http://127.0.0.1:11434/v1", "chat_completions", "standard", {RequestTimeouts.RESPONSE_START_FIELD: 0}), "disabled timeout must reject an entire settings update")
+	_expect(Config.get_provider_config("ollama") == before and Config.get_provider() == "azure", "invalid timeout save must preserve credentials, model, preferences, and selected provider")
+	settings.set_setting(Config._provider_setting("ollama", RequestTimeouts.RESPONSE_START_FIELD), INF)
+	settings.set_setting(Config._provider_setting("ollama", RequestTimeouts.INACTIVITY_FIELD), "bad")
+	_expect(Config.get_request_timeouts("ollama") == RequestTimeouts.defaults("ollama"), "corrupt persisted settings must fall back to finite defaults")
+	settings.set_setting(Config._provider_setting("orca_cloud", RequestTimeouts.RESPONSE_START_FIELD), 600)
+	settings.set_setting(Config._provider_setting("orca_cloud", RequestTimeouts.INACTIVITY_FIELD), 600)
+	settings.set_setting(Config._provider_setting("orca_cloud", RequestTimeouts.CUSTOM_ENABLED_FIELD), true)
+	view._load_provider("orca_cloud")
+	_expect(not view.request_timeouts_section.visible and Config.get_request_timeouts("orca_cloud") == RequestTimeouts.defaults("orca_cloud"), "managed settings must hide editable timing and ignore stored overrides")
+	_expect(not view.request_timeouts_margin.visible, "managed profiles must hide the whole card and its exterior spacing")
 	view.queue_free()
 	await process_frame
 

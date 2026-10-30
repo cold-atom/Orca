@@ -13,6 +13,7 @@ const SupportDiagnosticReport = preload("res://addons/orca/scripts/support_diagn
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const UpdatePanel = preload("res://addons/orca/scripts/update_panel.gd")
 const ImageCapability = preload("res://addons/orca/scripts/image_capability.gd")
+const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 const PLUGIN_CONFIG_PATH := "res://addons/orca/plugin.cfg"
 const ABOUT_LOGO_PATH := "res://addons/orca/assets/orca.svg"
 const PROVIDER_ICON = preload("res://addons/orca/assets/providerconfig.svg")
@@ -47,6 +48,17 @@ var agent_heading_label: Label
 var agent_probe_button: Button
 var agent_enable_toggle: CheckButton
 var agent_warning_label: Label
+var request_timeouts_section: VBoxContainer
+var request_timeouts_panel: PanelContainer
+var request_timeouts_margin: MarginContainer
+var custom_timeouts_toggle: CheckButton
+var _custom_timeouts_row: HBoxContainer
+var _timeout_fields: VBoxContainer
+var _timeout_description: Label
+var _timeout_summary: Label
+var _timeout_help: Label
+var response_start_timeout_input: SpinBox
+var stream_inactivity_timeout_input: SpinBox
 var done_button: Button
 var refresh_button: Button
 var settings_scroll: ScrollContainer
@@ -370,6 +382,7 @@ func _build_ui() -> void:
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.add_theme_color_override("font_color", Color(0.58, 0.7, 0.82))
 	content.add_child(status_label)
+	content.add_child(_build_timeout_card())
 	agent_heading_label = _field_label("Agent Compatibility")
 	content.add_child(agent_heading_label)
 	agent_status_label = Label.new()
@@ -403,6 +416,149 @@ func _build_ui() -> void:
 	about_scroll.hide()
 	root.add_child(about_scroll)
 	_show_section("provider")
+
+
+func _build_timeout_card() -> MarginContainer:
+	request_timeouts_margin = MarginContainer.new()
+	request_timeouts_margin.name = "RequestTimeoutSpacing"
+	request_timeouts_margin.add_theme_constant_override("margin_top", UiMetrics.scaled_int(12))
+	request_timeouts_margin.add_theme_constant_override("margin_bottom", UiMetrics.scaled_int(12))
+	request_timeouts_panel = PanelContainer.new()
+	request_timeouts_panel.name = "RequestTimeoutCard"
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.13, 0.145)
+	style.border_color = Color(0.25, 0.27, 0.30, 0.75)
+	style.set_border_width_all(UiMetrics.scaled_int(1))
+	style.set_corner_radius_all(UiMetrics.scaled_int(8))
+	style.set_content_margin_all(UiMetrics.scaled(12))
+	request_timeouts_panel.add_theme_stylebox_override("panel", style)
+	request_timeouts_margin.add_child(request_timeouts_panel)
+	request_timeouts_section = VBoxContainer.new()
+	request_timeouts_section.name = "RequestTimeouts"
+	request_timeouts_section.add_theme_constant_override("separation", UiMetrics.scaled_int(12))
+	request_timeouts_panel.add_child(request_timeouts_section)
+	var heading := VBoxContainer.new()
+	heading.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
+	request_timeouts_section.add_child(heading)
+	var title := _field_label("Request Timeouts")
+	title.name = "RequestTimeoutTitle"
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_size_override("font_size", _body_font_size + 1)
+	title.add_theme_color_override("font_color", Color(0.85, 0.88, 0.92))
+	heading.add_child(title)
+	_timeout_description = _timeout_note("RequestTimeoutDescription")
+	heading.add_child(_timeout_description)
+	_custom_timeouts_row = HBoxContainer.new()
+	_custom_timeouts_row.add_theme_constant_override("separation", UiMetrics.scaled_int(10))
+	request_timeouts_section.add_child(_custom_timeouts_row)
+	var toggle_label := _field_label("Use custom timeouts")
+	toggle_label.name = "CustomTimeoutsLabel"
+	toggle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	toggle_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	toggle_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	toggle_label.gui_input.connect(_on_custom_timeout_label_input)
+	_custom_timeouts_row.add_child(toggle_label)
+	custom_timeouts_toggle = CheckButton.new()
+	custom_timeouts_toggle.name = "CustomTimeoutsToggle"
+	custom_timeouts_toggle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	custom_timeouts_toggle.accessibility_name = "Use custom timeouts"
+	custom_timeouts_toggle.tooltip_text = "Override Orca's built-in response waits for this provider. Turning this off preserves your custom values."
+	custom_timeouts_toggle.toggled.connect(_on_custom_timeouts_toggled)
+	_custom_timeouts_row.add_child(custom_timeouts_toggle)
+	_timeout_summary = _timeout_note("RequestTimeoutDefaults")
+	_timeout_summary.text = "Using Orca's default timeouts.\nHeaders: 30 s · Inactivity: 60 s"
+	_timeout_summary.tooltip_text = "Original timing: 30 seconds to connect, 30 seconds for response headers, 60 seconds without body data, and 45 seconds for an Agent compatibility check. Each full request is capped at 10 minutes."
+	request_timeouts_section.add_child(_timeout_summary)
+	_timeout_fields = VBoxContainer.new()
+	_timeout_fields.name = "CustomTimeoutFields"
+	_timeout_fields.add_theme_constant_override("separation", UiMetrics.scaled_int(12))
+	request_timeouts_section.add_child(_timeout_fields)
+	response_start_timeout_input = _timeout_input("ResponseStartTimeout", "Maximum wait for headers and initial response data, including model loading. Accepts 10–600 seconds.")
+	stream_inactivity_timeout_input = _timeout_input("StreamInactivityTimeout", "Maximum pause after response data begins. Reasoning and keep-alive bytes count as activity. Accepts 10–600 seconds.")
+	for pair in [["Response start", response_start_timeout_input], ["Stream inactivity", stream_inactivity_timeout_input]]:
+		var field := VBoxContainer.new()
+		field.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
+		var label := _field_label(pair[0])
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		field.add_child(label)
+		field.add_child(pair[1])
+		_timeout_fields.add_child(field)
+	var divider := HSeparator.new()
+	var line := StyleBoxLine.new()
+	line.color = Color(0.28, 0.30, 0.33, 0.7)
+	line.thickness = UiMetrics.scaled_int(1)
+	divider.add_theme_stylebox_override("separator", line)
+	request_timeouts_section.add_child(divider)
+	_timeout_help = _timeout_note("RequestTimeoutHelp")
+	request_timeouts_section.add_child(_timeout_help)
+	return request_timeouts_margin
+
+
+func _timeout_note(control_name: String) -> Label:
+	var label := Label.new()
+	label.name = control_name
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", _meta_font_size)
+	label.add_theme_color_override("font_color", Color(0.64, 0.68, 0.74))
+	return label
+
+
+func _sync_timeout_controls() -> void:
+	var local := RequestTimeouts.is_local(_current_provider)
+	var custom := local or custom_timeouts_toggle.button_pressed
+	_custom_timeouts_row.visible = not local
+	_timeout_fields.visible = custom
+	_timeout_summary.visible = not custom
+	_timeout_description.text = "Allow extra time for model loading and slow generation." if local else "Control how long Orca waits for this provider."
+	_timeout_help.text = "Saved per provider · 10–600 s\n10-minute limit · Stop available" if custom else "10-minute request limit.\nStop remains available."
+
+
+func _on_custom_timeout_label_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		custom_timeouts_toggle.grab_focus()
+		custom_timeouts_toggle.button_pressed = not custom_timeouts_toggle.button_pressed
+
+
+func _on_custom_timeouts_toggled(_enabled: bool) -> void:
+	if _loading_provider:
+		return
+	_commit_timeout_inputs()
+	_cancel_agent_probe_for_change()
+	_sync_timeout_controls()
+
+
+func _timeout_input(control_name: String, help: String) -> SpinBox:
+	var input := SpinBox.new()
+	input.name = control_name
+	input.min_value = RequestTimeouts.MIN_SECONDS
+	input.max_value = RequestTimeouts.MAX_SECONDS
+	input.step = 1
+	input.suffix = "s"
+	input.allow_greater = false
+	input.allow_lesser = false
+	input.tooltip_text = help
+	input.value_changed.connect(_on_timeout_changed)
+	input.get_line_edit().text_changed.connect(func(_text: String): _on_timeout_changed(input.value))
+	return input
+
+
+func _on_timeout_changed(_value: float) -> void:
+	if not _loading_provider:
+		_cancel_agent_probe_for_change()
+
+
+func _commit_timeout_inputs() -> void:
+	# Commit typed SpinBox text even when Done/Test is clicked before Enter.
+	response_start_timeout_input.apply()
+	stream_inactivity_timeout_input.apply()
+
+
+func _form_request_timeouts() -> Dictionary:
+	return {
+		RequestTimeouts.RESPONSE_START_FIELD: int(response_start_timeout_input.value),
+		RequestTimeouts.INACTIVITY_FIELD: int(stream_inactivity_timeout_input.value),
+		RequestTimeouts.CUSTOM_ENABLED_FIELD: RequestTimeouts.is_local(_current_provider) or custom_timeouts_toggle.button_pressed
+	}
 
 
 func _section_tab(section_name: String, texture: Texture2D, group: ButtonGroup) -> Button:
@@ -913,6 +1069,16 @@ func _load_provider(provider_id: String) -> void:
 	var definition: Dictionary = provider.definition()
 	var config := Config.get_provider_config(provider_id)
 	var managed := bool(definition.get("managed_auth", false))
+	request_timeouts_section.visible = not managed
+	request_timeouts_margin.visible = not managed
+	custom_timeouts_toggle.set_pressed_no_signal(bool(config[RequestTimeouts.CUSTOM_ENABLED_FIELD]))
+	# SpinBox may defer its text refresh. Sync the public LineEdit before any
+	# form snapshot applies it, including reloads whose numeric value is unchanged.
+	response_start_timeout_input.value = float(config[RequestTimeouts.RESPONSE_START_FIELD])
+	stream_inactivity_timeout_input.value = float(config[RequestTimeouts.INACTIVITY_FIELD])
+	response_start_timeout_input.get_line_edit().text = "%d s" % int(response_start_timeout_input.value)
+	stream_inactivity_timeout_input.get_line_edit().text = "%d s" % int(stream_inactivity_timeout_input.value)
+	_sync_timeout_controls()
 	api_key_label.visible = not managed
 	api_key_input.get_parent().visible = not managed
 	_key_help.visible = not managed
@@ -1222,6 +1388,7 @@ func _on_done_pressed() -> void:
 			account_service.cancel_pairing()
 		done_requested.emit()
 		return
+	_commit_timeout_inputs()
 	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
 	if bool(definition.get("custom_url", false)):
 		var inspected := EndpointPolicy.inspect_base_url(custom_url_input.text)
@@ -1244,7 +1411,8 @@ func _on_done_pressed() -> void:
 		effort,
 		custom_url_input.text.strip_edges(),
 		_selected_api_mode,
-		_continuation_style
+		_continuation_style,
+		_form_request_timeouts()
 	)
 	if not saved:
 		status_label.text = "Could not save this provider profile. Check the endpoint and API settings."
@@ -1256,6 +1424,7 @@ func _on_done_pressed() -> void:
 func _save_current_profile() -> void:
 	if _current_provider.is_empty():
 		return
+	_commit_timeout_inputs()
 	var model := _selected_model
 	Config.save_provider_profile(
 		_current_provider,
@@ -1264,7 +1433,8 @@ func _save_current_profile() -> void:
 		_selected_effort,
 		custom_url_input.text.strip_edges(),
 		_selected_api_mode,
-		_continuation_style
+		_continuation_style,
+		_form_request_timeouts()
 	)
 	_sync_image_support()
 
@@ -1339,6 +1509,7 @@ func _on_agent_probe_pressed() -> void:
 		return
 	if _agent_probe != null and _agent_probe.is_running():
 		return
+	_commit_timeout_inputs()
 	var config := _current_form_config()
 	_agent_enable_intent = _agent_profile_key(config)
 	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
@@ -1467,4 +1638,4 @@ func _current_form_config() -> Dictionary:
 		"continuation_style": _continuation_style,
 		"confirmed_origin": Config.get_confirmed_origin(_current_provider),
 		"agent_compatibility": Config.get_agent_compatibility(_current_provider)
-	}
+	}.merged(_form_request_timeouts())

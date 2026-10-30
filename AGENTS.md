@@ -35,6 +35,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scripts/chat_window.gd` | Structured conversation feed, streaming UI, modes, tool cards, approvals, and navigation actions. |
 | `addons/orca/scripts/response_attribution.gd` | Shared bounded model/mode-only response metadata validation for controller, UI, and visible history. |
 | `addons/orca/scripts/api_client.gd` | Nonblocking HTTP transport, SSE parsing, streaming tool-call reconstruction, timeouts, and cancellation. |
+| `addons/orca/scripts/request_timeouts.gd` | Bounded local/opt-in hosted timing, legacy defaults, preference validation and absolute compatibility-test budgets. |
 | `addons/orca/scripts/responses_protocol.gd` | Stateless Responses projection and bounded output normalization; exact-profile opaque reasoning continuation with no session persistence. |
 | `addons/orca/scripts/deepseek_response_compatibility.gd` | Explicit Azure DeepSeek-only bounded leading-delimiter normalization shared by streaming and completed output. |
 | `addons/orca/scripts/endpoint_policy.gd` | Strict endpoint parsing, normalization, network-scope classification, exact-origin confirmation, and generated-endpoint validation. |

@@ -36,6 +36,50 @@ exit; documented editor-harness progress/RID/ObjectDB diagnostics may remain.
 Manual acceptance: a fresh installation, real browser pairing/provider setup,
 draft Send after returning, light themes and other native platforms.
 
+## Configurable request timeouts (1.4.1)
+
+```bash
+export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
+"$GODOT_BIN" --headless --path . --script res://tests/api_client_test.gd
+"$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_test.gd
+"$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
+"$GODOT_BIN" --headless --editor --path . --script res://tests/provider_settings_editor_test.gd
+"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+```
+
+With a fresh `ORCA_TEST_REQUESTS=17 python3 tests/http_test_server.py` process:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/timeout_integration_test.gd
+```
+
+The localhost fixture covers delayed headers, headers before silent initial data,
+one shared response-start budget, short/long inter-chunk waits, active reasoning,
+absolute generation expiry, Stop in both startup phases, JSON and Responses. Four
+hosted-default cases additionally verify the original separate header/body waits,
+including initial data arriving after the header deadline and ignored retained
+custom values. A test-only client subclass shortens the validated production
+durations; no new
+runtime override is added. Every path requires one owned terminal signal, no
+submitted-request replay, and cleared transport/private buffers. Component tests
+reject malformed/nonfinite/disabled/over-limit values and nonboolean opt-ins before
+connection; controller tests retain values and default/custom policy through
+read-tool follow-ups and refresh them after success/failure/Stop. Probe tests
+exercise actual timer expiry across both
+steps, default hosted 45-second versus explicitly customized budgets, and strict
+challenge/enablement binding.
+
+Real EditorSettings/UI tests cover defaults, typed values without Enter, atomic
+invalid saves, per-provider persistence, opt-in switching with retained typed values,
+safe migration of pre-toggle non-default preferences, corrupt-record fallback,
+fixed managed timing and cancelled/stale probe enablement. Card layout checks cover
+local/default/custom states, all text/control bounds, exterior separation, readable
+seconds units and normal/1.5×/2× fonts. They constrain the owned dock to an actual
+300-unit width independently of a native editor Window's larger enforced minimum.
+Editor fixtures restore timeout preferences along with their other owned settings.
+Manual acceptance: a genuinely unloaded Ollama model on the reporter's hardware,
+live Agent-tool usefulness, light themes and additional native platforms.
+
 ## Plugin updater
 
 ```bash

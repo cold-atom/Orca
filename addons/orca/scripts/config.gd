@@ -4,6 +4,7 @@ extends Node
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const AgentCompatibilityProbe = preload("res://addons/orca/scripts/agent_compatibility_probe.gd")
+const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 const SETTING_API_KEY = "orca/api/api_key"
 const SETTING_API_URL = "orca/api/base_url"
 const SETTING_MODEL = "orca/api/model"
@@ -81,7 +82,7 @@ static func get_active_provider_config() -> Dictionary:
 		"confirmed_origin": get_confirmed_origin(get_provider()),
 		"agent_compatibility": get_agent_compatibility(get_provider()),
 		"image_input_override": _get_provider_value(get_provider(), "image_input_override", {})
-	}
+	}.merged(get_request_timeouts(get_provider()))
 
 
 static func get_provider_config(provider_id: String) -> Dictionary:
@@ -98,20 +99,38 @@ static func get_provider_config(provider_id: String) -> Dictionary:
 		"confirmed_origin": get_confirmed_origin(provider_id),
 		"agent_compatibility": get_agent_compatibility(provider_id),
 		"image_input_override": _get_provider_value(provider_id, "image_input_override", {})
-	}
+	}.merged(get_request_timeouts(provider_id))
 
 
-static func save_provider_config(provider_id: String, api_key: String, model: String, reasoning_effort: String, base_url: String = "", api_mode: String = "", continuation_style: String = "standard") -> bool:
+static func get_request_timeouts(provider_id: String) -> Dictionary:
+	var values := RequestTimeouts.defaults(provider_id)
+	if provider_id != "orca_cloud":
+		for field in [RequestTimeouts.RESPONSE_START_FIELD, RequestTimeouts.INACTIVITY_FIELD]:
+			var stored = _get_provider_value(provider_id, field, values[field])
+			if RequestTimeouts.valid_seconds(stored):
+				values[field] = int(stored)
+		if not RequestTimeouts.is_local(provider_id):
+			var enabled = _get_provider_value(provider_id, RequestTimeouts.CUSTOM_ENABLED_FIELD, null)
+			if enabled == null:
+				# Only pre-toggle, non-default saved values imply an existing override.
+				var previous := RequestTimeouts.defaults(provider_id)
+				values[RequestTimeouts.CUSTOM_ENABLED_FIELD] = values[RequestTimeouts.RESPONSE_START_FIELD] != previous[RequestTimeouts.RESPONSE_START_FIELD] or values[RequestTimeouts.INACTIVITY_FIELD] != previous[RequestTimeouts.INACTIVITY_FIELD]
+			else:
+				values[RequestTimeouts.CUSTOM_ENABLED_FIELD] = typeof(enabled) == TYPE_BOOL and enabled
+	return values
+
+
+static func save_provider_config(provider_id: String, api_key: String, model: String, reasoning_effort: String, base_url: String = "", api_mode: String = "", continuation_style: String = "standard", request_timeouts: Dictionary = {}) -> bool:
 	var settings = _get_editor_settings()
 	if not settings:
 		return false
-	if not save_provider_profile(provider_id, api_key, model, reasoning_effort, base_url, api_mode, continuation_style):
+	if not save_provider_profile(provider_id, api_key, model, reasoning_effort, base_url, api_mode, continuation_style, request_timeouts):
 		return false
 	settings.set_setting(SETTING_PROVIDER, provider_id)
 	return true
 
 
-static func save_provider_profile(provider_id: String, api_key: String, model: String, reasoning_effort: String, base_url: String = "", api_mode: String = "", continuation_style: String = "standard") -> bool:
+static func save_provider_profile(provider_id: String, api_key: String, model: String, reasoning_effort: String, base_url: String = "", api_mode: String = "", continuation_style: String = "standard", request_timeouts: Dictionary = {}) -> bool:
 	var settings = _get_editor_settings()
 	if not settings:
 		return false
@@ -122,6 +141,9 @@ static func save_provider_profile(provider_id: String, api_key: String, model: S
 		continuation_style = "standard" # Effective continuation comes from the live catalog.
 	api_mode = str(definition.get("default_api_mode", "chat_completions")) if api_mode.is_empty() else api_mode
 	if api_mode not in ["chat_completions", "responses"] or continuation_style not in ["standard", "deepseek"] or (provider_id != "azure" and (api_mode != "chat_completions" or continuation_style != "standard")):
+		return false
+	var resolved := RequestTimeouts.resolve(get_request_timeouts(provider_id).merged(request_timeouts, true).merged({"provider": provider_id}, true))
+	if not resolved.get("success", false):
 		return false
 	var normalized_base := base_url
 	if bool(definition.get("custom_url", false)):
@@ -136,6 +158,9 @@ static func save_provider_profile(provider_id: String, api_key: String, model: S
 	settings.set_setting(_provider_setting(provider_id, "continuation_style"), continuation_style)
 	if bool(definition.get("custom_url", false)):
 		settings.set_setting(_provider_setting(provider_id, "base_url"), normalized_base)
+	if not request_timeouts.is_empty() and not bool(definition.get("managed_auth", false)):
+		for field in resolved["values"]:
+			settings.set_setting(_provider_setting(provider_id, field), resolved["values"][field])
 	return true
 
 

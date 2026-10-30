@@ -20,18 +20,19 @@ tag/assets stable; users of 1.3.0 can upgrade directly to 1.4.1. Publication and
 Asset Store approval remain pending, including reviewer confirmation of the
 post-install helper flow and separate thumbnail/prior-download corrections.
 The owner controls commit, push, tag, GitHub publication and Asset Library submission.
-All four native build/acceptance jobs and binary-free packaging/artifact uploads
-passed in [Tests run #49](https://github.com/cold-atom/Orca/actions/runs/41042858660)
-at `502d838`. The full run failed in the editor-scale synthetic tooltip check.
-This checkout corrects that fixture race; a new complete CI run remains required
-before publication. Real downloaded-helper flow and Windows/macOS updater
-acceptance remain pending.
+The complete [Tests run](https://github.com/cold-atom/Orca/actions/runs/41044798922)
+passed at `53d0efc`, including the corrected editor-scale fixture, remaining
+editor/transport checks, all four native build/acceptance jobs and binary-free
+packaging/artifact uploads. This checkout additionally addresses issue #6 with
+configurable provider response timeouts; its updated candidate needs a fresh
+complete CI/package run before publication. Real downloaded-helper flow and
+Windows/macOS updater acceptance remain pending.
 Push-triggered builds now produce a binary-free `orca-package` ZIP/checksum plus
 separate `orca-native-release-assets` after native acceptance. The complete Tests
 run must pass before publication. Source-based Asset Store distributions require
 the exact packaged helper catalog/update manifest and exclude compiled helpers.
-The owner pushed the 1.4.1 candidate; the CI correction is local and no release
-publication has been performed by this work.
+The owner pushed the earlier 1.4.1 candidate and CI correction. The timeout follow-up
+is local; no release publication has been performed by this work.
 
 ## Product Direction
 
@@ -379,8 +380,7 @@ Compaction changes only model continuation history. The visible session transcri
 
 The transport supports:
 
-- Connection timeout.
-- Inactivity timeout.
+- Separate 30-second network-connection timeout and bounded per-provider response-start/inactivity waits.
 - Response and event size limits.
 - Regular JSON fallback for compatible endpoints that ignore streaming.
 - Explicit cancellation.
@@ -390,6 +390,69 @@ The transport supports:
 - One bounded retry for connection failures before the POST is submitted. Requests are not automatically replayed after submission or partial output.
 - Positive SSE/JSON content-type handling, including `application/*+json`, and bounded rejection of unexpected successful response types.
 - Separate aggregate-response, SSE-line, SSE-event, assistant-text, reasoning, reasoning-detail, tool-argument, and HTTP-error-body limits.
+
+#### Provider response timing (1.4.1)
+
+`request_timeouts.gd` is the shared policy for Config, Provider Settings, APIClient
+and Agent Compatibility. BYOK profiles store `response_start_timeout_seconds`,
+`stream_inactivity_timeout_seconds` and boolean `custom_timeouts_enabled` in their
+existing per-provider EditorSettings namespace. Durations must be finite whole
+seconds from 10–600; explicit invalid values/flags fail before network use or any
+profile writes. Missing/corrupt saved durations fall back independently. Hosted
+flags default off; a missing flag with valid non-default durations preserves the
+earlier unreleased candidate's override, while explicit off or a corrupt flag uses
+built-in timing. Local profiles always expose/use the bounded configurable policy.
+Existing save callers omitting the optional timeout dictionary preserve preferences.
+
+Ollama, LM Studio and Local OpenAI-compatible default to 300 seconds for response
+start; default/custom hosted forms retain 30 seconds as their initial editable
+value. Inactivity defaults to 60 seconds. Local or explicitly customized requests
+use one response-start deadline from accepted POST through headers and first body
+bytes, without restarting on early headers. Subsequent bytes (including private
+reasoning/SSE keep-alives) refresh inactivity. Hosted BYOK with customization off
+instead preserves the original separate 30-second header wait and 60-second body
+inactivity wait, including before first data. Retained custom values are validated
+but not used in that default policy. Chat, Responses and JSON share these policies.
+The ten-minute generation deadline still spans connection and compatibility retries;
+progress never extends it. Connection establishment stays 30 seconds. Cloud ignores
+editable timing fields and retains its original fixed transport policy.
+
+The controller's existing provider snapshot carries these values through the
+entire turn, including tool follow-ups and finalization, without transmitting them
+as provider fields or persisting them in conversation/support data. Terminal paths
+reset durations and clear transport/private state before callbacks. Timeout errors
+identify response-start versus inactivity and direct BYOK users to the settings.
+The timeout section is one padded, rounded neutral card with a distinct title,
+provider-specific description, concise footer and exterior separation from model
+status/Agent Compatibility. Hosted **Use custom timeouts** defaults off and replaces
+hidden fields with a compact built-in-policy summary. Its accessible switch and
+clickable wrapped label share one action. Turning it off commits/retains pending
+custom values, then hides them; provider switching/Done persists the choice. Local
+controls stay directly visible, and Cloud hides the entire card and its spacing.
+Public SpinBox LineEdit restoration includes the seconds suffix even for unchanged
+numeric values; pending text commits on Save/Done/Test/toggle rather than during
+observational snapshots.
+
+Local or explicitly customized compatibility checks use one absolute total budget of
+`min(1200, 2 * (30 + response_start + inactivity))` seconds for both small synthetic
+requests. The default local budget is 780 seconds; each API request independently
+retains its ten-minute cap. Step two cannot restart the probe timer. Hosted defaults
+and Cloud retain the original 45-second probe. Timing preferences are not capability fields
+and do not invalidate a stored passed binding or bump probe version 2. Editing
+typed/numeric waits during a running check cancels the pending enablement intent;
+strict challenge/profile/permission checks remain authoritative.
+
+Permanent regression contracts and exact commands are in
+[`tests/README.md`](tests/README.md#configurable-request-timeouts-141). The new
+17-request localhost suite uses a fixture-only subclass to shorten production
+durations and verifies shared custom versus separate default header/body budgets,
+stalls, active reasoning, total expiry, JSON/Responses, Stop and terminal cleanup.
+Settings, controller, probe and editor-scale suites cover persisted bounds/flags,
+retained values and migration, default/custom probe budgets, two-step expiry, turn
+snapshots and stale enablement. Card checks constrain the owned dock to 300 units
+independently of native Window minimums, covering all three visible states, padded
+content/exterior bounds and full units with larger fonts. Actual cold-model
+loading on the reporter's hardware and live model competence remain manual gates.
 
 Each completed HTTP request contributes its reported input, output, and cached tokens to the current session, including every continuation in a multi-round tool loop. Stored `context_tokens` remains the latest provider-reported total-token value. Active/blocked preflight estimates are a separate memory-only `request_budget` display snapshot containing only token counts, selected context limit, reserve counts and prepared/blocked state; controller session snapshots exclude it. Cost prefers a provider-reported value and otherwise uses automatically resolved model metadata. Missing provider usage remains unavailable/partial and is never replaced with local estimates. Local budget errors now state the actual unsent estimate and reserves, avoiding the misleading impression that a previous 4.1k request exhausted the failed continuation's window.
 
@@ -1054,7 +1117,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Support explicitly keyless local endpoints.
 - Continue refining endpoint trust presentation from real user feedback without weakening exact-origin transport enforcement.
 - Expand the implemented managed-account OS credential store to BYOK provider keys where appropriate; complete Windows/macOS native execution and distribution acceptance.
-- Add post-response retry controls, rate-limit backoff, proxy support, and configurable timeout behavior. Pre-submit connection retry is already bounded to one attempt.
+- Add post-response retry controls, rate-limit backoff and proxy support. Pre-submit connection retry is bounded to one attempt; per-provider response-start/inactivity configuration is implemented in 1.4.1.
 
 ### P3: Release Readiness
 
@@ -1707,6 +1770,22 @@ Next owner action: restart the updated editor, open **Settings → Account → S
 - The test injected a synthetic blocked-request summary directly into the UI, but normal asynchronous model-metadata completion refreshed the real idle controller and replaced it during deferred font sizing. Forcing the deferred metadata signal reproduced the zero-usage tooltip failure before the correction. The fixture now disconnects only its controller-to-UI usage callback while measuring synthetic data, forces the race at every 1×/1.5×/2× font size, retains strict tooltip/containment assertions, reconnects and verifies subsequent signal delivery. Production request/usage/tooltip behavior and permissions are unchanged.
 - Verification on Godot 4.7.2 with all three startup suppressions: `--headless --editor --path . --script res://tests/editor_ui_scale_test.gd` passed with the forced race; all nine remaining editor suites in `.github/workflows/tests.yml` passed in their existing order. `--headless --path . --script res://tests/chat_window_test.gd` and clean `--headless --editor --path . --quit` passed. Diff and replacement-artifact checks passed. Existing editor-fixture RID/ObjectDB/scan shutdown diagnostics remain visible; ordinary initialization is clean. No owner authentication, native-helper download or live inference was used. Graphical/platform checks and localhost transport suites were not rerun for this fixture-only correction.
 - Correction and verification guidance remain local/uncommitted. The owner must push it for a new complete CI run before tagging/preparing 1.4.1; rerunning `502d838` retains the race. No commit, push, tag, workflow dispatch or release publication occurred in this correction.
+
+### 2026-10-30: Configurable response waits for slow local models (1.4.1)
+
+- Addressed [issue #6](https://github.com/cold-atom/Orca/issues/6) in the unreleased 1.4.1 candidate. Provider Settings now saves bounded response-start and stream-inactivity values separately for each BYOK profile, with 300/60-second local defaults and 30/60-second other defaults. Missing/corrupt preferences fall back safely; invalid explicit saves fail atomically. Public SpinBox text restoration and explicit typed-value commits prevent stale form snapshots.
+- Separated the 30-second connection cutoff from one headers/initial-data response-start deadline, retained byte-driven inactivity and the absolute ten-minute request cap across retries, and added actionable timing errors. Existing turn snapshots preserve preferences through tool follow-ups and clear them at terminal cleanup. Cloud keeps fixed timing; no project mutation, permission, endpoint, approval, opaque-state or billing contract is changed.
+- Two-step editable Agent checks derive one absolute bounded total timer from the selected waits (at most 20 minutes); step two cannot renew it. Existing exact protocol passes remain valid because timing is not a capability field. Typed/numeric edits cancel in-flight enablement intent, and strict challenge/call/profile checks remain. Added a 13-request localhost suite/UID and CI registration plus API, probe, controller, EditorSettings and narrow/font-layout regressions. Onboarding fixtures now restore the new settings too.
+- Verification with Godot 4.7.2 and all three startup suppressions: API, probe, controller, settings, chat, provider, Responses protocol, DeepSeek compatibility, hosted defaults and support-report component suites passed; provider-settings, onboarding, managed-settings, plugin lifecycle and editor-scale suites passed. Editor scale passed headless 1× and native Linux/X11/OpenGL 2× with normal/1.5×/2× fonts. All eight localhost transport/discovery integrations passed, including the new delayed-response fixture. Eight native packaging and seven updater/package tests passed without skips, including current-source manifest validation and disposable install/rollback/relaunch. Actionlint, clean headless editor/plugin initialization and diff/artifact checks passed. Expected negative-fixture logs and existing editor progress/scan/RID/ObjectDB teardown diagnostics remain visible; ordinary initialization is clean.
+- Earlier baseline `53d0efc` passed the full [Tests run](https://github.com/cold-atom/Orca/actions/runs/41044798922). This follow-up remains local and requires a fresh complete CI/package run and final manifest/catalog preparation before the owner tags/publishes v1.4.1. Reporter hardware/cold Ollama load, live model usefulness, light themes and other platforms remain manual acceptance. No owner authentication, live inference, native-helper download, commit, push, tag, GitHub issue comment or release publication was performed for this follow-up.
+
+### 2026-10-30: Hosted timeout opt-in and grouped settings card (1.4.1)
+
+- Refined the approved issue #6 follow-up with per-provider **Use custom timeouts**, off by default for non-local BYOK profiles. Off actually restores the pre-feature separate 30-second response-header / 60-second body-inactivity waits and 45-second total Agent check. On uses the bounded shared response-start/inactivity policy and derived two-request probe budget. Custom durations survive off/on and provider switching; missing pre-toggle flags migrate only valid non-default preferences, and corrupt flags fall back to built-in timing. Local controls remain directly available; managed Cloud ignores all overrides and hides the whole section.
+- Replaced the flat timeout fields with a padded neutral PanelContainer card, rounded subtle border, distinct heading, provider-specific description, accessible wrapped switch label, compact default summary, seconds units, footer divider and explicit exterior spacing. Public SpinBox text restoration retains its suffix even when the numeric value is unchanged. The editor regression now constrains the owned dock to an actual 300-unit width, independently of the native editor Window's enforced wider minimum; all three states verify text/control padding bounds, separation, full units and larger fonts.
+- Added explicit flag validation, preserved flag/value snapshots across controller follow-ups and terminal reentry, default versus custom probe checks, in-flight toggle cancellation, migration/retention/atomic-save EditorSettings tests and four real HTTP default-policy cases. Timeout integration now requires 17 requests; its CI fixture count and current user/development/test guidance are updated. Exact protocol binding and Plan/Work/approval/endpoint/opaque-state protections remain unchanged.
+- Verification with Godot 4.7.2 and all three startup suppressions: affected API, probe, controller, settings, chat, provider, hosted-default and support-report components passed; provider-settings, onboarding, managed-settings, lifecycle and editor-scale suites passed. All eight localhost transport/discovery integrations passed, including 17 default/custom timeout cases. Layout passed headless 1× and native Linux/X11/OpenGL 2× with normal/1.5×/2× fonts; cropped synthetic card renders were visually inspected. Eight native packaging and seven updater/package tests passed without skips, including current-source manifest validation and disposable installation/rollback/relaunch. Actionlint, clean headless editor/plugin initialization and diff/artifact checks passed. Existing synthetic-negative and editor progress/scan/RID/ObjectDB/GL teardown diagnostics remain; ordinary initialization is clean.
+- Both timeout waves remain local for the unreleased 1.4.1 candidate. A fresh full CI/package run, final matching manifest/catalog preparation and owner publication remain required. Reporter cold-model hardware, live provider/model competence, light themes and additional platforms remain manual gates. No owner authentication, live inference, helper download, commit, push, tag, issue comment or release publication was performed by this refinement.
 
 ## Handoff Checklist
 

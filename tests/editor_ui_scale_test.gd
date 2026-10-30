@@ -125,6 +125,7 @@ func _run() -> void:
 			_expect(row.get_global_rect().end.y <= next.get_global_rect().position.y, "%s must not overlap the following row or heading" % link.name)
 		_expect(view.settings_view.get_combined_minimum_size().x <= UiMetrics.scaled(300), "About links with larger fonts must fit the narrow dock")
 	view.settings_view._show_section("provider")
+	await _test_timeout_card_layout(view.settings_view)
 	view.settings_view._load_provider("azure")
 	await process_frame
 	await process_frame
@@ -201,6 +202,54 @@ func _test_request_budget_header(view) -> void:
 	_expect(view.context_label.text == "Context 2.0k", "normal controller usage updates must resume after the isolated layout check")
 	usage_signal.emit(original_usage)
 	view.metrics_row.visible = was_visible
+
+
+func _test_timeout_card_layout(settings) -> void:
+	# Native editor Windows enforce a wider minimum than the requested test size.
+	# Constrain our owned dock independently so this measures actual narrow layout.
+	var host: Control = settings.get_parent()
+	var original_anchor := host.anchor_right
+	var original_offset := host.offset_right
+	host.anchor_right = host.anchor_left
+	host.offset_right = host.offset_left + UiMetrics.scaled(300)
+	var compact_heights := {}
+	for provider_id in ["azure", "ollama"]:
+		settings._load_provider(provider_id)
+		for custom in ([false, true] if provider_id == "azure" else [true]):
+			settings.custom_timeouts_toggle.button_pressed = custom
+			for font_multiplier in [1.0, 1.5, 2.0]:
+				for label in settings.request_timeouts_section.find_children("*", "Label", true, false):
+					if not label.has_meta("original_font_size"):
+						label.set_meta("original_font_size", label.get_theme_font_size("font_size"))
+					label.add_theme_font_size_override("font_size", roundi(label.get_meta("original_font_size") * font_multiplier))
+				for input in [settings.response_start_timeout_input, settings.stream_inactivity_timeout_input]:
+					input.get_line_edit().add_theme_font_size_override("font_size", roundi(settings._body_font_size * font_multiplier))
+				for frame in range(8):
+					await process_frame
+				_expect(settings.get_combined_minimum_size().x <= UiMetrics.scaled(300), "timeout cards must fit the narrow dock at %.1fx fonts" % font_multiplier)
+				_expect(settings.size.x <= UiMetrics.scaled(300) + 0.5, "timeout layout must be measured at an actual 300-unit width")
+				var bounds: Rect2 = settings.request_timeouts_panel.get_global_rect().grow(0.5)
+				for control in settings.request_timeouts_section.find_children("*", "Control", true, false):
+					if control.is_visible_in_tree():
+						_expect(bounds.encloses(control.get_global_rect()), "timeout headings, switch, fields and notes must stay within the card padding")
+				var spacing: Control = settings.request_timeouts_margin
+				var previous: Control = spacing.get_parent().get_child(spacing.get_index() - 1)
+				var next: Control = spacing.get_parent().get_child(spacing.get_index() + 1)
+				_expect(bounds.position.y >= previous.get_global_rect().end.y + UiMetrics.scaled(10) and bounds.end.y + UiMetrics.scaled(10) <= next.global_position.y, "timeout card must have visible separation from provider status and compatibility controls")
+				if provider_id == "azure":
+					if custom:
+						_expect(bounds.size.y > compact_heights[font_multiplier], "hosted default state must collapse unused custom controls")
+					else:
+						compact_heights[font_multiplier] = bounds.size.y
+				_expect(settings._timeout_fields.visible == custom and settings._timeout_summary.visible != custom, "the card must show exactly the selected default/custom state")
+				if custom:
+					for input in [settings.response_start_timeout_input, settings.stream_inactivity_timeout_input]:
+						var edit: LineEdit = input.get_line_edit()
+						var text_width := edit.get_theme_font("font").get_string_size(edit.text, HORIZONTAL_ALIGNMENT_LEFT, -1, edit.get_theme_font_size("font_size")).x
+						_expect(text_width + edit.get_theme_stylebox("normal").get_minimum_size().x <= edit.size.x, "timeout values and second units must remain fully readable")
+						_expect(edit.text.ends_with(" s"), "restored values must retain their visible seconds unit")
+	host.anchor_right = original_anchor
+	host.offset_right = original_offset
 
 
 func _test_account_layout(view) -> void:

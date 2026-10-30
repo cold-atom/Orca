@@ -55,7 +55,9 @@ class Handler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get("Content-Length", "0"))
         request_body = self.rfile.read(content_length)
         try:
-            if self.path.startswith("/foundry/"):
+            if self.path.startswith("/timeout/"):
+                self._handle_timeout(json.loads(request_body))
+            elif self.path.startswith("/foundry/"):
                 self._handle_foundry(json.loads(request_body))
             elif self.path.startswith("/leading-system/"):
                 self._handle_local_layout(json.loads(request_body))
@@ -718,6 +720,52 @@ class Handler(BaseHTTPRequestHandler):
             time.sleep(0.5)
         else:
             self._send_sse(chunks)
+
+    def _handle_timeout(self, body):
+        if any(field in body for field in ("response_start_timeout_seconds", "stream_inactivity_timeout_seconds", "custom_timeouts_enabled")):
+            self._send_json_error(400, "Client timing preferences leaked into provider payload")
+            return
+        case = self.path.split("/")[2]
+        if case == "headers":
+            time.sleep(0.3)
+        elif case == "shared":
+            time.sleep(0.2)
+        if case == "json":
+            response = json.dumps({"choices": [{"message": {"content": "timing ok"}, "finish_reason": "stop"}]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(response)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.flush()
+            time.sleep(0.3)
+            self.wfile.write(response)
+            self.wfile.flush()
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.flush()
+        if case in ("body", "shared"):
+            time.sleep(0.3 if case == "body" else 0.25)
+        elif case == "idle":
+            self.wfile.write(b'data: {"choices":[{"delta":{"reasoning_content":"hidden"}}]}\n\n')
+            self.wfile.flush()
+            time.sleep(0.3)
+        elif case == "active":
+            for _ in range(6):
+                self.wfile.write(b'data: {"choices":[{"delta":{"reasoning_content":"hidden"}}]}\n\n')
+                self.wfile.flush()
+                time.sleep(0.08)
+        if self.path.endswith("/responses"):
+            self.wfile.write(b'data: {"type":"response.output_text.delta","output_index":0,"delta":"timing ok"}\n\n')
+            response = {"status": "completed", "output": [{"id": "timeout-message", "type": "message", "role": "assistant", "status": "completed", "content": [{"type": "output_text", "text": "timing ok"}]}]}
+            self.wfile.write(("data: " + json.dumps({"type": "response.completed", "response": response}) + "\n\n").encode())
+        else:
+            self.wfile.write(b'data: {"choices":[{"delta":{"content":"timing ok"},"finish_reason":"stop"}]}\n\n')
+            self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.flush()
 
     def _handle_deepseek_probe(self, body, case):
         responses = self.path.endswith("/responses")

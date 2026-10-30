@@ -1,6 +1,7 @@
 extends SceneTree
 
 const ApiClient = preload("res://addons/orca/scripts/api_client.gd")
+const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 
 var _failures := PackedStringArray()
 
@@ -13,6 +14,7 @@ func _init() -> void:
 	_test_structured_error_metadata()
 	_test_provider_error_formatting()
 	_test_required_auth_configuration()
+	_test_timeout_policy()
 	_test_tool_call_validation()
 	_test_completion_validation()
 	_test_terminal_signal_ownership()
@@ -30,6 +32,46 @@ func _test_media_types() -> void:
 	_expect(client._is_json_media_type("application/json"), "application/json should be recognized")
 	_expect(client._is_json_media_type("application/problem+json"), "+json media types should be recognized")
 	_expect(not client._is_json_media_type("text/event-stream"), "SSE must not be treated as JSON")
+	client.free()
+
+
+func _test_timeout_policy() -> void:
+	for provider_id in ["ollama", "lmstudio", "local_openai", "openai", "azure", "custom", "orca_cloud"]:
+		var resolved := RequestTimeouts.resolve({"provider": provider_id})
+		_expect(resolved.get("response_start_ms") == (300000 if provider_id in ["ollama", "lmstudio", "local_openai"] else 30000), "response-start defaults must accommodate local loading: " + provider_id)
+		_expect(resolved.get("inactivity_ms") == 60000, "inactivity defaults must remain one minute")
+		_expect(resolved.get("legacy_defaults") == not RequestTimeouts.is_local(provider_id), "non-local defaults must preserve the original separate header/body waits")
+		_expect(RequestTimeouts.probe_timeout_seconds({"provider": provider_id}) == (780.0 if RequestTimeouts.is_local(provider_id) else 45.0), "default probe budgets must preserve hosted behavior and accommodate local loading")
+	var client := ApiClient.new()
+	var failures: Array[Dictionary] = []
+	client.request_failed.connect(func(_id: int, error: Dictionary): failures.append(error))
+	for field in [RequestTimeouts.RESPONSE_START_FIELD, RequestTimeouts.INACTIVITY_FIELD]:
+		for invalid in [null, true, "300", 0, 9, 601, 3600, 10.5, INF, NAN, {}]:
+			var config := {"provider": "ollama", "base_url": "http://127.0.0.1:1/v1", "model": "fixture", field: invalid}
+			_expect(not RequestTimeouts.resolve(config).get("success", true), "malformed/disabled/excessive timeout must fail: " + str(invalid))
+			client.send_chat_completion([{"role": "user", "content": "test"}], [], config)
+			_expect(failures[-1].get("category") == "configuration" and not client.is_requesting() and client._http_client == null, "invalid timeout must fail before any connection")
+		for valid in [10, 600, 300.0]:
+			_expect(RequestTimeouts.resolve({field: valid}).get("success", false), "bounded whole-second values must be accepted")
+	var managed := RequestTimeouts.resolve({"provider": "orca_cloud", RequestTimeouts.RESPONSE_START_FIELD: 600, RequestTimeouts.INACTIVITY_FIELD: "bad"})
+	_expect(managed.get("response_start_ms") == 30000 and managed.get("inactivity_ms") == 60000, "managed timing cannot be overridden by editable profile data")
+	_expect(RequestTimeouts.probe_timeout_seconds({"provider": "ollama"}) == 780.0, "local two-step probe must allow model loading within one bounded deadline")
+	_expect(RequestTimeouts.probe_timeout_seconds({RequestTimeouts.RESPONSE_START_FIELD: 600, RequestTimeouts.INACTIVITY_FIELD: 600}) == 1200.0, "probe must never exceed its two-request hard cap")
+	_expect(RequestTimeouts.probe_timeout_seconds({"provider": "orca_cloud"}) == 45.0, "managed probe timing remains fixed")
+	var hosted := {"provider": "azure", RequestTimeouts.RESPONSE_START_FIELD: 180, RequestTimeouts.INACTIVITY_FIELD: 90, RequestTimeouts.CUSTOM_ENABLED_FIELD: false}
+	var standard := RequestTimeouts.resolve(hosted)
+	_expect(standard.get("response_start_ms") == 30000 and standard.get("inactivity_ms") == 60000 and standard["values"][RequestTimeouts.RESPONSE_START_FIELD] == 180, "off must retain stored custom values while using built-in timing")
+	_expect(RequestTimeouts.probe_timeout_seconds(hosted) == 45.0, "disabled hosted customization must retain the original 45-second probe")
+	hosted[RequestTimeouts.CUSTOM_ENABLED_FIELD] = true
+	var custom := RequestTimeouts.resolve(hosted)
+	_expect(custom.get("response_start_ms") == 180000 and custom.get("inactivity_ms") == 90000 and not custom.get("legacy_defaults", true), "explicit hosted opt-in must use a shared custom response-start budget")
+	_expect(RequestTimeouts.probe_timeout_seconds(hosted) == 600.0, "hosted opt-in must derive its bounded two-request probe budget")
+	for invalid in [null, "true", 1, {}]:
+		hosted[RequestTimeouts.CUSTOM_ENABLED_FIELD] = invalid
+		_expect(not RequestTimeouts.resolve(hosted).get("success", true), "custom-timeout flags must be strictly boolean")
+		var config := hosted.merged({"base_url": "http://127.0.0.1:1/v1", "model": "fixture", "api_key": "synthetic-key"}, true)
+		client.send_chat_completion([{"role": "user", "content": "test"}], [], config)
+		_expect(failures[-1].get("category") == "configuration" and failures[-1]["message"].contains("custom-timeout") and not client.is_requesting() and client._http_client == null, "invalid opt-in flags must fail before creating transport or headers")
 	client.free()
 
 

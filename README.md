@@ -198,6 +198,10 @@ Orca can connect to models served on your machine. Local inference can provide g
 
 Local and editable profiles start in **Chat mode**. Click **Test & Enable Agent tools** to run the isolated two-step function-call probe. A pass for the exact provider, origin, endpoint, model, reasoning configuration, API, continuation style, and probe version automatically enables tools. The toggle remains available to turn tools off; failed or cancelled checks leave them disabled.
 
+For slow model loading, use the **Request Timeouts** card in **Settings → Provider**. Local profiles show editable **Response start** and **Stream inactivity** values directly, defaulting to 300/60 seconds. Response start covers headers and initial data; inactivity covers pauses after data starts arriving. Each accepts 10–600 seconds and is saved separately for the provider.
+
+Hosted BYOK providers use Orca's original timing by default: 30 seconds for response headers, 60 seconds without body data, and 45 seconds for an Agent compatibility check. Turn on **Use custom timeouts** to reveal and use your own limits. Turning it off restores that original policy while retaining your custom values. Local/customized checks get one bounded two-request budget based on the selected waits. Every full provider request remains capped at ten minutes, including connection/retries, and Stop remains available. Orca Cloud timing stays fixed and has no editable timeout controls.
+
 The probe contains no project files, editor context, instructions, skills, task list, conversation history, or real Orca tool schema. A successful probe confirms one narrow protocol exchange; it does not guarantee that a model will plan well or use tools reliably on a real project.
 
 Orca does not install models, bundle inference, or start and manage Ollama or LM Studio for you. The tested `qwen2.5-coder:3b` and `llama-3.2-3b-instruct` models worked for Chat but did not pass Orca's strict Agent probe. More capable tool-use models may be required for Agent workflows.

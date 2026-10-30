@@ -131,6 +131,10 @@ A failed final acknowledgement shows a bounded, challenge-redacted synthetic rep
 
 Native Ollama and LM Studio discovery hides models identified as embeddings. The manual Model ID remains available for unusual or unclassified models.
 
+The **Request Timeouts** card in **Settings → Provider** groups response timing separately from model and compatibility settings. Ollama, LM Studio and Local OpenAI-compatible expose **Response start** and **Stream inactivity** directly, defaulting to 300/60 seconds. Values display seconds, accept 10–600, and persist per provider. Response start spans headers and initial data; inactivity limits subsequent pauses.
+
+Hosted BYOK profiles use Orca's original 30-second response-header wait, 60-second body-inactivity wait and 45-second Agent test by default. Enable **Use custom timeouts** to reveal/use your own limits; turning it off retains custom values and restores the original policy. Local/customized two-step checks get one bounded total budget based on the selected waits, without invalidating protocol passes. Full requests remain capped at ten minutes and can be stopped. Orca Cloud keeps fixed timing and hides the whole card.
+
 Prompts, attached images, relevant editor context, and project content returned by Orca's tools may be sent to the selected provider. BYOK API keys are saved through Godot Editor Settings; managed account refresh/session credentials use the OS vault and access tokens stay in memory. Project-scoped session history (including submitted images/script snapshots) is plaintext JSON under Godot's `user://` storage. Submitted attachments are removed with conversation deletion/retention; pending drafts are memory-only. Provider EditorSettings and conversation JSON are not encrypted OS credential-vault storage.
 
 If present, `res://AGENTS.md` and skill catalog metadata from `res://skills/<slug>/SKILL.md` are automatically sent as private request context. A skill body is sent only after an explicit tool call. Request-scoped guidance is not retained in resumable conversation history.

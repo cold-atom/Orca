@@ -12,11 +12,17 @@ This release candidate retains the 1.4.0 features; users upgrading from 1.3.0 sh
 read that entry for the full feature list. GitHub publication and Asset Store
 approval of 1.4.1 remain pending.
 
+### Added
+
+- A distinct **Request Timeouts** card in Provider Settings with clear headings, padded neutral styling, seconds units, and concise provider-specific help. Hosted BYOK providers use their original Orca timing by default; **Use custom timeouts** reveals optional 10–600-second response-start/inactivity controls. Turning it off retains custom values. Local profiles expose the controls directly, defaulting to 300/60 seconds for cold model loading.
+
 ### Fixed
 
 - Plugin ZIPs and Git source exports exclude compiled native helpers. Release builds publish the four platform helpers separately alongside the plugin ZIP/checksum, with an exact version/size/SHA-256 catalog generated from the tested assets.
 - Orca quietly downloads and verifies a missing platform helper on plugin enable, caching it outside projects/addons. Early Cloud sign-in waits with **Preparing connection…**; BYOK/local providers remain usable. Saved-account restoration waits for readiness, retries are bounded, and plugin shutdown cancels preparation.
 - GitHub release notes now link **Full Changelog** directly to the released version's `CHANGELOG.md`.
+- Slow local model startup no longer shares the 30-second network-connection cutoff. One response-start budget spans headers and initial data, with actionable timeout guidance, turn-bound settings, responsive Stop, and the existing ten-minute total request cap.
+- Local and explicitly customized hosted Agent checks allow configured response waits within one bounded two-request deadline. Hosted defaults retain the original separate 30-second header wait, 60-second body-inactivity wait, and 45-second compatibility test. Timing preferences preserve existing protocol passes; edits during a check cancel pending enablement. Orca Cloud retains fixed timing.
 
 ### Changed
 
