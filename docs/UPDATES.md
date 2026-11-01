@@ -5,15 +5,15 @@ precede Asset Store moderation. Updating and native-helper installation are
 user-owned maintenance, never agent tools, and their public downloads require no
 Orca account or GitHub token.
 
-This checkout prepares **1.4.1**, the packaging follow-up to the GitHub-published
-1.4.0 release rejected by the Godot Asset Store for bundled executables. Keep the
-existing v1.4.0 tag/assets stable and publish the corrected package plus matching
-helpers under a new **v1.4.1** tag. Godot users can upgrade directly from 1.3.0;
-existing 1.4.0 installations can recognize the newer patch release. See
-[1.4.1](../CHANGELOG.md#141---2026-10-30) for packaging fixes and
-[1.4.0](../CHANGELOG.md#140---2026-10-29) for the full feature list. Publication and
-Store approval remain pending; prior Store downloads and the thumbnail correction
-must be coordinated with the reviewer separately.
+This checkout prepares **1.5.0**, adding project code navigation to the published
+1.4.1 binary-free baseline. Finalize candidate source/changelog, complete fresh
+CI/native/package acceptance and publish the ZIP/checksum plus matching helpers
+under **v1.5.0**. Existing 1.3.0, 1.4.0 and 1.4.1 users can upgrade once published.
+See [1.5.0](../CHANGELOG.md#150---2026-11-02) for this candidate and
+[1.4.1](../CHANGELOG.md#141---2026-10-30) for the earlier packaging fixes.
+Publication and Store approval are pending; Cloud navigation requires matching
+backend API deployment/catalog refresh. Prior Store downloads and the thumbnail
+correction remain separate reviewer work.
 
 ## User workflow
 
@@ -98,7 +98,7 @@ visibly and are separate from a missing helper.
 3. Package the binary-free addon and separate helpers together:
 
    ```bash
-   python3 scripts/package_release.py --version 1.4.1 --require-platform-helpers --helper-assets dist --output dist/orca-v1.4.1.zip
+   python3 scripts/package_release.py --version 1.5.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.5.0.zip
    ```
 
    Substitute the actual new version. The script refuses version mismatches,
@@ -256,8 +256,8 @@ cancellation without cancelling preparation, narrow inline Account status, priva
 round-trip/locking and separate-Godot-process persistence. Updater tests exercise
 independent wait/replace/reopen, failure/rollback and local-change protections.
 
-Linux/Godot 4.7.2 isolated acceptance is locally verified. Real GitHub publication,
-Asset Store ZIP/snapshot acceptance, graphical full-project update/relaunch,
+Linux/Godot 4.7.2 isolated acceptance and the 1.4.1 GitHub publication/full native CI
+are verified. Asset Store ZIP/snapshot acceptance, graphical full-project update/relaunch,
 Windows/macOS downloaded-helper execution/prompts and exhaustive power-loss
 boundaries remain manual. Editor fixtures retain Godot shutdown RID/ObjectDB
 diagnostics. Background helper installation is automatic plugin initialization,

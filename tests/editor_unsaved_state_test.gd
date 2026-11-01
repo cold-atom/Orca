@@ -68,6 +68,17 @@ func _test_dirty_script() -> void:
 	_expect(function_result.get("success", false), "focused function reading should accept exact unsaved editor source")
 	_expect(function_result.get("data", {}).get("source_kind") == "editor", "focused function reading should identify editor provenance")
 	_expect(not function_result.get("data", {}).has("disk_sha256"), "unsaved editor source must not expose a disk patch-base hash")
+	for tool_name in ["find_project_symbols", "find_symbol_references"]:
+		var navigation_arguments := {"path": _script_path}
+		if tool_name == "find_symbol_references":
+			navigation_arguments["symbol"] = "saved_function"
+		var explicit_navigation := Tools.execute_tool(tool_name, navigation_arguments)
+		_expect(not explicit_navigation.get("success", true) and str(explicit_navigation.get("content", "")).contains("unsaved"), "saved code navigation must reject an explicitly dirty script: " + tool_name)
+		var directory_arguments := navigation_arguments.duplicate(true)
+		directory_arguments["path"] = _fixture_directory
+		var directory_navigation := Tools.execute_tool(tool_name, directory_arguments)
+		_expect(directory_navigation.get("success", false) and directory_navigation["data"]["truncation"]["reasons"].has("unsaved_script_omitted"), "project scans must omit dirty source with honest truncation: " + tool_name)
+	_expect(_read(_script_path) == original and EditorContext.get_unsaved_open_script(_script_path).get("source") == unsaved_source, "code navigation must preserve exact dirty editor source and disk bytes")
 	var reference := ScriptReferences.prepare([_script_path])
 	_expect(reference.get("success", false) and reference["references"][0]["content"] == unsaved_source and reference["references"][0]["source_kind"] == "editor", "explicit references must use exact active unsaved source without changing disk")
 	_expect(ScriptReferences.editor_drag_path(EditorInterface.get_script_editor().get_current_editor()) == _script_path, "script-list drags must resolve through exact public current-editor identity")
@@ -78,6 +89,7 @@ func _test_dirty_script() -> void:
 	_expect(await _wait_until(func(): return _current_script_path() == _other_script_path), "a second script should become active")
 	var inactive_result := Tools.execute_tool("read_gdscript_function", {"filepath": _script_path, "function_name": "saved_function"})
 	_expect(not inactive_result.get("success", true) and str(inactive_result.get("content", "")).contains("not the active script"), "a dirty non-current script must not fall back to stale disk source")
+	_expect(not Tools.execute_tool("find_project_symbols", {"path": _script_path}).get("success", true), "inactive dirty scripts must remain excluded from saved navigation")
 	_expect(not ScriptReferences.prepare([_script_path]).get("success", true), "inactive dirty references must reject stale disk fallback and preserve the draft for activation/save")
 	EditorInterface.edit_script(script, 1, 1, true)
 	_expect(await _wait_until(func(): return _current_script_path() == _script_path), "the dirty fixture should become active again")

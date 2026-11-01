@@ -1517,11 +1517,14 @@ func _test_tool_batch_barriers() -> void:
 	var read_calls := [
 		_simple_tool_call("read_batch_file", "read_file"),
 		_simple_tool_call("read_batch_scene", "inspect_scene"),
+		_simple_tool_call("read_batch_symbols", "find_project_symbols"),
+		_simple_tool_call("read_batch_references", "find_symbol_references"),
 	]
 	await _deliver_completion(controller, _tool_response(read_calls))
-	_expect(tools.execute_calls == 2, "independent read-only tools should remain batchable")
+	_expect(tools.execute_calls == 4, "independent read-only and code-navigation tools should remain batchable")
 	_expect(api.requests.size() == 1, "an allowed read-only batch should continue with one provider request")
 	_expect(_tool_result_count(controller.message_history, "read_batch_file") == 1 and _tool_result_count(controller.message_history, "read_batch_scene") == 1 and _protocol_is_valid(controller.message_history), "an allowed read-only batch should retain one protocol-valid result per call")
+	_expect(_tool_result_count(controller.message_history, "read_batch_symbols") == 1 and _tool_result_count(controller.message_history, "read_batch_references") == 1, "code-navigation batches must retain exactly one tool result for each call")
 	await _deliver_completion(controller, {"choices": [{"message": {"role": "assistant", "content": "Inspection complete."}}]})
 	await _free_controller(controller)
 
@@ -1564,6 +1567,8 @@ func _test_tool_batch_barriers() -> void:
 		"inspect_godot_api",
 		"read_gdscript_function",
 		"discover_dependencies",
+		"find_project_symbols",
+		"find_symbol_references",
 		"get_editor_context",
 		"get_diagnostics",
 	]

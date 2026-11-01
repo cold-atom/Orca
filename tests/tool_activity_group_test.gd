@@ -95,7 +95,53 @@ func _run() -> void:
 	_expect(not invalid_card._help_button.visible, "oversized help topics must not expose navigation")
 	invalid_help_group.queue_free()
 	await process_frame
+	await _test_code_navigation()
 	_finish()
+
+
+func _test_code_navigation() -> void:
+	var group = ToolActivityGroup.new()
+	get_root().add_child(group)
+	await process_frame
+	var opened := []
+	group.open_requested.connect(func(path: String, line: int, column: int): opened.append([path, line, column]))
+	var card = group.add_tool("symbols", "find_project_symbols", {"query": "move"})
+	var path := "res://tests/fixtures/gdscript_function_reader_fixture.gd"
+	group.complete_tool("symbols", {"outcome": "completed", "content": "Lexical declarations, not a patch base", "data": {"open_path": path, "open_line": 3, "open_column": 6, "matches": [
+		{"filepath": path, "line": 3, "column": 6, "name": "documented", "kind": "function", "role": "declaration", "preview": "func documented()"},
+		{"filepath": path, "line": 20, "column": 7, "name": "nested", "kind": "function", "role": "declaration", "preview": "nested function"},
+		{"filepath": "res://addons/orca/scripts/tools.gd", "line": 1, "column": 1},
+		{"filepath": "res://.orca-update/hidden.gd", "line": 1, "column": 1},
+		{"filepath": "res://tests/../project.gd", "line": 1, "column": 1},
+		{"filepath": "user://external.gd", "line": 1, "column": 1}
+	]}}, 12)
+	_expect(card._match_list.get_child_count() == 2, "navigation must show every safe location and reject protected/external/noncanonical paths")
+	_expect(not card._match_scroll.visible and group._header_button.text.contains("Find project symbols"), "result lists must start collapsed with a readable grouped label")
+	group.set_expanded(true)
+	card._toggle_details()
+	card._match_list.get_child(1).pressed.emit()
+	_expect(opened == [[path, 20, 7]], "each result button must forward its own exact location rather than the first match")
+	var base_font: int = card._header_button.get_theme_font_size("font_size")
+	for multiplier in [1.0, 1.5, 2.0]:
+		for button in card._match_list.get_children():
+			button.add_theme_font_size_override("font_size", roundi(base_font * multiplier))
+		for _frame in 4:
+			await process_frame
+		_expect(group.get_combined_minimum_size().x <= 300.0, "navigation rows must fit a narrow dock at %.1fx font size" % multiplier)
+		_expect(card._match_scroll.visible and card._match_scroll.custom_minimum_size.y <= 160.0, "expanded results must use a bounded scrolling region")
+	var disappearing := "res://.orca_navigation_card_%d.gd" % Time.get_ticks_usec()
+	var file := FileAccess.open(disappearing, FileAccess.WRITE)
+	file.store_string("extends Node\n")
+	file.close()
+	group.complete_tool("symbols", {"content": "saved location", "outcome": "completed", "data": {"open_path": disappearing, "matches": [{"filepath": disappearing, "line": 1, "column": 1}]}}, 1)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(disappearing))
+	card._match_list.get_child(0).pressed.emit()
+	card._open_button.pressed.emit()
+	_expect(opened.size() == 1, "clicking a result or first-match Open must recheck that the script still exists")
+	group.complete_tool("symbols", {"content": "Historical saved-code search. Search again.", "outcome": "completed", "data": {}}, 12)
+	_expect(card._match_list.get_child_count() == 0 and not card._match_scroll.visible, "historical summaries must not reconstruct stale result lists")
+	group.queue_free()
+	await process_frame
 
 
 func _expect(condition: bool, message: String) -> void:

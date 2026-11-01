@@ -35,7 +35,9 @@ func _run() -> void:
 		{"type": "message", "sender": "Orca", "text": "First model answer", "kind": "assistant", "mode": 1, "completion": "complete", "attribution": {"model": "openai/model-A", "mode": 0, "provider": "must-not-persist", "reasoning": "must-not-persist", "api_key": "must-not-persist"}},
 		{"type": "message", "sender": "Orca", "text": "Second model answer", "kind": "assistant", "mode": 1, "completion": "cancelled", "attribution": {"model": "model-B", "mode": 1}},
 		{"type": "message", "sender": "Orca", "text": "Legacy answer", "kind": "assistant", "mode": 1, "completion": "complete"},
-		{"type": "message", "sender": "User", "text": "User input", "kind": "user", "mode": 1, "attribution": {"model": "must-not-persist", "mode": 1}}
+		{"type": "message", "sender": "User", "text": "User input", "kind": "user", "mode": 1, "attribution": {"model": "must-not-persist", "mode": 1}},
+		{"type": "tool", "id": "symbols", "name": "find_project_symbols", "arguments": {"query": "health", "kind": "member", "path": "res://scripts", "max_results": 999, "matches": "must-not-persist", "source": "must-not-persist"}, "summary": "Historical saved-code search", "matches": "must-not-persist", "source": "must-not-persist"},
+		{"type": "tool", "id": "references", "name": "find_symbol_references", "arguments": {"symbol": "health", "include_declarations": false, "max_results": 20, "source": "must-not-persist"}, "summary": "Historical reference candidates", "report": "must-not-persist"}
 	]
 	session["continuation"] = [
 		{"role": "user", "content": "Build a test", "reasoning_content": "must-not-persist"},
@@ -92,6 +94,9 @@ func _run() -> void:
 	_expect(loaded["events"][13].get("attribution") == {"model": "openai/model-A", "mode": 0} and loaded["events"][13].get("mode") == 0, "recorded attribution must survive JSON and override mismatched mutable mode labels")
 	_expect(loaded["events"][14].get("attribution") == {"model": "model-B", "mode": 1} and loaded["events"][14].get("completion") == "cancelled", "interrupted answers must retain their actual model/mode metadata")
 	_expect(not loaded["events"][15].has("attribution") and not loaded["events"][16].has("attribution"), "legacy and user messages must not receive fabricated attribution")
+	_expect(loaded["events"][17]["arguments"] == {"query": "health", "kind": "member", "path": "res://scripts", "max_results": 100}, "symbol history must retain only bounded lookup metadata")
+	_expect(loaded["events"][18]["arguments"] == {"symbol": "health", "include_declarations": false, "max_results": 20}, "reference history must retain only bounded lookup metadata")
+	_expect(not loaded["events"][17].has("matches") and not loaded["events"][18].has("report"), "source excerpts and result indexes must never persist in tool events")
 	_expect(loaded.get("tasks", []).size() == 4, "sanitized task state should persist")
 	_expect(not loaded.get("tasks", [])[0].has("secret"), "unknown task fields must not persist")
 	_expect(loaded.get("tasks", [])[2].get("status") == "pending", "only one persisted task may remain in progress")

@@ -73,6 +73,13 @@ func check(value: bool, label: String) -> void:
 		push_error(label)
 
 func _run() -> void:
+	var raw_navigation := {"id": "navigation-fixture", "context_window": 32768, "max_output_tokens": 8192, "effort": {"supported_levels": ["default"]}, "orca": {"protocol": "chat_completions", "tools": true, "continuation_style": "standard", "capability_version": "test-v1", "availability": "available", "access": {"allowed": true}}}
+	for flag in [null, false, true, "true", 1]:
+		var catalog := raw_navigation.duplicate(true)
+		if flag != null:
+			catalog["orca"]["project_code_navigation"] = flag
+		var records := CloudProvider.normalize_catalog({"data": [catalog]})
+		check(records.size() == 1 and records[0]["project_code_navigation"] == (typeof(flag) == TYPE_BOOL and flag == true), "only explicit boolean catalog support may enable Cloud code navigation")
 	var vault := MemoryVault.new()
 	vault.record = {"version": 1, "origin": CloudProvider.ORIGIN, "refresh_token": "saved-refresh", "session_id": "fixed-session"}
 	var service := FixtureService.new()
@@ -124,6 +131,20 @@ func _run() -> void:
 	root.add_child(controller)
 	controller._turn_provider_config = profile.duplicate(true)
 	check(controller._turn_allows_tools(), "verified managed profile enables eligible tools automatically")
+	var old_names: Array = controller._get_tool_definitions().map(func(tool): return tool["function"]["name"])
+	check(old_names.has("read_file") and not old_names.has("find_project_symbols") and not old_names.has("find_symbol_references"), "legacy Cloud catalogs must retain existing tools without sending unsupported new schemas")
+	var unavailable: Dictionary = await controller._execute_tool_call({"id": "unadvertised_navigation", "function": {"name": "find_project_symbols", "arguments": "{}"}})
+	check(unavailable["outcome"] == "failed" and unavailable["result"].contains("does not advertise"), "runtime checks must deny unadvertised Cloud navigation even when called directly")
+	service.models[0]["project_code_navigation"] = true
+	var newer_profile := service.profile_config("model-fixture")
+	controller._turn_provider_config = newer_profile.duplicate(true)
+	var new_names: Array = controller._get_tool_definitions().map(func(tool): return tool["function"]["name"])
+	check(new_names.has("find_project_symbols") and new_names.has("find_symbol_references"), "advertised navigation must pass the existing managed gate and become available")
+	service.models[0]["project_code_navigation"] = false
+	check(controller._get_tool_definitions().map(func(tool): return tool["function"]["name"]).has("find_project_symbols") and not service.profile_config("model-fixture")["hosted_code_navigation"], "catalog changes must affect only future turn snapshots")
+	controller._turn_provider_config["hosted_code_navigation"] = "true"
+	check(not controller._turn_allows_code_navigation(), "malformed navigation feature flags must not grant tools")
+	controller._turn_provider_config = profile.duplicate(true)
 	controller._turn_provider_config["capability_version"] = "changed"
 	check(not controller._turn_allows_tools(), "capability drift invalidates operator verification")
 	controller._turn_provider_config = profile.duplicate(true)

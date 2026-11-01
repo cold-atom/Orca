@@ -194,6 +194,10 @@ func _group_title() -> String:
 				title = "Read GDScript function" if count == 1 else "Read GDScript functions"
 			"discover_dependencies":
 				title = "Discover dependencies"
+			"find_project_symbols":
+				title = "Find project symbols"
+			"find_symbol_references":
+				title = "Find reference candidates"
 			"get_editor_context":
 				title = "Inspect editor context"
 			"get_diagnostics":
@@ -208,6 +212,8 @@ func _group_title() -> String:
 
 
 func _target_from_arguments(arguments: Dictionary) -> String:
+	if arguments.has("symbol"):
+		return str(arguments["symbol"])
 	if arguments.has("class_name"):
 		var api_target := str(arguments["class_name"])
 		var member := str(arguments.get("member_name", ""))

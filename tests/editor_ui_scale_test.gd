@@ -6,6 +6,7 @@ const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const ImageAttachments = preload("res://addons/orca/scripts/image_attachments.gd")
 const ChangeCard = preload("res://addons/orca/scripts/change_card.gd")
 const DiffUtils = preload("res://addons/orca/scripts/diff_utils.gd")
+const ToolActivityGroup = preload("res://addons/orca/scripts/tool_activity_group.gd")
 
 class MemorySessionStore:
 	extends RefCounted
@@ -158,6 +159,7 @@ func _run() -> void:
 			_expect(model.tooltip_text == model_name and model.max_lines_visible == 2, "editor footer must preserve full model identity while bounding wrapped height")
 	view.queue_free()
 	await process_frame
+	await _test_code_navigation_layout()
 	await _test_diff_minimap_navigation()
 	if _failures.is_empty():
 		print("editor_ui_scale_test: PASS (scale %.2f)" % scale)
@@ -166,6 +168,36 @@ func _run() -> void:
 	for failure in _failures:
 		printerr("editor_ui_scale_test: ", failure)
 	quit(1)
+
+
+func _test_code_navigation_layout() -> void:
+	var holder := Control.new()
+	holder.size = UiMetrics.scaled_vector(Vector2(300, 700))
+	get_root().add_child(holder)
+	var group = ToolActivityGroup.new()
+	holder.add_child(group)
+	group.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await process_frame
+	var card = group.add_tool("navigation-layout", "find_symbol_references", {"symbol": "health_changed"})
+	var path := "res://tests/fixtures/gdscript_function_reader_fixture.gd"
+	var matches := []
+	for index in 30:
+		matches.append({"filepath": path, "line": index + 1, "column": 4, "name": "health_changed", "kind": "identifier", "role": "reference_candidate", "preview": "Long source excerpt " + "context ".repeat(25)})
+	group.complete_tool("navigation-layout", {"content": "Saved lexical candidates, not resolved references.", "outcome": "completed", "data": {"matches": matches, "open_path": path, "open_line": 1, "open_column": 4}}, 5)
+	group.set_expanded(true)
+	card._toggle_details()
+	var font: int = card._header_button.get_theme_font_size("font_size")
+	for multiplier in [1.0, 1.5, 2.0]:
+		for control in [group._header_button, card._header_button, card._status_label, card._open_button, card._details] + card._match_list.get_children():
+			control.add_theme_font_size_override("font_size", roundi(font * multiplier))
+		for _frame in 8:
+			await process_frame
+		_expect(group.get_combined_minimum_size().x <= UiMetrics.scaled(300) and group.size.x <= UiMetrics.scaled(300), "navigation groups must fit an actual 300-unit editor surface at %.1fx fonts" % multiplier)
+		_expect(card._match_scroll.size.x <= card.size.x and card._match_scroll.custom_minimum_size.y == UiMetrics.scaled(160), "result rows must stay in their bounded editor-scaled scroll region")
+		for button in card._match_list.get_children():
+			_expect(button.size.x <= card._match_scroll.size.x and button.tooltip_text.begins_with(path), "each clipped result must retain complete location/source tooltip without widening the editor dock")
+	holder.queue_free()
+	await process_frame
 
 
 func _test_request_budget_header(view) -> void:

@@ -82,13 +82,33 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
-## What's New In 1.4.1
+## What's New In 1.5.0
 
-Orca 1.4.1 is the packaging-fix release candidate following 1.4.0's Godot Asset
+This checkout prepares **Orca 1.5.0** for **Godot 4.7.2**, a project-code-navigation
+release candidate. GitHub publication and Asset Store approval are pending.
+See the [1.5.0 changelog entry](CHANGELOG.md#150---2026-11-02).
+
+### Project code navigation
+
+Orca can locate saved GDScript classes, functions, signals, members, constants
+and named enums, then show clickable file/line results with bounded excerpts.
+Whole-identifier reference candidates ignore comments/strings; dirty scripts and
+scan limits are disclosed. These are lexical matches, not semantic rename analysis
+or dynamic/scene-connection coverage. Existing approvals still govern all edits.
+For Orca Cloud, deploy the matching backend API and refresh the catalog; older
+servers keep the existing read/search tools.
+
+The prepared release will provide `orca-v1.5.0.zip`, its checksum and four separate
+tested helpers after complete candidate CI/packaging and owner publication.
+
+### Published 1.4.1 baseline
+
+Orca 1.4.1 is the published packaging-fix release following 1.4.0's Godot Asset
 Store rejection for bundled executables. Its plugin ZIP is binary-free; matching
 native credential helpers are published separately and verified/cached outside
-the project after plugin enable. GitHub publication and Asset Store approval remain
-pending. Read the [1.4.1 changelog entry](CHANGELOG.md#141---2026-10-30) for the fixes.
+the project after plugin enable. GitHub publication and complete CI passed on
+October 30; Asset Store approval remains an owner moderation check. Read the
+[1.4.1 changelog entry](CHANGELOG.md#141---2026-10-30) for the fixes.
 
 It includes the features introduced in [1.4.0](CHANGELOG.md#140---2026-10-29):
 
@@ -99,8 +119,8 @@ It includes the features introduced in [1.4.0](CHANGELOG.md#140---2026-10-29):
 - Vision/text-only model switching within a conversation, response attribution, native review minimaps, and the composer Tab mode shortcut.
 - Daily update checks, confirmed Update & Restart/rollback, four-platform native helper builds, and complete versioned plugin packages.
 
-Users of 1.3.0 can upgrade directly to 1.4.1 once published. The new release will
-provide `orca-v1.4.1.zip`, its checksum and four separate helper assets through
+Users of 1.3.0 can upgrade directly to 1.4.1. The release provides
+`orca-v1.4.1.zip`, its checksum and four separate helper assets through
 [GitHub Releases](https://github.com/cold-atom/Orca/releases). The existing v1.4.0
 GitHub release remains the original bundled package.
 
@@ -272,8 +292,8 @@ See [SECURITY.md](SECURITY.md) for the complete security and operational model.
 
 ## Current Limits
 
-- Orca 1.4.1 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
-- All four native build/acceptance jobs passed in the earlier Tests run #42; complete 1.4.1 CI and real downloaded-helper/Windows/macOS updater acceptance remain pending. Linux native-vault and headless updater fixtures are verified.
+- Orca 1.5.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
+- Complete 1.4.1 baseline CI/native acceptance passed; the 1.5.0 candidate requires fresh complete CI and matching four-platform package assets. Real downloaded-helper/browser and Windows/macOS graphical updater acceptance remain separate. Linux native-vault and headless updater fixtures are verified.
 - Native attachment drops were verified on Linux/X11/Vulkan; other platforms/renderers and detached editor windows need acceptance testing.
 - Runtime verification uses bounded process output and predeclared startup or exit criteria. It cannot prove visual or gameplay correctness.
 - Pending approvals and revert checkpoints do not survive an editor or plugin restart.
@@ -286,8 +306,9 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the full architecture, tool contracts, 
 
 ## Project Status
 
-This checkout prepares **Orca 1.4.1** for **Godot 4.7.2**. Publication and Godot
-Asset Store approval remain pending. Orca is a functional development-stage agent
+This checkout prepares **Orca 1.5.0** for **Godot 4.7.2**. The published GitHub
+baseline is 1.4.1; 1.5.0 publication and Godot Asset Store approval are pending.
+Orca is a functional development-stage agent
 with permanent automated tests and CI, but it is still evolving. Review proposals
 carefully and use version control on real projects.
 

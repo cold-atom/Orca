@@ -49,6 +49,8 @@ const GROUPABLE_TOOL_NAMES := {
 	"inspect_godot_api": true,
 	"read_gdscript_function": true,
 	"discover_dependencies": true,
+	"find_project_symbols": true,
+	"find_symbol_references": true,
 	"get_editor_context": true,
 	"get_diagnostics": true,
 	"observe_game_run": true
@@ -1878,6 +1880,19 @@ func _message_event(sender: String, text: String, kind: String, completion: Stri
 
 func _safe_tool_arguments(arguments: Dictionary, tool_name: String = "") -> Dictionary:
 	var result := {}
+	if tool_name in ["find_project_symbols", "find_symbol_references"]:
+		for key in ["query", "symbol", "path"]:
+			if typeof(arguments.get(key)) == TYPE_STRING:
+				result[key] = str(arguments[key]).left(512 if key == "path" else 128)
+		if typeof(arguments.get("kind")) == TYPE_STRING and arguments["kind"] in ["auto", "class", "function", "signal", "member", "constant", "enum"]:
+			result["kind"] = arguments["kind"]
+		if typeof(arguments.get("max_results")) in [TYPE_INT, TYPE_FLOAT]:
+			var limit := float(arguments["max_results"])
+			if is_finite(limit) and limit == floorf(limit):
+				result["max_results"] = int(clampf(limit, 1, 100))
+		if typeof(arguments.get("include_declarations")) == TYPE_BOOL:
+			result["include_declarations"] = arguments["include_declarations"]
+		return result
 	if tool_name == "inspect_editor_scene":
 		if typeof(arguments.get("scope")) == TYPE_STRING and str(arguments["scope"]) in ["selection", "scene", "subtree"]:
 			result["scope"] = arguments["scope"]
@@ -1952,6 +1967,8 @@ func _update_tool_event(call_id: String, execution: Dictionary, duration_ms: int
 			event["summary"] = "Historical live-editor inspection: %d node(s)%s%s. Inspect again for current state." % [node_count, state_label, truncation_label]
 		else:
 			event["summary"] = "Live editor inspection did not complete."
+	elif str(event.get("name", "")) in ["find_project_symbols", "find_symbol_references"] and outcome == "completed":
+		event["summary"] = "Historical saved-code search: %d match(es)%s. Search again for current source." % [clampi(int(data.get("returned_match_count", 0)), 0, 100), " (incomplete)" if data.get("truncation", {}).get("truncated", false) else ""]
 	elif str(event.get("name", "")) == "verify_game_run" and outcome == "completed":
 		event["summary"] = "Verification %s." % str(data.get("status", "unverified")).replace("_", " ")
 	elif str(event.get("name", "")) in ["run_current_scene", "run_main_scene", "stop_game"] and outcome == "completed":

@@ -17,6 +17,7 @@ const ProjectSkills = preload("res://addons/orca/scripts/project_skills.gd")
 const GodotApiInspector = preload("res://addons/orca/scripts/godot_api_inspector.gd")
 const GDScriptFunctionReader = preload("res://addons/orca/scripts/gdscript_function_reader.gd")
 const DependencyInspector = preload("res://addons/orca/scripts/dependency_inspector.gd")
+const ProjectCodeNavigation = preload("res://addons/orca/scripts/project_code_navigation.gd")
 
 const MAX_READ_FILE_BYTES := 2 * 1024 * 1024
 const MAX_READ_LINES := 400
@@ -232,6 +233,41 @@ static func get_tool_definitions(include_edit_tools: bool = true, include_work_m
 						"max_results": {"type": "integer", "minimum": 1, "maximum": DependencyInspector.MAX_RESULTS, "description": "Optional returned-node limit. Defaults to 100."}
 					},
 					"required": ["filepath", "direction"],
+					"additionalProperties": false
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "find_project_symbols",
+				"description": "Finds lexical class, function, signal, member, constant and named enum declarations in saved standalone .gd scripts. Results include paths, lines, columns and excerpts. Omit query to inventory a focused file; partial names are case-sensitive. Dirty scripts are omitted. Narrow path when scans truncate; no result supplies an edit hash.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"query": {"type": "string", "maxLength": ProjectCodeNavigation.MAX_NAME_CHARS, "description": "Optional case-sensitive partial declaration name. Defaults to all names."},
+						"path": {"type": "string", "maxLength": ProjectCodeNavigation.MAX_PATH_CHARS, "description": "Canonical res:// directory or saved .gd file. Defaults to res://."},
+						"kind": {"type": "string", "enum": ProjectCodeNavigation.KINDS, "description": "Defaults to auto (all supported declarations)."},
+						"max_results": {"type": "integer", "minimum": 1, "maximum": ProjectCodeNavigation.MAX_RESULTS}
+					},
+					"additionalProperties": false
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "find_symbol_references",
+				"description": "Finds case-sensitive whole-identifier lexical reference candidates in saved .gd source, ignoring comments and strings. Does not resolve ownership, locals/shadowing, dynamic calls or scene connections; never assume every match refers to the selected declaration. Dirty scripts are omitted. Narrow path when scans truncate.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"symbol": {"type": "string", "minLength": 1, "maxLength": ProjectCodeNavigation.MAX_NAME_CHARS, "description": "Exact GDScript identifier, e.g. health_changed."},
+						"path": {"type": "string", "maxLength": ProjectCodeNavigation.MAX_PATH_CHARS, "description": "Canonical res:// directory or saved .gd file. Defaults to res://."},
+						"include_declarations": {"type": "boolean", "description": "Include recognized class/member declarations. Defaults to false; locals and parameters remain lexical candidates."},
+						"max_results": {"type": "integer", "minimum": 1, "maximum": ProjectCodeNavigation.MAX_RESULTS}
+					},
+					"required": ["symbol"],
 					"additionalProperties": false
 				}
 			}
@@ -634,6 +670,18 @@ static func execute_tool(tool_name: String, arguments: Dictionary, game_process_
 			dependency_data["open_line"] = 1
 			dependency_data["open_column"] = 1
 			return _tool_success(str(dependency_result.get("content", "{}")), dependency_data)
+		"find_project_symbols", "find_symbol_references":
+			var dirty_paths := Array(EditorInterface.get_script_editor().get_unsaved_files()) if Engine.is_editor_hint() else []
+			var navigation := ProjectCodeNavigation.inspect(arguments, tool_name == "find_symbol_references", _validate_path, dirty_paths)
+			if not navigation.get("success", false):
+				return _tool_error(str(navigation.get("error", "Could not search saved GDScript source.")))
+			var navigation_data: Dictionary = navigation["report"].duplicate(true)
+			var matches: Array = navigation_data.get("matches", [])
+			if not matches.is_empty():
+				navigation_data["open_path"] = matches[0]["filepath"]
+				navigation_data["open_line"] = matches[0]["line"]
+				navigation_data["open_column"] = matches[0]["column"]
+			return _tool_success(navigation["content"], navigation_data)
 		"update_tasks":
 			var validation := TaskUtils.validate_tasks(arguments.get("tasks", null))
 			if not validation.get("success", false):

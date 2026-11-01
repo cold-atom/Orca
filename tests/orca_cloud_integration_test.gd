@@ -131,7 +131,15 @@ func _run() -> void:
 	client.account_service = account
 	controller.set_api_client_for_testing(client)
 	var events := {"reads": 0, "errors": 0, "answer": false}
-	controller.tool_execution_completed.connect(func(_turn, _call, tool, _execution, _duration): events["reads"] += 1 if tool == "read_file" else 0)
+	var code_navigation: bool = setup.get("code_navigation") == "1"
+	if code_navigation:
+		check(profile.get("hosted_code_navigation", false), "authenticated catalog advertises code-navigation vocabulary")
+	controller.tool_execution_completed.connect(func(_turn, _call, tool, execution, _duration):
+		if tool == "read_file" or (code_navigation and tool in ["find_project_symbols", "find_symbol_references"]):
+			events["reads"] += 1
+			check(execution.get("success", false), "real hosted read tool succeeds")
+			if code_navigation:
+				check(execution.get("data", {}).get("source") == "saved_gdscript_lexical_scan" and execution.get("data", {}).get("matches", []).size() == 1, "fragmented hosted navigation returns the exact saved declaration without an edit hash"))
 	controller.error_occurred.connect(func(_turn, message):
 		events["errors"] += 1
 		print("Fixture controller error: " + str(message)))
@@ -147,7 +155,7 @@ func _run() -> void:
 	check(controller.send_user_message("hi", images), "fresh request with full editor instructions, Work schemas and optional image submitted")
 	while controller.is_busy():
 		await process_frame
-	check(events["reads"] == 1 and events["errors"] == 0 and events["answer"], "real tool continuation completes exactly once")
+	check(events["reads"] == (2 if code_navigation else 1) and events["errors"] == 0 and events["answer"], "real tool continuation completes exactly once")
 	check(not JSON.stringify(controller.snapshot_session_state()).contains("fixture-private"), "private continuation absent from persistence")
 	var auth: Dictionary = await account.authorization()
 	var receipt: Dictionary = await account._request("/v1/account/usage", HTTPClient.METHOD_GET, {}, auth["token"])

@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-10-30
+Last updated: 2026-11-02
 
 ## Purpose
 
@@ -8,31 +8,36 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Release Candidate
+## Orca 1.5.0 Release Candidate
 
-This checkout prepares **Orca 1.4.1** for **Godot 4.7.2**. The version in
-`addons/orca/plugin.cfg`, prepared changelog and current setup/privacy guidance
-describe this candidate; dated milestone entries retain their historical versions.
-1.4.1 is the binary-free packaging follow-up to the GitHub-published 1.4.0 release,
-which was rejected by the Godot Asset Store for bundled executables. Its short
-changelog entry links to 1.4.0 for the full feature list. Keep the published v1.4.0
-tag/assets stable; users of 1.3.0 can upgrade directly to 1.4.1. Publication and
-Asset Store approval remain pending, including reviewer confirmation of the
-post-install helper flow and separate thumbnail/prior-download corrections.
-The owner controls commit, push, tag, GitHub publication and Asset Library submission.
-The complete [Tests run](https://github.com/cold-atom/Orca/actions/runs/41044798922)
-passed at `53d0efc`, including the corrected editor-scale fixture, remaining
-editor/transport checks, all four native build/acceptance jobs and binary-free
-packaging/artifact uploads. This checkout additionally addresses issue #6 with
-configurable provider response timeouts; its updated candidate needs a fresh
-complete CI/package run before publication. Real downloaded-helper flow and
-Windows/macOS updater acceptance remain pending.
-Push-triggered builds now produce a binary-free `orca-package` ZIP/checksum plus
-separate `orca-native-release-assets` after native acceptance. The complete Tests
-run must pass before publication. Source-based Asset Store distributions require
-the exact packaged helper catalog/update manifest and exclude compiled helpers.
-The owner pushed the earlier 1.4.1 candidate and CI correction. The timeout follow-up
-is local; no release publication has been performed by this work.
+This checkout prepares **Orca 1.5.0 — Project Code Navigation** for **Godot 4.7.2**.
+`addons/orca/plugin.cfg`, About/support expectations and the dated changelog now
+identify 1.5.0. The candidate is not published; fresh complete CI, same-revision
+four-platform helper/package acceptance and real editor/model acceptance are
+required. Generate the version-matched helper catalog/update manifest only from
+the accepted packaging output after addon bytes are final. Cloud code-navigation
+availability requires backend API rollout and an authenticated catalog refresh;
+older catalogs keep existing tools. Commit, push, deployment, tagging, publication
+and Store submission remain owner-controlled.
+
+**Orca 1.4.1** for **Godot 4.7.2** was [published on GitHub](https://github.com/cold-atom/Orca/releases/tag/v1.4.1)
+on 2026-10-30 at `dca72e6`. Its complete [Tests run](https://github.com/cold-atom/Orca/actions/runs/41056640672)
+and [release preparation](https://github.com/cold-atom/Orca/actions/runs/41057517659)
+passed, including editor/transport checks, four-platform native acceptance and
+binary-free packaging. Issue #6 is closed. Users of 1.3.0 can upgrade directly;
+keep the existing 1.4.0 tag/assets stable. The official ZIP/checksum and four
+separate helpers are available. Asset Store approval and real browser/graphical
+updater/downloaded-helper platform acceptance remain owner checks; a public
+Asset Library search on 2026-11-01 returned no Orca entry and does not establish
+private moderation status.
+
+This candidate adds **saved project code navigation** after that baseline;
+its 1.5.0 additions are not in the published 1.4.1 ZIP.
+The new Cloud vocabulary/advertisement is prepared in the separately authorized
+backend repository. Older catalogs omit the new schemas and retain existing tools
+until backend rollout and catalog refresh. Commit, push, deployment, release and
+Store submission remain owner-controlled. Dated milestone/handover entries retain
+their original historical verification state.
 
 ## Product Direction
 
@@ -48,7 +53,7 @@ Understand the user's editor and project context
 -> eventually run, observe, fix, and verify the game
 ```
 
-The current plugin is a functional development-stage agent. It is not yet a production release or a complete autonomous game-development environment.
+The plugin has public GitHub releases and remains a functional development-stage agent, rather than a complete autonomous game-development environment.
 
 ## Current Capabilities
 
@@ -92,11 +97,11 @@ The current plugin is a functional development-stage agent. It is not yet a prod
 - The trusted copied `update_runner.gd` runs under the current Godot executable in `res://.orca-update/runner/`, a private minimal project outside the loaded addon. It waits for the initiating editor's exit before transactional directory replacement, retains one verified rollback copy and reopens the same project. Unix uses a fixed signal-0 process-existence probe because Godot's process API only tracks child PIDs, and a fixed positional-argument `exec` wrapper detaches closed installer pipes. Windows uses native Godot process APIs. This is never exposed as executable/argument/PID authority to the model.
 - Handoff snapshots the public active display backend (`DisplayServer.get_name()`), preserving headless relaunch even without an available desktop. Godot consumes `--headless` before returning `OS.get_cmdline_args()`, so command-line membership cannot determine this state. The independent restart fixture removes inherited X11/Wayland display variables and verifies the new editor's headless backend.
 - `res://.orca-update/` is import-isolated (`.gdignore`), Git-ignored and protected from agent reads/search/mutations/dependencies/script references. Its bounded ownership, lock, transaction and result records preserve recovery information. Verified rollback is explicit; a retained standalone launcher can restore the original even if the addon directory is absent. Modified/unknown bytes and locks are preserved for manual review.
-- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Plugin metadata is 1.4.1 for the prepared release candidate; publication remains pending owner-run CI and platform acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
+- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.4.1 is published after complete CI; this source checkout has unreleased additions requiring fresh acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
 - Release preparation retains all four native build/real-test jobs from the selected tag, but packaging now uses `--require-platform-helpers --helper-assets <directory>` to emit a **binary-free** plugin ZIP/checksum plus four separate raw helper assets. The generated `native_helpers.json` pins those exact bytes to the plugin version; the unchanged updater manifest records it as an ordinary non-executable addon file. Known helper build products are excluded from the ZIP; unexpected ELF/PE/Mach-O or compiled-library filenames elsewhere are refused. Native workflow outputs are `orca-package`, `orca-native-release-assets` and a local-preparation tar.gz. Publication attaches the ZIP/checksum and matching raw helpers; downloading Actions artifacts never publishes them. Compiled helpers are Git-ignored/export-excluded and the formerly tracked Linux executable is removed. Explicit `--write-manifest` writes both catalog and update manifest into source; source snapshots must match the accepted ZIP and separately published helpers. A pinned source catalog cannot silently change during a rebuild. Workflow permissions/publication ownership remain unchanged. Exact steps are in `docs/UPDATES.md`.
 - The package artifact explicitly includes hidden files for its narrowly scoped `.ci/orca-v*.zip*` upload pattern; otherwise Actions excludes the hidden `.ci` directory during wildcard discovery, even after successful packaging. All four native build/vault/protocol/locking/cross-Godot-process jobs passed in [Tests run #42](https://github.com/cold-atom/Orca/actions/runs/40904709816); its aggregate upload and display-free updater test exposed these two subsequent failures. A new complete CI run and downloaded-package/platform updater acceptance remain required.
 - Release publication supplies an explicit **Full Changelog** link to `CHANGELOG.md` at the selected release tag. The changelog must be finalized before tagging; the version-bound link stays stable as the default branch advances.
-- Tests suppress automatic checking with `ORCA_DISABLE_UPDATE_CHECKS=1` alongside owner account restore suppression. Permanent service/editor/packaging/HTTP/independent-process tests cover notification preferences, narrow larger-font layouts, dirty/current-work denial, archive boundaries, local changes, stale proposals, failed/cancelled downloads, missing-addon recovery, locking, install/rollback and real fixture editor relaunch. Linux/Godot 4.7.2 headless acceptance is verified; real GitHub publication, graphical full-project relaunch, other editors, exhaustive power-loss boundaries and macOS/Windows remain manual gates.
+- Tests suppress automatic checking with `ORCA_DISABLE_UPDATE_CHECKS=1` alongside owner account restore suppression. Permanent service/editor/packaging/HTTP/independent-process tests cover notification preferences, narrow larger-font layouts, dirty/current-work denial, archive boundaries, local changes, stale proposals, failed/cancelled downloads, missing-addon recovery, locking, install/rollback and real fixture editor relaunch. Linux/Godot 4.7.2 headless acceptance and 1.4.1 GitHub publication are verified; graphical full-project relaunch, other editors, exhaustive power-loss boundaries and macOS/Windows remain manual gates.
 
 #### Orca Account / Cloud (1.4.0)
 
@@ -202,7 +207,8 @@ Image model-switch regressions additionally exercise repeated text/vision transi
 - `inspect_godot_api` reflects `ClassDB` and registered global-class metadata into bounded signatures, type records, hierarchy, properties, signals, constants, and enums. It produces validated Help topics for the editor's public `goto_help()` path but does not scrape documentation prose, load scripts, construct reflected objects, or instantiate scenes.
 - `read_gdscript_function` performs bounded lexical extraction of one named function, optional adjacent documentation/annotations, nested-class scope, and one-based navigation. For the exact open unsaved script it uses public editor source and marks it `editor`; that source never carries a disk SHA-256 or becomes a patch base.
 - `discover_dependencies` traverses deterministic breadth-first forward dependencies or reverse dependents from `ResourceLoader.get_dependencies()`. It reports saved serialized relationships only and does not load or instantiate resources.
-- All four model-callable intelligence tools are read-only and available in Plan and Work.
+- `find_project_symbols` builds an on-demand lexical declaration index for saved standalone `.gd` scripts; `find_symbol_references` finds whole-identifier use candidates excluding comments/strings. Both return bounded excerpts, one-based locations and lexical class scope. There is no semantic binding, background cache, persistent source index or patch hash.
+- All model-callable intelligence tools are read-only in Plan and Work. Cloud code navigation additionally requires an authenticated catalog advertisement fixed through the turn.
 
 ### Live Scene Intelligence (1.4.0)
 
@@ -251,6 +257,8 @@ Plain Tab toggles Plan/Work only in the focused, visible prompt box and uses the
 | `inspect_godot_api` | Plan, Work | Reflects bounded `ClassDB` signatures and safe editor Help topics without object construction or prose scraping. |
 | `read_gdscript_function` | Plan, Work | Reads one bounded function from saved source or the exact unsaved editor source for that open script. |
 | `discover_dependencies` | Plan, Work | Traverses bounded saved serialized dependencies or reverse dependents without resource loading. |
+| `find_project_symbols` | Plan, Work | Locates saved lexical class/function/signal/member/constant/named-enum declarations with navigable excerpts. |
+| `find_symbol_references` | Plan, Work | Finds saved whole-identifier reference candidates without claiming semantic ownership or dynamic coverage. |
 | `get_editor_context` | Plan, Work | Captures active scene, selected nodes, active script, caret, selected code, and open/unsaved state. |
 | `get_diagnostics` | Plan, Work | Reports Orca validation records, observed editor-process errors, and play state. |
 | `update_tasks` | Plan, Work | Atomically replaces bounded session task metadata without modifying project files. |
@@ -327,7 +335,8 @@ EditorPlugin (orca.gd)
                      -> EditorSceneInspector (public live editor acquisition + bounded native snapshot)
                     -> ProjectSettingsInspector
                     -> GodotApiInspector
-                    -> GDScriptFunctionReader
+                     -> GDScriptFunctionReader
+                     -> ProjectCodeNavigation (on-demand saved lexical scans and bounded locations)
                     -> DependencyInspector
                     -> InputMapProposal
                     -> MainSceneProposal
@@ -711,6 +720,16 @@ Forward traversal follows serialized `ResourceLoader.get_dependencies()` relatio
 
 Hard limits include 3 traversal levels, 100 returned nodes, 200 graph edges, 500 scanned files, 256 scanned directories, 100 indexed graph nodes, 200 indexed serialized edges, approximately 2.5 seconds for reverse scanning, and 96 KiB of whole JSON output. `.godot`, symbolic links, Orca's addon, unsafe/unresolved dependencies, and missing/noncanonical targets are excluded or rejected with truncation reasons. The tool does not load or instantiate resources and cannot discover dynamic `load()` calls, arbitrary code references, runtime-created resources, or unsaved editor state. It is read-only in Plan and Work.
 
+### `find_project_symbols` And `find_symbol_references`
+
+- `find_project_symbols` accepts optional case-sensitive partial `query` (128 characters), `kind` (`auto`, `class`, `function`, `signal`, `member`, `constant`, `enum`), `path` (canonical project directory or standalone `.gd` file, default `res://`, 512 characters) and `max_results` (1–100, default 100). Omit query for a focused file inventory. Named enums are indexed; their values, locals and parameters are not declaration results.
+- `find_symbol_references` requires one exact GDScript `symbol`, plus the same path/result controls and optional boolean `include_declarations` (default false). Whole-identifier candidates omit comments, quoted/StringName/NodePath strings and substrings. Recognized declaration occurrences are labeled separately when included. Locals/parameters/shadowing and unrelated same-name members may remain candidates; this is not semantic reference resolution or rename authorization.
+- The scanner reads UTF-8 disk bytes only, never loads/executes scripts or uses editor source. Public unsaved-file identity is acquired once per call: explicit dirty files fail with save guidance; project scans omit them and mark incomplete coverage. Fresh calls re-enumerate/read disk, so changed, created and deleted files cannot survive in a stale cache. No source/index persists between calls or enters support reports. No result supplies a hash; edits still require fresh saved `read_file` hashes and normal approval.
+- Bounds: 256 scripts, 128 queued/scanned directories, 4096 entries, 512 KiB/file, 8 MiB aggregate source, 8192 characters/line, 2048 tokens/line, one 250 ms absolute main-thread scan budget, 100 results, 240-character previews and 96 KiB JSON output. Traversal and long-token/string loops check the budget. File, queue, entry, token, line, byte, result, output and time limits report explicit truncation. Invalid/unreadable/dirty source and symlinks are disclosed as omissions; protected Orca/update paths and generated `.git`/`.godot` directories are excluded. Directory sorting occurs only over bounded enumeration.
+- Results carry saved lexical provenance, query/scope, counts, scan statistics, `matches` (`filepath`, `line`, `column`, `name`, `kind`, `role`, `class_path`, `preview`), notes and truncation reasons. JSON is trimmed as complete matches, preserving valid output/count parity. An empty complete scan is a successful zero-result report, not an error. Multiline declarations/annotations, nested classes, Unicode identifiers, CRLF source, lambdas/accessor bodies and string escapes are handled lexically; no GDScript parse-validity or inherited/dynamic/scene-connection coverage is claimed.
+- Both tools use the ordinary read-only batching, cancellation, follow-up and context-budget paths. Activity groups retain exact live results in a bounded, collapsed-by-default scroll region with one clickable row per match and full location/source tooltips. Clicks recheck current canonical project/symlink/protected/existence boundaries. Narrow larger-font cards show outcome with per-call duration in a tooltip and aggregate group timing. History stores only bounded queries, first navigation location and an explicitly historical count/incomplete summary; result rows and excerpts are not restored as current source.
+- Managed Cloud additionally requires strict boolean `orca.project_code_navigation` from the authenticated model catalog, copied to immutable `hosted_code_navigation` turn state. Missing/malformed advertisements omit both schemas and deny direct runtime calls; existing managed readiness/identity/origin/contract gates remain required. The backend's additive `orca-tools-v1` allowlist covers only these exact function fields and advertises vocabulary support, not model quality. No immutable model profile, billing or credential change is needed; deploy the prepared backend API and refresh the catalog for new turns.
+
 ### `get_editor_context`
 
 Output may include:
@@ -957,6 +976,7 @@ A committed automated suite exists under `tests/`:
 - `project_skills_test.gd` verifies deterministic immediate-directory metadata discovery, exact-name body loading, frontmatter/slug/body bounds, non-recursive safety wrapping, truncation, and symlink rejection.
 - `godot_api_inspector_test.gd` verifies reflected class/member kinds, inheritance, signatures, global-class metadata, limits, Help-topic formats, failures, and absence of construction or private Help scraping.
 - `gdscript_function_reader_test.gd` verifies saved and unsaved source provenance, documentation and annotation inclusion, multiline signatures, nested classes, ambiguity hints, CRLF preservation, output bounds, path protection, and absent hashes for editor source.
+- `project_code_navigation_test.gd` verifies nested/annotated/multiline declarations, Unicode/CRLF coordinates, whole-identifier candidates and duplicate ownership, string/comment/local exclusion, no hashes, changed/new/deleted disk source, strict arguments, protected/symlink/dirty paths and file/directory/token/line/result/output/time bounds. Tools/controller tests cover actual JSON limits, Plan/Work disclosure, four-call read-only batching and matching tool results. Account tests cover strict catalog normalization, old-server schema omission, runtime denial and turn-fixed advertisement. UI/history/editor suites cover every-match navigation, deleted-path rechecks, historical redaction, real dirty buffers and actual 300-unit layouts at normal/1.5×/2× fonts. The authorized backend fixture adds a real two-tool fragmented SSE/private-continuation round-trip alongside existing image/profile cases.
 - `dependency_inspector_test.gd` verifies deterministic forward/reverse breadth-first serialized graphs, depths, UID fallback normalization, scan/result/output bounds, and invalid/protected targets.
 - `tool_loop_guard_test.gd` verifies identical successful and failed calls, alternating cycles, repeated rounds, changing results, progress resets, no-progress thresholds, and stable canonical fingerprints.
 - `input_map_proposal_test.gd` verifies typed event validation, exact unrelated-byte preservation, no-op and stale guards, immutable reviewed hashes, affected live/disk consistency, application, synchronization, and guarded revert.
@@ -1034,7 +1054,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Pending approval state is not persisted; task checklists are persisted independently.
 - Saved `.tscn` inspection reports serialized scene state, not all Inspector defaults, unsaved live-tree changes, runtime-generated nodes, or recursively expanded inherited/instanced scenes.
 - Live scene inspection covers existing editor nodes and a fixed native property allowlist, not all Inspector values, custom script exports/getters, extension-native classes, signal state, runtime-generated game nodes, or effective minimum sizes. Deferred Container layout may still be settling. Detailed snapshots are requested on demand, not continuously refreshed. Unnamed roots have component coverage; actual New Scene UI, interactive provider/dock acceptance, non-headless 3D selection, and other platforms remain manual gates.
-- Search is literal text search rather than a symbol or semantic index.
+- `search_files` remains literal text search. Project code navigation is an on-demand saved lexical index, not semantic binding, inheritance resolution, a call graph or a persistent/background index; references are same-name candidates and exclude dynamic/string-based calls and scene connections.
 - Explicit references currently accept standalone project `.gd` scripts only, at most four / 300 lines / 16 KiB each. Only the exact active unsaved editor source is available; inactive dirty scripts require activation or saving. History retains submitted snapshots rather than silently rereading current files. Actual native script-list mouse dragging and live model acceptance remain manual checks.
 - Root project instructions are limited to one fixed `res://AGENTS.md`; nested or ancestor instruction inheritance is not implemented.
 - Skills use a deliberately small frontmatter format, immediate directories only, exact-name loading, and no recursive reference resolution. Skill bodies are not automatically selected or summarized.
@@ -1076,9 +1096,9 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Gemini's OpenAI-compatibility surface is beta, and Gemini/xAI have not been exercised against live credentials in the permanent automated suite.
 - GitHub issue #2 reports LM Studio 0.4.26 / llama.cpp 2.60.0 rejecting later system messages with a Qwen-labeled 27B IQ2_S model. A user-run Qwen3-4B-Instruct-2507 chat test did not reproduce the error, and that model's Agent probe failed exact challenge arguments. The leading-system fix is verified against a deterministic strict-template transport fixture; the reporter's exact GGUF/template and live Agent continuation remain an acceptance gate.
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
-- BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Earlier native build/acceptance jobs passed on all four platforms; complete 1.4.1 CI and real downloaded-package acceptance remain pending.
+- BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata declares version 1.4.1 for the prepared packaging-fix release candidate. Public release documentation, an MIT license, add-on-only Git export rules and a manually dispatched release-packaging/publication workflow are present. Complete candidate CI, downloaded-package/update acceptance, actual publication, Asset Store approval, broader platform compatibility and third-party asset attribution records remain outstanding. Historical milestone versions describe their original verification state.
+- Plugin metadata declares the prepared 1.5.0 release candidate. Complete 1.4.1 baseline CI/publication are verified; 1.5.0 needs fresh complete CI, exact same-revision helper/catalog/package acceptance and publication. Asset Store approval, real browser/downloaded-helper/graphical updater acceptance, broader platform compatibility and third-party asset attribution records remain outstanding. Historical milestone versions describe their original verification state.
 
 ## Roadmap
 
@@ -1096,7 +1116,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Broaden current structural, value, script, instance, and signal contracts only through dedicated safety review.
 - Expand structured Godot scene operations and add further settings only through dedicated risk review.
 - Expand reflected Godot API metadata only where public stable APIs provide trustworthy additional detail; prose scraping remains excluded.
-- Add project symbol indexing and reference search.
+- Saved lexical project symbol lookup and reference-candidate search are implemented for the prepared 1.5.0 candidate. Expand toward semantic ownership, inheritance/reference resolution and reusable indexing only with concrete bounded invalidation contracts.
 - Add progressive tool-schema disclosure only after provider compatibility, context budgeting, restoration, and deterministic tool-availability behavior are designed and tested.
 - Expand semantic validation beyond the structured scene path to remaining raw `.tscn` and `.tres` patch proposals.
 - Expand verification beyond text/process evidence only when a bounded visual or input-observation capability exists.
@@ -1122,7 +1142,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 ### P3: Release Readiness
 
 - Expand the supported compatibility matrix beyond Godot 4.7.2 when permanent coverage is available.
-- Run/accept the four-platform native helper workflow, publish a complete updater-equipped GitHub Release and test graphical full-project restart and Asset Library installs. Complete Windows/macOS native-vault/downloaded-package/update acceptance and macOS signing/notarization decisions.
+- Maintain the passing four-platform native/release workflows. Complete real browser/downloaded-helper/graphical updater and Asset Library acceptance, Windows/macOS distribution checks and macOS signing/notarization decisions.
 
 ## Decision Log
 
@@ -1195,6 +1215,22 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-02: Orca 1.5.0 release-candidate preparation
+
+- Owner selected 1.5.0 for project code navigation. Updated `plugin.cfg`, About/support expectations, dated candidate changelog, current README/addon/product/security/development/testing/update guidance and the release workflow's tag example. The 1.5.0 entry is explicitly prepared/not published; historical 1.4.1 release and synthetic fixtures remain intact.
+- Added updater coverage for 1.5.0 upgrades from 1.3.0/1.4.0/1.4.1, exact official ZIP naming, same-version suppression and no downgrade to 1.4.1. Existing packaging/catalog/manifest version derivation follows `plugin.cfg`; official catalogs/manifests still require exact accepted same-revision four-platform assets.
+- Verification: clean Godot 4.7.2 headless editor/plugin initialization; settings/About/support-report, updater service and native-helper catalog/header suites; update-editor and native-helper-editor suites passed. Seven updater/package and eight native-packaging tests passed without skips, including actual-source 1.5.0 archive/manifest validation and historical install/rollback/relaunch fixtures. All three startup suppressions were set; Python tests used disposable `/tmp/opencode` projects with bytecode writing disabled. Existing editor-fixture teardown RID/ObjectDB diagnostics remain; ordinary initialization is clean. Diff/artifact checks passed and temporary test projects were removed.
+- Metadata/documentation/test preparation is complete locally. Fresh complete candidate CI/native/package acceptance, backend API rollout/catalog refresh, real model/editor/platform acceptance and owner tag/publication/Store approval remain pending. No commit, push, tag, workflow dispatch, deployment, live inference or publication was performed.
+
+### 2026-11-01: Saved project code navigation and published-release closeout
+
+- Added independently implemented `project_code_navigation.gd` and both read-only tools with an on-demand saved lexical index, bounded source/token/traversal/time/output work, exact Unicode/CRLF locations and nested-class scope. Comments/strings and dirty scripts are omitted; no script is loaded, no index persists and no result authorizes a patch. Scope/reference limitations are explicit.
+- Updated schemas, dispatch, prompts, controller batching/runtime checks, grouped UI with per-result navigation and narrow larger-font containment, and historical query-only redaction. Cloud's optional strict catalog advertisement is fixed through each turn; old/malformed catalogs retain existing tools without these schemas. The separately authorized backend adds exact fields/types, vocabulary advertisement, tests and docs only, with no account/model/billing/migration change or deployment.
+- Verification: twelve relevant Godot component suites (navigation, tools, controller, account, activity, chat, session, hosted budgets, API client, Responses protocol, providers and support diagnostics), real dirty-editor and editor-scale suites, seven updater/package and eight native-packaging tests passed. Backend selected tests: **28 passed, no skips**, including six actual Godot/FastAPI/disposable-PostgreSQL cases with a two-tool fragmented SSE/private-continuation round-trip and existing four image/profile cases. Ruff/format and full mypy passed. Godot tests set all three startup suppressions. Existing negative-control parse errors and editor-fixture teardown RID/ObjectDB diagnostics remain; ordinary initialization is clean. No owner authentication or live inference was used.
+- Reconciled current release records with read-only GitHub evidence: v1.4.1 at `dca72e6` is published and complete CI/native/release jobs passed; issue #6 is closed. Downloaded its real ZIP/checksum and Linux helper to `/tmp/opencode`; production updater checks verified bounded archive/manifest/per-file hashes, binary-free flags and exact helper size/hash/ELF. The published addon loads cleanly in an isolated-config/data headless project after asset import. Pre-enabling the fixture before its first asset imports logged missing imported assets; post-import activation is the normal verified flow. Helper browser/OS-vault use was not performed. Existing install/rollback/relaunch fixtures passed, not a graphical full-user-project restart.
+- Source changes are unreleased; plugin metadata remains 1.4.1. No commit/push/tag/deployment/publication/Store action was performed. Next owner steps: review/push both repositories, run fresh plugin CI, deploy the backend API and refresh the Cloud catalog, then exercise symbol/reference prompts with a real model. Live usefulness, broader project-size evidence, light themes, Windows/macOS downloaded-helper/graphical updater acceptance and Store moderation remain manual.
+- Final Godot 4.7.2 headless editor/plugin initialization and both repositories' `git diff --check` passed. No replacement/test-fixture artifacts remain; the temporary release project/downloads/scripts and dedicated PostgreSQL container were removed. The prepared script/test UIDs are retained as intended source files.
 
 ### 2026-10-01: Orca 1.1.0 Godot Intelligence
 

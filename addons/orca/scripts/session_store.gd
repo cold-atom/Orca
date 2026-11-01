@@ -292,6 +292,19 @@ func _sanitize_tool_arguments(raw, tool_name: String = "") -> Dictionary:
 	if typeof(raw) != TYPE_DICTIONARY:
 		return {}
 	var result := {}
+	if tool_name in ["find_project_symbols", "find_symbol_references"]:
+		for key in ["query", "symbol", "path"]:
+			if typeof(raw.get(key)) == TYPE_STRING:
+				result[key] = _bounded_text(str(raw[key]), 512 if key == "path" else 128)
+		if typeof(raw.get("kind")) == TYPE_STRING and raw["kind"] in ["auto", "class", "function", "signal", "member", "constant", "enum"]:
+			result["kind"] = raw["kind"]
+		if typeof(raw.get("max_results")) in [TYPE_INT, TYPE_FLOAT]:
+			var limit := float(raw["max_results"])
+			if is_finite(limit) and limit == floorf(limit):
+				result["max_results"] = int(clampf(limit, 1, 100))
+		if typeof(raw.get("include_declarations")) == TYPE_BOOL:
+			result["include_declarations"] = raw["include_declarations"]
+		return result
 	if tool_name == "inspect_editor_scene":
 		if typeof(raw.get("scope")) == TYPE_STRING and str(raw["scope"]) in ["selection", "scene", "subtree"]:
 			result["scope"] = raw["scope"]

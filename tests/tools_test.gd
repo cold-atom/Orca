@@ -74,7 +74,7 @@ func _test_tool_permissions() -> void:
 	_expect(live_parameters.get("additionalProperties") == false and live_parameters.get("properties", {}).get("scope", {}).get("enum") == ["selection", "scene", "subtree"], "live inspection schema must mirror strict read-only scope validation")
 	_expect(not live_parameters.get("properties", {}).has("base_hash"), "live state must never be advertised as a patch base")
 	_expect(plan_names.count("inspect_project_settings") == 1, "Plan tool definitions should include inspect_project_settings exactly once")
-	for tool_name in ["read_project_skill", "inspect_godot_api", "read_gdscript_function", "discover_dependencies"]:
+	for tool_name in ["read_project_skill", "inspect_godot_api", "read_gdscript_function", "discover_dependencies", "find_project_symbols", "find_symbol_references"]:
 		_expect(plan_names.count(tool_name) == 1, "Plan tool definitions should include read-only intelligence tool " + tool_name + " exactly once")
 	_expect(plan_names.count("observe_game_run") == 1 and plan_names.count("verify_game_run") == 1, "Plan should expose read-only run observation and verification")
 	var work_names := _tool_names(Tools.get_tool_definitions(true))
@@ -101,7 +101,7 @@ func _test_tool_permissions() -> void:
 	_expect(work_names.count("inspect_scene") == 1, "Work tool definitions should include inspect_scene exactly once")
 	_expect(work_names.count("inspect_editor_scene") == 1, "Work should expose the same live read-only inspector")
 	_expect(work_names.count("inspect_project_settings") == 1, "Work tool definitions should include inspect_project_settings exactly once")
-	for tool_name in ["read_project_skill", "inspect_godot_api", "read_gdscript_function", "discover_dependencies"]:
+	for tool_name in ["read_project_skill", "inspect_godot_api", "read_gdscript_function", "discover_dependencies", "find_project_symbols", "find_symbol_references"]:
 		_expect(work_names.count(tool_name) == 1, "Work tool definitions should include read-only intelligence tool " + tool_name + " exactly once")
 		var parameters: Dictionary = _tool_definition(Tools.get_tool_definitions(true), tool_name).get("function", {}).get("parameters", {})
 		_expect(parameters.get("additionalProperties") == false, tool_name + " should reject unknown schema fields")
@@ -165,6 +165,13 @@ func _test_read_only_intelligence_tools() -> void:
 	_expect(dependencies.get("success", false) and dependencies.get("data", {}).get("max_depth") == 1 and dependencies.get("data", {}).get("max_results") == 100, "dependency execution should apply optional defaults")
 	_expect(dependencies.get("data", {}).get("open_path") == DEPENDENCY_FIXTURE, "dependency results should include bounded target navigation")
 	_expect(not Tools.execute_tool("discover_dependencies", {"filepath": DEPENDENCY_FIXTURE, "direction": "forward", "extra": true}).get("success", true), "dependency execution should reject unknown fields")
+	var symbols := Tools.execute_tool("find_project_symbols", {"path": FUNCTION_FIXTURE, "query": "documented", "kind": "function"})
+	_expect(symbols.get("success", false) and symbols.get("outcome") == "completed" and symbols.get("data", {}).get("open_path") == FUNCTION_FIXTURE, "symbol lookup should dispatch as a read-only navigable tool")
+	var references := Tools.execute_tool("find_symbol_references", {"path": FUNCTION_FIXTURE, "symbol": "documented", "include_declarations": true})
+	_expect(references.get("success", false) and references.get("data", {}).get("matches", []).size() == 1, "reference lookup must dispatch and retain labeled locations")
+	_expect(not Tools.execute_tool("find_project_symbols", {"path": FUNCTION_FIXTURE, "source": "untrusted"}).get("success", true), "code navigation must reject supplied source")
+	var wire_arguments: Dictionary = JSON.parse_string(JSON.stringify({"path": FUNCTION_FIXTURE, "query": "documented", "max_results": 1}))
+	_expect(Tools.execute_tool("find_project_symbols", wire_arguments).get("success", false), "code navigation must accept integer limits decoded from provider JSON")
 
 
 func _test_task_tool() -> void:

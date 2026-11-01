@@ -86,6 +86,7 @@ func profile_config(model_id: String, effort: String = "default") -> Dictionary:
 		"hosted_image_input": bool(record.get("image_input", false)),
 		"hosted_tools": bool(record.get("tools", false)), "hosted_allowed": bool(record.get("allowed", false)),
 		"hosted_agent_ready": bool(record.get("agent_ready", false)),
+		"hosted_code_navigation": typeof(record.get("project_code_navigation")) == TYPE_BOOL and record.get("project_code_navigation") == true,
 		"hosted_verified_capability": str(record.get("verified_capability", "")),
 		"hosted_context_policy": record.get("context_budget", {}).duplicate(true),
 		"hosted_available": record.get("availability", "") == "available",

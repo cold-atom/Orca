@@ -39,6 +39,12 @@ func _run() -> void:
 		var patch := Service.normalize_release(release("1.4.1"), installed)
 		check(patch.get("success", false) and patch.get("release", {}).get("version") == "1.4.1", "packaging follow-up is newer than installed " + installed)
 	check(Service.normalize_release(release("1.4.1"), "1.4.1").get("release", {"bad": true}).is_empty(), "installed packaging follow-up gives no update")
+	for installed in ["1.3.0", "1.4.0", "1.4.1"]:
+		var feature := Service.normalize_release(release("1.5.0"), installed)
+		check(feature.get("success", false) and feature.get("release", {}).get("version") == "1.5.0", "code-navigation release is newer than installed " + installed)
+		check(feature.get("release", {}).get("url") == Service.DOWNLOAD_ROOT + "v1.5.0/orca-v1.5.0.zip", "feature update must select its exact version-bound official ZIP")
+	check(Service.normalize_release(release("1.5.0"), "1.5.0").get("release", {"bad": true}).is_empty(), "installed feature release gives no same-version update")
+	check(Service.normalize_release(release("1.4.1"), "1.5.0").get("release", {"bad": true}).is_empty(), "latest published baseline must not downgrade a 1.5.0 candidate")
 	check(Service.normalize_release(release("1.3.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "same version gives no update")
 	check(Service.normalize_release(release("1.2.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "older release never downgrades")
 	for field in ["draft", "prerelease"]:

@@ -4,13 +4,35 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+## 1.5.0 - 2026-11-02
+
+**Release candidate — not yet published.** Adds project code navigation to the
+published 1.4.1 baseline. Complete candidate CI/four-platform packaging and real
+editor/model acceptance remain release gates. Cloud availability requires the
+matching backend API rollout and catalog refresh.
+
+### Added
+
+- Read-only `find_project_symbols` and `find_symbol_references` tools for bounded saved `.gd` declaration lookup and whole-identifier reference candidates. Results include source excerpts, nested-class scope and exact locations, with clickable activity rows, dirty-file omissions and explicit scan limits. Comments/strings are excluded; lexical candidates do not establish semantic ownership or dynamic/scene-connection coverage.
+- Additive Orca Cloud code-navigation vocabulary support and authenticated catalog advertisement. Old catalogs retain existing tools without sending unsupported schemas; the new flag is fixed through each turn and enforced at execution. Backend rollout/catalog refresh is required for hosted availability.
+
+### Changed
+
+- Plugin/About/support-report metadata and current release guidance now identify 1.5.0. Existing 1.4.1 installations can detect the new feature release once its official package is published.
+
+### Known Limits
+
+- Code navigation is saved-source-only and lexical. Dirty scripts and bounded incomplete scans are disclosed; same-name reference candidates do not establish semantic ownership, dynamic calls or scene connections.
+- Publication, Asset Store approval and live Cloud/editor/platform acceptance remain pending. The binary-free ZIP must be released with its exact version-matched helper catalog and separately tested native assets.
+
 ## 1.4.1 - 2026-10-30
 
 Packaging follow-up to [1.4.0](#140---2026-10-29), which was published on GitHub
 but rejected by the Godot Asset Store because its ZIP included compiled executables.
-This release candidate retains the 1.4.0 features; users upgrading from 1.3.0 should
-read that entry for the full feature list. GitHub publication and Asset Store
-approval of 1.4.1 remain pending.
+Published on GitHub on 2026-10-30 after complete CI/native/package acceptance.
+Users upgrading from 1.3.0 should read the 1.4.0 entry for the full feature list.
+Asset Store approval and real downloaded-helper/graphical platform acceptance
+remain separate owner checks.
 
 ### Added
 

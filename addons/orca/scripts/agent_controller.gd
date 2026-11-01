@@ -52,6 +52,8 @@ const BATCHABLE_READ_ONLY_TOOLS := {
 	"inspect_godot_api": true,
 	"read_gdscript_function": true,
 	"discover_dependencies": true,
+	"find_project_symbols": true,
+	"find_symbol_references": true,
 	"get_editor_context": true,
 	"get_diagnostics": true
 }
@@ -859,6 +861,9 @@ func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1, permi
 			else:
 				result = str(mode_resolution.get("result", "The Work mode decision was interrupted."))
 				outcome = str(mode_resolution.get("outcome", "failed"))
+	elif result.is_empty() and function_name in ["find_project_symbols", "find_symbol_references"] and not _turn_allows_code_navigation():
+		result = "Error: This Cloud request snapshot does not advertise project code navigation. Refresh the catalog after the backend supports it; use existing read/search tools in the meantime."
+		outcome = "failed"
 	elif result.is_empty() and REVIEWED_MUTATION_TOOLS.has(function_name) and batch_mode != AgentMode.BUILD:
 		result = "Error: %s is unavailable in Plan mode. Switch to Work mode to propose changes." % function_name
 		outcome = "failed"
@@ -1513,7 +1518,14 @@ func _remap_context_indices(removed_start: int, removed_count: int, inserted_cou
 func _get_tool_definitions() -> Array:
 	if not _turn_allows_tools():
 		return []
-	return tools_script.get_tool_definitions(_mode == AgentMode.BUILD, _mode == AgentMode.PLAN and not _work_mode_requested_this_turn)
+	var definitions: Array = tools_script.get_tool_definitions(_mode == AgentMode.BUILD, _mode == AgentMode.PLAN and not _work_mode_requested_this_turn)
+	if not _turn_allows_code_navigation():
+		definitions = definitions.filter(func(definition): return definition.get("function", {}).get("name", "") not in ["find_project_symbols", "find_symbol_references"])
+	return definitions
+
+
+func _turn_allows_code_navigation() -> bool:
+	return _turn_provider_config.get("provider") != "orca_cloud" or (_turn_allows_tools() and typeof(_turn_provider_config.get("hosted_code_navigation")) == TYPE_BOOL and _turn_provider_config.get("hosted_code_navigation") == true)
 
 
 func _turn_allows_tools() -> bool:
@@ -1538,6 +1550,7 @@ func _turn_allows_tools() -> bool:
 
 func _get_system_prompt() -> String:
 	var shared := "You are Orca, an AI game-development assistant integrated into the Godot editor. Use project tools proactively to understand the user's Godot project. Prefer inspect_editor_scene for the user's current scene or selection, especially unsaved layout and transform changes; selection reads selected nodes only, scene/subtree read bounded descendants. Pass the expected scene_path from current context when available. Treat its native values as a live editor snapshot, not runtime evidence or a patch base; never ask users to save merely for this read. Project edits still require saved state, a fresh read_file hash, and normal approval. Prefer inspect_scene over raw file reads when understanding saved .tscn structure; it reports saved serialized state, does not include unsaved or runtime-generated nodes, and does not recursively expand scene instances. Prefer inspect_project_settings over reading project.godot when understanding project configuration; omit setting_path for the bounded overview or provide one exact non-sensitive path. Be concise, explain important decisions, and never claim a tool action succeeded unless its result confirms success. For genuinely multi-step work, maintain the session checklist with update_tasks; provide the complete desired list, keep at most one item in_progress, and do not use it for trivial one-step requests."
+	shared += " Prefer find_project_symbols to locate saved GDScript declarations and find_symbol_references for whole-identifier use candidates, then read_gdscript_function or read_file for focused source. These are bounded lexical scans, not semantic ownership or rename analysis; comments/strings, dynamic calls and scene connections are excluded, locals/shadowing can match, and dirty scripts are omitted. Narrow path after truncation and never claim a partial scan is exhaustive. Save a dirty script before saved code navigation, or use exact active-unsaved function reads for editor source. Navigation results supply no patch hash."
 	if _mode == AgentMode.PLAN:
 		return shared + " You are in Plan mode. Explore and analyze the project using read-only tools, identify relevant files, ask focused questions when needed, and produce a concrete implementation plan. You may update Orca's session checklist, but you must not create, edit, delete, apply changes, or start/stop game processes. If and only if the user asked you to implement, modify, run, or otherwise perform work that requires Work mode, use request_work_mode once with a concise reason. Wait for the user's decision. If they decline, remain in Plan mode and finish with a useful plan; do not ask again in that turn. Do not request Work mode for analysis-only or planning requests."
 	return shared + " You are in Work mode. You may search and read project files, inspect current editor context and diagnostics, propose reviewed changes, and run or stop only Orca-owned game processes. Read relevant line ranges first and use the SHA-256 returned by read_file as base_hash. Use propose_scene_changes for structured scene creation, nodes, typed properties, dependency-free scripts and child instances, and bindless signals instead of writing .tscn text. Script attach/detach requires a script_hash from read_file and two user decisions: trust to execute the exact script while constructing a candidate, then approval to apply it. Use propose_input_map_changes for typed Input Map changes, propose_main_scene_change to configure the launch scene, propose_project_settings_changes for allowlisted display settings, and apply_patch for minimal non-overlapping source edits. Use run_current_scene or run_main_scene only when execution advances the task. Declare clean_startup or expected_exit verification before launch when those narrow criteria match the task, preserve the same criteria across reruns, and use observe_game_run or get_diagnostics for later evidence. Orca automatically waits briefly for one bounded observation after launch. Only claim verified when verify_game_run returns passed; launch, a zero exit code, or absence of retained errors does not establish gameplay correctness. Visual behavior, input feel, animation, and rendering remain unverified without visual evidence. Use stop_game only for the current Orca-owned run. Every project file change requires explicit user approval before it is applied."

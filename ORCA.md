@@ -11,12 +11,13 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-This checkout prepares Orca 1.4.1 for Godot 4.7.2 in `addons/orca/`, a packaging
-follow-up to 1.4.0's Godot Asset Store rejection for bundled executables. The plugin
-ZIP is binary-free and native helpers are separately published, verified and cached.
-See [1.4.1](CHANGELOG.md#141---2026-10-30) for the fixes and
-[1.4.0](CHANGELOG.md#140---2026-10-29) for the full feature list. Publication, Asset
-Store approval and downloaded-helper/platform updater acceptance remain pending.
+This checkout prepares **Orca 1.5.0** for **Godot 4.7.2**, adding saved project code
+navigation to the published 1.4.1 baseline. See
+[1.5.0](CHANGELOG.md#150---2026-11-02) for this release candidate and
+[1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
+remain binary-free, with separately tested and version-pinned native helpers.
+Complete 1.5.0 CI/package acceptance, publication, Asset Store approval and live
+Cloud/editor/platform acceptance are pending.
 
 ### Key Features & Components
 1. **Editor Integration (`orca.gd`, `orca.tscn`, `chat_window.tscn`)**
@@ -44,7 +45,8 @@ Store approval and downloaded-helper/platform updater acceptance remain pending.
       - `inspect_project_settings`: Reads a bounded configuration overview or one allowlisted typed ProjectSettings value without modifying the project.
       - `read_project_skill`: Loads one exact bounded skill body selected from request-scoped metadata discovered at `res://skills/<slug>/SKILL.md`.
       - `inspect_godot_api`: Reflects bounded `ClassDB` signatures, types, inheritance, constants, and enums and provides safe Open Docs navigation without scraping prose.
-      - `read_gdscript_function`: Returns one focused function from saved source or the exact unsaved source exposed by the script editor; unsaved source never provides a patch base hash.
+       - `read_gdscript_function`: Returns one focused function from saved source or the exact unsaved source exposed by the script editor; unsaved source never provides a patch base hash.
+       - `find_project_symbols` / `find_symbol_references` (1.5.0): Locate bounded saved-script declarations and lexical whole-identifier use candidates with excerpts and clickable locations. Comments/strings are ignored; dirty scripts and incomplete scans are disclosed. There is no semantic/dynamic/scene-connection reference claim or edit hash. Cloud requires an authenticated vocabulary advertisement after backend rollout/catalog refresh.
       - `discover_dependencies`: Traverses bounded forward dependencies or reverse dependents from saved serialized `ResourceLoader` metadata without loading or instantiating resources.
       - `get_editor_context`: Reads the active scene, selected nodes, active script, caret, and selected code.
       - `get_diagnostics`: Reports Orca validation errors, observed editor errors, and play state.
@@ -142,8 +144,8 @@ Startup quietly prepares the exact platform helper in a verified external cache,
 with no additional install prompt or updater-style notice. Early Cloud sign-in
 waits with **Preparing connection…**; cancelling sign-in leaves preparation running,
 and BYOK/local use is available throughout. Preparation alone never opens a browser.
-Earlier four-platform native build/acceptance jobs passed; complete 1.4.1 CI and
-real downloaded-plugin acceptance remain pending.
+Complete 1.4.1 CI and four-platform native build/acceptance jobs passed; real
+downloaded-helper/browser and graphical platform acceptance remain separate.
 After the localhost-to-production switch, sign in again against the deployed
 account database. See the addon setup guide for the account workflow.
 
@@ -158,7 +160,7 @@ We are building a truly autonomous copilot for game development in Godot, simila
 
 ### Future Goals
 - **Expanded Toolset:** Broaden current reflected Godot API lookup and constrained scene/configuration capabilities without weakening review boundaries.
-- **Deeper Context Awareness:** Expand the implemented live scene-tree/native-property inspection and add project symbol indexing.
+- **Deeper Context Awareness:** Expand live scene-tree/native-property inspection and the new saved lexical declaration/reference-candidate tools toward richer bounded semantic navigation.
 - **Structured Godot Operations:** Reviewed Input Map, project configuration, and scene-tree proposals built on bounded typed inspection.
 - **Debugging Assistant:** Bounded automatic post-launch observation, conservative runtime diagnostics, reviewed fixes, explicit reruns, and scoped startup/exit verification without claiming visual gameplay correctness.
 - **Local-First Focus:** Ensuring the plugin works flawlessly with locally-hosted, fast open-source models (like Llama 3 or Qwen) for privacy-conscious developers.

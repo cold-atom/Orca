@@ -215,17 +215,56 @@ real user browser registration/verification, live hosted models, OS-vault unlock
 other platforms, session expiry and deployed HTTPS pairing/inference. Public HTTPS
 health responses establish reachability only, not authenticated or metered acceptance.
 
-## 1.4.1 release-candidate verification
+## 1.5.0 release-candidate verification
 
-The About/support-report expectations follow plugin version 1.4.1. Synthetic
+The About/support-report expectations follow plugin version 1.5.0. Synthetic
 1.3.0 → 1.4.0 installation/rollback fixtures intentionally retain both versions.
-Update metadata checks also verify that 1.4.1 is newer than both 1.3.0 and 1.4.0,
-and actual-source packaging reads the current version from `plugin.cfg`.
-Before publication, run the version-sensitive settings/support checks, updater
+Historical 1.4.1 update/catalog fixtures remain explicit. Current update metadata
+checks verify 1.5.0 upgrades from 1.3.0/1.4.0/1.4.1, exact official asset naming,
+same-version suppression and no downgrade from the candidate. Actual-source
+packaging reads the current version from `plugin.cfg`.
+For this release preparation, run the version-sensitive settings/support checks, updater
 component/editor/package tests, native helper acceptance and clean initialization
-with all three startup suppressions. GitHub's complete Tests workflow and Windows/Mac
-native jobs remain required after the owner pushes the candidate. Native/graphical
-acceptance is not established by changing metadata or preparing release notes.
+with all three startup suppressions. The complete 1.4.1 Tests/native/package run
+passed at `dca72e6` and publication completed on 2026-10-30. The 1.5.0 candidate
+requires its own complete CI and same-revision four-platform helper/package run.
+Real browser/downloaded-helper/graphical platform
+acceptance is not established by metadata, CI or release notes.
+
+## Project code navigation (1.5.0)
+
+```bash
+export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
+"$GODOT_BIN" --headless --path . --script res://tests/project_code_navigation_test.gd
+"$GODOT_BIN" --headless --path . --script res://tests/tools_test.gd
+"$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
+"$GODOT_BIN" --headless --path . --script res://tests/account_service_test.gd
+"$GODOT_BIN" --headless --path . --script res://tests/tool_activity_group_test.gd
+"$GODOT_BIN" --headless --path . --script res://tests/chat_window_test.gd
+"$GODOT_BIN" --headless --path . --script res://tests/session_store_test.gd
+"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
+"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+```
+
+The scanner suite uses disposable `.gdignore` fixtures and checks nested/annotated
+declarations, multiline signatures, lambdas/accessors, Unicode/CRLF locations,
+whole-identifier candidates, comments/strings/substrings/shadowing, no edit hashes,
+fresh changed/new/deleted disk source, protected/symlink/dirty boundaries and scan
+limits. Tool/controller tests include provider-JSON integer limits and complete
+four-call read-only batching. Account tests verify old-catalog schema omission,
+strict advertisement types, direct runtime denial and immutable turn snapshots.
+Activity tests click each result, reject stale/deleted paths and keep only safe
+historical query summaries. Editor tests dirty real scripts without changing their
+buffers/disk, and measure actual 300-unit result-list layouts at normal/1.5×/2× fonts.
+
+The authorized backend's `tests/test_code_navigation_contract.py` validates exact
+vocabulary/schema types and malformed streamed arguments. Its Godot fixture adds
+one two-tool fragmented SSE/private-continuation case alongside the existing five
+account/full-context/image cases. Use a disposable `TEST_DATABASE_URL`, `GODOT_BIN`
+and `ORCA_GODOT_PLUGIN_PATH` from that repository; no live model or owner account
+is used. Production availability requires backend API rollout and catalog refresh.
+Real model usefulness, light themes, native clicks in other platform editors and
+broader project-size evidence remain manual acceptance.
 
 GitHub Actions runs all commands below on Godot 4.7.2 through `.github/workflows/tests.yml`.
 

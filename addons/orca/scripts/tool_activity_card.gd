@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Tools = preload("res://addons/orca/scripts/tools.gd")
 
 signal open_requested(filepath: String, line: int, column: int)
 signal help_requested(topic: String)
@@ -21,6 +22,8 @@ var _open_path := ""
 var _open_line := 1
 var _open_column := 1
 var _help_topic := ""
+var _match_scroll: ScrollContainer
+var _match_list: VBoxContainer
 
 
 func _ready() -> void:
@@ -69,7 +72,7 @@ func _ready() -> void:
 	_open_button.flat = true
 	_open_button.add_theme_font_size_override("font_size", label_font_size)
 	_open_button.visible = false
-	_open_button.pressed.connect(func(): open_requested.emit(_open_path, _open_line, _open_column))
+	_open_button.pressed.connect(func(): _request_open(_open_path, _open_line, _open_column))
 	header.add_child(_open_button)
 
 	_help_button = Button.new()
@@ -88,6 +91,14 @@ func _ready() -> void:
 	_details.add_theme_font_size_override("font_size", label_font_size)
 	_details.visible = false
 	content.add_child(_details)
+	_match_scroll = ScrollContainer.new()
+	_match_scroll.custom_minimum_size = Vector2(0, UiMetrics.scaled(160))
+	_match_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_match_scroll.visible = false
+	content.add_child(_match_scroll)
+	_match_list = VBoxContainer.new()
+	_match_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_match_scroll.add_child(_match_list)
 
 
 func configure(tool_name: String, arguments: Dictionary) -> void:
@@ -107,6 +118,8 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 	var outcome := str(execution.get("outcome", "failed"))
 	var data: Dictionary = execution.get("data", {})
 	_details.text = result
+	if _tool_name in ["find_project_symbols", "find_symbol_references"]:
+		_set_navigation_matches(data.get("matches", []))
 	if data.has("open_path"):
 		_open_path = str(data["open_path"])
 		_open_line = maxi(1, int(data.get("open_line", 1)))
@@ -117,6 +130,11 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 		_help_topic = help_topic
 		_help_button.visible = true
 	_status_label.text = outcome.to_upper() + " · " + _format_duration(duration_ms)
+	_status_label.tooltip_text = _status_label.text
+	if _tool_name in ["find_project_symbols", "find_symbol_references"]:
+		# The group retains aggregate timing; keep per-call status readable in
+		# narrow docks at large fonts and retain timing in the full tooltip.
+		_status_label.text = "DONE" if outcome == "completed" else outcome.to_upper()
 	_status_label.add_theme_color_override(
 		"font_color",
 		Color(0.45, 0.82, 0.55) if outcome == "completed" or outcome == "applied" else Color(0.95, 0.4, 0.4)
@@ -127,6 +145,7 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 func _toggle_details() -> void:
 	_expanded = not _expanded
 	_details.visible = _expanded
+	_match_scroll.visible = _expanded and _match_list.get_child_count() > 0
 	_update_header()
 
 
@@ -161,6 +180,10 @@ func _display_name(tool_name: String) -> String:
 			return "Read GDScript function"
 		"discover_dependencies":
 			return "Discover dependencies"
+		"find_project_symbols":
+			return "Find project symbols"
+		"find_symbol_references":
+			return "Find reference candidates"
 		"get_editor_context":
 			return "Inspect editor context"
 		"get_diagnostics":
@@ -194,6 +217,8 @@ func _display_name(tool_name: String) -> String:
 
 
 func _target_from_arguments(arguments: Dictionary) -> String:
+	if _tool_name == "find_symbol_references":
+		return str(arguments.get("symbol", ""))
 	if _tool_name == "inspect_editor_scene":
 		var scope := str(arguments.get("scope", "selection"))
 		return "Selected nodes" if scope == "selection" else (str(arguments.get("node_path", ".")) if scope == "subtree" else "Scene hierarchy")
@@ -237,6 +262,44 @@ static func is_safe_help_topic(topic: String) -> bool:
 		if str(parts[index]).is_empty():
 			return false
 	return true
+
+
+func _set_navigation_matches(raw) -> void:
+	for child in _match_list.get_children():
+		_match_list.remove_child(child)
+		child.queue_free()
+	if typeof(raw) != TYPE_ARRAY:
+		_match_scroll.hide()
+		return
+	for entry in raw.slice(0, 100):
+		if typeof(entry) != TYPE_DICTIONARY or typeof(entry.get("filepath")) != TYPE_STRING or typeof(entry.get("line")) != TYPE_INT or typeof(entry.get("column")) != TYPE_INT:
+			continue
+		var path: String = entry["filepath"]
+		if not _safe_navigation_path(path) or int(entry["line"]) < 1 or int(entry["column"]) < 1:
+			continue
+		var line: int = entry["line"]
+		var column: int = entry["column"]
+		var button := Button.new()
+		button.flat = true
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		button.text = "%s:%d · %s" % [path.trim_prefix("res://"), line, str(entry.get("name", "")).left(128)]
+		button.tooltip_text = "%s:%d:%d\n%s · %s\n%s" % [path, line, column, str(entry.get("kind", "identifier")).left(32), str(entry.get("role", "reference_candidate")).left(32), str(entry.get("preview", "")).left(240)]
+		button.pressed.connect(_request_open.bind(path, line, column))
+		_match_list.add_child(button)
+	_match_scroll.visible = _expanded and _match_list.get_child_count() > 0
+
+
+func _request_open(path: String, line: int, column: int) -> void:
+	if _tool_name in ["find_project_symbols", "find_symbol_references"] and (not _safe_navigation_path(path) or not FileAccess.file_exists(path)):
+		return
+	open_requested.emit(path, line, column)
+
+
+static func _safe_navigation_path(path: String) -> bool:
+	return path.length() <= 512 and path.begins_with("res://") and path.get_extension() == "gd" and ProjectSettings.localize_path(ProjectSettings.globalize_path(path).simplify_path()) == path and Tools._validate_path(path, false).is_empty()
 
 
 func _format_duration(duration_ms: int) -> String:

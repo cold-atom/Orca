@@ -2,15 +2,18 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory contains the Orca 1.4.1 release-candidate addon for Godot 4.7.2,
-a packaging follow-up to 1.4.0's Godot Asset Store rejection for bundled executables.
+This directory contains the Orca 1.5.0 release candidate for Godot 4.7.2,
+adding saved-script code navigation to the published 1.4.1 baseline.
 Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
 platform's credential helper from the matching official GitHub Release if missing.
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
-usable. Publication, Asset Store approval and Windows/macOS downloaded-helper
-acceptance remain pending. For the full feature list, see the
-[1.4.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#140---2026-10-29).
+usable. Complete 1.5.0 CI/native packaging, publication and Asset Store approval
+remain pending, alongside real downloaded-helper/platform acceptance. See the
+[1.5.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#150---2026-11-02)
+for code navigation and the
+[1.4.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#140---2026-10-29)
+for the earlier full feature list.
 
 ## Install
 
@@ -62,6 +65,18 @@ Assistant cards show the full configured model ID on the left and the generating
 - Sessions can switch between vision and text-only models. Earlier images become placeholders only in text-only request copies; original previews/history remain intact and images return to vision requests when retained in context. New drafts still require confirmed image input, and active tool turns retain one model/image policy.
 - Source images are bounded to 10 MiB and 16 megapixels, resized to at most 2048 pixels per side, and normalized to at most 1 MiB each. Documents, PDFs, animation, and automatic screenshots are not supported.
 
+## Project Code Navigation (1.5.0)
+
+`find_project_symbols` locates saved `.gd` classes, functions, signals, members,
+constants and named enums. `find_symbol_references` returns whole-identifier
+lexical use candidates excluding comments/strings. Both work in Plan and Work,
+report bounded excerpts/locations and offer clickable result rows. Dirty scripts
+are omitted with incomplete coverage; explicit dirty files require saving. There
+is no semantic/dynamic/scene-connection coverage, persistent index or patch hash.
+Cloud additionally requires the new authenticated catalog advertisement after
+backend deployment/refresh; old catalogs retain existing tools. These tools are
+prepared for 1.5.0 and not included in the published 1.4.1 ZIP.
+
 ## Script References
 
 Drag up to four project `.gd` scripts from the FileSystem dock or open-script list onto the composer. Removable file chips appear above the input; click to open or hover for the full path. Press Send to include bounded source alongside your prompt, including with text-only/Chat-only models or image attachments. Source is captured at Send and capped at 300 lines / 16 KiB per script. Active unsaved text is supported; activate or save an inactive dirty script before submitting. Submitted references and source snapshots remain attached to their message and restore with History as plaintext local data. Referencing a script does not approve edits or enable Agent tools.
@@ -102,8 +117,8 @@ Linux x86_64 needs a running Secret Service/libsecret collection. Unlock the OS
 vault if requested. There is no plaintext fallback. The native GitHub Actions
 workflow builds/tests Linux/Windows x86_64 and Apple Silicon/Intel Mac helpers,
 then publishes them separately from the binary-free addon ZIP. Orca downloads only
-the matching platform helper. Earlier native build/acceptance jobs passed; complete
-1.4.1 CI and real downloaded-plugin acceptance remain pending.
+the matching platform helper. Complete 1.4.1 CI/native acceptance passed; real
+downloaded-helper/browser and graphical platform acceptance remain separate.
 See [native bridge builds](native/README.md).
 The HTTPS origin is fixed in the
 hosted adapter. **Open Console** opens `https://cloud.aiorca.dev/account`.
