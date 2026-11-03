@@ -1,5 +1,9 @@
 # Contributing To Orca
 
+## Community
+
+Participation in Orca's issues, pull requests, and Discussions follows our [Code of Conduct](CODE_OF_CONDUCT.md). Send conduct reports privately to [support@aiorca.dev](mailto:support@aiorca.dev).
+
 ## Before You Start
 
 Read [AGENTS.md](AGENTS.md) and [DEVELOPMENT.md](DEVELOPMENT.md). Orca's permission boundaries, proposal approval, path confinement, stale-state detection, validation, and protocol-valid tool history are safety requirements.
@@ -23,6 +27,7 @@ Do not send live provider requests during automated tests unless explicitly auth
 
 ## Pull Requests
 
+- Use the pull request template to summarize the change, related issues, verification, and relevant design considerations.
 - Keep changes focused and include tests for behavior changes.
 - Features inspired by another project must be independently designed for Orca. Describe the user problem and relevant research, preserve Orca's safety model and visual language, and disclose any directly reused licensed material.
 - Preserve Plan/Work runtime enforcement even when a tool is omitted from a schema.
@@ -33,4 +38,8 @@ Do not send live provider requests during automated tests unless explicitly auth
 
 ## Issues
 
-Use GitHub issues for bugs, feature requests, and documentation problems. Do not post potential security vulnerabilities publicly; follow [SECURITY.md](SECURITY.md).
+Use the [issue forms](https://github.com/cold-atom/Orca/issues/new/choose) for bugs and feature requests. Include reproduction steps, Orca/Godot versions, operating system, and provider/model details when relevant. The support diagnostic report in Orca Settings → About can help with bug reports; review any additional logs, screenshots, or project attachments for private information before sharing.
+
+Documentation problems can use a blank issue. Use [Discussions](https://github.com/cold-atom/Orca/discussions) for questions and early ideas.
+
+Do not post potential security vulnerabilities publicly; follow [SECURITY.md](SECURITY.md).

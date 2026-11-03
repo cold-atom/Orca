@@ -316,6 +316,8 @@ carefully and use version control on real projects.
 
 Orca is built in the open, and contributions are welcome. Whether you are improving provider compatibility, refining the Godot workflow, strengthening tests, fixing a bug, or clarifying documentation, start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Report bugs or request features through our [issue forms](https://github.com/cold-atom/Orca/issues/new/choose), and use [Discussions](https://github.com/cold-atom/Orca/discussions) for questions and early ideas. Community participation follows our [Code of Conduct](CODE_OF_CONDUCT.md).
+
 For architectural context and repository rules, read [AGENTS.md](AGENTS.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License

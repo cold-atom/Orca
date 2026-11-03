@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and early ideas
+    url: https://github.com/cold-atom/Orca/discussions
+    about: Ask workflow questions and discuss ideas with the community.
+  - name: Report a security vulnerability privately
+    url: https://github.com/cold-atom/Orca/blob/main/SECURITY.md
+    about: Follow the security policy instead of opening a public issue.

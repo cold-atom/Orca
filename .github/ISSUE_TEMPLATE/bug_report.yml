@@ -1,0 +1,69 @@
+name: Bug report
+description: Report a reproducible problem with Orca.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Orca. Search existing issues before submitting.
+        For suspected vulnerabilities, follow our [security policy](https://github.com/cold-atom/Orca/blob/main/SECURITY.md) instead of filing a public issue.
+        Remove API keys, account tokens, private endpoint addresses, and private project or conversation content from anything you share.
+  - type: input
+    id: orca-version
+    attributes:
+      label: Orca version
+      description: Find this in Orca Settings → About. For a development checkout, include the commit if known.
+      placeholder: Release version or commit
+    validations:
+      required: true
+  - type: input
+    id: godot-version
+    attributes:
+      label: Godot version
+      description: Include the full version from Godot's About dialog.
+      placeholder: 4.7.2.stable
+    validations:
+      required: true
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      description: Include the OS version and architecture if known.
+      placeholder: Ubuntu 24.04 x86_64, Windows 11 x86_64, or macOS arm64
+    validations:
+      required: true
+  - type: input
+    id: provider-model
+    attributes:
+      label: Provider and model (if relevant)
+      description: Name the provider and model for connection or response problems. Omit private deployment names, endpoint addresses, and credentials.
+      placeholder: Orca Cloud, OpenAI, Ollama, or another provider
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include Plan/Work mode and relevant editor state, such as unsaved files or pending approvals. A minimal project is helpful when safe to share.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include the visible error message, if any.
+    validations:
+      required: true
+  - type: textarea
+    id: supporting-information
+    attributes:
+      label: Supporting information (optional)
+      description: Paste the support diagnostic report from Orca Settings → About, or add relevant sanitized logs, screenshots, or a minimal project. Review attachments before posting; full transcripts and EditorSettings are not needed.

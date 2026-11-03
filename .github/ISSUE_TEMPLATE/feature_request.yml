@@ -1,0 +1,34 @@
+name: Feature request
+description: Describe a user problem and a useful improvement to Orca.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues and [Discussions](https://github.com/cold-atom/Orca/discussions) before submitting.
+        Early ideas and general workflow questions are also welcome in Discussions.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or unmet need
+      description: What are you trying to achieve in Godot, and where does Orca fall short?
+    validations:
+      required: true
+  - type: textarea
+    id: current-workflow
+    attributes:
+      label: Current workflow
+      description: How do you handle this today? Describe any workaround and what makes it difficult.
+    validations:
+      required: true
+  - type: textarea
+    id: desired-outcome
+    attributes:
+      label: Desired outcome
+      description: Describe how the improved workflow would help. Implementation details are optional.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context (optional)
+      description: Add examples, alternatives considered, or relevant screenshots. Share only material you are comfortable making public.
