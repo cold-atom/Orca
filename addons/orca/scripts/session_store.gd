@@ -5,6 +5,7 @@ const TaskUtils = preload("res://addons/orca/scripts/task_utils.gd")
 const ImageAttachments = preload("res://addons/orca/scripts/image_attachments.gd")
 const ResponseAttribution = preload("res://addons/orca/scripts/response_attribution.gd")
 const ScriptReferences = preload("res://addons/orca/scripts/script_references.gd")
+const ScriptChangeJournal = preload("res://addons/orca/scripts/script_change_journal.gd")
 
 const SCHEMA_VERSION := 1
 const MAX_SESSIONS := 50
@@ -54,6 +55,34 @@ func create_session(mode: int, provider: String, model: String) -> Dictionary:
 
 
 func save_session(session: Dictionary, make_active: bool = true) -> Dictionary:
+	var checkpoint_error := ScriptChangeJournal.validate_records(session.get("script_changes", []))
+	if not checkpoint_error.is_empty():
+		return {"success": false, "error": checkpoint_error}
+	# Ordinary display/continuation saves may come from a stale in-memory copy.
+	# Never erase an already durable checkpoint while fitting those collections.
+	var session_id := str(session.get("id", ""))
+	if _valid_session_id(session_id):
+		var previous := _read_json(_session_path(session_id), MAX_SESSION_BYTES)
+		if not previous.is_empty():
+			checkpoint_error = ScriptChangeJournal.validate_records(previous.get("script_changes", []))
+			if not checkpoint_error.is_empty():
+				return {"success": false, "error": "Existing script-change recovery is corrupt; its bytes were preserved."}
+			var merged: Array = session.get("script_changes", []).duplicate(true)
+			var incoming := {}
+			for record in merged:
+				incoming[record["id"]] = record
+			for record in previous.get("script_changes", []):
+				if not incoming.has(record["id"]):
+					merged.append(record)
+				else:
+					for field in ["filepath", "existed", "old_content", "new_content", "old_hash", "new_hash"]:
+						if incoming[record["id"]][field] != record[field]:
+							return {"success": false, "error": "An immutable script-change checkpoint changed; the saved bytes were preserved."}
+			checkpoint_error = ScriptChangeJournal.validate_records(merged)
+			if not checkpoint_error.is_empty():
+				return {"success": false, "error": checkpoint_error}
+			session = session.duplicate(true)
+			session["script_changes"] = merged
 	var sanitized := _sanitize_session(session)
 	if sanitized.is_empty():
 		return {"success": false, "error": "Session data is invalid."}
@@ -72,7 +101,7 @@ func save_session(session: Dictionary, make_active: bool = true) -> Dictionary:
 	sanitized = _fit_session(sanitized)
 	var session_path := _session_path(str(sanitized["id"]))
 	var packed := _pack_images(sanitized)
-	if JSON.stringify(packed).to_utf8_buffer().size() > MAX_SESSION_BYTES:
+	if JSON.stringify(packed, "  ").to_utf8_buffer().size() > MAX_SESSION_BYTES:
 		return {"success": false, "error": "Conversation exceeds the bounded local storage limit."}
 	var write_error := _atomic_write_json(session_path, packed)
 	if not write_error.is_empty():
@@ -162,11 +191,11 @@ func delete_session(session_id: String) -> Dictionary:
 		if had_file:
 			DirAccess.rename_absolute(tombstone_path, absolute_path)
 		return {"committed": false, "cleanup_complete": false, "error": "Could not update the session index."}
-	var cleanup_complete := not had_file or DirAccess.remove_absolute(tombstone_path) == OK
+	var cleanup_complete := _remove_session_file(session_id)
 	return {
 		"committed": true,
 		"cleanup_complete": cleanup_complete,
-		"error": "" if cleanup_complete else "The conversation was deleted from History, but its local tombstone could not be removed."
+		"error": "" if cleanup_complete else "The conversation was deleted from History, but some local recovery files could not be removed."
 	}
 
 
@@ -192,6 +221,8 @@ func _sanitize_session(raw: Dictionary) -> Dictionary:
 	var events: Array = []
 	var raw_events = raw.get("events", [])
 	var was_truncated := bool(raw.get("truncated", false)) or _requires_truncation(raw)
+	var checkpoints_valid := ScriptChangeJournal.validate_records(raw.get("script_changes", [])).is_empty()
+	was_truncated = was_truncated or not checkpoints_valid
 	for collection_name in ["events", "continuation"]:
 		var collection = raw.get(collection_name, [])
 		if typeof(collection) != TYPE_ARRAY:
@@ -226,6 +257,7 @@ func _sanitize_session(raw: Dictionary) -> Dictionary:
 		"continuation": continuation,
 		"usage": usage,
 		"tasks": tasks,
+		"script_changes": raw.get("script_changes", []).duplicate(true) if checkpoints_valid else [],
 		"changed_file_count": maxi(0, int(raw.get("changed_file_count", 0))),
 		"last_prompt": _bounded_text(str(raw.get("last_prompt", "")), 240),
 		"truncated": was_truncated or events.size() < (raw_events.size() if typeof(raw_events) == TYPE_ARRAY else 0)
@@ -284,6 +316,8 @@ func _sanitize_event(raw) -> Dictionary:
 			event["additions"] = maxi(0, int(raw.get("additions", 0)))
 			event["deletions"] = maxi(0, int(raw.get("deletions", 0)))
 			event["existed"] = bool(raw.get("existed", false))
+			if typeof(raw.get("checkpoint_id")) == TYPE_STRING and ScriptChangeJournal._valid_id(raw["checkpoint_id"]):
+				event["checkpoint_id"] = raw["checkpoint_id"]
 			return event
 	return {}
 
@@ -429,7 +463,7 @@ func _sanitize_usage(raw) -> Dictionary:
 
 func _fit_session(session: Dictionary) -> Dictionary:
 	var fitted := session.duplicate(true)
-	while JSON.stringify(_pack_images(fitted)).to_utf8_buffer().size() > MAX_SESSION_BYTES:
+	while JSON.stringify(_pack_images(fitted), "  ").to_utf8_buffer().size() > MAX_SESSION_BYTES:
 		fitted["truncated"] = true
 		var events: Array = fitted.get("events", [])
 		if events.size() > 1:
@@ -583,6 +617,7 @@ func _atomic_write_json(path: String, data: Dictionary) -> String:
 	if FileAccess.file_exists(backup_path):
 		return "A previous session backup could not be recovered."
 	var payload := JSON.stringify(data, "  ")
+	var expected := JSON.parse_string(payload) as Dictionary
 	var file := FileAccess.open(temporary_path, FileAccess.WRITE)
 	if file == null:
 		return "Could not create a temporary session file."
@@ -590,7 +625,7 @@ func _atomic_write_json(path: String, data: Dictionary) -> String:
 	file.flush()
 	file = null
 	var verified := _read_json_file(temporary_path, MAX_SESSION_BYTES)
-	if verified.is_empty():
+	if verified.is_empty() or verified != expected:
 		DirAccess.remove_absolute(temporary_path)
 		return "Could not verify the temporary session file."
 	var target_exists := FileAccess.file_exists(absolute_path)
@@ -603,7 +638,7 @@ func _atomic_write_json(path: String, data: Dictionary) -> String:
 			DirAccess.rename_absolute(backup_path, absolute_path)
 		DirAccess.remove_absolute(temporary_path)
 		return "Could not replace the session file."
-	if _read_json_file(absolute_path, MAX_SESSION_BYTES).is_empty():
+	if _read_json_file(absolute_path, MAX_SESSION_BYTES) != expected:
 		DirAccess.remove_absolute(absolute_path)
 		if target_exists:
 			DirAccess.rename_absolute(backup_path, absolute_path)
@@ -621,7 +656,11 @@ func _ensure_storage_directory() -> bool:
 func _remove_session_file(session_id: String) -> bool:
 	if _valid_session_id(session_id):
 		var path := ProjectSettings.globalize_path(_session_path(session_id))
-		return not FileAccess.file_exists(path) or DirAccess.remove_absolute(path) == OK
+		var success := true
+		for suffix in ["", ".backup", ".tmp", ".delete"]:
+			if FileAccess.file_exists(path + suffix) and DirAccess.remove_absolute(path + suffix) != OK:
+				success = false
+		return success
 	return false
 
 

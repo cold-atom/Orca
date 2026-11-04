@@ -475,7 +475,7 @@ static func get_tool_definitions(include_edit_tools: bool = true, include_work_m
 			"type": "function",
 			"function": {
 				"name": "apply_patch",
-				"description": "Proposes precise line-range edits to one file. The user reviews a generated diff before anything is written.",
+				"description": "Prepares precise validated line-range edits to one file. Review edits waits for approval. Eligible project .gd patches may apply under the user's current-session Auto apply permission; other changes still require review. The matching result confirms whether anything was written.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -921,6 +921,8 @@ static func prepare_file_patch(change_id: String, filepath: String, base_hash: S
 		var file := FileAccess.open(filepath, FileAccess.READ)
 		if file == null:
 			return {"success": false, "error": "Could not open the existing file for review."}
+		if file.get_length() > MAX_READ_FILE_BYTES:
+			return {"success": false, "error": "The existing file exceeds the 2 MiB patch-read limit."}
 		old_content = file.get_as_text()
 		file.close()
 	if existed and base_hash != old_content.sha256_text():
@@ -931,7 +933,7 @@ static func prepare_file_patch(change_id: String, filepath: String, base_hash: S
 	if not patch_result.get("success", false):
 		return patch_result
 	var new_content: String = patch_result["content"]
-	if new_content.length() > 2 * 1024 * 1024:
+	if new_content.length() > MAX_READ_FILE_BYTES or new_content.to_utf8_buffer().size() > MAX_READ_FILE_BYTES:
 		return {"success": false, "error": "Proposed file content exceeds the 2 MB safety limit."}
 	var validation := DiagnosticsService.validate_source(filepath, new_content)
 	if not validation.get("valid", false):
@@ -1548,6 +1550,8 @@ static func _apply_file_edit(proposal: Dictionary) -> String:
 		var current_file := FileAccess.open(filepath, FileAccess.READ)
 		if current_file == null:
 			return "Error: Could not verify the current file before applying changes."
+		if current_file.get_length() > MAX_READ_FILE_BYTES:
+			return "Error: The current file exceeds the bounded patch verification limit."
 		current_content = current_file.get_as_text()
 		current_file.close()
 	if current_content.sha256_text() != old_hash:
@@ -1558,7 +1562,10 @@ static func _apply_file_edit(proposal: Dictionary) -> String:
 	if not source_validation.get("valid", false):
 		return "Error: Pre-write validation failed. " + _format_source_validation(source_validation)
 
-	var write_result := _write_file_safely(filepath, new_content, old_hash, proposal["existed"])
+	var authorization: Callable = proposal.get("_write_authorization", Callable())
+	if proposal.get("_auto_apply", false) and (not authorization.is_valid() or authorization.call() != true):
+		return "Error: Automatic edit authorization was revoked before writing."
+	var write_result := _write_file_safely(filepath, new_content, old_hash, proposal["existed"], authorization)
 	_record_write_cleanup(proposal, write_result)
 	var write_block := _safe_write_blocking_result(write_result)
 	if not write_block.is_empty():
@@ -1644,6 +1651,8 @@ static func _revert_file_edit(proposal: Dictionary) -> String:
 	var current_file := FileAccess.open(filepath, FileAccess.READ)
 	if current_file == null:
 		return "Error: Could not verify the file before reverting it."
+	if current_file.get_length() > MAX_READ_FILE_BYTES:
+		return "Error: The current file exceeds the bounded revert verification limit."
 	var current_content := current_file.get_as_text()
 	current_file.close()
 	if current_content.sha256_text() != proposal.get("new_hash", ""):
@@ -1699,7 +1708,7 @@ static func _read_text_file(filepath: String) -> Dictionary:
 	return {"success": true, "content": content}
 
 
-static func _write_file_safely(filepath: String, content: String, expected_hash: String, expected_exists: bool) -> Dictionary:
+static func _write_file_safely(filepath: String, content: String, expected_hash: String, expected_exists: bool, authorization: Callable = Callable()) -> Dictionary:
 	var test_write_index := 0
 	if OS.get_environment("ORCA_TEST_FAULT_INJECTION") == "1":
 		_replacement_test_write_index += 1
@@ -1729,12 +1738,14 @@ static func _write_file_safely(filepath: String, content: String, expected_hash:
 		return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "The destination changed while the replacement was being prepared." + _cleanup_temporary_file(temporary_path))
 	if current_exists:
 		var current_file := FileAccess.open(absolute_path, FileAccess.READ)
-		if current_file == null or current_file.get_as_text().sha256_text() != expected_hash:
+		if current_file == null or current_file.get_length() > MAX_READ_FILE_BYTES or current_file.get_as_text().sha256_text() != expected_hash:
 			if current_file != null:
 				current_file.close()
 			return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "The destination changed while the replacement was being prepared." + _cleanup_temporary_file(temporary_path))
 		current_file.close()
 
+	if authorization.is_valid() and authorization.call() != true:
+		return _safe_write_result(SafeWriteOutcome.NOT_COMMITTED_FAILURE, "Automatic edit authorization was revoked before replacement." + _cleanup_temporary_file(temporary_path))
 	var backup_path := absolute_path + ".orca_backup_" + str(Time.get_ticks_usec())
 	var target_exists := FileAccess.file_exists(absolute_path)
 	if target_exists:

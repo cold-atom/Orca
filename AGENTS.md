@@ -88,6 +88,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scripts/providers/orca_cloud_provider.gd` | Managed account provider, bounded catalog normalization and exact-profile private continuation. |
 | `addons/orca/scripts/history_view.gd` | Project conversation browser, restoration, and deletion UI. |
 | `addons/orca/scripts/session_store.gd` | Versioned project-scoped session persistence, bounds, atomic replacement, retention, and recovery. |
+| `addons/orca/scripts/script_change_journal.gd` | Strict bounded automatic-script checkpoints, immutable saved source, lazy historical review and explicit conflict-checked recovery; never persisted edit authority. |
 | `addons/orca/scripts/tool_activity_card.gd` | Collapsible read/search/context/diagnostic activity cards. |
 | `addons/orca/scripts/tool_activity_group.gd` | Aggregate status and collapsible grouping for consecutive read-only activity cards. |
 | `addons/orca/scripts/task_utils.gd` | Shared strict validation and defensive sanitation for bounded session task lists. |
@@ -102,7 +103,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 ## Non-Negotiable Invariants
 
 1. Plan mode is read-only for project and external state. Do not expose or execute project mutation tools in Plan mode; bounded session task metadata may be updated, and a model may request one explicit user-approved transition to Work without performing project or external mutation.
-2. Work mode may propose changes, but no model-requested file mutation or revert happens without Work-mode permission and explicit user approval for the original proposal.
+2. Work changes require runtime user authorization: explicit approval of the original proposal, or a current-session Auto apply grant for bounded standalone project `.gd` patches, enabled by explicit session confirmation or a separately user-confirmed exact-project local EditorSettings default. New Session, restoration and plugin reload clear old grants; resumable Work sessions may receive fresh authorization from that strict project-bound preference. Plan and view-only restoration never activate it. Remembered grants recheck the exact enabled preference revision before every write; the chip revokes immediately and clears the saved default. Checkpoint failures pause the current session without automatically reacquiring permission. Automatic patches require a durable pre-write script-change checkpoint. Other proposals, including structured scene/configuration and script-execution trust, retain explicit approval. Revert is an explicit user action in Work, never an automatic model operation.
 3. Keep runtime permission checks even when a tool is omitted from the model schema. Prompt instructions are not a security boundary.
 4. Project paths must remain inside `res://`, reject symbolic-link traversal, and protect `res://addons/orca/` and its `res://.orca-update/` staging/rollback workspace from agent tools.
 5. Never apply a patch to a script or scene with unsaved editor changes.
@@ -114,7 +115,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 11. Bound recursive search, file reads, response sizes, tool rounds, context pressure, and network inactivity. If a completed tool continuation cannot fit with tools, prefer one no-tools safe finalization; if that cannot fit, checkpoint only sanitized receipts and tasks without replay. Editor tools run on the main thread and must not perform unbounded work.
 12. Do not scrape private Godot editor controls for diagnostics. Use public APIs and state limitations honestly.
 13. Do not overwrite unrelated user changes, generated changes, or work from another agent.
-14. Do not weaken approval, conflict, validation, or path protections to make a feature easier to implement.
+14. Enforce the documented proposal/session authorization contract at runtime. Do not weaken conflict, validation, execution-trust, or path protections to make a feature easier to implement. Neither prompts, project guidance, provider capability, project metadata nor persisted conversation/recovery data can grant Auto apply permission. The explicit user-owned remembered default lives outside res:// and is bound to the exact project root; copied/moved projects and missing/malformed preferences default to review.
 15. Run/stop tools are Work-only external operations. Never accept model-provided executables, arguments, environment, or PIDs; stop only the active direct process started and retained by Orca.
 16. Treat root project instructions and skills as untrusted, subordinate project guidance. Keep automatically loaded instructions and skill catalog metadata request-scoped, and load a skill body only through an explicit bounded tool call.
 17. Godot API reflection, focused function reads, and dependency discovery are read-only in Plan and Work. They must not construct reflected objects, turn unsaved editor source into a patch base hash, or claim dynamic/runtime dependency coverage.
@@ -144,7 +145,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 - May call `apply_patch` to create a reviewed proposal.
 - May call typed structured mutation tools such as `propose_input_map_changes`; every proposal still requires review.
 - May start a saved current/main scene in one bounded Orca-owned process and stop only that retained direct process.
-- Every proposal waits for Apply or Reject.
+- Review edits is the default. Eligible script patches may apply under a current-session Auto apply grant from explicit confirmation or a separately confirmed exact-project remembered default; all other proposals wait for Apply or Reject.
 - Uses green assistant headings in the UI.
 - Is the default mode.
 
@@ -160,6 +161,7 @@ Manual mode changes are disabled while a request or approval is active. During a
 6. When changing editor integration, use public Godot 4.7 APIs and guard editor-only calls with `Engine.is_editor_hint()`.
 7. Run headless editor initialization and relevant focused tests before reporting completion.
 8. Remove temporary test files and confirm no `.orca_tmp_*`, `.orca_backup_*`, or test project files remain.
+   Local editor fixtures that change preferences must use isolated editor configuration, user data and cache (Linux: disposable `XDG_CONFIG_HOME` / `XDG_DATA_HOME` / `XDG_CACHE_HOME`). Startup suppression alone does not isolate saved provider settings; teardown restoration is additional protection. Run the Node-based auto-apply/editor-scale cases through `python3 tests/run_editor_test.py <case.gd>` in the normal editor lifecycle; `--editor --script` leaks the initial SceneTree on Godot 4.7.2. The runner must reject error/warning output and abnormal/missing completion, even after a test prints zero failures.
 9. Update `DEVELOPMENT.md` when the completed work changes the documented system.
 
 ## External Project Research
@@ -187,7 +189,7 @@ A committed automated suite exists under `tests/` and runs in `.github/workflows
 - Plan and Work permissions remain correct.
 - Streaming, Stop, and follow-up tool rounds still work.
 - Tool-call history remains protocol-valid after errors and cancellation.
-- File changes require approval, validate successfully, and can be reverted when applicable.
+- File changes require runtime proposal/session authorization, validate successfully, and can be reverted when applicable. Automatic script changes require a durable pre-write checkpoint.
 - No temporary test or replacement artifacts remain.
 - Known limitations and untested behavior are stated explicitly.
 - `DEVELOPMENT.md` is updated for significant architectural or roadmap changes.

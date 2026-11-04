@@ -4,6 +4,107 @@ Set `ORCA_DISABLE_ACCOUNT_RESTORE=1`, `ORCA_DISABLE_UPDATE_CHECKS=1` and
 `ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1` for ordinary editor tests so startup neither
 restores owner credentials nor sends update checks/background component downloads.
 
+## Normal-editor fixture runner
+
+`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd` and `editor_ui_scale_test.gd` extend the tool Node in
+`editor_test_case.gd`. Run them through `run_editor_test.py`, which enables a
+test-only EditorPlugin in a disposable project and uses the editor's existing
+SceneTree. It imports the actual addon and only the selected case's dependencies,
+isolates Linux `XDG_CONFIG_HOME`, `XDG_DATA_HOME` **and `XDG_CACHE_HOME`**, sets all
+three startup suppressions, bounds both processes, and removes the entire fixture.
+It requires the case's completion marker, exit code 0, and no engine errors or
+warnings, including shutdown diagnostics. Five runner regressions reject native
+crashes, missing completion and error/leak output even after `0 failures`.
+
+```bash
+python3 -m unittest discover -s tests -p editor_test_runner_test.py -v
+python3 tests/run_editor_test.py auto_apply_editor_test.gd
+python3 tests/run_editor_test.py auto_apply_editor_test.gd --graphical
+python3 tests/run_editor_test.py remembered_edit_editor_test.gd
+python3 tests/run_editor_test.py remembered_edit_editor_test.gd --graphical
+python3 tests/run_editor_test.py editor_ui_scale_test.gd
+python3 tests/run_editor_test.py editor_ui_scale_test.gd --graphical
+```
+
+Set `GODOT_BIN` to Godot 4.7.2; `--godot` and `--temp-parent` are optional.
+The graphical path is Linux/X11/OpenGL. This runner currently supports Linux
+isolation; it does not claim Windows/macOS fixture acceptance. Do not launch
+these Node cases with `--editor --script`. Other legacy editor cases below
+retain their existing entry points until separately migrated.
+
+## Session Auto apply and recovery (Unreleased)
+
+```bash
+export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
+"$GODOT_BIN" --headless --path . --script res://tests/auto_apply_test.gd
+python3 tests/run_editor_test.py auto_apply_editor_test.gd
+python3 tests/run_editor_test.py auto_apply_editor_test.gd --graphical
+```
+
+The runner isolates Linux editor preferences, user data, cache and project files.
+Startup suppression alone does not isolate saved provider settings. Use disposable
+editor configuration/project data on other platforms too; teardown restoration is
+additional protection, not a substitute for isolation after a fixture failure.
+
+The component fixture uses synthetic provider responses, real validated script
+replacement and isolated session storage. It checks default review/Plan denial,
+consecutive automatic edits and valid tool results, turn/grant revocation,
+pre/post-checkpoint failure, cancellation before/during commit, stale independent
+edits, invalid source, protected paths, singleton batches, bounded strict journal
+records and non-replaying recovery. A separate headless Godot process loads the
+durable record, restores no permission, and explicitly reverts/checkpoints the
+exact script. Negative-source validation emits an expected parser diagnostic.
+
+The real editor fixture exercises empty-state-chip and compact-header confirmation/dismissal, stale
+session decisions, active-turn revocation, matching automatic/manual inline diff cards,
+actual History restoration and lazy expanded diffs, real dirty editor-buffer denial
+for automatic apply and restored revert, and actual 300-unit layouts at
+normal/1.5×/2× fonts. It checks empty-state overlay placement and replacement by
+a fixed 24-unit icon-only header control after Auto apply or conversation content,
+unchanged header/feed/composer/empty-state geometry when state/fonts/visibility change,
+caption/icon containment at 300 units and a bounded header at 220 units,
+unobstructed conversation/diff space, actual wheel scrolling/text selection, mouse-click
+header revocation/confirmation (including active-turn clicks while modes/settings are locked),
+green/muted state, keyboard accessibility and Settings/History hiding,
+the original two-child composer, bounded first/repeated dialog
+openings, scrolling-body bounds and visible non-overlapping confirmation actions.
+Checkpoint-only recovery after visible-event compaction also uses the header,
+without restoring an empty-state logo or floating chip over the review cards.
+It uses a private session root and synthetic client, restores provider settings,
+closes/removes its scripts and performs no live model/account/browser request.
+Both full headless and graphical runs exit cleanly with no RID/ObjectDB/GL warnings.
+Manual acceptance covers real project usefulness, light themes, other platforms and power-loss boundaries;
+component downloads and owner authentication remain suppressed.
+
+The remembered-preference editor case runs **five separate clean editor processes**
+with the same isolated configuration: enable, restart/verify, a different project
+root, revoke, and restart/verify revoked. It exercises the actual shared checkbox
+and System setting, unchecked/cancelled/stale confirmation, session and pending
+script authorization, normal startup, new sessions, resumable/view-only/Plan
+restoration, rejected/approved Plan-to-Work requests, strict malformed/root/revision
+denial, checkpoint-failure pause, revision drift before writing, valid tool receipts
+and real durable pending-proposal application. Different/copied project roots
+cannot inherit authority. The preference never enters conversation snapshots.
+The runner verifies every process's marker, exit and diagnostics and deletes both
+projects/configuration/data/cache. UI scale checks include System script-edit
+controls and the visible remember checkbox above fixed dialog actions at larger fonts.
+
+For a layout-only subset, pass `--ui-only` to the runner.
+This path exercises real first/repeated permission popups, scrolling explanation
+and fixed footer at larger fonts, empty/compact permission presentation and rendered inline/expanded
+cards using synthetic data; it performs no project writes or filesystem rescan.
+It does not replace the full editing/dirty-buffer/recovery suite. On 2026-11-04,
+the new runner passed both complete cases headlessly and on Linux/X11/OpenGL at
+2× editor scale, with zero errors/warnings and clean exit codes. The previous
+`--editor --script` harness created an orphan SceneTree in Godot 4.7.2, causing
+`current_window is null` and resource leaks. GDB also identified a background
+script-documentation traversal reading freed filesystem memory during rapid
+rescans/teardown. The normal-editor, focused-project runner corrects the fixture
+lifecycle and avoids that early-teardown workload. The engine itself is not
+patched; the independently reproduced large-project/early-quit race remains
+an upstream Godot limitation. Diagnosis and exact source references are in
+`DEVELOPMENT.md` under editor-fixture lifecycle.
+
 ## Connection onboarding
 
 ```bash
@@ -44,7 +145,7 @@ export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_
 "$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_test.gd
 "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
 "$GODOT_BIN" --headless --editor --path . --script res://tests/provider_settings_editor_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+python3 tests/run_editor_test.py editor_ui_scale_test.gd
 ```
 
 With a fresh `ORCA_TEST_REQUESTS=17 python3 tests/http_test_server.py` process:
@@ -243,7 +344,7 @@ export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_
 "$GODOT_BIN" --headless --path . --script res://tests/chat_window_test.gd
 "$GODOT_BIN" --headless --path . --script res://tests/session_store_test.gd
 "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+python3 tests/run_editor_test.py editor_ui_scale_test.gd
 ```
 
 The scanner suite uses disposable `.gdignore` fixtures and checks nested/annotated
@@ -421,7 +522,7 @@ Run transparent, background-free logo asset checks:
 Run the editor-scale integration check using the active editor display scale:
 
 ```bash
-"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+python3 tests/run_editor_test.py editor_ui_scale_test.gd
 ```
 
 This suite also sends actual focused-composer Tab events to verify Plan/Work switching, draft/caret/selection/image preservation, normal mode persistence through a memory-only session store, repeat suppression, modifier/outside/hidden scope, and response/approval/view-only locks. Manual acceptance: focus the prompt, press Tab twice, hold Tab, then try it during streaming and an approval; check the mode tooltip and unchanged draft/focus. Shift+Tab and Tab elsewhere retain native behavior.
@@ -429,7 +530,7 @@ This suite also sends actual focused-composer Tab events to verify Plan/Work swi
 Expanded-diff checks cover long/unequal/empty files, exact read-only text and change highlights, synchronized scrolling, wide/stacked resized layouts, splitter limits, and larger code fonts. Native minimap click/drag reads real Window mouse coordinates, so the headless fixture checks scrolling/layout while the same suite exercises actual minimap GUI events when run on a display:
 
 ```bash
-"$GODOT_BIN" --editor --path . --script res://tests/editor_ui_scale_test.gd
+python3 tests/run_editor_test.py editor_ui_scale_test.gd --graphical
 ```
 
 This graphical fixture temporarily warps the pointer into its own review window. Manual review: expand a `.gd` and `.tscn` proposal, use both minimaps, resize and drag the splitter, inspect red/green overview marks, select/copy text, and check Apply/Reject and reopening an applied diff. Check light/dark themes and other native platforms separately.

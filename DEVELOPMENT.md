@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-11-02
+Last updated: 2026-11-04
 
 ## Purpose
 
@@ -8,17 +8,24 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Orca 1.5.0 Release Candidate
+## Published 1.5.0 / Current Development
 
-This checkout prepares **Orca 1.5.0 — Project Code Navigation** for **Godot 4.7.2**.
-`addons/orca/plugin.cfg`, About/support expectations and the dated changelog now
-identify 1.5.0. The candidate is not published; fresh complete CI, same-revision
-four-platform helper/package acceptance and real editor/model acceptance are
-required. Generate the version-matched helper catalog/update manifest only from
-the accepted packaging output after addon bytes are final. Cloud code-navigation
-availability requires backend API rollout and an authenticated catalog refresh;
-older catalogs keep existing tools. Commit, push, deployment, tagging, publication
-and Store submission remain owner-controlled.
+**Orca 1.5.0 — Project Code Navigation** for **Godot 4.7.2** is
+[published on GitHub](https://github.com/cold-atom/Orca/releases/tag/v1.5.0) at
+`8f763ce`, with its binary-free ZIP/checksum and four separate native helpers.
+Release-commit Tests and release preparation passed; the complete
+[2026-11-03 Tests run](https://github.com/cold-atom/Orca/actions/runs/41576784587)
+also passed after community-documentation changes. On 2026-11-04 the owner
+confirmed live model/project, helper and browser flows work in their tested
+environment. This feedback does not claim an exhaustive platform matrix or
+establish Asset Store moderation status.
+
+Current development adds **session-authorized Auto apply for bounded project
+scripts, an explicitly remembered project default, and durable script-change recovery**. These additions are unreleased;
+`plugin.cfg` remains 1.5.0 until explicit next-release preparation. Generate new
+version-matched helper catalogs/update manifests only from accepted packaging
+after addon bytes are final. Commit, push, deployment, tagging, publication and
+Store submission remain owner-controlled.
 
 **Orca 1.4.1** for **Godot 4.7.2** was [published on GitHub](https://github.com/cold-atom/Orca/releases/tag/v1.4.1)
 on 2026-10-30 at `dca72e6`. Its complete [Tests run](https://github.com/cold-atom/Orca/actions/runs/41056640672)
@@ -31,7 +38,7 @@ updater/downloaded-helper platform acceptance remain owner checks; a public
 Asset Library search on 2026-11-01 returned no Orca entry and does not establish
 private moderation status.
 
-This candidate adds **saved project code navigation** after that baseline;
+Published 1.5.0 adds **saved project code navigation** after that baseline;
 its 1.5.0 additions are not in the published 1.4.1 ZIP.
 The new Cloud vocabulary/advertisement is prepared in the separately authorized
 backend repository. Older catalogs omit the new schemas and retain existing tools
@@ -49,7 +56,7 @@ Understand the user's editor and project context
 -> explain or plan the work
 -> propose precise reviewed changes in Work mode
 -> validate before writing
--> apply only after approval
+-> apply under explicit proposal or current-session authorization
 -> eventually run, observe, fix, and verify the game
 ```
 
@@ -225,7 +232,22 @@ Image model-switch regressions additionally exercise repeated text/vision transi
 | Plan | Read-only exploration, context, diagnostics, and planning. | Orange |
 | Work | Plan capabilities plus reviewed project proposals and bounded Orca-owned game process control. | Green |
 
-Work is the default. Mode switching is blocked while a turn or edit approval is active. Its internal enum remains `BUILD` for session compatibility. Work allows immediate run/stop external operations; only project-file changes enter proposal approval.
+Work is the default. Mode switching is blocked while a turn or edit approval is active. Its internal enum remains `BUILD` for session compatibility. Work allows immediate run/stop external operations; project-file changes use the separate runtime edit-authorization policy.
+
+#### Session and remembered project edit authorization (Unreleased)
+
+- **Review edits** remains the default. The floating Review edits chip is now limited to an empty review-state chat for discoverability. Selecting Auto apply or displaying any conversation/status content replaces it with a small native edit icon beside ORCA in the existing header row: green for active Auto apply and muted for Review edits/paused state. A 24px editor-scaled hit target, bounded 14px icon artwork, flat idle surface, hover/focus treatment and 4px title-group gap keep it compact without adding a row or covering response text, diffs or the scrollbar. Both surfaces share the same guarded action, tooltip and accessible state; the header remains revocable during active requests while Settings/mode controls are locked. New Session/restoration refresh the appropriate presentation, and both controls hide with the main view during Settings/History navigation. The empty-state chip retains its input-transparent, zero-minimum overlay host and bounded caption sizing. Explicit confirmation can enable **Auto apply** in idle Work or while one exact eligible script proposal is suspended. The confirmation uses an explicitly sized, owner/display-bounded window with a scrollable non-fit-content explanation and fixed native Cancel/Allow edits actions, avoiding first-open wrapped-label minimum-size expansion. Pending confirmation binds session ID, turn/proposal identity and permission revision; opening/dismissing the dialog, stale outcomes, conversation text, guidance and provider readiness cannot grant permission.
+- The runtime grant is memory-only and bound to the current project/session. The confirmation's unchecked **Remember for this project** option retains session-only behavior. Explicitly checking it saves a separate local EditorSettings record under `orca/script_edits/projects/<sha256(exact-project-root)>`, with strict version/root/boolean/random-revision validation. It is outside `res://`, project metadata, provider profiles and conversation/recovery data. Missing/malformed/other-root preferences default to Review edits; there is no global/cross-project default. Godot's normal EditorSettings lifecycle persists the choice across clean editor restarts.
+- New Session, History restoration, Plan selection and plugin reload clear the old runtime grant. New/resumable Work sessions and explicit Work transitions may acquire fresh authorization from the exact remembered default after checkpoint-writer setup; Plan and view-only sessions cannot. History restoration does not replay any edits. Settings → System → Script edits exposes the same choice: selecting Auto apply opens the shared explicit confirmation, while Review edits immediately revokes and clears the preference. Settings may remember future Work behavior while in Plan without enabling any runtime edit permission. Dialog decisions bind project root, saved-preference revision, session and runtime permission revision, and pending script/turn identity where applicable.
+- Clicking the green header edit icon revokes immediately and clears the saved project default. Remembered runtime grants recheck the enabled exact saved revision after checkpoint persistence, after validation and immediately before replacement. Preference removal/change/malformation invalidates them even without a UI signal. Enablement during active inference is denied; the exact suspended-proposal path is separately user-authorized. Checkpoint/cleanup failures pause the current session without silently reacquiring the saved default; an explicit confirmation or new session is needed. The next provider continuation refreshes the primary permission prompt without adding a system message inside active tool protocol. Permission-control tooltips distinguish session-only, remembered and locally paused/unavailable state.
+- Auto apply covers only canonical standalone project `.gd` file patches outside `addons/`, with each old/new UTF-8 source at most **256 KiB / 8000 lines**. Larger scripts and all other proposals keep review. Path/symlink protection, dirty-state denial, saved-file hashes, proposal integrity, validation, provider/tool permission and round/context caps still apply. Scene/configuration proposals and script-execution trust retain their explicit decisions. Editing permission is not script sandboxing.
+- Automatic edits first save a durable `script_changes` checkpoint through the owning `SessionStore`. Failed persistence prevents the write and disables Auto apply. A failed post-write status save preserves the pre-write record and reports completed/uncertain work honestly; cleanup/uncertain outcomes pause automatic editing. Stop during commit retains the true write result and exactly one matching tool receipt. Completed edits remain on disk; Revert is a distinct explicit action in idle Work.
+- `script_change_journal.gd` strictly validates versioned records containing random local IDs, canonical project paths, exact old/new source, hashes, existence, bounded line counts and state. Limits are **64 records / 4 MiB serialized journal per conversation**, inside the existing **16 MiB session file**. Unknown fields, corrupt source/hash pairs, protected paths, duplicate IDs and invalid bounds are rejected. Normal saves preserve already-durable immutable checkpoints when fitting display/history and verify the complete serialized round trip. Corrupt saved recovery is preserved. These are recoverable local file writes, not a power-loss-proof database or cross-editor transaction lock.
+- Live automatic cards retain the same bounded inline red/green diff as manual reviews, with APPLYING/APPLIED status, Open/Expand Diff and guarded Revert; automatic application exposes no Apply/Reject actions in either review surface. Converting a pending reviewed script to session-authorized application preserves its inline diff. Restored full diffs remain lazy and materialize on explicit expansion, which also fills the inline preview. Restoration performs no project writes or tool replay and obtains no permission from saved history/checkpoints. Interrupted checkpoints offer **Check recovery**, comparing bounded disk bytes with both versions without restoring an unknown/independently changed file. Explicit Revert rechecks path, dirty state, exact candidate bytes and Work permission, checkpoints the revert, then uses the existing guarded writer/removal path.
+- Recovery source is plaintext project-scoped local conversation data, deleted with its conversation/retention. It is separate from visible change summaries and provider continuation: no grant, call IDs, tools, credentials or private reasoning persist in a journal record, and its source/hashes never enter support reports or model continuation. Pending approvals and manual/structured revert checkpoints remain memory-only.
+- UI-refinement verification (2026-11-04): clean headless Godot 4.7.2 initialization; auto-apply component, chat/change-card, full auto-apply editor and existing editor-scale checks pass. The latest overlay refinement additionally passes clean initialization and chat regressions, and both complete editor cases headlessly and on Linux/X11/OpenGL at 2× editor scale with clean exits and zero warnings/errors. The editor fixture checks 300-unit overlay/caption/icon bounds, 220-unit clipping, invariant header/feed/composer/empty-state rectangles through caption/font/visibility changes, actual wheel scrolling and double-click text selection, actual chip revocation/confirmation, scrollbar clearance and Settings/History hiding. First/repeated explicitly sized dialogs, larger-font scrolling with a fixed footer, and identical reviewed-to-automatic previews remain covered. The normal-editor runner isolates project/configuration/data/cache and rejects diagnostics or abnormal/missing completion. Its optional `--ui-only` path remains a layout subset, not editing/recovery acceptance. Earlier fixture/native failures, their confirmed causes and the upstream engine limitation are recorded below under editor-fixture lifecycle.
+- Remembered-default verification (2026-11-04): the new `remembered_edit_editor_test.gd` runs five separate clean editor processes against shared isolated configuration and two project roots. It covers actual confirmation/Settings choices, unchecked/cancelled/stale decisions, new sessions and clean restart persistence/revocation, malformed/copied/root-mismatched preferences, resumable Work versus Plan/view-only restoration, rejected/approved turn-bound Work requests, checkpoint-failure pause, changed-revision write denial and refreshed permission prompts, exactly matching tool receipts, and durable application of an explicitly remembered pending script proposal. It passes headlessly and on Linux/X11/OpenGL. Existing full auto-apply and editor-scale suites pass in both backends with visible checkbox/fixed-action and System-setting font/layout checks, clean exits and no errors/warnings. Headless initialization, auto-apply/controller/chat/settings/session components and five runner failure-gate regressions pass; the auto-apply component retains its deliberate invalid-source parser diagnostic. Tests suppress account/update/helper startup and isolate editor project/configuration/data/cache. Real-model usefulness, light themes, other platforms and abrupt power-loss persistence remain manual.
+- Compact-header verification (2026-11-04): clean Godot 4.7.2 initialization, chat/settings components and all three full editor cases pass headlessly and on Linux/X11/OpenGL at effective 2× scale, with clean exits and zero errors/warnings. Updated regressions check empty-review chip versus active/existing-chat header visibility, a fixed 24-unit icon target with normal/1.5×/2× fonts at 300/220-unit widths, unchanged feed/composer/empty-state geometry, keyboard and green/muted state, actual header clicks during active UI locks, unobstructed scrolling/text selection, pending approvals and remembered restart/revocation. Checkpoint-only recovery after visible-event compaction also dismisses the empty logo/chip and uses the header. Existing real writes, dirty buffers, History/Revert, dialog and provider-state safeguards remain exercised. Other themes/platforms and live-model acceptance remain manual.
 
 Plain Tab toggles Plan/Work only in the focused, visible prompt box and uses the normal controller permission checks and session-saving path. It preserves focus, text, caret, selection, and draft images without opening the mode menu. Repeats and locked-state presses are consumed without inserting tabs; Shift/Ctrl/Alt/Meta+Tab retain native behavior. The mode tooltip advertises the shortcut. Other editor controls have no Orca Tab binding.
 
@@ -263,7 +285,7 @@ Plain Tab toggles Plan/Work only in the focused, visible prompt box and uses the
 | `get_diagnostics` | Plan, Work | Reports Orca validation records, observed editor-process errors, and play state. |
 | `update_tasks` | Plan, Work | Atomically replaces bounded session task metadata without modifying project files. |
 | `request_work_mode` | Plan only | Suspends once for explicit permission to continue the active task in Work mode. |
-| `apply_patch` | Work only | Materializes precise line edits into a reviewed and validated file proposal. |
+| `apply_patch` | Work only | Materializes validated line edits; waits for review or applies an eligible script under current-session authorization with durable recovery. |
 | `propose_input_map_changes` | Work only | Prepares bounded typed Input Map action changes for structured approval. |
 | `propose_main_scene_change` | Work only | Proposes a validated saved scene as the project launch scene through structured review. |
 | `propose_project_settings_changes` | Work only | Proposes an atomic batch of six allowlisted display settings through typed review. |
@@ -296,7 +318,7 @@ Plain Tab toggles Plan/Work only in the focused, visible prompt box and uses the
 - Existing files require the SHA-256 returned by `read_file`.
 - File existence and hashes are checked during proposal and immediately before replacement.
 - Writes use a verified temporary file and recoverable replacement sequence.
-- Applied changes retain enough in-memory state for guarded revert.
+- Applied changes retain guarded revert state; eligible automatic script edits also have durable, strictly validated local checkpoints.
 - Run tools never accept executable, argument, environment, or PID input; they launch only the current Godot executable against this project and retain one owned direct process.
 
 ## Architecture
@@ -313,7 +335,8 @@ EditorPlugin (orca.gd)
        -> ModeSwitchCard
        -> SettingsView -> AgentCompatibilityProbe -> isolated APIClient
        -> HistoryView
-       -> SessionStore (project-keyed user:// JSON)
+        -> SessionStore (project-keyed user:// JSON)
+       -> ScriptChangeJournal (bounded automatic-edit checkpoints, not edit authority)
        -> DiagnosticsService
        -> SupportDiagnosticReport (strict allowlist and deterministic serialization)
        -> GameProcessService
@@ -507,7 +530,7 @@ Model reads the target and receives SHA-256
 -> model calls a Work-only reviewed mutation tool
 -> the typed backend validates and materializes an immutable proposal
 -> script attach/detach first asks permission to execute exact hash-bound code during candidate construction
--> a kind-specific review card waits for Apply or Reject
+-> a kind-specific card waits for Apply/Reject, or an eligible session-authorized script checkpoints and applies automatically
 -> Apply rechecks mode, live state, disk hash, retained hashes, and validation
 -> verified replacement and required live-state synchronization run
 -> Revert remains available while the applied file matches the proposal hash
@@ -518,7 +541,7 @@ Plan runtime checks reject every reviewed mutation independently of schema expos
 
 ### Session Lifecycle
 
-`session_store.gd` stores up to 50 versioned sessions under `user://orca/projects/<project-root-sha256>/sessions/`. Each session contains a bounded visible event log, a provider-independent user/assistant continuation history, mode, provider/model labels, aggregate usage, a sanitized task checklist, and non-actionable changed-file summaries. Writes use verified temporary files and recoverable backups. The index and each session are separate files so one corrupt transcript does not invalidate all history.
+`session_store.gd` stores up to 50 versioned sessions under `user://orca/projects/<project-root-sha256>/sessions/`. Each session contains a bounded visible event log, a provider-independent user/assistant continuation history, mode, provider/model labels, aggregate usage, a sanitized task checklist, non-actionable changed-file summaries, and optional strictly validated automatic-script recovery records. Writes use verified temporary files and recoverable backups. The index and each session are separate files so one corrupt transcript does not invalidate all history.
 
 The active session is checkpointed after user submission, tool completion, edit resolution, normalized failure/cancellation, completed assistant response, session switching, and plugin teardown. The most recent active session is restored on startup. New Session saves the current conversation before rebuilding controller and feed state; the transition aborts if persistence fails. Starting a blank session clears the persisted active-session pointer until the first prompt is saved.
 
@@ -769,7 +792,7 @@ Input:
 
 - `reason`: One non-empty user-facing line, limited to 240 characters.
 
-This controller-owned tool is exposed only in Plan when the selected provider has Agent tools available. It is appropriate only when the user asked for implementation, execution, or another operation requiring Work. The controller permits one valid request per user turn and waits for an exact call/turn-bound `Stay in Plan` or `Switch to Work` decision. Approval changes mode but does not approve any mutation. The original response remains Plan-bound, including calls after the request; Work tools appear only on the next provider continuation. Rejection, malformed arguments, stale decisions, duplicate decisions, and cancellation cannot grant Work permission. Only a bounded resolved summary persists.
+This controller-owned tool is exposed only in Plan when the selected provider has Agent tools available. It is appropriate only when the user asked for implementation, execution, or another operation requiring Work. The controller permits one valid request per user turn and waits for an exact call/turn-bound `Stay in Plan` or `Switch to Work` decision. Approval changes mode but does not approve any mutation by itself; an independently user-confirmed exact-project default may activate a fresh bounded script grant for the next Work request. The original response remains Plan-bound, including calls after the request; Work tools appear only on the next provider continuation. Rejection, malformed arguments, stale decisions, duplicate decisions, and cancellation cannot grant Work permission. Only a bounded resolved summary persists.
 
 ### `apply_patch`
 
@@ -1003,6 +1026,40 @@ Run instructions are in `tests/README.md`. `.github/workflows/tests.yml` runs th
 
 Expected result: project scan, plugin initialization, and editor layout complete without script or initialization errors.
 
+### Editor-Fixture Lifecycle And Native Crash Diagnosis (2026-11-04)
+
+`auto_apply_editor_test.gd` and `editor_ui_scale_test.gd` are now `@tool` Nodes
+derived from `editor_test_case.gd`, installed through a disposable test-only
+`editor_test_bootstrap.gd` EditorPlugin. `tests/run_editor_test.py` copies the actual
+addon plus the selected case/dependencies, performs initial import, and starts a
+normal editor using its existing SceneTree. Linux XDG configuration, data **and
+cache** are private, account/update/helper startup is suppressed, both processes
+are bounded, and all fixture bytes are removed. CI uses the same runner. A pass
+requires an explicit case completion marker, exit code 0 and no errors/warnings,
+including native shutdown diagnostics. Runner unit tests prove that printed
+`0 failures` cannot override a crash, missing completion, parser error or leak.
+
+The previous `--editor --script` combination has a concrete engine lifecycle
+defect: [Godot 4.7.2 `main.cpp`, lines 4360–4389](https://github.com/godotengine/godot/blob/ed1daf0bf001b61586d9930840f2f1394092c079/main/main.cpp#L4360-L4389)
+allocates an editor SceneTree, then replaces the MainLoop pointer with a newly
+instantiated scripted tree without deleting the initial one. This produced the
+`current_window is null`, RID/ObjectDB and GL resource shutdown errors observed
+in those fixtures. Running inside the actual editor tree removes these failures.
+
+A separate native race was confirmed with GDB: the crashing loader thread was
+at `0x1cb7244` in `EditorHelp::_reload_scripts_documentation`, reading a freed
+filesystem directory's file vector (`rax=0x190`), while the main thread was
+destroying editor objects. [The matching `editor_help.cpp`, lines 3169–3225](https://github.com/godotengine/godot/blob/ed1daf0bf001b61586d9930840f2f1394092c079/editor/doc/editor_help.cpp#L3169-L3225)
+passes a raw EditorFileSystemDirectory pointer to the background documentation
+loader and recursively walks it. Rapid rescan/early shutdown can invalidate it.
+The same stack reproduced in a disposable large source project with Orca
+disabled; a one-script minimal editor exited normally. The focused normal-editor
+fixture lifecycle is corrected and both full cases now pass from fresh isolated
+state. Godot itself has not been patched: arbitrary large-project/early-quit
+documentation generation remains an upstream engine limitation, not accepted
+plugin-test coverage. Other legacy SceneTree editor cases retain their historical
+entry points pending a separate migration.
+
 ### Manual Smoke Matrix
 
 | Area | Scenarios |
@@ -1069,7 +1126,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Patches are line-range operations, not a full unified-diff parser.
 - Raw file patches receive semantic validation only for GDScript; structured scene and configuration tools provide their own typed semantic validation.
 - Structured scene operations use deliberately narrow first contracts: structural changes are leaf-only, values exclude references/resources/collections, scripts and child scenes must be dependency-free, script operations permit exactly one reviewed attachment, and signals are bindless and built-in.
-- Revert checkpoints are in memory and do not survive editor restart.
+- Automatic bounded-script checkpoints survive restart for explicit conflict-checked recovery. Manual/structured revert checkpoints and pending approvals remain in memory.
 - Public Godot APIs expose no Project Settings dirty flag; Input Map proposals enforce affected-action live/disk equality but cannot identify unrelated pending Project Settings UI edits as dirty.
 - Multi-file changes are approved one file at a time rather than as a transaction.
 
@@ -1098,7 +1155,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
 - BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata declares the prepared 1.5.0 release candidate. Complete 1.4.1 baseline CI/publication are verified; 1.5.0 needs fresh complete CI, exact same-revision helper/catalog/package acceptance and publication. Asset Store approval, real browser/downloaded-helper/graphical updater acceptance, broader platform compatibility and third-party asset attribution records remain outstanding. Historical milestone versions describe their original verification state.
+- Plugin metadata remains the published 1.5.0 baseline; current Auto apply/recovery work is unreleased and requires fresh CI/package acceptance before a next release. The owner reports successful live project/model/helper/browser flows in their environment. Asset Store moderation, broader platform/graphical acceptance and third-party asset attribution records remain separate. Historical milestones retain their original verification state.
 
 ## Roadmap
 
@@ -1124,7 +1181,7 @@ Expected result: project scan, plugin initialization, and editor layout complete
 ### P2: Review And Workflow
 
 - Add multi-file change batches and transactional approval.
-- Persist revert checkpoints.
+- Broaden durable revert checkpoints beyond the implemented automatic-script journal to manual, structured and future multi-file changes.
 - Add an interactive search-results card with Open actions for every match.
 - Add richer changed-file summaries and context-budget warnings.
 - Implement prompt enhancement and expand image context toward bounded screenshot observation; user image attachments are implemented in 1.3.0.
@@ -1192,11 +1249,11 @@ Decision: progressive tool-schema disclosure is deferred. Orca continues sending
 
 ### Plan And Work Names
 
-Decision: Plan is strictly read-only; Work can inspect, debug, and propose approved changes. Work remains the default because approval still protects every mutation. The internal `BUILD` identifier is retained to preserve stored session compatibility.
+Decision: Plan is strictly read-only; Work can inspect, debug, and prepare authorized changes. Work remains the default with Review edits initially active. Original-proposal or bounded current-session authorization protects each mutation. The internal `BUILD` identifier is retained to preserve stored session compatibility.
 
 ### Explicit Approval
 
-Decision: model tool calls create proposals, not immediate writes. This keeps the user in control and supports diff review, conflict detection, validation, and revert.
+Decision: Review edits is the default. A model tool call always prepares an immutable validated proposal. The user may authorize its exact application, explicitly grant current-session Auto apply for bounded project `.gd` patches, or separately confirm an exact-project local EditorSettings default that authorizes fresh eligible Work sessions. Runtime grants are never inferred from guidance or restored from conversations/checkpoints; remembered grants bind and recheck the strict saved preference revision. Automatic application requires durable pre-write recovery and runtime permission checks; structured changes and execution trust retain explicit approval. Review, conflict detection, validation and explicit recovery remain available throughout the workflow.
 
 ### Line Patches
 
@@ -1215,6 +1272,39 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-04: Unobstructed conversation with compact permission status
+
+- Limited the floating Review edits chip to empty review-state chats. Auto apply and existing conversation/status/recovery content use a small green/muted native edit icon beside ORCA in the existing header row, with shared tooltips, accessibility, confirmation and immediate revocation.
+- Kept a fixed 24-unit target and bounded icon artwork without an additional row or response/diff overlap. Restored checkpoint cards remain conversation content even when their visible events were compacted away. Updated UI, confirmation/settings location guidance and current product/testing docs.
+- Verification: clean Godot 4.7.2 initialization, chat/settings components and all three full editor cases headlessly and on Linux/X11/OpenGL at effective 2× scale, with clean exits and zero errors/warnings. Actual active-turn header clicks, narrow/larger-font geometry, unobstructed feed interaction, pending script approvals, checkpoint-only history and remembered restart/revocation pass. Additional themes/platforms and owner live-model acceptance remain manual.
+
+### 2026-11-04: Explicit remembered project Auto apply
+
+- Added an unchecked Remember for this project choice to the bounded permission dialog and the same explicitly confirmed default under System → Script edits. Old grants clear at session/restoration/reload boundaries; only eligible resumable Work sessions acquire fresh exact-project authorization. Chip revocation also clears the saved default.
+- Stored strict version/root/boolean/random-revision records in local EditorSettings outside `res://`, provider data and conversation/recovery state. Changed/malformed preferences invalidate remembered writes and refresh the next request's permission prompt; Plan/view-only state and checkpoint-failure pauses remain enforced.
+- Added a five-process/two-project editor regression case and CI runner registration. Clean Godot 4.7.2 initialization; auto-apply/controller/chat/settings/session components; runner failure gates; and all three editor cases pass. Full editor cases pass headlessly and on Linux/X11/OpenGL at effective 2× scale with clean exits and zero errors/warnings. Deliberate component invalid-source diagnostics remain expected. Owner live-model acceptance, other platforms/themes and abrupt power-loss persistence remain manual.
+
+### 2026-11-04: Floating edit permission without a reserved chat row
+
+- Moved Review edits / Auto apply from the header into a non-layout, input-transparent conversation overlay. The chip tracks the upper-right conversation edge beside the scrollbar, retains natural captions at supported widths, clips within unusually narrow docks, and hides with Settings/History beneath existing modal overlays.
+- Preserved explicit session/pending-proposal confirmation and active-turn revocation; updated the confirmation's location guidance and current product/testing documentation.
+- Verification: clean Godot 4.7.2 headless editor/plugin initialization and chat regressions; complete auto-apply and editor-scale suites headlessly and on Linux/X11/OpenGL at effective 2× scale, with clean exits and zero errors/warnings. Overlay checks cover unchanged layout, 300/220-unit widths and 1×/1.5×/2× captions, actual wheel/double-click/click routing, scrollbar clearance and navigation. Existing full editing, dirty-buffer, History/Revert and permission regressions pass. Other themes/platforms and live-model acceptance remain manual.
+
+### 2026-11-04: Clean normal-editor fixtures and verified auto-apply UI
+
+- Moved script-edit permission into a compact attachment-style header chip, bounded the first confirmation popup with a scrollable body/fixed actions, and retained identical inline manual/automatic diffs and guarded recovery.
+- Replaced the two affected `--editor --script` fixtures with tool Nodes inside a normal editor, correcting the orphan-tree/window/resource-lifecycle failures. Added disposable project/configuration/data/cache isolation, bounded processes and strict completion/exit/diagnostic gating to the CI runner.
+- Confirmed the native documentation traversal use-after-free with GDB and matching official 4.7.2 source; documented its large-source/early-shutdown reproduction without Orca. No engine binary was replaced and no runtime authorization/write protections changed.
+- Verification: five runner failure-gate regressions; both full auto-apply and editor-scale cases headlessly and on Linux/X11/OpenGL (effective 2× scale), with clean exit codes and zero errors/warnings. These exercise real edits, dirty buffers, History/Revert, permission transitions, first/repeated popups, font variants and native expanded-review navigation. Broader engine/platform and live-model acceptance remain separate.
+
+### 2026-11-04: Session-authorized automatic script edits and durable recovery
+
+- Implemented explicit opt-in Auto apply in Work, including exact first-pending-script authorization and immediate revocation. Preserved Plan denial, structured/execution-trust approvals, fresh byte/hash/dirty-state validation and singleton tool protocol. Automatic writes require durable recovery; grants never persist or come from guidance/provider capability. Bounded patch reads prevent stale/oversized verification from doing unbounded work.
+- Added strict 64-record/4-MiB script recovery inside project sessions, exact previous/proposed source, complete JSON round-trip checks, immutable checkpoint preservation through stale display saves and recognized backup deletion. Compact applied cards retain lazy historical diffs and explicit guarded restart recovery without replay.
+- Verification: new auto-apply component and second-Godot-process recovery, controller/tools/session/chat/settings/hosted-default/Responses/support components; headless and Linux/X11/OpenGL auto-apply editor fixture; existing editor-scale/provider-settings suites; clean Godot 4.7.2 initialization passed. Tests exercise cancellation, revocation at callback/write boundaries, failed checkpoints, invalid/stale/dirty source, scope/batch denial and restoration. Expected negative parser controls and existing editor teardown diagnostics remain. Local final checks isolate XDG configuration/data with all three startup suppressions.
+- An early failed graphical test left synthetic OpenAI settings. Disclosed the incident, restored the owner-selected Orca Cloud profile and removed the fake key, then verified fresh-process state. Cloud credentials were not accessed; an earlier OpenAI key, if present, needs re-entry. Added teardown preference restoration and documented isolated local editor testing.
+- Updated current release records to published 1.5.0 and owner-reported working live model/project/helper/browser flows. New changes remain unreleased at 1.5.0 metadata; fresh CI and live feature acceptance remain. No commit/push/backend deployment/tag/publication occurred.
 
 ### 2026-11-02: Orca 1.5.0 release-candidate preparation
 

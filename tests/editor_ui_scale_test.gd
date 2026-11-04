@@ -1,4 +1,5 @@
-extends SceneTree
+@tool
+extends "res://tests/editor_test_case.gd"
 
 const ChatWindowScene = preload("res://addons/orca/scenes/chat_window.tscn")
 const ChatWindow = preload("res://addons/orca/scripts/chat_window.gd")
@@ -103,6 +104,7 @@ func _run() -> void:
 	await _test_request_budget_header(view)
 	view.main_content.hide()
 	view.settings_view.show()
+	await _test_script_edit_settings_layout(view.settings_view)
 	await _test_account_layout(view)
 	view.settings_view._show_section("about")
 	var links: Array[Button] = []
@@ -526,6 +528,24 @@ func _test_diff_minimap_navigation() -> void:
 	parent.queue_free()
 	empty_card.free()
 	await process_frame
+
+
+func _test_script_edit_settings_layout(settings) -> void:
+	settings._show_section("system")
+	var selector: OptionButton = settings.script_edit_default_selector
+	var help: Label = settings.find_child("ScriptEditDefaultHelp", true, false)
+	var font := selector.get_theme_font_size("font_size")
+	var help_font := help.get_theme_font_size("font_size")
+	for multiplier in [1.0, 1.5, 2.0]:
+		selector.add_theme_font_size_override("font_size", roundi(font * multiplier))
+		help.add_theme_font_size_override("font_size", roundi(help_font * multiplier))
+		for frame in 8: await process_frame
+		_expect(settings.get_combined_minimum_size().x <= UiMetrics.scaled(300), "project script-edit settings fit a narrow dock at larger fonts")
+		_expect(selector.get_global_rect().end.y <= help.global_position.y, "script-edit selector cannot overlap its wrapped explanation")
+		_expect(selector.size.x <= settings.system_scroll.size.x and help.size.x <= settings.system_scroll.size.x, "project script-edit controls stay inside the scroll viewport")
+		_expect(selector.selected == 0, "reading/layout of default settings never enables Auto apply")
+	selector.add_theme_font_size_override("font_size", font)
+	help.add_theme_font_size_override("font_size", help_font)
 
 
 func _minimap_button(dialog: Window, editor: CodeEdit, local: Vector2, pressed: bool) -> void:

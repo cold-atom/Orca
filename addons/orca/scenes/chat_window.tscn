@@ -172,12 +172,25 @@ custom_minimum_size = Vector2(0, 30)
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="MarginContainer/VBoxContainer/Header/TopRow"]
+[node name="TitleGroup" type="HBoxContainer" parent="MarginContainer/VBoxContainer/Header/TopRow"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="MarginContainer/VBoxContainer/Header/TopRow/TitleGroup"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.84, 0.86, 0.89, 1)
 theme_override_font_sizes/font_size = 12
 text = "ORCA"
 vertical_alignment = 1
+
+[node name="EditPermissionStatus" type="Button" parent="MarginContainer/VBoxContainer/Header/TopRow/TitleGroup"]
+visible = false
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_default_cursor_shape = 2
+tooltip_text = "Script edit permission"
+flat = true
 
 [node name="Spacer" type="Control" parent="MarginContainer/VBoxContainer/Header/TopRow"]
 layout_mode = 2
@@ -434,6 +447,16 @@ mouse_filter = 2
 texture = ExtResource("5_send")
 expand_mode = 1
 stretch_mode = 5
+
+[node name="EditPermissionOverlay" type="Control" parent="MarginContainer"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="EditPermissionButton" type="Button" parent="MarginContainer/EditPermissionOverlay"]
+layout_mode = 0
+mouse_default_cursor_shape = 2
+text = "Review edits"
+clip_text = true
 
 [node name="ModeOverlay" type="Control" parent="."]
 visible = false

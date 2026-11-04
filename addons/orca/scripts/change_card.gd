@@ -81,14 +81,10 @@ func _ready() -> void:
 	_open_button.pressed.connect(_open_changed_file)
 	navigation.add_child(_open_button)
 
-	var actions := HBoxContainer.new()
-	actions.alignment = BoxContainer.ALIGNMENT_END
+	var actions := HFlowContainer.new()
+	actions.alignment = FlowContainer.ALIGNMENT_END
 	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(actions)
-
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_child(spacer)
 
 	_reject_button = Button.new()
 	_reject_button.text = "Reject"
@@ -106,7 +102,7 @@ func _ready() -> void:
 	_revert_button.text = "Revert"
 	_revert_button.add_theme_font_size_override("font_size", label_font_size)
 	_revert_button.visible = false
-	_revert_button.pressed.connect(func(): action_requested.emit(_proposal.get("id", ""), "revert"))
+	_revert_button.pressed.connect(func(): action_requested.emit(_proposal.get("id", ""), "inspect_recovery" if _proposal.get("status") in ["interrupted", "recovery_conflict", "apply_recovery_required", "revert_recovery_required"] else "revert"))
 	actions.add_child(_revert_button)
 
 
@@ -122,6 +118,11 @@ func configure(proposal: Dictionary) -> void:
 		_validation_label.text = "Validated: " + str(validation.get("message", "Passed"))
 		_validation_label.visible = true
 	_diff_label.text = _format_unified_diff(diff.get("display_operations", []))
+	_diff_label.visible = not diff.get("display_operations", []).is_empty()
+	_apply_button.visible = not proposal.get("_auto_apply", false)
+	_reject_button.visible = not proposal.get("_auto_apply", false)
+	if proposal.get("_auto_apply", false):
+		_status_label.text = "APPLYING"
 
 
 func set_status(status: String, message: String) -> void:
@@ -130,7 +131,9 @@ func set_status(status: String, message: String) -> void:
 	_status_label.tooltip_text = message
 	_apply_button.visible = false
 	_reject_button.visible = false
-	_revert_button.visible = status in ["applied", "applied_recovery", "revert_failed"]
+	var can_check := _proposal.has("_checkpoint_id") and status in ["interrupted", "recovery_conflict", "apply_recovery_required", "revert_recovery_required"]
+	_revert_button.visible = status in ["applied", "applied_recovery", "revert_failed"] or can_check
+	_revert_button.text = "Check recovery" if can_check else "Revert"
 	_open_button.disabled = not _proposal.get("existed", false) and status not in ["applied", "applied_recovery", "revert_failed"]
 	match status:
 		"applied":
@@ -141,6 +144,11 @@ func set_status(status: String, message: String) -> void:
 			_status_label.add_theme_color_override("font_color", Color(0.62, 0.65, 0.7))
 		_:
 			_status_label.add_theme_color_override("font_color", Color(0.95, 0.4, 0.4))
+
+
+func set_revert_available(available: bool) -> void:
+	_revert_button.disabled = not available
+	_revert_button.tooltip_text = "Revert rechecks current file state." if available else "Revert is available in idle Work mode."
 
 
 func _format_unified_diff(operations: Array) -> String:
@@ -173,6 +181,11 @@ func _format_unified_diff(operations: Array) -> String:
 
 
 func _show_expanded_diff() -> void:
+	if _proposal.get("_lazy_diff", false):
+		_proposal["diff"] = preload("res://addons/orca/scripts/diff_utils.gd").create_diff(str(_proposal.get("old_content", "")), str(_proposal.get("new_content", "")))
+		_proposal["_lazy_diff"] = false
+		_diff_label.text = _format_unified_diff(_proposal["diff"].get("display_operations", []))
+		_diff_label.visible = not _proposal["diff"].get("display_operations", []).is_empty()
 	var dialog := Window.new()
 	dialog.title = "Review Changes · " + str(_proposal.get("filepath", ""))
 	var available := get_window().size
@@ -221,7 +234,7 @@ func _show_expanded_diff() -> void:
 	close_button.text = "Close"
 	close_button.pressed.connect(func(): _dismiss_expanded_diff(dialog))
 	actions.add_child(close_button)
-	if _proposal.get("status", "pending") == "pending":
+	if _proposal.get("status", "pending") == "pending" and not _proposal.get("_auto_apply", false):
 		var reject_button := Button.new()
 		reject_button.text = "Reject"
 		reject_button.pressed.connect(func():

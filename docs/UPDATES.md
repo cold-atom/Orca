@@ -5,13 +5,14 @@ precede Asset Store moderation. Updating and native-helper installation are
 user-owned maintenance, never agent tools, and their public downloads require no
 Orca account or GitHub token.
 
-This checkout prepares **1.5.0**, adding project code navigation to the published
-1.4.1 binary-free baseline. Finalize candidate source/changelog, complete fresh
-CI/native/package acceptance and publish the ZIP/checksum plus matching helpers
-under **v1.5.0**. Existing 1.3.0, 1.4.0 and 1.4.1 users can upgrade once published.
-See [1.5.0](../CHANGELOG.md#150---2026-11-02) for this candidate and
+**1.5.0** is published, adding project code navigation to the 1.4.1 binary-free
+baseline after complete CI/native/package and release-preparation checks.
+Existing 1.3.0, 1.4.0 and 1.4.1 users can upgrade to its ZIP/checksum plus matching
+helpers. Current session Auto apply/recovery additions are unreleased; prepare a
+next version only after final source, fresh CI and exact package acceptance.
+See [1.5.0](../CHANGELOG.md#150---2026-11-02) for the published release and
 [1.4.1](../CHANGELOG.md#141---2026-10-30) for the earlier packaging fixes.
-Publication and Store approval are pending; Cloud navigation requires matching
+Store moderation remains separate; Cloud navigation requires matching
 backend API deployment/catalog refresh. Prior Store downloads and the thumbnail
 correction remain separate reviewer work.
 

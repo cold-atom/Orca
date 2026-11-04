@@ -67,6 +67,7 @@ jobs:
           "$GODOT_BIN" --headless --path . --script res://tests/patch_utils_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/tools_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/auto_apply_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/session_store_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/history_view_test.gd
@@ -98,7 +99,10 @@ jobs:
       - name: Run editor integration tests
         shell: bash
         run: |
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_ui_scale_test.gd
+          python3 -m unittest discover -s tests -p editor_test_runner_test.py -v
+          python3 tests/run_editor_test.py editor_ui_scale_test.gd
+          python3 tests/run_editor_test.py auto_apply_editor_test.gd
+          python3 tests/run_editor_test.py remembered_edit_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/update_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_scene_inspector_editor_test.gd

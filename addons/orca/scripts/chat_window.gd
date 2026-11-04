@@ -29,6 +29,7 @@ const ScriptReferences = preload("res://addons/orca/scripts/script_references.gd
 const ScriptReferenceTray = preload("res://addons/orca/scripts/script_reference_tray.gd")
 const UpdatePanel = preload("res://addons/orca/scripts/update_panel.gd")
 const ConnectionSetupPanel = preload("res://addons/orca/scripts/connection_setup_panel.gd")
+const ScriptChangeJournal = preload("res://addons/orca/scripts/script_change_journal.gd")
 const PROMPT_MIN_LINES := 2
 const PROMPT_MAX_LINES := 7
 const PROMPT_MAX_DOCK_RATIO := 0.28
@@ -82,7 +83,7 @@ const GROUPABLE_TOOL_NAMES := {
 @onready var settings_button: BaseButton = $MarginContainer/VBoxContainer/Header/TopRow/SettingsButton
 @onready var new_session_button: BaseButton = $MarginContainer/VBoxContainer/Header/TopRow/NewSessionButton
 @onready var history_button: BaseButton = $MarginContainer/VBoxContainer/Header/TopRow/HistoryButton
-@onready var header_title: Label = $MarginContainer/VBoxContainer/Header/TopRow/Title
+@onready var header_title: Label = $MarginContainer/VBoxContainer/Header/TopRow/TitleGroup/Title
 @onready var metrics_row: Control = $MarginContainer/VBoxContainer/Header/MetricsRow
 @onready var header_separator: Control = $MarginContainer/VBoxContainer/HSeparator
 @onready var context_label: Label = $MarginContainer/VBoxContainer/Header/MetricsRow/ContextLabel
@@ -166,6 +167,18 @@ var _connection_dock_open_notified := false
 var _connection_first_open_pending := false
 var _connection_first_open_checked := false
 var _connection_setup_first_open := false
+@onready var _edit_permission_button: Button = $MarginContainer/EditPermissionOverlay/EditPermissionButton
+@onready var _edit_permission_status: Button = $MarginContainer/VBoxContainer/Header/TopRow/TitleGroup/EditPermissionStatus
+var _edit_permission_dialog: ConfirmationDialog
+var _edit_permission_dialog_body: RichTextLabel
+var _edit_permission_remember: CheckBox
+var _edit_permission_default_only := false
+var _edit_permission_dialog_project_root := ""
+var _edit_permission_dialog_preference_revision := ""
+var _edit_permission_dialog_session_id := ""
+var _edit_permission_dialog_revision := -1
+var _edit_permission_dialog_change_id := ""
+var _edit_permission_dialog_turn_id := 0
 
 
 func _ready() -> void:
@@ -187,6 +200,7 @@ func _ready() -> void:
 	_meta_font_size = maxi(editor_font_size, 11)
 	_apply_scaled_geometry()
 	_setup_visual_theme(editor_theme)
+	_setup_edit_permission_control()
 	if update_service != null:
 		update_notice = UpdatePanel.new()
 		update_notice.name = "UpdateNotice"
@@ -252,6 +266,7 @@ func _ready() -> void:
 	agent_controller.request_state_changed.connect(_on_turn_request_state_changed)
 	agent_controller.request_cancelled.connect(_on_turn_request_cancelled)
 	agent_controller.mode_changed.connect(_sync_mode_ui)
+	agent_controller.edit_permission_changed.connect(_sync_edit_permission_ui)
 	agent_controller.session_usage_changed.connect(_sync_session_usage)
 	agent_controller.model_metadata_requested.connect(model_catalog_service.refresh)
 	agent_controller.tasks_changed.connect(_on_tasks_changed)
@@ -266,8 +281,10 @@ func _ready() -> void:
 	add_child(settings_view)
 	settings_view.done_requested.connect(_on_settings_done)
 	settings_view.settings_saved.connect(_on_settings_saved)
+	settings_view.script_edit_default_requested.connect(_on_script_edit_default_requested)
 	_setup_connection_overlay()
 	session_store = SessionStore.new()
+	agent_controller.script_change_writer = _checkpoint_script_change
 	history_view = HistoryView.new()
 	history_view.hide()
 	add_child(history_view)
@@ -370,6 +387,7 @@ func _apply_scaled_geometry() -> void:
 	header.add_theme_constant_override("separation", UiMetrics.scaled_int(1))
 	header_top_row.custom_minimum_size.y = UiMetrics.scaled(30)
 	header_top_row.add_theme_constant_override("separation", UiMetrics.scaled_int(12))
+	header_title.get_parent().add_theme_constant_override("separation", UiMetrics.scaled_int(4))
 	metrics_row.custom_minimum_size.y = UiMetrics.scaled(20)
 	chat_feed.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
 	empty_content.add_theme_constant_override("separation", UiMetrics.scaled_int(14))
@@ -1251,9 +1269,10 @@ func _on_edit_proposed(proposal: Dictionary, origin_turn_id: int = -1) -> void:
 	var change_id: String = proposal.get("id", "")
 	if origin_turn_id >= 0:
 		_change_origin_turns[change_id] = origin_turn_id
-	if _change_cards.has(change_id) and is_instance_valid(_change_cards[change_id]) and str(proposal.get("kind", "")) == "scene":
+	if _change_cards.has(change_id) and is_instance_valid(_change_cards[change_id]):
 		_change_cards[change_id].configure(proposal)
 		_update_staged_change_event(proposal)
+		_sync_edit_permission_ui()
 		_save_current_session()
 		_scroll_to_bottom()
 		return
@@ -1292,8 +1311,11 @@ func _on_edit_proposed(proposal: Dictionary, origin_turn_id: int = -1) -> void:
 		"validation_message": str(validation.get("message", "")),
 		"existed": bool(proposal.get("existed", false))
 	})
+	if proposal.has("_checkpoint_id"):
+		_session["events"].back()["checkpoint_id"] = proposal["_checkpoint_id"]
 	_recount_changed_files()
 	_save_current_session()
+	_sync_edit_permission_ui()
 	_scroll_to_bottom()
 
 
@@ -1352,10 +1374,13 @@ func _proposal_summary(proposal: Dictionary) -> String:
 func _on_edit_resolved(change_id: String, status: String, message: String) -> void:
 	if _change_cards.has(change_id) and is_instance_valid(_change_cards[change_id]):
 		_change_cards[change_id].set_status(status, message)
+		if _change_cards[change_id].has_method("set_revert_available"):
+			_change_cards[change_id].set_revert_available(not _request_active and agent_controller.get_mode() == AgentController.AgentMode.BUILD)
 	_update_change_event(change_id, status, message)
 	_change_origin_turns.erase(change_id)
 	_recount_changed_files()
 	_save_current_session()
+	_sync_edit_permission_ui()
 	_scroll_to_bottom()
 
 
@@ -1367,6 +1392,8 @@ func _on_change_action_requested(change_id: String, action: String, origin_turn_
 			agent_controller.resolve_edit(change_id, origin_turn_id, false)
 		"revert":
 			agent_controller.revert_edit(change_id)
+		"inspect_recovery":
+			agent_controller.inspect_script_change(change_id)
 
 
 func _on_open_file_requested(filepath: String, line: int, column: int) -> void:
@@ -1517,6 +1544,235 @@ func _set_request_active(active: bool) -> void:
 	prompt_input.editable = _session_resumable
 	mode_label.modulate = Color(1, 1, 1, 0.5) if active else Color.WHITE
 	_refresh_connection_setup()
+	_sync_edit_permission_ui()
+	for card in _change_cards.values():
+		if is_instance_valid(card) and card.has_method("set_revert_available"):
+			card.set_revert_available(not active and agent_controller != null and agent_controller.get_mode() == AgentController.AgentMode.BUILD)
+
+
+func _setup_edit_permission_control() -> void:
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0.115, 0.12, 0.13)
+	normal.border_color = Color(0.3, 0.31, 0.33)
+	normal.set_border_width_all(UiMetrics.scaled_int(1))
+	normal.set_corner_radius_all(UiMetrics.scaled_int(6))
+	normal.content_margin_left = UiMetrics.scaled(9)
+	normal.content_margin_right = UiMetrics.scaled(9)
+	normal.content_margin_top = UiMetrics.scaled(4)
+	normal.content_margin_bottom = UiMetrics.scaled(4)
+	_edit_permission_button.add_theme_stylebox_override("normal", normal)
+	_edit_permission_button.add_theme_stylebox_override("disabled", normal)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = Color(0.16, 0.17, 0.19)
+	hover.border_color = Color(0.55, 0.57, 0.6)
+	_edit_permission_button.add_theme_stylebox_override("hover", hover)
+	_edit_permission_button.add_theme_stylebox_override("pressed", hover)
+	var focus := normal.duplicate() as StyleBoxFlat
+	focus.bg_color = Color.TRANSPARENT
+	focus.border_color = Color(0.5, 0.7, 0.81)
+	_edit_permission_button.add_theme_stylebox_override("focus", focus)
+	_edit_permission_button.add_theme_font_size_override("font_size", maxi(_meta_font_size - 1, 11))
+	_edit_permission_button.icon = EditorInterface.get_editor_theme().get_icon("Edit", "EditorIcons")
+	_edit_permission_button.add_theme_constant_override("icon_max_width", UiMetrics.scaled_int(14))
+	_edit_permission_button.add_theme_constant_override("h_separation", UiMetrics.scaled_int(6))
+	_edit_permission_button.add_theme_color_override("font_disabled_color", Color(0.46, 0.48, 0.51))
+	_edit_permission_button.add_theme_color_override("icon_disabled_color", Color(0.46, 0.48, 0.51))
+	_edit_permission_button.pressed.connect(_on_edit_permission_pressed)
+	# A small native edit icon in the existing header keeps active permission
+	# visible and revocable without drawing any control over conversation text.
+	_edit_permission_status.custom_minimum_size = UiMetrics.scaled_vector(Vector2(24, 24))
+	_edit_permission_status.icon = _edit_permission_button.icon
+	_edit_permission_status.expand_icon = true
+	_edit_permission_status.add_theme_constant_override("icon_max_width", UiMetrics.scaled_int(14))
+	_edit_permission_status.add_theme_constant_override("h_separation", 0)
+	var quiet := StyleBoxEmpty.new()
+	quiet.set_content_margin_all(UiMetrics.scaled(4))
+	for key in ["normal", "disabled"]:
+		_edit_permission_status.add_theme_stylebox_override(key, quiet)
+	var status_hover := StyleBoxFlat.new()
+	status_hover.bg_color = hover.bg_color
+	status_hover.set_corner_radius_all(UiMetrics.scaled_int(4))
+	status_hover.set_content_margin_all(UiMetrics.scaled(4))
+	for key in ["hover", "pressed"]:
+		_edit_permission_status.add_theme_stylebox_override(key, status_hover)
+	_edit_permission_status.add_theme_stylebox_override("focus", focus)
+	_edit_permission_status.add_theme_color_override("icon_disabled_color", Color(0.46, 0.48, 0.51))
+	_edit_permission_status.pressed.connect(_on_edit_permission_pressed)
+	_edit_permission_button.minimum_size_changed.connect(_position_edit_permission_button)
+	chat_scroll.item_rect_changed.connect(_position_edit_permission_button)
+	var scrollbar := chat_scroll.get_v_scroll_bar()
+	scrollbar.item_rect_changed.connect(_position_edit_permission_button)
+	scrollbar.visibility_changed.connect(_position_edit_permission_button)
+	call_deferred("_position_edit_permission_button")
+	_edit_permission_dialog = ConfirmationDialog.new()
+	_edit_permission_dialog.name = "EditPermissionDialog"
+	_edit_permission_dialog.title = "Allow automatic script edits"
+	# A non-fit-content body cannot grow the dialog from a stale wrapped-label
+	# minimum on first open. AcceptDialog keeps its native actions below this area.
+	_edit_permission_dialog_body = RichTextLabel.new()
+	_edit_permission_dialog_body.name = "PermissionBody"
+	_edit_permission_dialog_body.fit_content = false
+	_edit_permission_dialog_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_edit_permission_dialog_body.selection_enabled = true
+	_edit_permission_dialog_body.add_theme_font_size_override("normal_font_size", _body_font_size)
+	_edit_permission_dialog_body.text = "Orca can create and edit eligible project .gd scripts automatically in Work mode. Every edit is validated, shown in the feed, and checkpointed before writing.\n\nScene/configuration changes and script-execution trust still require approval. Unsaved files and conflicts remain protected.\n\nWithout remembering, permission is for this session only. Remembering enables Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only.\n\nClick the green edit icon beside ORCA in the header to revoke permission and clear any remembered default."
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
+	_edit_permission_dialog.add_child(content)
+	content.add_child(_edit_permission_dialog_body)
+	_edit_permission_remember = CheckBox.new()
+	_edit_permission_remember.name = "RememberProjectScriptEdits"
+	_edit_permission_remember.text = "Remember for this project"
+	_edit_permission_remember.accessibility_name = "Use Auto apply by default for this project"
+	_edit_permission_remember.tooltip_text = "Use Auto apply by default for this project. This is saved locally, outside project files and conversation history."
+	_edit_permission_remember.add_theme_font_size_override("font_size", _meta_font_size)
+	content.add_child(_edit_permission_remember)
+	_edit_permission_dialog.ok_button_text = "Allow edits"
+	_edit_permission_dialog.confirmed.connect(_enable_session_edits)
+	add_child(_edit_permission_dialog)
+
+
+func _position_edit_permission_button() -> void:
+	if not is_instance_valid(_edit_permission_button) or not _edit_permission_button.visible or not is_instance_valid(chat_scroll):
+		return
+	# The plain overlay host adds no header/feed minimum. Only the chip receives
+	# mouse input; the conversation remains scrollable/selectable behind it.
+	var inset := UiMetrics.scaled(4)
+	var bounds := chat_scroll.get_global_rect()
+	var right := bounds.end.x - inset
+	var scrollbar := chat_scroll.get_v_scroll_bar()
+	if scrollbar.is_visible_in_tree():
+		right = minf(right, scrollbar.global_position.x - inset)
+	# clip_text removes caption width from the minimum, letting unusually narrow
+	# docks clip the text without widening the dock or covering the scrollbar.
+	var minimum := _edit_permission_button.get_combined_minimum_size()
+	var caption_width := _edit_permission_button.get_theme_font("font").get_string_size(_edit_permission_button.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _edit_permission_button.get_theme_font_size("font_size")).x
+	_edit_permission_button.size = Vector2(minf(minimum.x + caption_width, maxf(0.0, right - bounds.position.x - inset)), minimum.y)
+	_edit_permission_button.global_position = Vector2(right - _edit_permission_button.size.x, bounds.position.y + inset)
+
+
+func _on_edit_permission_pressed() -> void:
+	if agent_controller == null:
+		return
+	if agent_controller.auto_apply_enabled():
+		agent_controller.set_auto_apply_enabled(false)
+		_clear_project_edit_default()
+		return
+	_show_edit_permission_confirmation(false, false)
+
+
+func _clear_project_edit_default() -> void:
+	if not Config.set_project_script_edit_default(false):
+		_add_message("Script edits", "Auto apply is off for this session, but its project default could not be saved.", Color.INDIAN_RED, "error")
+	if settings_view != null:
+		settings_view.sync_script_edit_default()
+	_sync_edit_permission_ui()
+
+
+func _on_script_edit_default_requested(enabled: bool) -> void:
+	if agent_controller == null or agent_controller.is_busy():
+		return
+	if not enabled:
+		agent_controller.set_auto_apply_enabled(false)
+		_clear_project_edit_default()
+	else:
+		_show_edit_permission_confirmation(true, true)
+
+
+func _show_edit_permission_confirmation(remember: bool, default_only: bool) -> void:
+	if agent_controller == null:
+		return
+	var pending: bool = agent_controller.can_authorize_pending_script_edits()
+	if default_only and agent_controller.is_busy():
+		return
+	if not default_only and ((_request_active and not pending) or not _session_resumable or agent_controller.get_mode() != AgentController.AgentMode.BUILD):
+		return
+	_hide_mode_menu()
+	_dismiss_connection_setup(false)
+	_ensure_session()
+	_edit_permission_dialog_session_id = str(_session.get("id", ""))
+	_edit_permission_dialog_project_root = ProjectSettings.globalize_path("res://").simplify_path()
+	_edit_permission_dialog_preference_revision = Config.project_script_edit_preference()["revision"]
+	_edit_permission_default_only = default_only
+	_edit_permission_remember.set_pressed_no_signal(remember)
+	_edit_permission_remember.disabled = default_only
+	_edit_permission_dialog_revision = agent_controller._edit_permission_revision
+	_edit_permission_dialog_change_id = agent_controller._pending_change_id if pending else ""
+	_edit_permission_dialog_turn_id = agent_controller._active_turn_id if pending else 0
+	_edit_permission_dialog.popup_centered(_edit_permission_dialog_size())
+
+
+func _edit_permission_dialog_size() -> Vector2i:
+	# Size against the owning editor and usable display, not the narrow dock.
+	# Headless displays have no usable screen rectangle; the owner is the fallback.
+	var available := get_window().size
+	if DisplayServer.get_name() != "headless":
+		var usable := DisplayServer.screen_get_usable_rect(get_window().current_screen).size
+		if usable.x > 0 and usable.y > 0:
+			available = available.min(usable)
+	return Vector2i(
+		mini(UiMetrics.scaled_int(480), maxi(1, int(available.x * 0.85))),
+		mini(UiMetrics.scaled_int(320), maxi(1, int(available.y * 0.85)))
+	)
+
+
+func _enable_session_edits() -> void:
+	if agent_controller == null or _edit_permission_dialog_session_id != str(_session.get("id", "")) or _edit_permission_dialog_revision != agent_controller._edit_permission_revision or _edit_permission_dialog_project_root != ProjectSettings.globalize_path("res://").simplify_path() or _edit_permission_dialog_preference_revision != Config.project_script_edit_preference()["revision"]:
+		return
+	if _edit_permission_default_only:
+		if agent_controller.is_busy() or not _edit_permission_remember.button_pressed:
+			return
+	else:
+		if not _session_resumable or agent_controller.get_mode() != AgentController.AgentMode.BUILD:
+			return
+		if not _edit_permission_dialog_change_id.is_empty():
+			if not agent_controller.can_authorize_pending_script_edits() or _edit_permission_dialog_change_id != agent_controller._pending_change_id or _edit_permission_dialog_turn_id != agent_controller._active_turn_id:
+				return
+		elif _request_active or agent_controller.is_busy():
+			return
+	var remember := _edit_permission_remember.button_pressed
+	if remember and not Config.set_project_script_edit_default(true):
+		_add_message("Script edits", "The project preference could not be saved. No automatic edit permission was granted.", Color.INDIAN_RED, "error")
+		return
+	if _edit_permission_default_only:
+		agent_controller.apply_project_edit_default()
+		settings_view.sync_script_edit_default()
+		_sync_edit_permission_ui()
+		return
+	if not _edit_permission_dialog_change_id.is_empty():
+		agent_controller.authorize_pending_script_edits(_edit_permission_dialog_change_id, _edit_permission_dialog_turn_id, _edit_permission_dialog_revision, remember)
+	elif not _request_active:
+		agent_controller.set_auto_apply_enabled(true, remember)
+
+
+func _sync_edit_permission_ui(_enabled: bool = false) -> void:
+	if _edit_permission_button == null or _edit_permission_status == null or agent_controller == null or not agent_controller.has_method("auto_apply_enabled"):
+		return
+	var enabled: bool = agent_controller.auto_apply_enabled()
+	var work: bool = agent_controller.get_mode() == AgentController.AgentMode.BUILD
+	var compact := enabled or _has_session_content or not empty_state.visible
+	_edit_permission_button.visible = not compact
+	_edit_permission_status.visible = compact
+	var caption := "Auto apply" if enabled else "Review edits"
+	var disabled: bool = not enabled and ((_request_active and not agent_controller.can_authorize_pending_script_edits()) or not _session_resumable or not work)
+	var tooltip: String
+	if enabled:
+		var scope := "Remembered for this project: new Work conversations and editor restarts use Auto apply." if agent_controller.auto_apply_uses_project_default() else "Auto apply is enabled for this session only."
+		tooltip = scope + " Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action."
+	else:
+		tooltip = "Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval."
+		if Config.project_script_edit_preference()["enabled"]:
+			tooltip += " The project default remains saved; Auto apply is paused here or unavailable in this mode/session."
+	for control in [_edit_permission_button, _edit_permission_status]:
+		control.accessibility_name = "Script edit permission: " + caption
+		control.disabled = disabled
+		control.tooltip_text = tooltip
+		var color := Color(0.68, 0.9, 0.72) if enabled else Color(0.58, 0.61, 0.66) if control == _edit_permission_status else Color(0.7, 0.73, 0.78)
+		for key in ["font_color", "icon_normal_color"]:
+			control.add_theme_color_override(key, color)
+		for key in ["font_hover_color", "font_pressed_color", "font_focus_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
+			control.add_theme_color_override(key, color.lightened(0.12))
+	_position_edit_permission_button()
 
 
 func _setup_mode_menu() -> void:
@@ -1617,6 +1873,10 @@ func _sync_mode_ui(mode: int) -> void:
 			panel.add_theme_stylebox_override("panel", selected_style)
 		else:
 			panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_sync_edit_permission_ui()
+	for card in _change_cards.values():
+		if is_instance_valid(card) and card.has_method("set_revert_available"):
+			card.set_revert_available(not _request_active and is_build)
 
 
 func _on_settings_saved(_provider_id: String, _model: String) -> void:
@@ -1670,6 +1930,8 @@ func _on_new_session_pressed() -> void:
 
 
 func _start_new_session() -> void:
+	if _edit_permission_dialog != null:
+		_edit_permission_dialog.hide()
 	_close_image_attachment_window()
 	if not _save_current_session():
 		return
@@ -1713,6 +1975,7 @@ func _start_new_session() -> void:
 	chat_scroll.scroll_vertical = 0
 	prompt_input.grab_focus()
 	_sync_send_availability()
+	_sync_edit_permission_ui()
 
 
 func _restore_active_session() -> void:
@@ -1721,6 +1984,7 @@ func _restore_active_session() -> void:
 		_session = session_store.create_session(agent_controller.get_mode(), Config.get_provider(), Config.get_model())
 		if task_list_panel != null:
 			task_list_panel.clear()
+		agent_controller.apply_project_edit_default()
 		return
 	if not bool(active.get("clean", true)):
 		active["resumable"] = false
@@ -1730,15 +1994,18 @@ func _restore_active_session() -> void:
 
 
 func _restore_session(session: Dictionary) -> bool:
+	if _edit_permission_dialog != null:
+		_edit_permission_dialog.hide()
 	_close_image_attachment_window()
 	var resumable := bool(session.get("clean", true)) and bool(session.get("resumable", true)) and not bool(session.get("truncated", false))
 	var previous_session_id := str(_session.get("id", ""))
 	if not session_store.set_active_session(str(session.get("id", ""))):
 		return false
-	if not agent_controller.restore_session_state(int(session.get("mode", AgentController.AgentMode.BUILD)), session.get("continuation", []), session.get("usage", {}), session.get("tasks", [])):
+	if not agent_controller.restore_session_state(int(session.get("mode", AgentController.AgentMode.BUILD)), session.get("continuation", []), session.get("usage", {}), session.get("tasks", []), resumable):
 		session_store.set_active_session(previous_session_id)
 		return false
 	_session = session.duplicate(true)
+	agent_controller.restore_script_changes(_session.get("script_changes", []))
 	_response_attribution.clear()
 	_draft_images.clear()
 	_draft_script_paths.clear()
@@ -1748,6 +2015,7 @@ func _restore_session(session: Dictionary) -> bool:
 	if task_list_panel != null:
 		task_list_panel.set_tasks(_session.get("tasks", []))
 	_session_resumable = resumable
+	agent_controller.apply_project_edit_default()
 	_session_resume_tainted = not resumable
 	_tool_cards.clear()
 	_change_cards.clear()
@@ -1755,6 +2023,10 @@ func _restore_session(session: Dictionary) -> bool:
 	_clear_chat_feed()
 	for event in _session.get("events", []):
 		_render_session_event(event)
+	# Recovery survives fitted-out events and interrupted display persistence.
+	for checkpoint in _session.get("script_changes", []):
+		if not _change_cards.has(checkpoint["id"]):
+			_render_script_checkpoint(checkpoint["id"])
 	_close_active_tool_group()
 	_has_session_content = not _session.get("events", []).is_empty()
 	_sync_metrics_visibility()
@@ -1763,6 +2035,7 @@ func _restore_session(session: Dictionary) -> bool:
 	prompt_input.editable = _session_resumable
 	prompt_input.placeholder_text = "Describe what you want to build or fix..." if _session_resumable else "This saved session is view-only"
 	_sync_send_availability()
+	_sync_edit_permission_ui()
 	_scroll_to_bottom()
 	return true
 
@@ -1827,6 +2100,41 @@ func _on_history_new_session_requested() -> void:
 func _ensure_session() -> void:
 	if _session.is_empty():
 		_session = session_store.create_session(agent_controller.get_mode(), Config.get_provider(), Config.get_model())
+
+
+func _checkpoint_script_change(record: Dictionary) -> bool:
+	if session_store == null or not ScriptChangeJournal.validate_record(record).is_empty():
+		return false
+	_ensure_session()
+	var candidate := _session.duplicate(true)
+	var records: Array = candidate.get("script_changes", [])
+	var replaced := false
+	for index in records.size():
+		if records[index].get("id") == record["id"]:
+			records[index] = record.duplicate(true)
+			replaced = true
+			break
+	if not replaced:
+		records.append(record.duplicate(true))
+	candidate["script_changes"] = records
+	var snapshot: Dictionary = agent_controller.snapshot_session_state()
+	candidate["continuation"] = snapshot["continuation"]
+	candidate["usage"] = snapshot["usage"]
+	candidate["tasks"] = snapshot["tasks"]
+	candidate["mode"] = snapshot["mode"]
+	candidate["updated_at"] = Time.get_unix_time_from_system()
+	if record["status"] in ["prepared", "reverting"]:
+		candidate["clean"] = false
+	elif not _request_active:
+		candidate["clean"] = true
+	var result: Dictionary = session_store.save_session(candidate)
+	if not result.get("success", false):
+		_add_message("Recovery storage", str(result.get("error", "Could not save the script-change checkpoint.")), Color.INDIAN_RED, "error")
+		return false
+	_session = result.get("session", candidate)
+	_has_session_content = true
+	_rebuild_tool_event_indices()
+	return true
 
 
 func _save_current_session() -> bool:
@@ -1999,7 +2307,7 @@ func _update_change_event(change_id: String, status: String, message: String = "
 	var events: Array = _session.get("events", [])
 	for index in range(events.size() - 1, -1, -1):
 		var event = events[index]
-		if typeof(event) == TYPE_DICTIONARY and event.get("type") == "change" and str(event.get("id", "")) == change_id:
+		if typeof(event) == TYPE_DICTIONARY and event.get("type") == "change" and (str(event.get("id", "")) == change_id or str(event.get("checkpoint_id", "")) == change_id):
 			event["status"] = status
 			if status in ["apply_recovery_required", "revert_recovery_required"]:
 				event["resolution_message"] = _persisted_recovery_message(message)
@@ -2024,6 +2332,10 @@ func _update_staged_change_event(proposal: Dictionary) -> void:
 			event["summary"] = _proposal_summary(proposal)
 			event["status"] = "pending"
 			event["validation_message"] = str(proposal.get("validation", {}).get("message", ""))
+			if proposal.has("_checkpoint_id"):
+				event["checkpoint_id"] = proposal["_checkpoint_id"]
+			else:
+				event.erase("checkpoint_id")
 			events[index] = event
 			break
 	_session["events"] = events
@@ -2100,12 +2412,37 @@ func _render_session_event(event: Dictionary) -> void:
 				card.complete(execution, int(event.get("duration_ms", 0)))
 		"change":
 			_close_active_tool_group()
+			if _render_script_checkpoint(str(event.get("checkpoint_id", ""))):
+				return
 			var filepath := str(event.get("filepath", ""))
 			var summary := "%s\n+%d  -%d · %s" % [filepath, int(event.get("additions", 0)), int(event.get("deletions", 0)), str(event.get("status", "unknown")).replace("_", " ").capitalize()]
 			var resolution_message := str(event.get("resolution_message", ""))
 			if not resolution_message.is_empty():
 				summary += "\n" + resolution_message
 			_add_message("Change", summary, Color(0.62, 0.78, 0.68), "status")
+
+
+func _render_script_checkpoint(checkpoint_id: String) -> bool:
+	if checkpoint_id.is_empty() or agent_controller == null or not agent_controller.has_method("recovered_script_change"):
+		return false
+	if _change_cards.has(checkpoint_id):
+		return true
+	var proposal: Dictionary = agent_controller.recovered_script_change(checkpoint_id)
+	if proposal.is_empty():
+		return false
+	# Checkpoints may outlive compacted visible events. Their review cards still
+	# count as conversation content, rather than an empty-state permission prompt.
+	empty_state.hide()
+	_sync_edit_permission_ui()
+	var card := ChangeCard.new()
+	chat_feed.add_child(card)
+	card.configure(proposal)
+	card.set_status(str(proposal["status"]), "Restored script-change checkpoint. Changes are never replayed. Revert rechecks current disk and editor state.")
+	card.set_revert_available(not _request_active and agent_controller.get_mode() == AgentController.AgentMode.BUILD)
+	card.action_requested.connect(_on_change_action_requested.bind(-1))
+	card.open_requested.connect(_on_open_file_requested)
+	_change_cards[checkpoint_id] = card
+	return true
 
 
 func _clear_chat_feed() -> void:
@@ -2195,6 +2532,7 @@ func _sync_session_usage(summary: Dictionary) -> void:
 func _sync_metrics_visibility() -> void:
 	metrics_row.visible = _has_session_content
 	header_separator.visible = _has_session_content
+	_sync_edit_permission_ui()
 
 
 func _format_token_count(tokens: int) -> String:
@@ -2236,6 +2574,7 @@ func _add_message(sender: String, message: String, color: Color, kind: String) -
 	_close_active_tool_group()
 	if empty_state != null:
 		empty_state.hide()
+	_sync_edit_permission_ui()
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var style := StyleBoxFlat.new()

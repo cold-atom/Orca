@@ -3,6 +3,7 @@ extends PanelContainer
 
 signal done_requested
 signal settings_saved(provider_id: String, model: String)
+signal script_edit_default_requested(enabled: bool)
 
 const Config = preload("res://addons/orca/scripts/config.gd")
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
@@ -83,6 +84,7 @@ var _account_usage_label: Label
 var _account_code_label: Label
 var _key_help: Label
 var language_selector: OptionButton
+var script_edit_default_selector: OptionButton
 var image_support_toggle: CheckButton
 var about_version_label: Label
 var update_service
@@ -403,7 +405,7 @@ func _build_ui() -> void:
 	agent_enable_toggle.toggled.connect(_on_agent_enable_toggled)
 	content.add_child(agent_enable_toggle)
 	agent_warning_label = Label.new()
-	agent_warning_label.text = "This project-free check enables Agent tools when it passes. Agent tools may send project context and perform normal Plan/Work operations; project changes still require approval."
+	agent_warning_label.text = "This project-free check enables Agent tools when it passes. Agent tools may send project context and perform normal Plan/Work operations; edit permissions are controlled separately in the dock."
 	agent_warning_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	agent_warning_label.add_theme_color_override("font_color", Color(0.72, 0.64, 0.42))
 	content.add_child(agent_warning_label)
@@ -608,6 +610,8 @@ func _show_section(section: String) -> void:
 		settings_scroll.visible = section == "provider"
 	if system_scroll != null:
 		system_scroll.visible = section == "system"
+		if section == "system":
+			sync_script_edit_default()
 	if about_scroll != null:
 		about_scroll.visible = section == "about"
 	if provider_tab_button != null:
@@ -642,11 +646,41 @@ func _build_system_view() -> ScrollContainer:
 	language_help.add_theme_color_override("font_color", Color(0.66, 0.69, 0.74))
 	content.add_child(language_help)
 	content.add_child(HSeparator.new())
+	content.add_child(_field_label("Script edits"))
+	script_edit_default_selector = OptionButton.new()
+	script_edit_default_selector.name = "ScriptEditDefault"
+	script_edit_default_selector.add_item("Review edits (default)", 0)
+	script_edit_default_selector.add_item("Auto apply for this project", 1)
+	script_edit_default_selector.clip_text = true
+	script_edit_default_selector.tooltip_text = "Default script-edit behavior for this project on this computer. Auto apply requires explicit confirmation."
+	script_edit_default_selector.accessibility_name = "Default script edits for this project"
+	script_edit_default_selector.item_selected.connect(_on_script_edit_default_selected)
+	content.add_child(script_edit_default_selector)
+	var edit_help := Label.new()
+	edit_help.name = "ScriptEditDefaultHelp"
+	edit_help.text = "Remember Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only. Scene/configuration changes still require review. Clicking the green edit icon beside ORCA turns it off and clears the remembered choice."
+	edit_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	edit_help.add_theme_color_override("font_color", Color(0.66, 0.69, 0.74))
+	content.add_child(edit_help)
+	sync_script_edit_default()
+	content.add_child(HSeparator.new())
 	update_panel = UpdatePanel.new()
 	update_panel.name = "PluginUpdates"
 	update_panel.service = update_service
 	content.add_child(update_panel)
 	return scroll
+
+
+func sync_script_edit_default() -> void:
+	if script_edit_default_selector != null:
+		script_edit_default_selector.select(1 if Config.project_script_edit_preference()["enabled"] else 0)
+
+
+func _on_script_edit_default_selected(index: int) -> void:
+	# Selection requests the shared dock confirmation; it is not itself a grant.
+	sync_script_edit_default()
+	if is_visible_in_tree() and system_scroll.is_visible_in_tree() and index in [0, 1]:
+		script_edit_default_requested.emit(index == 1)
 
 
 func _build_account_view() -> ScrollContainer:
@@ -843,7 +877,7 @@ func _build_about_view() -> ScrollContainer:
 	content.add_child(HSeparator.new())
 	content.add_child(_about_heading("REVIEW-FIRST"))
 	var safety := Label.new()
-	safety.text = "Plan mode is read-only. Work mode requires your approval before model-requested project changes are written."
+	safety.text = "Plan mode is read-only. Work defaults to Review edits. You can allow bounded automatic script edits for one session or explicitly remember Auto apply for this project; scene/configuration changes retain approval."
 	safety.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	safety.add_theme_color_override("font_color", Color(0.72, 0.75, 0.8))
 	content.add_child(safety)

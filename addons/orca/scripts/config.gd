@@ -12,11 +12,48 @@ const SETTING_PROVIDER = "orca/providers/selected"
 const SETTING_MODEL_METADATA_CACHE = "orca/cache/model_metadata"
 const SETTING_PROVIDER_MODEL_CACHE = "orca/cache/provider_models_v3"
 const MAX_CACHED_PROVIDER_MODELS := 200
+const PROJECT_SCRIPT_EDITS_PREFIX := "orca/script_edits/projects/"
 
 static func _get_editor_settings() -> EditorSettings:
 	if Engine.is_editor_hint():
 		return EditorInterface.get_editor_settings()
 	return null
+
+
+static func project_script_edit_preference() -> Dictionary:
+	var fallback := {"enabled": false, "revision": ""}
+	var settings := _get_editor_settings()
+	var root := ProjectSettings.globalize_path("res://").simplify_path()
+	if settings == null or root.is_empty() or root.length() > 4096:
+		return fallback
+	var key := PROJECT_SCRIPT_EDITS_PREFIX + root.sha256_text()
+	if not settings.has_setting(key):
+		return fallback
+	var record = settings.get_setting(key)
+	if typeof(record) != TYPE_DICTIONARY or record.size() != 4 or typeof(record.get("version")) != TYPE_INT or record.get("version") != 1 or record.get("project_root") != root or typeof(record.get("enabled")) != TYPE_BOOL or typeof(record.get("revision")) != TYPE_STRING:
+		return fallback
+	var revision: String = record["revision"]
+	if revision.length() != 32:
+		return fallback
+	for character in revision:
+		if not "0123456789abcdef".contains(character):
+			return fallback
+	return {"enabled": record["enabled"], "revision": revision}
+
+
+static func set_project_script_edit_default(enabled: bool) -> bool:
+	# Only explicit Orca UI decisions call this setter. Storage is outside res://,
+	# never in project metadata, provider profiles, sessions or recovery records.
+	var settings := _get_editor_settings()
+	var root := ProjectSettings.globalize_path("res://").simplify_path()
+	if settings == null or root.is_empty() or root.length() > 4096:
+		return false
+	var bytes := Crypto.new().generate_random_bytes(16)
+	if bytes.size() != 16:
+		return false
+	var revision := bytes.hex_encode()
+	settings.set_setting(PROJECT_SCRIPT_EDITS_PREFIX + root.sha256_text(), {"version": 1, "project_root": root, "enabled": enabled, "revision": revision})
+	return project_script_edit_preference() == {"enabled": enabled, "revision": revision}
 
 func _init_settings() -> void:
 	var settings = _get_editor_settings()

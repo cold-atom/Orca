@@ -4,12 +4,24 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Explicit current-session **Auto apply** for bounded project `.gd` patches, selectable through Review edits in an empty chat or a compact edit icon beside ORCA in an existing conversation, in idle Work or while reviewing an eligible script. The floating chip disappears when Auto apply is selected or the conversation starts; green/muted header state leaves responses and diffs unobstructed. Review edits remains the default. Header revocation is available during a turn; New Session, restoration, Plan and reload clear the grant. Scene/configuration changes, addon scripts and execution trust retain explicit review.
+- Optional **Remember for this project** confirmation and **System → Script edits** settings. A strict exact-project local EditorSettings preference enables fresh runtime Auto apply in future/resumable Work sessions and clean editor restarts. Plan/view-only history remain read-only. Chip revocation clears the saved default; malformed/copied preferences and changed revisions cannot authorize a write, and checkpoint failures pause the current session without silently reacquiring permission.
+- Durable automatic-script change checkpoints with exact previous/proposed source, inline diff cards, lazy historical diffs and explicit conflict-checked restart recovery. Interrupted records offer Check recovery and never replay edits or restore permission. Limits: 64 records / 4 MiB per conversation, 256 KiB / 8000 lines per source version.
+
+### Changed
+
+- Auto-apply and editor-scale tests now run as tool Nodes in a normal, fully isolated editor lifecycle. Their runner rejects crashes, missing completion, errors and shutdown warnings even after zero failed assertions; full headless and Linux/X11/OpenGL checks exit cleanly.
+- Edit permission sits below Context/Cost rather than in an extra composer row. Its confirmation has bounded first-open dimensions, scrolling text and always-visible actions. Automatic edits retain the same inline red/green diff preview as manual reviews.
+- Edit authorization is enforced at runtime through original-proposal approval or the bounded session grant, with required pre-write checkpoint persistence, fresh validation/hash/dirty-state checks and immediate revocation checks. Stop preserves true completed-write receipts. Checkpoint storage failures pause automatic editing.
+- Current release guidance reflects published 1.5.0 and the owner's working live model/project/helper/browser feedback, while distinguishing new unreleased development and broader acceptance.
+
 ## 1.5.0 - 2026-11-02
 
-**Release candidate — not yet published.** Adds project code navigation to the
-published 1.4.1 baseline. Complete candidate CI/four-platform packaging and real
-editor/model acceptance remain release gates. Cloud availability requires the
-matching backend API rollout and catalog refresh.
+Published on GitHub after complete CI/four-platform packaging and release
+preparation. Adds project code navigation to the 1.4.1 baseline. Cloud availability
+requires the matching backend API vocabulary and authenticated catalog refresh.
 
 ### Added
 
@@ -23,7 +35,7 @@ matching backend API rollout and catalog refresh.
 ### Known Limits
 
 - Code navigation is saved-source-only and lexical. Dirty scripts and bounded incomplete scans are disclosed; same-name reference candidates do not establish semantic ownership, dynamic calls or scene connections.
-- Publication, Asset Store approval and live Cloud/editor/platform acceptance remain pending. The binary-free ZIP must be released with its exact version-matched helper catalog and separately tested native assets.
+- Asset Store moderation and broader live/platform acceptance remain separate. The binary-free ZIP is published with its exact version-matched helper catalog and separately tested native assets.
 
 ## 1.4.1 - 2026-10-30
 

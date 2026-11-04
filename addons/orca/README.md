@@ -2,14 +2,15 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory contains the Orca 1.5.0 release candidate for Godot 4.7.2,
-adding saved-script code navigation to the published 1.4.1 baseline.
+This directory develops beyond published Orca 1.5.0 for Godot 4.7.2,
+adding session-authorized script edits and durable recovery (unreleased).
 Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
 platform's credential helper from the matching official GitHub Release if missing.
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
-usable. Complete 1.5.0 CI/native packaging, publication and Asset Store approval
-remain pending, alongside real downloaded-helper/platform acceptance. See the
+usable. Complete 1.5.0 CI/native packaging and GitHub publication passed. The owner
+reports working live model/project/helper/browser flows in their environment;
+broader platform acceptance and Asset Store moderation remain separate. See the
 [1.5.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#150---2026-11-02)
 for code navigation and the
 [1.4.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#140---2026-10-29)
@@ -38,14 +39,45 @@ draft automatically. Existing configured users retain the normal chat empty stat
 
 - Plan mode is read-only.
 - A Plan turn can ask once to switch to Work, but it waits for an explicit user decision and the switch does not approve a file change.
-- Work mode can prepare changes, but every model-requested project change requires explicit approval.
+- Work defaults to Review edits. Explicit Auto apply can authorize bounded project `.gd` patches for one session or be remembered locally for this project; other changes retain original-proposal approval.
 - File proposals use content hashes, validation, stale-state checks, and guarded revert data.
 - Project access, tool output, network inactivity, and Orca-owned game processes are bounded.
 - Root project instructions and skill catalog metadata are request-scoped guidance; skill bodies load only through the read-only `read_project_skill` tool.
 - Godot API reflection, focused GDScript function reads, and serialized dependency discovery are read-only in Plan and Work.
 - Provider failures after complete tool rounds are collapsed into sanitized recovery checkpoints, allowing the conversation to continue without replaying prior actions.
 
-Always review proposed changes and use source control. Orca does not replace code review, backups, or project testing.
+Review recorded changes and use source control. Orca does not replace code review, backups, or project testing.
+
+## Session Script Editing (Unreleased)
+
+Click **Review edits** in an empty chat, or the small edit icon beside **ORCA** in an existing conversation, and confirm
+**Allow edits**, in idle Work or while reviewing an eligible script. Orca will
+apply validated project `.gd` patches automatically and continue, retaining
+inline red/green diff cards with Open File, Expand Diff and guarded Revert. Click
+the green edit icon beside **ORCA** to revoke before the next write, including during a request.
+The large floating chip disappears when Auto apply is enabled or the conversation
+starts; the compact header icon leaves response text and diffs unobstructed.
+
+Leave **Remember for this project** unchecked for one session, or check it to use
+Auto apply in future Work conversations and editor restarts for this project.
+**Settings → System → Script edits** exposes the same confirmed choice. Clicking
+the green header edit icon immediately revokes permission and clears the remembered default.
+The preference lives in local EditorSettings outside project files/history.
+
+Old runtime grants clear on New Session, History restoration, Plan selection and
+reload; only resumable Work sessions may reacquire the exact remembered default.
+Plan and view-only history remain read-only. Scripts in `addons/`, scene/configuration changes and
+script-execution trust keep explicit review. Dirty files, stale hashes and invalid
+source remain blocked. Each automatic source version is limited to 256 KiB / 8000
+lines; larger patches use review.
+
+Automatic edits require a durable previous/proposed-source checkpoint before
+writing. History can expand the recorded diff and explicitly revert after restart,
+provided current disk/editor state still matches. Interrupted records offer
+**Check recovery** and never replay a write. The journal is plaintext local data,
+bounded to 64 records / 4 MiB per conversation and deleted with that conversation.
+It does not enter model continuation/support reports or restore permission.
+Stop keeps completed edits; Revert is a separate idle-Work action.
 
 ## Live Scene Context
 
@@ -75,7 +107,7 @@ are omitted with incomplete coverage; explicit dirty files require saving. There
 is no semantic/dynamic/scene-connection coverage, persistent index or patch hash.
 Cloud additionally requires the new authenticated catalog advertisement after
 backend deployment/refresh; old catalogs retain existing tools. These tools are
-prepared for 1.5.0 and not included in the published 1.4.1 ZIP.
+included in published 1.5.0 and absent from the older 1.4.1 ZIP.
 
 ## Script References
 

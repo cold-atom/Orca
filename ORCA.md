@@ -11,13 +11,14 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-This checkout prepares **Orca 1.5.0** for **Godot 4.7.2**, adding saved project code
-navigation to the published 1.4.1 baseline. See
-[1.5.0](CHANGELOG.md#150---2026-11-02) for this release candidate and
+This checkout develops beyond published **Orca 1.5.0** for **Godot 4.7.2**, adding
+session-authorized automatic script edits and durable recovery (unreleased). See
+[1.5.0](CHANGELOG.md#150---2026-11-02) for saved project code navigation and
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
-Complete 1.5.0 CI/package acceptance, publication, Asset Store approval and live
-Cloud/editor/platform acceptance are pending.
+Complete 1.5.0 CI/package acceptance and GitHub publication passed. The owner
+reports working live model/project/helper/browser flows in their environment;
+new development needs fresh CI and broader platform/Store acceptance remains separate.
 
 ### Key Features & Components
 1. **Editor Integration (`orca.gd`, `orca.tscn`, `chat_window.tscn`)**
@@ -63,9 +64,9 @@ Cloud/editor/platform acceptance are pending.
    - **Project Guidance:** Orca automatically loads a bounded root `res://AGENTS.md` and bounded skill catalog metadata into private request-scoped context. Guidance is subordinate to Orca's permissions and safety rules, removed after the turn, and skill bodies require an explicit read-only tool call.
 5. **Agent Modes and Review**
    - Plan mode exposes only read-only tools plus one explicit `request_work_mode` escalation when the user asked for implementation or execution. Orca waits for `Stay in Plan` or `Switch to Work`; approval applies only to the next provider continuation and does not approve a project change.
-   - Work mode can propose patches, but every change requires explicit user approval.
+    - Work defaults to Review edits. The user can enable Auto apply for bounded standalone project `.gd` patches outside addons, with required durable pre-write recovery, optionally remembering it through a separately confirmed exact-project local editor preference. Other changes retain explicit approval. Old grants clear on New Session/restoration/Plan/reload; only resumable Work sessions may acquire fresh remembered authorization. Clicking the green header edit icon revokes it and clears the saved default; Plan/view-only history cannot enable it.
    - Consecutive read-only activity is grouped with aggregate status and duration while retaining each call's details and navigation.
-   - Unified diffs, expanded side-by-side review, and file navigation make agent work visible.
+    - Unified diffs, expanded side-by-side review, and file navigation make agent work visible. Automatic scripts retain the same inline diff cards as manual reviews, lazy historical diff review and explicit conflict-checked recovery after restart; history never replays changes or provides edit authorization. A discoverable Review edits chip appears only in an empty review-state chat. Auto apply and existing conversations use a small edit icon beside ORCA, leaving response text and diffs unobstructed.
    - Completed responses render fenced code in bounded selectable blocks with language labels, Copy actions, and native GDScript highlighting.
     - Compact per-answer footers show the full configured model ID and generating Plan/Work mode, preserving attribution through switches and restored history. Long names wrap with full identifier tooltips; no provider/reasoning detail is added.
     - Native minimaps and synchronized scrolling in expanded reviews use the Godot code palette; narrow windows stack the panes. Plain Tab in the focused composer toggles Plan/Work when idle while preserving the draft and attachments.
