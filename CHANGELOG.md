@@ -2,7 +2,12 @@
 
 All notable changes to Orca are documented in this file.
 
-## Unreleased
+## 1.6.0 - 2026-11-05
+
+**Auto Apply & Script Recovery** — release candidate, not yet published. Adds
+explicitly authorized automatic script editing and restart recovery to the
+published 1.5.0 baseline. Final-version CI, exact four-platform package acceptance
+and real-model Auto apply acceptance remain required before publication.
 
 ### Added
 
@@ -13,9 +18,19 @@ All notable changes to Orca are documented in this file.
 ### Changed
 
 - Auto-apply and editor-scale tests now run as tool Nodes in a normal, fully isolated editor lifecycle. Their runner rejects crashes, missing completion, errors and shutdown warnings even after zero failed assertions; full headless and Linux/X11/OpenGL checks exit cleanly.
-- Edit permission sits below Context/Cost rather than in an extra composer row. Its confirmation has bounded first-open dimensions, scrolling text and always-visible actions. Automatic edits retain the same inline red/green diff preview as manual reviews.
+- Edit permission uses the compact ORCA title icon in existing conversations and a discoverable floating Review edits chip only in empty review-state chats. Its confirmation has bounded first-open dimensions, scrolling text and always-visible actions. Automatic edits retain the same inline red/green diff preview as manual reviews.
 - Edit authorization is enforced at runtime through original-proposal approval or the bounded session grant, with required pre-write checkpoint persistence, fresh validation/hash/dirty-state checks and immediate revocation checks. Stop preserves true completed-write receipts. Checkpoint storage failures pause automatic editing.
-- Current release guidance reflects published 1.5.0 and the owner's working live model/project/helper/browser feedback, while distinguishing new unreleased development and broader acceptance.
+- Plugin/About/support-report metadata and current release guidance now identify the 1.6.0 candidate. Updater checks cover upgrades from 1.3.0/1.4.0/1.4.1/1.5.0, exact official asset naming, same-version suppression and no downgrade to 1.5.0.
+
+### Fixed
+
+- Narrow General Settings layouts retain complete update-button captions beside the vertical scrollbar at normal, 1.5× and 2× fonts. The updater editor test measures the complete page at both tall and short heights through the isolated normal-editor runner, including release preparation.
+
+### Known Limits
+
+- Auto apply covers bounded standalone project `.gd` patches outside addons. Larger patches, scene/configuration changes and script-execution trust retain explicit review; multi-file transactional approvals are not included.
+- Durable recovery applies to automatic-script checkpoints. Pending approvals and manual/structured revert checkpoints remain memory-only. Recovery never replays edits or provides authorization.
+- Real-model acceptance of Auto apply/remember/revoke/History/Revert, broader themes/platforms and Asset Store moderation remain separate from automated checks.
 
 ## 1.5.0 - 2026-11-02
 

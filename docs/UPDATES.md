@@ -5,11 +5,15 @@ precede Asset Store moderation. Updating and native-helper installation are
 user-owned maintenance, never agent tools, and their public downloads require no
 Orca account or GitHub token.
 
-**1.5.0** is published, adding project code navigation to the 1.4.1 binary-free
-baseline after complete CI/native/package and release-preparation checks.
-Existing 1.3.0, 1.4.0 and 1.4.1 users can upgrade to its ZIP/checksum plus matching
-helpers. Current session Auto apply/recovery additions are unreleased; prepare a
-next version only after final source, fresh CI and exact package acceptance.
+**1.6.0 — Auto Apply & Script Recovery** is a release candidate, not yet
+published. It adds session-authorized automatic project-script edits, an optional
+remembered project default and durable recovery to the published **1.5.0**
+code-navigation/binary-free baseline. The pre-bump `1851544` complete Tests run
+passed, including all four native-helper platforms and packaging. Final-version
+CI, exact same-revision ZIP/helpers/catalog and real-model Auto apply acceptance
+remain required before publication. The candidate's updater checks cover direct
+upgrades from 1.3.0/1.4.0/1.4.1/1.5.0, same-version suppression and no downgrade.
+See [1.6.0](../CHANGELOG.md#160---2026-11-05) for the candidate.
 See [1.5.0](../CHANGELOG.md#150---2026-11-02) for the published release and
 [1.4.1](../CHANGELOG.md#141---2026-10-30) for the earlier packaging fixes.
 Store moderation remains separate; Cloud navigation requires matching
@@ -99,7 +103,7 @@ visibly and are separate from a missing helper.
 3. Package the binary-free addon and separate helpers together:
 
    ```bash
-   python3 scripts/package_release.py --version 1.5.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.5.0.zip
+   python3 scripts/package_release.py --version 1.6.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.6.0.zip
    ```
 
    Substitute the actual new version. The script refuses version mismatches,
@@ -156,7 +160,9 @@ be published under the catalog's tag; use the isolated fixtures before publicati
 **Prepare Orca release** is manually dispatched against an existing stable tag.
 It rebuilds/tests the helpers, checks the plugin/updater/helper flow, then produces
 **orca-release** with the ZIP, checksum and all raw helpers. Its Publish checkbox
-defaults off. Only explicit publication has repository write permission; jobs do
+defaults off. The updater editor case runs through the isolated normal-editor
+runner, matching Tests rather than launching a tool Node with `--editor --script`.
+Only explicit publication has repository write permission; jobs do
 not commit, tag, push or submit to Godot.
 
 Published release notes link **Full Changelog** directly to `CHANGELOG.md` at the
@@ -244,7 +250,7 @@ export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_
 python3 -m unittest discover -s tests -p native_helper_packaging_test.py -v
 python3 -m unittest discover -s tests -p native_helper_download_test.py -v
 "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/update_editor_test.gd
+python3 tests/run_editor_test.py update_editor_test.gd
 python3 -m unittest discover -s tests -p update_package_test.py -v
 python3 scripts/build_native_helper.py
 python3 scripts/test_native_credentials.py

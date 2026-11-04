@@ -35,7 +35,7 @@ isolation; it does not claim Windows/macOS fixture acceptance. Do not launch
 these Node cases with `--editor --script`. Other legacy editor cases below
 retain their existing entry points until separately migrated.
 
-## Session Auto apply and recovery (Unreleased)
+## Session Auto apply and recovery (1.6.0 candidate)
 
 ```bash
 export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
@@ -324,19 +324,27 @@ real user browser registration/verification, live hosted models, OS-vault unlock
 other platforms, session expiry and deployed HTTPS pairing/inference. Public HTTPS
 health responses establish reachability only, not authenticated or metered acceptance.
 
-## 1.5.0 release-candidate verification
+## 1.6.0 release-candidate verification
 
-The About/support-report expectations follow plugin version 1.5.0. Synthetic
+The About/support-report expectations follow plugin version 1.6.0. Synthetic
 1.3.0 → 1.4.0 installation/rollback fixtures intentionally retain both versions.
 Historical 1.4.1 update/catalog fixtures remain explicit. Current update metadata
-checks verify 1.5.0 upgrades from 1.3.0/1.4.0/1.4.1, exact official asset naming,
+checks retain 1.5.0 coverage and verify 1.6.0 upgrades from
+1.3.0/1.4.0/1.4.1/1.5.0, exact official asset naming,
 same-version suppression and no downgrade from the candidate. Actual-source
 packaging reads the current version from `plugin.cfg`.
 For this release preparation, run the version-sensitive settings/support checks, updater
 component/editor/package tests, native helper acceptance and clean initialization
-with all three startup suppressions. The complete 1.4.1 Tests/native/package run
-passed at `dca72e6` and publication completed on 2026-10-30. The 1.5.0 candidate
-requires its own complete CI and same-revision four-platform helper/package run.
+with all three startup suppressions and isolated editor configuration/data/cache.
+Run the updater editor case through `python3 tests/run_editor_test.py update_editor_test.gd`,
+as both Tests and Prepare Orca release now do. The complete pre-bump
+[Tests run at `1851544`](https://github.com/cold-atom/Orca/actions/runs/41862895217)
+passed, including all four native-helper platforms and binary-free packaging;
+1.5.0 remains published. The 1.6.0 candidate requires its own complete final-version
+CI and same-revision four-platform helper/package run. Include the Auto apply and
+five-process remembered-default editor cases above. Real-model acceptance should
+exercise a small automatic script task, its inline diff, active-turn revocation,
+remembered startup and History/Revert with and without an independent edit.
 Real browser/downloaded-helper/graphical platform
 acceptance is not established by metadata, CI or release notes.
 

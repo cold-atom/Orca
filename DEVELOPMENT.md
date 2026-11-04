@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-11-04
+Last updated: 2026-11-05
 
 ## Purpose
 
@@ -8,7 +8,23 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Published 1.5.0 / Current Development
+## Orca 1.6.0 Release Candidate / Published 1.5.0
+
+**Orca 1.6.0 — Auto Apply & Script Recovery** for **Godot 4.7.2** is prepared as
+a release candidate, not yet published. `plugin.cfg`, About/support expectations,
+dated changelog and current release guides identify 1.6.0. It adds session-authorized
+automatic project-script editing, an explicitly remembered project default and
+durable script-change recovery to the published 1.5.0 baseline. Updater metadata
+checks cover upgrades from 1.3.0/1.4.0/1.4.1/1.5.0, exact official asset naming,
+same-version suppression and no downgrade to 1.5.0. Release preparation uses the
+isolated normal-editor runner for the updater editor case.
+
+The pre-bump `1851544` complete
+[Tests run](https://github.com/cold-atom/Orca/actions/runs/41862895217) passed on
+2026-11-04, including editor/transport checks, all four native-helper platforms
+and binary-free packaging. Final-version full CI, exact same-revision
+four-platform ZIP/helper/catalog acceptance and real-model Auto apply/remember/
+revoke/History/Revert acceptance remain required before publication.
 
 **Orca 1.5.0 — Project Code Navigation** for **Godot 4.7.2** is
 [published on GitHub](https://github.com/cold-atom/Orca/releases/tag/v1.5.0) at
@@ -20,10 +36,7 @@ confirmed live model/project, helper and browser flows work in their tested
 environment. This feedback does not claim an exhaustive platform matrix or
 establish Asset Store moderation status.
 
-Current development adds **session-authorized Auto apply for bounded project
-scripts, an explicitly remembered project default, and durable script-change recovery**. These additions are unreleased;
-`plugin.cfg` remains 1.5.0 until explicit next-release preparation. Generate new
-version-matched helper catalogs/update manifests only from accepted packaging
+Generate version-matched helper catalogs/update manifests only from accepted packaging
 after addon bytes are final. Commit, push, deployment, tagging, publication and
 Store submission remain owner-controlled.
 
@@ -105,7 +118,7 @@ The plugin has public GitHub releases and remains a functional development-stage
 - The trusted copied `update_runner.gd` runs under the current Godot executable in `res://.orca-update/runner/`, a private minimal project outside the loaded addon. It waits for the initiating editor's exit before transactional directory replacement, retains one verified rollback copy and reopens the same project. Unix uses a fixed signal-0 process-existence probe because Godot's process API only tracks child PIDs, and a fixed positional-argument `exec` wrapper detaches closed installer pipes. Windows uses native Godot process APIs. This is never exposed as executable/argument/PID authority to the model.
 - Handoff snapshots the public active display backend (`DisplayServer.get_name()`), preserving headless relaunch even without an available desktop. Godot consumes `--headless` before returning `OS.get_cmdline_args()`, so command-line membership cannot determine this state. The independent restart fixture removes inherited X11/Wayland display variables and verifies the new editor's headless backend.
 - `res://.orca-update/` is import-isolated (`.gdignore`), Git-ignored and protected from agent reads/search/mutations/dependencies/script references. Its bounded ownership, lock, transaction and result records preserve recovery information. Verified rollback is explicit; a retained standalone launcher can restore the original even if the addon directory is absent. Modified/unknown bytes and locks are preserved for manual review.
-- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.4.1 is published after complete CI; this source checkout has unreleased additions requiring fresh acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
+- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox; its updater editor case uses `run_editor_test.py` in the isolated normal-editor lifecycle. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.5.0 is published after complete CI; this source checkout prepares 1.6.0 and requires fresh final-version acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
 - Release preparation retains all four native build/real-test jobs from the selected tag, but packaging now uses `--require-platform-helpers --helper-assets <directory>` to emit a **binary-free** plugin ZIP/checksum plus four separate raw helper assets. The generated `native_helpers.json` pins those exact bytes to the plugin version; the unchanged updater manifest records it as an ordinary non-executable addon file. Known helper build products are excluded from the ZIP; unexpected ELF/PE/Mach-O or compiled-library filenames elsewhere are refused. Native workflow outputs are `orca-package`, `orca-native-release-assets` and a local-preparation tar.gz. Publication attaches the ZIP/checksum and matching raw helpers; downloading Actions artifacts never publishes them. Compiled helpers are Git-ignored/export-excluded and the formerly tracked Linux executable is removed. Explicit `--write-manifest` writes both catalog and update manifest into source; source snapshots must match the accepted ZIP and separately published helpers. A pinned source catalog cannot silently change during a rebuild. Workflow permissions/publication ownership remain unchanged. Exact steps are in `docs/UPDATES.md`.
 - The package artifact explicitly includes hidden files for its narrowly scoped `.ci/orca-v*.zip*` upload pattern; otherwise Actions excludes the hidden `.ci` directory during wildcard discovery, even after successful packaging. All four native build/vault/protocol/locking/cross-Godot-process jobs passed in [Tests run #42](https://github.com/cold-atom/Orca/actions/runs/40904709816); its aggregate upload and display-free updater test exposed these two subsequent failures. A new complete CI run and downloaded-package/platform updater acceptance remain required.
 - Release publication supplies an explicit **Full Changelog** link to `CHANGELOG.md` at the selected release tag. The changelog must be finalized before tagging; the version-bound link stays stable as the default branch advances.
@@ -235,7 +248,7 @@ Image model-switch regressions additionally exercise repeated text/vision transi
 
 Work is the default. Mode switching is blocked while a turn or edit approval is active. Its internal enum remains `BUILD` for session compatibility. Work allows immediate run/stop external operations; project-file changes use the separate runtime edit-authorization policy.
 
-#### Session and remembered project edit authorization (Unreleased)
+#### Session and remembered project edit authorization (1.6.0 candidate)
 
 - **Review edits** remains the default. The floating Review edits chip is now limited to an empty review-state chat for discoverability. Selecting Auto apply or displaying any conversation/status content replaces it with a small native edit icon beside ORCA in the existing header row: green for active Auto apply and muted for Review edits/paused state. A 24px editor-scaled hit target, bounded 14px icon artwork, flat idle surface, hover/focus treatment and 4px title-group gap keep it compact without adding a row or covering response text, diffs or the scrollbar. Both surfaces share the same guarded action, tooltip and accessible state; the header remains revocable during active requests while Settings/mode controls are locked. New Session/restoration refresh the appropriate presentation, and both controls hide with the main view during Settings/History navigation. The empty-state chip retains its input-transparent, zero-minimum overlay host and bounded caption sizing. Explicit confirmation can enable **Auto apply** in idle Work or while one exact eligible script proposal is suspended. The confirmation uses an explicitly sized, owner/display-bounded window with a scrollable non-fit-content explanation and fixed native Cancel/Allow edits actions, avoiding first-open wrapped-label minimum-size expansion. Pending confirmation binds session ID, turn/proposal identity and permission revision; opening/dismissing the dialog, stale outcomes, conversation text, guidance and provider readiness cannot grant permission.
 - The runtime grant is memory-only and bound to the current project/session. The confirmation's unchecked **Remember for this project** option retains session-only behavior. Explicitly checking it saves a separate local EditorSettings record under `orca/script_edits/projects/<sha256(exact-project-root)>`, with strict version/root/boolean/random-revision validation. It is outside `res://`, project metadata, provider profiles and conversation/recovery data. Missing/malformed/other-root preferences default to Review edits; there is no global/cross-project default. Godot's normal EditorSettings lifecycle persists the choice across clean editor restarts.
@@ -1157,7 +1170,7 @@ entry points pending a separate migration.
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
 - BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata remains the published 1.5.0 baseline; current Auto apply/recovery work is unreleased and requires fresh CI/package acceptance before a next release. The owner reports successful live project/model/helper/browser flows in their environment. Asset Store moderation, broader platform/graphical acceptance and third-party asset attribution records remain separate. Historical milestones retain their original verification state.
+- Plugin metadata identifies the 1.6.0 Auto Apply & Script Recovery candidate; 1.5.0 remains the latest published release. The pre-bump `1851544` complete Tests run passed, but final-version CI/package and real-model Auto apply acceptance remain required. Prior owner feedback covers live 1.5.0 project/model/helper/browser flows. Asset Store moderation, broader platform/graphical acceptance and third-party asset attribution records remain separate. Historical milestones retain their original verification state.
 
 ## Roadmap
 
@@ -1175,7 +1188,7 @@ entry points pending a separate migration.
 - Broaden current structural, value, script, instance, and signal contracts only through dedicated safety review.
 - Expand structured Godot scene operations and add further settings only through dedicated risk review.
 - Expand reflected Godot API metadata only where public stable APIs provide trustworthy additional detail; prose scraping remains excluded.
-- Saved lexical project symbol lookup and reference-candidate search are implemented for the prepared 1.5.0 candidate. Expand toward semantic ownership, inheritance/reference resolution and reusable indexing only with concrete bounded invalidation contracts.
+- Saved lexical project symbol lookup and reference-candidate search are published in 1.5.0. Expand toward semantic ownership, inheritance/reference resolution and reusable indexing only with concrete bounded invalidation contracts.
 - Add progressive tool-schema disclosure only after provider compatibility, context budgeting, restoration, and deterministic tool-availability behavior are designed and tested.
 - Expand semantic validation beyond the structured scene path to remaining raw `.tscn` and `.tres` patch proposals.
 - Expand verification beyond text/process evidence only when a bounded visual or input-observation capability exists.
@@ -1274,6 +1287,13 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-05: Orca 1.6.0 release-candidate preparation
+
+- Owner selected **1.6.0 — Auto Apply & Script Recovery** for the implemented automatic-script editing, explicitly remembered project preference and durable recovery workflow. Updated `plugin.cfg`, About/support expectations, dated candidate changelog and current README/addon/product/security/development/testing/update guidance. Corrected superseded permission-UI wording; 1.5.0 remains the latest published release.
+- Added updater coverage for direct 1.6.0 upgrades from 1.3.0/1.4.0/1.4.1/1.5.0, exact official ZIP naming, same-version suppression and no downgrade to 1.5.0. Historical package/catalog fixtures retain their original versions. Release preparation now runs the migrated updater tool Node through the existing isolated normal-editor runner, matching Tests.
+- Verification on Godot 4.7.2: clean headless editor/plugin initialization; `settings_view`, `support_diagnostic_report`, `update_service` and `native_helper_service` components; seven updater/package, eight native-packaging and five editor-runner Python tests, without skips; full headless Auto apply and five-process remembered-default editor cases; updater editor case headlessly and Linux/X11/OpenGL. Editor runs exit cleanly with zero errors/warnings. The updater package suite validates the actual 1.6.0 addon and exercises historical install/rollback/relaunch. Actionlint 1.7.12 for the release workflow and diff/artifact hygiene pass.
+- All checks suppress owner account restoration/update checks/helper downloads and use isolated project/XDG state where applicable, with temporary fixture roots under `/tmp/opencode`. Read-only GitHub inspection confirms the pre-bump `1851544` complete Tests/native/package run passed. Final-version full CI, same-revision four-platform assets/catalog/package acceptance and real-model Auto apply/remember/revoke/History/Revert remain required. No commit, push, tag, workflow dispatch, deployment or publication was performed; no source distribution manifest/catalog was generated from unaccepted assets.
 
 ### 2026-11-04: General Settings scrollbar regression and clean updater fixture
 

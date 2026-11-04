@@ -44,7 +44,13 @@ func _run() -> void:
 		check(feature.get("success", false) and feature.get("release", {}).get("version") == "1.5.0", "code-navigation release is newer than installed " + installed)
 		check(feature.get("release", {}).get("url") == Service.DOWNLOAD_ROOT + "v1.5.0/orca-v1.5.0.zip", "feature update must select its exact version-bound official ZIP")
 	check(Service.normalize_release(release("1.5.0"), "1.5.0").get("release", {"bad": true}).is_empty(), "installed feature release gives no same-version update")
-	check(Service.normalize_release(release("1.4.1"), "1.5.0").get("release", {"bad": true}).is_empty(), "latest published baseline must not downgrade a 1.5.0 candidate")
+	check(Service.normalize_release(release("1.4.1"), "1.5.0").get("release", {"bad": true}).is_empty(), "older packaging release must not downgrade installed code navigation")
+	for installed in ["1.3.0", "1.4.0", "1.4.1", "1.5.0"]:
+		var automatic_edits := Service.normalize_release(release("1.6.0"), installed)
+		check(automatic_edits.get("success", false) and automatic_edits.get("release", {}).get("version") == "1.6.0", "Auto apply release is newer than installed " + installed)
+		check(automatic_edits.get("release", {}).get("url") == Service.DOWNLOAD_ROOT + "v1.6.0/orca-v1.6.0.zip", "Auto apply update must select its exact version-bound official ZIP")
+	check(Service.normalize_release(release("1.6.0"), "1.6.0").get("release", {"bad": true}).is_empty(), "installed Auto apply release gives no same-version update")
+	check(Service.normalize_release(release("1.5.0"), "1.6.0").get("release", {"bad": true}).is_empty(), "latest published baseline must not downgrade a 1.6.0 candidate")
 	check(Service.normalize_release(release("1.3.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "same version gives no update")
 	check(Service.normalize_release(release("1.2.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "older release never downgrades")
 	for field in ["draft", "prerelease"]:

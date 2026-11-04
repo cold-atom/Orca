@@ -2,15 +2,21 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory develops beyond published Orca 1.5.0 for Godot 4.7.2,
-adding session-authorized script edits and durable recovery (unreleased).
+This directory prepares **Orca 1.6.0 — Auto Apply & Script Recovery** for Godot
+4.7.2, adding session-authorized script edits, an optional remembered project
+preference and durable recovery. It is a release candidate, not yet published;
+1.5.0 remains the latest published release.
 Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
 platform's credential helper from the matching official GitHub Release if missing.
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
 usable. Complete 1.5.0 CI/native packaging and GitHub publication passed. The owner
 reports working live model/project/helper/browser flows in their environment;
-broader platform acceptance and Asset Store moderation remain separate. See the
+broader platform acceptance and Asset Store moderation remain separate. The
+pre-bump `1851544` complete Tests run passed; final-version CI/package and
+real-model Auto apply acceptance remain required. See the
+[1.6.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#160---2026-11-05)
+for this candidate, the
 [1.5.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#150---2026-11-02)
 for code navigation and the
 [1.4.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#140---2026-10-29)
@@ -48,7 +54,7 @@ draft automatically. Existing configured users retain the normal chat empty stat
 
 Review recorded changes and use source control. Orca does not replace code review, backups, or project testing.
 
-## Session Script Editing (Unreleased)
+## Auto Apply & Script Recovery (1.6.0)
 
 Click **Review edits** in an empty chat, or the small edit icon beside **ORCA** in an existing conversation, and confirm
 **Allow edits**, in idle Work or while reviewing an eligible script. Orca will

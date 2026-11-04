@@ -11,14 +11,19 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-This checkout develops beyond published **Orca 1.5.0** for **Godot 4.7.2**, adding
-session-authorized automatic script edits and durable recovery (unreleased). See
+This checkout prepares **Orca 1.6.0 — Auto Apply & Script Recovery** for **Godot
+4.7.2**, adding session-authorized automatic script edits, an optional remembered
+project preference and durable recovery. It is a release candidate, not yet
+published; 1.5.0 remains the latest release. See
+[1.6.0](CHANGELOG.md#160---2026-11-05) for this candidate,
 [1.5.0](CHANGELOG.md#150---2026-11-02) for saved project code navigation and
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
 Complete 1.5.0 CI/package acceptance and GitHub publication passed. The owner
 reports working live model/project/helper/browser flows in their environment;
-new development needs fresh CI and broader platform/Store acceptance remains separate.
+the pre-bump `1851544` complete Tests run also passed. The 1.6.0 candidate needs
+fresh final-version CI/package and real-model Auto apply acceptance; broader
+platform/Store acceptance remains separate.
 
 ### Key Features & Components
 1. **Editor Integration (`orca.gd`, `orca.tscn`, `chat_window.tscn`)**

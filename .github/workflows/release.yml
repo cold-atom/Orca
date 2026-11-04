@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing stable tag matching plugin.cfg (e.g. v1.5.0)
+        description: Existing stable tag matching plugin.cfg (e.g. v1.6.0)
         required: true
         type: string
       publish:
@@ -54,7 +54,7 @@ jobs:
         run: |
           "$GODOT_BIN" --headless --editor --path . --quit
           "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/update_editor_test.gd
+          python3 tests/run_editor_test.py update_editor_test.gd
           python3 -m unittest discover -s tests -p update_package_test.py
           python3 -m unittest discover -s tests -p native_helper_packaging_test.py
           "$GODOT_BIN" --headless --path . --script res://tests/native_helper_service_test.gd

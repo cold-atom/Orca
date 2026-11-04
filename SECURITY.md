@@ -2,7 +2,8 @@
 
 ## Supported Version
 
-Security work covers published Orca 1.5.0 and current unreleased development.
+Security work covers published Orca 1.5.0 and the Orca 1.6.0 Auto Apply & Script
+Recovery release candidate. Version 1.6.0 is not yet published.
 The published release adds saved-code navigation with binary-free packaging.
 Current development adds bounded session-authorized script editing and recovery;
 it requires fresh CI/package acceptance before a next release. Asset Store

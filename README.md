@@ -63,7 +63,7 @@ Orca can work with Godot concepts instead of treating the project as an unstruct
 Orca separates exploration from mutation:
 
 - **Plan mode** is read-only for project and external state.
-- **Work mode** defaults to **Review edits**, with Apply/Reject decisions. Current development also provides **Auto apply** for bounded project scripts, optionally remembered for the current project; scene/configuration changes retain review.
+- **Work mode** defaults to **Review edits**, with Apply/Reject decisions. The 1.6.0 candidate also provides **Auto apply** for bounded project scripts, optionally remembered for the current project; scene/configuration changes retain review.
 - When implementation is requested during a Plan turn, Orca can ask once to switch modes. It waits for an explicit **Stay in Plan** or **Switch to Work** decision and never treats that decision as approval for a file change.
 - File proposals are hash-bound, validated, checked for stale or unsaved state, shown as a diff, and guarded against overwriting newer work.
 - Applied proposals have conflict-checked Revert. Automatic script edits also retain durable local checkpoints for review/recovery after restart; manual and structured checkpoints remain in memory.
@@ -82,7 +82,12 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
-## Unreleased: Automatic Script Edits
+## What's New In 1.6.0: Auto Apply & Script Recovery
+
+**Orca 1.6.0** for **Godot 4.7.2** is a release candidate, not yet published.
+It adds automatic script editing, an optional remembered project preference and
+durable recovery to the published 1.5.0 baseline. See the
+[1.6.0 changelog entry](CHANGELOG.md#160---2026-11-05).
 
 In Work mode, click **Review edits** in the empty chat, or the small edit icon beside
 **ORCA** in an existing conversation, and confirm **Allow edits**. You can do this before starting a task or while reviewing
@@ -113,7 +118,9 @@ records offer **Check recovery** without replaying the edit. Recovery is bounded
 8000 lines. Its plaintext local source is deleted with the conversation. Stop
 prevents further actions and keeps completed edits; Revert is a separate action.
 
-These additions are development work and are not in the published 1.5.0 ZIP.
+These additions are not in the published 1.5.0 ZIP. Final-version CI, exact
+four-platform package acceptance and real-model Auto apply acceptance remain
+required before publishing `orca-v1.6.0.zip` and its matching helper assets.
 
 ## What's New In 1.5.0
 
@@ -329,8 +336,8 @@ See [SECURITY.md](SECURITY.md) for the complete security and operational model.
 
 ## Current Limits
 
-- Orca 1.5.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
-- Published 1.5.0 CI/native/package checks passed. The owner reports working live model/project/helper/browser flows in their tested environment; broader graphical/platform coverage remains separate. Unreleased changes require fresh CI before publication.
+- Orca 1.6.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
+- The pre-bump `1851544` complete Tests run passed, including editor/transport checks, all four native-helper platforms and binary-free packaging. The 1.6.0 candidate requires fresh final-version CI/package acceptance and real-model Auto apply checks before publication. Prior owner feedback covers live 1.5.0 model/project/helper/browser flows, not the new editing workflow or an exhaustive platform matrix.
 - Native attachment drops were verified on Linux/X11/Vulkan; other platforms/renderers and detached editor windows need acceptance testing.
 - Runtime verification uses bounded process output and predeclared startup or exit criteria. It cannot prove visual or gameplay correctness.
 - Pending approvals and manual/structured revert checkpoints do not survive restart. Bounded automatic-script checkpoints support explicit historical review/recovery.
@@ -343,8 +350,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the full architecture, tool contracts, 
 
 ## Project Status
 
-This checkout develops beyond the published **Orca 1.5.0** baseline for
-**Godot 4.7.2**. Session Auto apply/recovery additions are unreleased, and
+This checkout prepares **Orca 1.6.0 — Auto Apply & Script Recovery** for
+**Godot 4.7.2**. It is not yet published; **Orca 1.5.0** remains the latest release.
 Godot Asset Store moderation remains an owner check.
 Orca is a functional development-stage agent
 with permanent automated tests and CI, but it is still evolving. Review proposals
