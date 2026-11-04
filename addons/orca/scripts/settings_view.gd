@@ -199,9 +199,10 @@ func _build_ui() -> void:
 	add_theme_stylebox_override("panel", background)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", UiMetrics.scaled_int(14))
+	# Reserve room for the scrollbar and full action captions in narrow docks.
+	margin.add_theme_constant_override("margin_left", UiMetrics.scaled_int(7))
 	margin.add_theme_constant_override("margin_top", UiMetrics.scaled_int(12))
-	margin.add_theme_constant_override("margin_right", UiMetrics.scaled_int(14))
+	margin.add_theme_constant_override("margin_right", UiMetrics.scaled_int(7))
 	margin.add_theme_constant_override("margin_bottom", UiMetrics.scaled_int(12))
 	add_child(margin)
 	var root := VBoxContainer.new()

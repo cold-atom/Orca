@@ -18,6 +18,7 @@ CASES = {
     "auto_apply_editor_test.gd": ["auto_apply_test.gd"],
     "editor_ui_scale_test.gd": ["fixtures/gdscript_function_reader_fixture.gd"],
     "remembered_edit_editor_test.gd": ["auto_apply_test.gd"],
+    "update_editor_test.gd": [],
 }
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 DIAGNOSTIC = re.compile(r"(?m)^(?:ERROR:|SCRIPT ERROR:|WARNING:|handle_crash:)")
@@ -146,7 +147,11 @@ def main() -> int:
         command = [*common, *display]
         if args.ui_only:
             command += ["--", "--ui-only"]
-        marker = "auto_apply_editor_test: 0 failures" if args.case == "auto_apply_editor_test.gd" else "editor_ui_scale_test: PASS"
+        marker = {
+            "auto_apply_editor_test.gd": "auto_apply_editor_test: 0 failures",
+            "editor_ui_scale_test.gd": "editor_ui_scale_test: PASS",
+            "update_editor_test.gd": "Update editor: PASS",
+        }[args.case]
         if not execute(command, env, marker):
             return 1
         print(f"run_editor_test: PASS {args.case} ({'X11/OpenGL' if args.graphical else 'headless'}; clean exit)")

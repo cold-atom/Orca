@@ -103,7 +103,7 @@ jobs:
           python3 tests/run_editor_test.py editor_ui_scale_test.gd
           python3 tests/run_editor_test.py auto_apply_editor_test.gd
           python3 tests/run_editor_test.py remembered_edit_editor_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/update_editor_test.gd
+          python3 tests/run_editor_test.py update_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_scene_inspector_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/diagnostics_editor_integration_test.gd

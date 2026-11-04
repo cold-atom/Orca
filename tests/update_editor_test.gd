@@ -1,9 +1,11 @@
-extends SceneTree
+@tool
+extends "res://tests/editor_test_case.gd"
 
 const Service = preload("res://addons/orca/scripts/update_service.gd")
 const UpdatePanel = preload("res://addons/orca/scripts/update_panel.gd")
 const Package = preload("res://addons/orca/scripts/update_package.gd")
 const SettingsView = preload("res://addons/orca/scripts/settings_view.gd")
+const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 var failures := 0
 
 class FixtureService:
@@ -70,14 +72,14 @@ func _run() -> void:
 		panel.service = service
 		panel.compact = compact
 		panel.position = Vector2(0, 0)
-		panel.size = Vector2(280, 350)
+		panel.size = UiMetrics.scaled_vector(Vector2(280, 350))
 		root.add_child(panel)
 		var browser := {"url": ""}
 		panel.browser_opener = func(url: String): browser["url"] = url
 		for frame in 4:
 			await process_frame
 		check(panel.visible and not panel.install_button.disabled, "update notice/General Settings action visible")
-		check(panel.get_combined_minimum_size().x <= 280, "update controls fit narrow dock")
+		check(panel.get_combined_minimum_size().x <= UiMetrics.scaled(280), "update controls fit narrow dock")
 		_assert_action_labels(panel)
 		panel.notes_button.pressed.emit()
 		check(browser["url"] == Service.RELEASES + "/tag/v1.4.0", "release notes action opens the official version page")
@@ -109,7 +111,7 @@ func _run() -> void:
 				control.add_theme_font_size_override("font_size", roundi(normal_font * multiplier))
 			for frame in 3:
 				await process_frame
-			check(panel.get_combined_minimum_size().x <= 280, "larger update fonts remain within narrow dock")
+			check(panel.get_combined_minimum_size().x <= UiMetrics.scaled(280), "larger update fonts remain within narrow dock")
 			_assert_action_labels(panel)
 		service.state = "downloading"
 		service.changed.emit()
@@ -163,7 +165,8 @@ func _test_general_settings(service) -> void:
 	view.update_service = service
 	root.add_child(view)
 	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	view.size = Vector2(300, 850)
+	var narrow_width := UiMetrics.scaled(300)
+	view.size = UiMetrics.scaled_vector(Vector2(300, 850))
 	view.system_tab_button.pressed.emit()
 	for frame in 4:
 		await process_frame
@@ -190,11 +193,18 @@ func _test_general_settings(service) -> void:
 	for multiplier in [1.0, 1.5, 2.0]:
 		for control in [panel.title_label, panel.status_label, panel.install_button, panel.check_button, panel.notes_button, panel.cancel_button, panel.dismiss_button, panel.automatic_toggle]:
 			control.add_theme_font_size_override("font_size", roundi(normal_font * multiplier))
-		for frame in 4:
-			await process_frame
-		check(view.get_combined_minimum_size().x <= 300, "General Settings fits a narrow dock with larger fonts: %.1fx, minimum %.0fpx" % [multiplier, view.get_combined_minimum_size().x])
-		check(panel.get_global_rect().position.y >= view.language_selector.get_global_rect().end.y, "update card stays below Language after layout")
-		_assert_action_labels(panel)
+		for height in [850, 600]:
+			view.size = UiMetrics.scaled_vector(Vector2(300, height))
+			for frame in 4:
+				await process_frame
+			check(view.get_combined_minimum_size().x <= narrow_width and view.size.x <= narrow_width, "General Settings fits a narrow dock with larger fonts: %.1fx, height %d units, minimum %.0fpx, width %.0fpx" % [multiplier, height, view.get_combined_minimum_size().x, narrow_width])
+			var scrollbar: VScrollBar = view.system_scroll.get_v_scroll_bar()
+			if height == 600:
+				check(scrollbar.visible, "short General Settings fixture exercises vertical scrolling")
+			if scrollbar.visible:
+				check(panel.get_global_rect().end.x <= scrollbar.get_global_rect().position.x + 1, "update card fits beside the General Settings scrollbar")
+			check(panel.get_global_rect().position.y >= view.script_edit_default_selector.get_global_rect().end.y, "update card stays below Script edits after layout")
+			_assert_action_labels(panel)
 	view.free()
 
 

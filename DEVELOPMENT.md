@@ -97,8 +97,9 @@ The plugin has public GitHub releases and remains a functional development-stage
 
 #### Plugin updates (1.4.0)
 
-- One plugin-owned `update_service.gd` supplies a dismissible dock notice and General Settings check/version/release/progress/cancel/automatic-check/rollback controls through `update_panel.gd`. The settings card is created once below Language; About retains its installed-version/product/links/support content. Public unauthenticated GitHub metadata is checked at most daily and cached only after bounded exact official stable-asset normalization. Updating requires no Orca account and is user-owned maintenance, never a model tool.
+- One plugin-owned `update_service.gd` supplies a dismissible dock notice and General Settings check/version/release/progress/cancel/automatic-check/rollback controls through `update_panel.gd`. The settings card is created once below Language and Script edits; About retains its installed-version/product/links/support content. Public unauthenticated GitHub metadata is checked at most daily and cached only after bounded exact official stable-asset normalization. Updating requires no Orca account and is user-owned maintenance, never a model tool.
 - Update action rows use natural caption minimum sizes so flow layout wraps labeled buttons instead of shrinking them to empty padding-only blocks. Full-width column actions retain clipping when needed. Editor regressions independently measure caption width and containment in both General Settings/up-to-date and available-update notice states, with normal/1.5×/2× fonts, and verify action wiring without opening a real browser or installing an update.
+- Settings uses 7-unit editor-scaled side padding to retain room for those full captions beside a vertical scrollbar. The complete General Settings page is checked at 300-unit width and both 850- and 600-unit heights, including the Script edits help text and visible scrollbar, rather than measuring the update card alone. The updater editor case runs through the isolated normal-editor runner with strict completion/exit/diagnostic checks.
 - `update_package.gd` verifies the official SHA-256 ZIP, bounded central/local headers and file spans before decompression, a strict version/Godot/file manifest, per-file hashes, native helper permissions and complete installed/staged/backup file sets. Local changes, unknown files, symlinks, stale hashes and unsafe/unsupported archives block installation. Read-only checks and staged extraction never load downloaded scripts. Primary hashing/extraction runs on a background thread.
 - Explicit confirmation precedes download/install. The current editor must have no dirty scenes/scripts, active Orca requests/approvals, game run, account transition or composer draft, and conversation saving must succeed before handoff. A project-scoped lock serializes cooperating updater instances. Other editors of the same project must be closed; public dirty-state checks cover only the current editor.
 - The trusted copied `update_runner.gd` runs under the current Godot executable in `res://.orca-update/runner/`, a private minimal project outside the loaded addon. It waits for the initiating editor's exit before transactional directory replacement, retains one verified rollback copy and reopens the same project. Unix uses a fixed signal-0 process-existence probe because Godot's process API only tracks child PIDs, and a fixed positional-argument `exec` wrapper detaches closed installer pipes. Windows uses native Godot process APIs. This is never exposed as executable/argument/PID authority to the model.
@@ -1028,7 +1029,8 @@ Expected result: project scan, plugin initialization, and editor layout complete
 
 ### Editor-Fixture Lifecycle And Native Crash Diagnosis (2026-11-04)
 
-`auto_apply_editor_test.gd` and `editor_ui_scale_test.gd` are now `@tool` Nodes
+`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`,
+`editor_ui_scale_test.gd` and `update_editor_test.gd` are now `@tool` Nodes
 derived from `editor_test_case.gd`, installed through a disposable test-only
 `editor_test_bootstrap.gd` EditorPlugin. `tests/run_editor_test.py` copies the actual
 addon plus the selected case/dependencies, performs initial import, and starts a
@@ -1054,7 +1056,7 @@ passes a raw EditorFileSystemDirectory pointer to the background documentation
 loader and recursively walks it. Rapid rescan/early shutdown can invalidate it.
 The same stack reproduced in a disposable large source project with Orca
 disabled; a one-script minimal editor exited normally. The focused normal-editor
-fixture lifecycle is corrected and both full cases now pass from fresh isolated
+fixture lifecycle is corrected and the migrated cases pass from fresh isolated
 state. Godot itself has not been patched: arbitrary large-project/early-quit
 documentation generation remains an upstream engine limitation, not accepted
 plugin-test coverage. Other legacy SceneTree editor cases retain their historical
@@ -1272,6 +1274,13 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-04: General Settings scrollbar regression and clean updater fixture
+
+- Reproduced the failure from commit `76b0916`: new Script edits help text activates vertical scrolling at 2× update fonts. A 271px update-card minimum, 28px outer padding and 14px scrollbar require 313px, exceeding the existing 300px dock limit. Reduced Settings side padding from 14 to 7 editor-scaled units, preserving full action captions and the original width limit.
+- Expanded General Settings coverage to both 850- and 600-unit heights, actual view width, visible-scrollbar clearance and update-card placement below Script edits. All layout targets use editor-scaled units so graphical HiDPI tests exercise the same dock geometry as headless CI.
+- Migrated `update_editor_test.gd` to the existing normal-editor Node/bootstrap/runner and changed its CI command. The original layout failure reproduced through that runner without RID/ObjectDB leaks, confirming the legacy `--editor --script` lifecycle caused the reported shutdown diagnostics. The corrected case exits cleanly with strict diagnostic gating.
+- Verification on Godot 4.7.2: five Python runner regressions; updater editor case headlessly and Linux/X11/OpenGL; headless UI-scale, Auto apply and five-process remembered-default editor cases; settings/updater components; clean headless editor/plugin initialization. All passed with startup suppression and isolated project/XDG state where applicable. Full hosted CI, other platforms/themes and live updater installation were not rerun for this layout/fixture correction.
 
 ### 2026-11-04: Unobstructed conversation with compact permission status
 

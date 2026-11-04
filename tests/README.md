@@ -6,7 +6,8 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
-`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd` and `editor_ui_scale_test.gd` extend the tool Node in
+`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `editor_ui_scale_test.gd`
+and `update_editor_test.gd` extend the tool Node in
 `editor_test_case.gd`. Run them through `run_editor_test.py`, which enables a
 test-only EditorPlugin in a disposable project and uses the editor's existing
 SceneTree. It imports the actual addon and only the selected case's dependencies,
@@ -24,6 +25,8 @@ python3 tests/run_editor_test.py remembered_edit_editor_test.gd
 python3 tests/run_editor_test.py remembered_edit_editor_test.gd --graphical
 python3 tests/run_editor_test.py editor_ui_scale_test.gd
 python3 tests/run_editor_test.py editor_ui_scale_test.gd --graphical
+python3 tests/run_editor_test.py update_editor_test.gd
+python3 tests/run_editor_test.py update_editor_test.gd --graphical
 ```
 
 Set `GODOT_BIN` to Godot 4.7.2; `--godot` and `--temp-parent` are optional.
@@ -186,7 +189,7 @@ live Agent-tool usefulness, light themes and additional native platforms.
 ```bash
 export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
 "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/update_editor_test.gd
+python3 tests/run_editor_test.py update_editor_test.gd
 python3 -m unittest discover -s tests -p update_package_test.py -v
 ```
 
@@ -194,11 +197,16 @@ The service fixture covers numeric stable versions, exact official asset/digest
 metadata, bounded CDN redirects, daily preferences, dismissal and stale/cancelled
 checks. The editor fixture uses actual dirty script/scene state and checks shared
 plugin ownership, user confirmation, active-request/approval/draft denial, progress
-and 280px layouts with 1.5×/2× fonts. Action-row checks also measure complete caption/padding fit and
+and 280-unit layouts with 1.5×/2× fonts. Action-row checks also measure complete caption/padding fit and
 panel containment independently of Button minimum-size settings, covering both
 up-to-date General Settings and available-update notices. Actual Settings navigation
-checks the single shared card below Language, its absence from About, and an active
-check surviving tab switches. Synthetic activation verifies manual
+checks the single shared card below Language and Script edits, its absence from
+About, and an active check surviving tab switches. General Settings remains within
+300 editor-scaled units at both 850- and 600-unit heights with normal/1.5×/2×
+fonts, including a visible vertical scrollbar. Assertions check actual view width,
+scrollbar clearance and full action captions after deferred layout. The normal-editor
+runner isolates project/XDG state and rejects shutdown errors/warnings as well as
+assertion failures. Synthetic activation verifies manual
 checking, cancellation, official release navigation, confirmation-before-install,
 and Later dismissal without real browser or installation side effects.
 
