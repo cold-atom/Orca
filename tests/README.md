@@ -6,7 +6,7 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
-`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `editor_ui_scale_test.gd`, `localization_editor_test.gd`
+`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `editor_ui_scale_test.gd`, `localization_editor_test.gd`, `project_inspection_editor_test.gd`
 and `update_editor_test.gd` extend the tool Node in
 `editor_test_case.gd`. Run them through `run_editor_test.py`, which enables a
 test-only EditorPlugin in a disposable project and uses the editor's existing
@@ -29,6 +29,8 @@ python3 tests/run_editor_test.py update_editor_test.gd
 python3 tests/run_editor_test.py update_editor_test.gd --graphical
 python3 tests/run_editor_test.py localization_editor_test.gd
 python3 tests/run_editor_test.py localization_editor_test.gd --graphical
+python3 tests/run_editor_test.py project_inspection_editor_test.gd
+python3 tests/run_editor_test.py project_inspection_editor_test.gd --graphical
 ```
 
 Set `GODOT_BIN` to Godot 4.7.2; `--godot` and `--temp-parent` are optional.
@@ -36,6 +38,31 @@ The graphical path is Linux/X11/OpenGL. This runner currently supports Linux
 isolation; it does not claim Windows/macOS fixture acceptance. Do not launch
 these Node cases with `--editor --script`. Other legacy editor cases below
 retain their existing entry points until separately migrated.
+
+## Focused Godot inspection (unreleased)
+
+Run `scene_inspector_test.gd`, `animation_inspector_test.gd`, `tools_test.gd`,
+`agent_controller_test.gd`, `account_service_test.gd`, `tool_activity_group_test.gd`,
+`chat_window_test.gd` and `session_store_test.gd` with the ordinary headless entry
+point and all three startup suppressions. The new animation case verifies actual
+Godot-generated 3D/Bezier/blend-shape formats, typed/time-filtered keys, script
+static-initializer isolation, dirty/protected/malformed input and unchanged bytes.
+Scene tests cover exact nodes beyond the original result window and subtree/filter/
+connection scope; directory tests exercise companion/orphan listings and entry/output
+bounds. Controller/account checks cover matching success/failure/multi-call receipts,
+cancellation and strict turn-fixed Cloud advertisement with legacy schemas.
+
+`python3 tests/run_editor_test.py project_inspection_editor_test.gd` runs a normal
+isolated editor: actual Inspector versus node selection, native getter isolation,
+protected embedded owners, actual dirty-scene denial, fixed-turn Inspector context
+and cancellation cleanup, native per-match actions and historical clearing, plus
+300-unit search/animation activity at all five languages and 1×/1.5×/2× fonts.
+The graphical variant uses the same checks through Linux/X11/OpenGL. Existing
+localization and auto-apply/editor-scale cases verify draft/review/grant preservation.
+The separately authorized backend fixture adds a real fragmented-SSE three-tool
+scene/animation/listing round trip with private continuation and matching results.
+Real-model competence/token savings, additional themes/platforms, and hosted
+deployment/catalog refresh remain separate acceptance.
 
 ## Interface localization (unreleased)
 

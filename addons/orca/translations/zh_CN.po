@@ -705,6 +705,15 @@ msgstr "搜索项目"
 msgid "Inspect scene"
 msgstr "检查场景"
 
+msgid "Inspect animation"
+msgstr "检查动画"
+
+msgid "%d result(s)%s"
+msgstr "%d 项结果%s"
+
+msgid " · Incomplete"
+msgstr " · 不完整"
+
 msgid "Inspect scenes"
 msgstr "检查场景"
 

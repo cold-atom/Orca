@@ -41,6 +41,7 @@ func _run() -> void:
 	_expect(DirAccess.make_dir_recursive_absolute(fixture_absolute) == OK, "fixture directory should be created")
 	_test_tool_permissions()
 	_test_read_only_intelligence_tools()
+	_test_bounded_directory()
 	_test_task_tool()
 	_test_path_boundaries()
 	_test_symlink_boundary(fixture_absolute)
@@ -199,6 +200,24 @@ func _test_task_tool() -> void:
 	_expect(not Tools.execute_tool("update_tasks", {"tasks": too_many}).get("success", true), "task count should be bounded")
 	var cleared: Dictionary = Tools.execute_tool("update_tasks", {"tasks": []})
 	_expect(cleared.get("success", false) and cleared.get("data", {}).get("tasks", []).is_empty(), "an empty task list should clear the checklist")
+
+
+func _test_bounded_directory() -> void:
+	var path := _fixture_path.path_join("listing")
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path))
+	for name in ["z.gd", "z.gd.uid", "a.png", "a.png.import", "orphan.gd.uid"]: _write(path.path_join(name), "fixture\n")
+	var result := Tools.execute_tool("list_directory", {"path": path})
+	_expect(result.get("success", false) and result["data"]["sidecars_omitted"] == 2, "companion files fold only when their owner is enumerated")
+	_expect(result["content"].contains("orphan.gd.uid") and not result["content"].contains("- z.gd.uid"), "orphan sidecars remain visible")
+	_expect(result["content"].find("- a.png") < result["content"].find("- z.gd"), "directory result entries are sorted")
+	var full := Tools.execute_tool("list_directory", {"path": path, "include_sidecars": true})
+	_expect(full["content"].contains("- z.gd.uid") and full["data"]["sidecars_omitted"] == 0, "explicit include_sidecars restores companion listing")
+	for args in [{"path": 4}, {"path": path, "include_sidecars": "yes"}, {"path": path, "source": "unknown"}]:
+		_expect(not Tools.execute_tool("list_directory", args).get("success", true), "directory validation rejects malformed and unknown fields")
+	for index in range(Tools.MAX_DIRECTORY_ENTRIES + 10): _write(path.path_join("entry_%04d.txt" % index), "x")
+	var large := Tools.execute_tool("list_directory", {"path": path})
+	_expect(large["data"]["truncated"] and large["data"]["entries_scanned"] <= Tools.MAX_DIRECTORY_ENTRIES, "wide directory scans obey entry/time bounds and disclose incomplete coverage")
+	_expect(large["content"].to_utf8_buffer().size() <= Tools.MAX_DIRECTORY_OUTPUT_BYTES, "directory output obeys its independent byte cap")
 
 
 func _test_path_boundaries() -> void:

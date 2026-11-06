@@ -3,6 +3,8 @@ extends RefCounted
 
 const MAX_SELECTION_CHARS := 12000
 const CONTEXT_RADIUS := 30
+const EditorSceneInspector = preload("res://addons/orca/scripts/editor_scene_inspector.gd")
+const DependencyInspector = preload("res://addons/orca/scripts/dependency_inspector.gd")
 
 
 static func capture() -> Dictionary:
@@ -18,6 +20,8 @@ static func capture() -> Dictionary:
 		"unsaved_scenes": Array(EditorInterface.get_unsaved_scenes())
 	}
 	var scene_root := EditorInterface.get_edited_scene_root()
+	var inspector := EditorInterface.get_inspector()
+	context["inspector_target"] = inspector_target(inspector.get_edited_object() if inspector != null else null, scene_root)
 	if scene_root != null:
 		context["active_scene"] = {
 			"name": str(scene_root.name),
@@ -63,6 +67,29 @@ static func capture() -> Dictionary:
 		context["active_script"] = script_context
 
 	return context
+
+
+static func inspector_target(target: Object, scene_root: Node) -> Dictionary:
+	if not is_instance_valid(target): return {"available": false, "storage": "none"}
+	if ClassDB.class_get_api_type(target.get_class()) != ClassDB.API_CORE:
+		return {"available": false, "storage": "unsupported_native_extension"}
+	if target is Resource:
+		var reference := EditorSceneInspector._resource_reference(target, _inspector_path_error)
+		if reference.get("available", false):
+			reference["name"] = str(ClassDB.class_get_property(target, "resource_name")).left(128)
+			reference["source"] = "editor_inspector_identity"
+		return reference
+	if target is Node:
+		if not is_instance_valid(scene_root) or not EditorSceneInspector._branch_accessible(scene_root, target, _inspector_path_error):
+			return {"available": false, "storage": "outside_current_scene"}
+		var path := EditorSceneInspector._relative_path(scene_root, target)
+		if path.is_empty(): return {"available": false, "storage": "path_limit"}
+		return {"available": true, "source": "editor_inspector_identity", "storage": "scene_node", "class": target.get_class(), "path": path, "name": str(ClassDB.class_get_property(target, "name")).left(128)}
+	return {"available": true, "source": "editor_inspector_identity", "storage": "object_identity", "class": target.get_class()}
+
+
+static func _inspector_path_error(path: String, _for_writing: bool) -> String:
+	return DependencyInspector._validate_project_file(path)
 
 
 static func format_for_model(context: Dictionary) -> String:
@@ -113,6 +140,9 @@ static func open_file(filepath: String, line: int = 1, column: int = 1) -> bool:
 		return true
 	if filepath.get_extension().to_lower() == "tscn":
 		EditorInterface.open_scene_from_path(filepath)
+		return true
+	if filepath.get_extension().to_lower() not in ResourceLoader.get_recognized_extensions_for_type(""):
+		EditorInterface.select_file(filepath)
 		return true
 	var resource := ResourceLoader.load(filepath)
 	if resource != null:

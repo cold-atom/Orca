@@ -18,6 +18,7 @@ const GodotApiInspector = preload("res://addons/orca/scripts/godot_api_inspector
 const GDScriptFunctionReader = preload("res://addons/orca/scripts/gdscript_function_reader.gd")
 const DependencyInspector = preload("res://addons/orca/scripts/dependency_inspector.gd")
 const ProjectCodeNavigation = preload("res://addons/orca/scripts/project_code_navigation.gd")
+const AnimationInspector = preload("res://addons/orca/scripts/animation_inspector.gd")
 
 const MAX_READ_FILE_BYTES := 2 * 1024 * 1024
 const MAX_READ_LINES := 400
@@ -28,6 +29,9 @@ const MAX_SEARCH_RESULTS := 200
 const SEARCH_TIMEOUT_MS := 2500
 const MAX_SCENE_FILE_BYTES := 2 * 1024 * 1024
 const MAX_WORK_MODE_REASON_CHARS := 240
+const MAX_DIRECTORY_ENTRIES := 512
+const MAX_DIRECTORY_OUTPUT_BYTES := 32 * 1024
+const DIRECTORY_TIMEOUT_MS := 100
 
 enum SafeWriteOutcome {
 	NOT_COMMITTED_FAILURE,
@@ -39,7 +43,7 @@ enum SafeWriteOutcome {
 static var _replacement_test_faults := {}
 static var _replacement_test_write_index := 0
 
-static func get_tool_definitions(include_edit_tools: bool = true, include_work_mode_request: bool = false) -> Array:
+static func get_tool_definitions(include_edit_tools: bool = true, include_work_mode_request: bool = false, include_focused_inspection: bool = true) -> Array:
 	var definitions := [
 		{
 			"type": "function",
@@ -105,7 +109,7 @@ static func get_tool_definitions(include_edit_tools: bool = true, include_work_m
 			"type": "function",
 			"function": {
 				"name": "get_editor_context",
-				"description": "Returns the active Godot scene, selected nodes, current script, caret, selected code, and open editor state.",
+				"description": "Returns the active Godot scene, selected nodes, current script, caret, selected code, open editor state, and bounded Inspector-target identity (which may differ from selection).",
 				"parameters": {"type": "object", "properties": {}}
 			}
 		},
@@ -300,6 +304,35 @@ static func get_tool_definitions(include_edit_tools: bool = true, include_work_m
 			}
 		}
 	]
+	if include_focused_inspection:
+		for definition in definitions:
+			var function: Dictionary = definition["function"]
+			if function["name"] == "inspect_scene":
+				function["description"] += " Use scope node/subtree with an exact node_path for focused saved properties and touching connections. property_filter narrows names; max_depth bounds descendants. Instanced children remain collapsed."
+				function["parameters"]["properties"].merge({
+					"scope": {"type": "string", "enum": SceneInspector.SCOPES},
+					"node_path": {"type": "string", "maxLength": SceneInspector.MAX_PATH_CHARS},
+					"property_filter": {"type": "string", "maxLength": 128},
+					"max_depth": {"type": "integer", "minimum": 0, "maximum": 16}
+				})
+				function["parameters"]["additionalProperties"] = false
+			if function["name"] == "list_directory":
+				function["description"] = "Lists bounded sorted project directories/files. Companion .uid/.import files are folded when their owner is present, with omission counts; orphan sidecars remain visible. include_sidecars reveals companions. Truncated enumeration is not exhaustive."
+				function["parameters"]["properties"]["include_sidecars"] = {"type": "boolean"}
+				function["parameters"]["additionalProperties"] = false
+		definitions.append({"type": "function", "function": {
+			"name": "inspect_animation",
+			"description": "Reads saved .tscn AnimationPlayer libraries and native animation data without loading scenes/scripts or playback. Omit animation_name for overview; select its exact qualified name and optional player_path to inspect tracks/keyframes. Narrow track_index/time range/max_keys. Targets describe serialized node evidence, not runtime or semantic property validity. Instanced/inherited players are not expanded; no patch hash.",
+			"parameters": {"type": "object", "additionalProperties": false, "required": ["scene_path"], "properties": {
+				"scene_path": {"type": "string", "maxLength": 512},
+				"player_path": {"type": "string", "maxLength": 512},
+				"animation_name": {"type": "string", "maxLength": 512},
+				"track_index": {"type": "integer", "minimum": 0, "maximum": 127},
+				"start_time": {"type": "number", "minimum": 0, "maximum": 1000000},
+				"end_time": {"type": "number", "minimum": 0, "maximum": 1000000},
+				"max_keys": {"type": "integer", "minimum": 1, "maximum": AnimationInspector.MAX_KEYS}
+			}}
+		}})
 	definitions.append({
 		"type": "function",
 		"function": {
@@ -504,8 +537,9 @@ static func get_tool_definitions(include_edit_tools: bool = true, include_work_m
 static func execute_tool(tool_name: String, arguments: Dictionary, game_process_service = null) -> Dictionary:
 	match tool_name:
 		"list_directory":
-			var path = arguments.get("path", "res://")
-			return _list_directory(path)
+			if not _only_arguments(arguments, ["path", "include_sidecars"]) or typeof(arguments.get("path", "res://")) != TYPE_STRING or (arguments.has("include_sidecars") and typeof(arguments["include_sidecars"]) != TYPE_BOOL):
+				return _tool_error("list_directory accepts string path and optional boolean include_sidecars.")
+			return _list_directory(arguments.get("path", "res://"), arguments.get("include_sidecars", false))
 		"read_file":
 			var filepath = arguments.get("filepath", "")
 			return _read_file(filepath, int(arguments.get("start_line", 1)), int(arguments.get("end_line", 0)))
@@ -575,6 +609,10 @@ static func execute_tool(tool_name: String, arguments: Dictionary, game_process_
 			var verdict: Dictionary = verification.get("verification", {})
 			return _tool_success(_format_game_verification(verdict), verdict)
 		"inspect_scene":
+			if not _only_arguments(arguments, ["scene_path", "include_properties", "max_nodes", "max_properties_per_node", "scope", "node_path", "property_filter", "max_depth"]):
+				return _tool_error("Unknown inspect_scene argument.")
+			var focus_error := SceneInspector.validate_focus(arguments)
+			if not focus_error.is_empty(): return _tool_error(focus_error)
 			if typeof(arguments.get("scene_path")) != TYPE_STRING:
 				return _tool_error("scene_path must be a string.")
 			if arguments.has("include_properties") and typeof(arguments["include_properties"]) != TYPE_BOOL:
@@ -587,8 +625,15 @@ static func execute_tool(tool_name: String, arguments: Dictionary, game_process_
 				arguments.get("scene_path", ""),
 				bool(arguments.get("include_properties", true)),
 				int(clampf(float(arguments.get("max_nodes", SceneInspector.MAX_NODES)), 1, SceneInspector.MAX_NODES)),
-				int(clampf(float(arguments.get("max_properties_per_node", SceneInspector.MAX_PROPERTIES_PER_NODE)), 0, SceneInspector.MAX_PROPERTIES_PER_NODE))
+				int(clampf(float(arguments.get("max_properties_per_node", SceneInspector.MAX_PROPERTIES_PER_NODE)), 0, SceneInspector.MAX_PROPERTIES_PER_NODE)),
+				arguments
 			)
+		"inspect_animation":
+			var dirty_paths := Array(EditorInterface.get_script_editor().get_unsaved_files()) + Array(EditorInterface.get_unsaved_scenes()) if Engine.is_editor_hint() else []
+			var inspection := AnimationInspector.inspect(arguments, _validate_path, dirty_paths)
+			if not inspection.get("success", false): return _tool_error(inspection.get("error", "Could not inspect saved animation data."))
+			var report: Dictionary = inspection["report"]
+			return _tool_success(inspection["content"], {"open_path": arguments["scene_path"], "open_line": 1, "truncated": report["truncation"]["truncated"]}, JSON.stringify(report))
 		"inspect_editor_scene":
 			var inspection := EditorSceneInspector.inspect(arguments, _validate_path)
 			if not inspection.get("success", false):
@@ -702,7 +747,7 @@ static func execute_tool(tool_name: String, arguments: Dictionary, game_process_
 			return _tool_error("Unknown tool function '" + tool_name + "'")
 
 
-static func _inspect_scene(filepath: String, include_properties: bool, max_nodes: int, max_properties_per_node: int) -> Dictionary:
+static func _inspect_scene(filepath: String, include_properties: bool, max_nodes: int, max_properties_per_node: int, focus: Dictionary = {}) -> Dictionary:
 	var validation_error := _validate_path(filepath, false)
 	if not validation_error.is_empty():
 		return _tool_error(validation_error)
@@ -720,9 +765,9 @@ static func _inspect_scene(filepath: String, include_properties: bool, max_nodes
 		return _tool_error("Scene exceeds the 2 MB inspection limit.")
 	if EditorContext.has_unsaved_file(canonical_path):
 		return _tool_error("The scene has unsaved editor changes. Save it before inspection so Orca does not report a stale disk snapshot.")
-	var inspection := SceneInspector.inspect(canonical_path, include_properties, max_nodes, max_properties_per_node)
+	var inspection := SceneInspector.inspect(canonical_path, include_properties, max_nodes, max_properties_per_node, focus)
 	if not inspection.get("success", false):
-		return _tool_error(str(inspection.get("error", "Could not inspect the scene.")))
+		return _tool_error(str(inspection.get("error", "Could not inspect the scene.")), {"truncated": inspection.get("truncated", false), "reasons": inspection.get("reasons", [])})
 	var report: Dictionary = inspection.get("report", {})
 	return _tool_success(str(inspection.get("content", "{}")), {
 		"open_path": canonical_path,
@@ -733,36 +778,60 @@ static func _inspect_scene(filepath: String, include_properties: bool, max_nodes
 		"truncated": bool(report.get("truncation", {}).get("truncated", false))
 	}, JSON.stringify(report))
 
-static func _list_directory(path: String) -> Dictionary:
+static func _list_directory(path: String, include_sidecars: bool = false) -> Dictionary:
 	var validation_error := _validate_path(path, false)
 	if not validation_error.is_empty():
 		return _tool_error(validation_error)
-		
-	var dir = DirAccess.open(path)
-	if dir:
-		dir.list_dir_begin()
-		var files = []
-		var dirs = []
-		var file_name = dir.get_next()
-		while file_name != "":
-			if file_name != "." and file_name != "..":
-				if dir.current_is_dir():
-					dirs.append(file_name + "/")
+	var canonical := _canonical_project_path(path)
+	if canonical.length() > 512: return _tool_error("Directory path exceeds the 512-character limit.")
+	var dir := DirAccess.open(canonical)
+	if dir == null: return _tool_error("The directory does not exist or cannot be opened.")
+	var deadline := Time.get_ticks_msec() + DIRECTORY_TIMEOUT_MS
+	var files: Array[String] = []
+	var dirs: Array[String] = []
+	var present := {}
+	var reasons: Array[String] = []
+	var scanned := 0
+	dir.list_dir_begin()
+	var name := dir.get_next()
+	while not name.is_empty():
+		if scanned >= MAX_DIRECTORY_ENTRIES or Time.get_ticks_msec() >= deadline:
+			reasons.append("entry_limit" if scanned >= MAX_DIRECTORY_ENTRIES else "time_limit")
+			break
+		scanned += 1
+		if name not in [".", ".."]:
+			if dir.is_link(name):
+				if "symbolic_link_omitted" not in reasons: reasons.append("symbolic_link_omitted")
+			elif canonical.path_join(name).length() > 512:
+				if "path_limit" not in reasons: reasons.append("path_limit")
+			elif _validate_path(canonical.path_join(name), false).is_empty():
+				if dir.current_is_dir(): dirs.append(name + "/")
 				else:
-					files.append(file_name)
-			file_name = dir.get_next()
-		
-		var result = "Contents of " + path + ":\n"
-		if dirs.is_empty() and files.is_empty():
-			result += "(empty directory)"
-		else:
-			for d in dirs:
-				result += "- " + d + "\n"
-			for f in files:
-				result += "- " + f + "\n"
-		return _tool_success(result)
-	else:
-		return _tool_error("An error occurred when trying to access the path.")
+					files.append(name)
+					present[name] = true
+		name = dir.get_next()
+	dir.list_dir_end()
+	dirs.sort()
+	files.sort()
+	var shown: Array[String] = []
+	var folded := 0
+	for filename in files:
+		var extension := filename.get_extension()
+		var owner := filename.left(filename.length() - extension.length() - 1)
+		if not include_sidecars and extension in ["uid", "import"] and present.has(owner): folded += 1
+		else: shown.append(filename)
+	var content := "Contents of " + canonical + ":\n"
+	var returned := 0
+	for entry in dirs + shown:
+		if content.to_utf8_buffer().size() + entry.to_utf8_buffer().size() + 1024 > MAX_DIRECTORY_OUTPUT_BYTES:
+			reasons.append("output_limit")
+			break
+		content += "- " + entry + "\n"
+		returned += 1
+	if scanned == 0: content += "(empty directory)\n"
+	if folded > 0: content += "Companion files omitted: %d .uid/.import file(s); use include_sidecars=true to list them.\n" % folded
+	if not reasons.is_empty(): content += "Incomplete directory listing: " + ", ".join(reasons) + ". Narrow the directory; this listing is not exhaustive.\n"
+	return _tool_success(content, {"entries_scanned": scanned, "returned_entry_count": returned, "sidecars_omitted": folded, "truncated": not reasons.is_empty(), "truncation": {"truncated": not reasons.is_empty(), "reasons": reasons}})
 
 static func _read_file(filepath: String, start_line: int = 1, end_line: int = 0) -> Dictionary:
 	var validation_error := _validate_path(filepath, false)
@@ -826,6 +895,7 @@ static func _search_files(query: String, path: String, file_glob: String, case_s
 	var validation_error := _validate_path(path, false)
 	if not validation_error.is_empty():
 		return _tool_error(validation_error)
+	path = _canonical_project_path(path)
 	max_results = clampi(max_results, 1, MAX_SEARCH_RESULTS)
 	file_glob = "*" if file_glob.is_empty() else file_glob
 	var directories := [path]

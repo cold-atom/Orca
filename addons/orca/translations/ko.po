@@ -705,6 +705,15 @@ msgstr "프로젝트 검색"
 msgid "Inspect scene"
 msgstr "씬 조사"
 
+msgid "Inspect animation"
+msgstr "애니메이션 조사"
+
+msgid "%d result(s)%s"
+msgstr "결과 %d개%s"
+
+msgid " · Incomplete"
+msgstr " · 일부만 표시"
+
 msgid "Inspect scenes"
 msgstr "씬 조사"
 

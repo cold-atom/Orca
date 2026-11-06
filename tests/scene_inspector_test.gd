@@ -17,6 +17,7 @@ func _run() -> void:
 	_test_json_numeric_limits()
 	_test_variant_summaries()
 	_test_rejections()
+	_test_focused_scene()
 	_finish()
 
 
@@ -113,6 +114,31 @@ func _node_by_path(nodes: Array, path: String) -> Dictionary:
 		if str(node.get("path", "")) == path:
 			return node
 	return {}
+
+
+func _test_focused_scene() -> void:
+	var focused := Tools.execute_tool("inspect_scene", {"scene_path": FIXTURE, "scope": "node", "node_path": "Timer", "property_filter": "wait"})
+	_expect(focused.get("success", false), "exact-node saved inspection succeeds")
+	if focused.get("success", false):
+		var report: Dictionary = JSON.parse_string(focused["content"])
+		_expect(report["nodes"].size() == 1 and report["nodes"][0]["path"] == "./Timer", "exact-node scope includes only its node")
+		_expect(report["nodes"][0]["properties"].size() == 1 and report["nodes"][0]["properties"][0]["name"] == "wait_time", "filter narrows saved properties")
+		_expect(report["connections"].size() == 1, "focused reads retain touching connections")
+	var subtree := Tools.execute_tool("inspect_scene", {"scene_path": FIXTURE, "scope": "subtree", "node_path": "Player", "include_properties": false})
+	_expect(subtree.get("success", false) and JSON.parse_string(subtree["content"])["nodes"].size() == 2, "subtree scope retains descendants")
+	var path := "res://.orca_scene_focus_%d.tscn" % Time.get_ticks_usec()
+	var content := "[gd_scene format=3]\n[node name=\"Root\" type=\"Node\"]\n"
+	for index in 220: content += "[node name=\"Child%d\" type=\"Node\" parent=\".\"]\n" % index
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(content)
+	file.close()
+	var late := Tools.execute_tool("inspect_scene", {"scene_path": path, "scope": "node", "node_path": "Child219"})
+	_expect(late.get("success", false) and JSON.parse_string(late["content"])["nodes"].size() == 1, "exact lookup reaches a node beyond the old 120-node output window")
+	_expect(FileAccess.get_file_as_string(path) == content, "focused reads preserve saved bytes")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	for extra in [{"scope": "node", "node_path": "../Timer"}, {"scope": "subtree", "node_path": "/root/Timer"}, {"scope": "node", "node_path": "Timer:wait_time"}, {"scope": "node", "node_path": "missing"}, {"node_path": "Timer"}, {"max_depth": 2.5}, {"property_filter": 7}, {"source": "supplied"}]:
+		extra["scene_path"] = FIXTURE
+		_expect(not Tools.execute_tool("inspect_scene", extra).get("success", true), "focused scene rejects malformed/unsafe/unknown query fields")
 
 
 func _property_by_name(properties: Array, name: String) -> Dictionary:

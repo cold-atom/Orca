@@ -2,7 +2,7 @@
 extends EditorPlugin
 
 ## Installed and enabled only by run_editor_test.py in a disposable project.
-const CASES := ["auto_apply_editor_test.gd", "editor_ui_scale_test.gd", "remembered_edit_editor_test.gd", "update_editor_test.gd", "localization_editor_test.gd"]
+const CASES := ["auto_apply_editor_test.gd", "editor_ui_scale_test.gd", "remembered_edit_editor_test.gd", "update_editor_test.gd", "localization_editor_test.gd", "project_inspection_editor_test.gd"]
 var _finished := false
 
 

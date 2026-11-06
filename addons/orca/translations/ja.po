@@ -705,6 +705,15 @@ msgstr "プロジェクトを検索"
 msgid "Inspect scene"
 msgstr "シーンを調査"
 
+msgid "Inspect animation"
+msgstr "アニメーションを調査"
+
+msgid "%d result(s)%s"
+msgstr "%d 件の結果%s"
+
+msgid " · Incomplete"
+msgstr " · 一部のみ"
+
 msgid "Inspect scenes"
 msgstr "シーンを調査"
 

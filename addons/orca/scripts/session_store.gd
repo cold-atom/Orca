@@ -326,6 +326,8 @@ func _sanitize_tool_arguments(raw, tool_name: String = "") -> Dictionary:
 	if typeof(raw) != TYPE_DICTIONARY:
 		return {}
 	var result := {}
+	if tool_name == "inspect_animation":
+		return preload("res://addons/orca/scripts/animation_inspector.gd").history_arguments(raw)
 	if tool_name in ["find_project_symbols", "find_symbol_references"]:
 		for key in ["query", "symbol", "path"]:
 			if typeof(raw.get(key)) == TYPE_STRING:
@@ -390,6 +392,12 @@ func _sanitize_tool_arguments(raw, tool_name: String = "") -> Dictionary:
 		if typeof(raw.get("max_results")) in [TYPE_INT, TYPE_FLOAT]:
 			result["max_results"] = clampi(int(raw["max_results"]), 1, 100)
 		return result
+	if tool_name == "inspect_scene":
+		for field in ["node_path", "property_filter"]:
+			if typeof(raw.get(field)) == TYPE_STRING: result[field] = _bounded_text(str(raw[field]), 512 if field == "node_path" else 128)
+		if typeof(raw.get("scope")) == TYPE_STRING and raw["scope"] in ["scene", "node", "subtree"]: result["scope"] = raw["scope"]
+		if typeof(raw.get("max_depth")) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(raw["max_depth"])) and float(raw["max_depth"]) == floorf(float(raw["max_depth"])): result["max_depth"] = int(clampf(float(raw["max_depth"]), 0, 16))
+	if tool_name == "list_directory" and typeof(raw.get("include_sidecars")) == TYPE_BOOL: result["include_sidecars"] = raw["include_sidecars"]
 	var keys := ["filepath", "path", "scene_path", "setting_path", "query", "file_glob", "start_line", "end_line", "case_sensitive", "max_results", "include_properties", "max_nodes", "max_properties_per_node"]
 	for key in keys:
 		if not raw.has(key):

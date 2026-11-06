@@ -20,6 +20,7 @@ CASES = {
     "remembered_edit_editor_test.gd": ["auto_apply_test.gd"],
     "update_editor_test.gd": [],
     "localization_editor_test.gd": [],
+    "project_inspection_editor_test.gd": ["fixtures/project_inspection_editor_scene.tscn", "fixtures/animation_inspector_fixture.tscn"],
 }
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 DIAGNOSTIC = re.compile(r"(?m)^(?:ERROR:|SCRIPT ERROR:|WARNING:|handle_crash:)")
@@ -159,6 +160,7 @@ def main() -> int:
             "auto_apply_editor_test.gd": "auto_apply_editor_test: 0 failures",
             "editor_ui_scale_test.gd": "editor_ui_scale_test: PASS",
             "update_editor_test.gd": "Update editor: PASS",
+            "project_inspection_editor_test.gd": "project_inspection_editor_test: PASS",
         }[args.case]
         if not execute(command, env, marker):
             return 1

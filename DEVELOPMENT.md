@@ -8,6 +8,81 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
+## Unreleased: Focused Godot Inspection
+
+The checkout adds exact-node/subtree saved-scene reads, read-only saved animation
+inspection, bounded compact directory listings, public Inspector-target context,
+and per-match text-search navigation. These additions are independently implemented
+through Orca's existing architecture and visual language. Existing reflected
+API/function/declaration tools remain the preferred focused code exploration path.
+Token savings are not yet benchmarked.
+
+Cloud normalizes strict optional `orca.focused_inspection` metadata into the fixed
+turn snapshot. Without it, animation schemas/direct calls and extended scene/list
+arguments are withheld/denied, preserving older servers. Legacy Cloud listing
+keeps companions visible through an execution-only default copy so it never
+recommends an unavailable option or alters canonical call arguments. The separately
+authorized backend extends only exact validation fields/types and catalog advertisement;
+rollout/refresh is required for hosted use. Plugin metadata stays 1.6.0/unreleased.
+
+### Saved-scene and animation evidence
+
+`inspect_scene` accepts `scope=scene|node|subtree`, exact relative `node_path`,
+case-insensitive `property_filter` and `max_depth=0..16`. Existing defaults remain;
+returned nodes/properties/connections retain their old caps. Node lookup scans up
+to 4096 nodes independently of the 120-node result window; property/connection
+scans cap at 8192/4096, with a 250 ms post-load extraction deadline. Connections
+are selected when either endpoint touches the requested node/subtree. Filtered
+values remain bounded. Instanced/inherited content is not expanded; snapshots
+retain saved-state provenance and dirty-scene denial. This uses the existing
+PackedScene/SceneState loader without node instantiation.
+
+`animation_inspector.gd` implements `inspect_animation` for saved `.tscn` sources.
+It reads serialized sections, follows only explicit text `.tres` native Animation
+and AnimationLibrary references, validates non-object Variant constructors, and
+decodes key arrays with a fresh unscripted native Animation. It never loads the
+scene, scripts, unrelated resources or arbitrary Objects, writes scratch files,
+or plays animations. Scripted libraries/animations, compressed tracks and
+resource-valued unsupported key literals are rejected when selected for key decoding.
+Overviews skip keys; an explicit track query decodes only that track's keys. A two-pass node inventory
+provides serialized target evidence regardless of section order; missing local
+targets, instanced/inherited uncertainty and unsupported paths are distinguished.
+This is not semantic property validation, AnimationTree or gameplay verification.
+
+Bounds: 2 MiB/source, 4 MiB total, 16 source files, 4096 sections and 32768 properties/source,
+64 players and 64 animations/player, 128 tracks/animation, 8192 scanned keys,
+200 returned keys shared across selected tracks, 128 recursive key-value visits,
+64 KiB/literal/resource map and report, 64 references/map, 4096-character headers,
+16 literal nesting levels and a 250 ms shared read/decode deadline. Source paths
+and explicit dependencies are project/symlink/protected-path checked; dirty scene
+or script source is denied. No patch hash is returned. Exact animation/player,
+track and time filters narrow results. Original evidence is untranslated;
+history retains only sanitized query/outcome metadata, never replay authority.
+External `.tres` Inspector edits have no public general dirty flag; these reads
+describe saved bytes, not unsaved resource Inspector state.
+
+### Exploration and editor presentation
+
+Directory listing visits at most 512 entries/100 ms and returns at most 32 KiB.
+Returned folders/files are separately sorted. Owner-present `.uid`/`.import`
+companions fold by default with counts and an `include_sidecars=true` escape;
+orphan sidecars remain visible. Symlinks/oversized paths and incomplete enumeration
+are disclosed. This optimization does not adapt raw `read_file` or patch hashes.
+
+`editor_context.gd` reads the public Inspector target as bounded native identity,
+separately from selection. Embedded resource owners and node branches are confined;
+no custom property enumeration/getters/stringification or object IDs are exposed.
+The existing private context lifecycle keeps it fixed through continuations and
+removes it from persistence. Generic text navigation reveals unsupported editor
+file types without attempting ResourceLoader loads.
+
+Search cards expose up to 200 per-match buttons, original excerpts/tooltips,
+localized result count/incomplete captions and bounded scrolling. Numeric JSON
+locations are validated; canonical/project/symlink/protected/existence checks run
+again on click. Scripts open at their locations; scenes/resources use their native
+editor surface and other files are revealed. Historical summaries reconstruct no
+stale result list. Activity labels and captions use all five Orca interface locales.
+
 ## Unreleased: Interface Languages
 
 The development checkout adds English, Simplified Chinese (`zh_CN`), Spanish
@@ -294,6 +369,7 @@ Plain Tab toggles Plan/Work only in the focused, visible prompt box and uses the
 | `read_file` | Plan, Work | Reads bounded one-based line ranges with line numbers and a SHA-256 hash. |
 | `search_files` | Plan, Work | Recursively searches bounded project text files and returns path/line/column matches. |
 | `inspect_scene` | Plan, Work | Reads bounded saved `PackedScene`/`SceneState` hierarchy, serialized properties, instances, groups, and signal connections without node instantiation. |
+| `inspect_animation` | Plan, Work | Reads native saved animation libraries/tracks/keyframes without loading scenes/scripts, playback, or patch hashes. |
 | `inspect_editor_scene` | Plan, Work | Reads bounded current editor scene/selection/subtree state, including unsaved native layout/transforms, without mutation, custom getters, or a disk patch hash. |
 | `inspect_project_settings` | Plan, Work | Reads a bounded overview or one allowlisted typed ProjectSettings value with active feature overrides. |
 | `read_project_skill` | Plan, Work | Loads one exact bounded skill body selected from the request-scoped project skill catalog. |
@@ -627,11 +703,14 @@ Each user turn allows at most three successful run attempts, in addition to the 
 Input:
 
 - `path`: `res://` directory.
+- `include_sidecars`: Optional boolean, default `false`; reveal paired `.uid`/`.import` companions. Extended Cloud schemas require advertised focused inspection.
 
 Output:
 
 - Immediate child directories and files.
 - Structured success or failure.
+- Sorted returned entries, companion omission count and explicit incomplete-coverage reasons. Orphan sidecars remain visible.
+- At most 512 enumerated entries, 32 KiB output and a cooperative 100 ms deadline.
 
 ### `read_file`
 
@@ -667,6 +746,7 @@ Limits:
 - Binary files, `.godot`, Orca's directory, and symbolic links are skipped.
 
 Output includes matches with path, one-based line, one-based column, preview, truncation state, and first-match navigation metadata.
+Live activity additionally presents each bounded match as its own checked navigation action; historical query summaries retain no stale result list.
 
 ### `inspect_scene`
 
@@ -676,6 +756,9 @@ Input:
 - `include_properties`: Optional boolean, default `true`.
 - `max_nodes`: Optional requested node bound, clamped to 1-120.
 - `max_properties_per_node`: Optional requested serialized-property bound, clamped to 0-24.
+- `scope`: `scene` (default), `node` or `subtree`; focused scopes require exact relative `node_path`.
+- `property_filter`: Optional bounded case-insensitive stored-property name filter.
+- `max_depth`: Optional integer 0-16, relative to the scene/subtree root. Extended arguments require the Cloud focused-inspection advertisement.
 
 The tool loads a `PackedScene` with cache bypass, reads its public `SceneState`, and never calls `instantiate()`. It returns saved node paths, parent and owner paths, types, sibling indexes, up to 32 groups per node, child-scene references, instance placeholders, serialized exported or overridden properties, and up to 100 saved signal connections. It does not report all Inspector defaults, runtime-generated nodes, or recursively expanded child/inherited scenes.
 
@@ -684,6 +767,17 @@ Hard limits include a 2 MB source scene, 120 nodes, 24 properties per node, 500 
 Optional saved-scene limits accept finite mathematical integers from either Godot integer values or JSON-decoded floats. Fractions, booleans, strings and non-finite values are rejected before inspection; valid numbers are clamped before conversion to prevent overflow on enormous integral inputs. This fixes valid model `max_nodes:120`/`60` calls failing because Godot parses JSON numbers as floats. The JSON schema's integer/clamp contract and path/dirty-state/resource restrictions remain authoritative.
 
 Successful results include scene navigation metadata. Paths outside `res://`, symbolic links, Orca's own directory, missing files, non-`.tscn` targets, oversized scenes, malformed resources, and scenes with unsaved editor changes fail without navigation metadata.
+
+### `inspect_animation`
+
+Input: saved `.tscn` `scene_path`; optional exact `player_path` and qualified
+`animation_name`. Track/time filters require an animation name: `track_index`
+0-127, `start_time`/`end_time` finite 0-1,000,000 seconds, and `max_keys` 1-200.
+The overview omits key arrays; focused output retains track targets, native types,
+flags, interpolation and typed keys. No source hash or edit authorization is exposed.
+Extraction, bounds, native decoding, dependency confinement and exclusions are
+specified under Unreleased: Focused Godot Inspection above. Both modes are
+read-only; Cloud additionally requires strict turn-bound vocabulary support.
 
 ### `inspect_editor_scene`
 
@@ -1187,7 +1281,7 @@ entry points pending a separate migration.
 - Conversations cannot yet be renamed or exported.
 - History is keyed by the canonical project path, so moving the project does not automatically migrate its saved sessions.
 - Session history is plaintext local data and has no configurable retention count beyond the built-in limit of 50.
-- Search cards open the first match rather than presenting an interactive action for every match.
+- Live text-search cards provide per-match actions; history retains query-only summaries and requires a fresh search for clickable evidence.
 
 ### Providers And Distribution
 
@@ -1226,7 +1320,7 @@ entry points pending a separate migration.
 
 - Add multi-file change batches and transactional approval.
 - Broaden durable revert checkpoints beyond the implemented automatic-script journal to manual, structured and future multi-file changes.
-- Add an interactive search-results card with Open actions for every match.
+- Per-match text-search navigation is implemented in the unreleased focused-inspection update; richer grouped result presentation can follow real editor feedback.
 - Add richer changed-file summaries and context-budget warnings.
 - Implement prompt enhancement and expand image context toward bounded screenshot observation; user image attachments are implemented in 1.3.0.
 - Future release: investigate a public cancellable native-drop routing API for seamless desktop image drops directly onto the composer. If unavailable, design/propose a Godot engine enhancement allowing editor controls to consume native drops before project import. Retain Orca's separate native attachment window until direct routing is supported and verified with zero project-file changes, rejected/cancelled intake, and platform/lifecycle coverage.
@@ -1316,6 +1410,15 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-06: Focused Godot inspection and navigable exploration
+
+- Independently implemented saved exact-node/subtree/property-filter inspection, bounded native animation-source reading, sorted/compact directory listings, public native Inspector identity and per-match text-search navigation. Existing Orca tool cards, localization, context lifecycle and runtime authorization remain the integration points.
+- New animation/source tests exercise engine-generated 3D/Bezier/blend/method/animation formats, external native libraries, later node/instance sections, static-initializer isolation, malformed/ref-looking maps, key-array consistency, recursive value/work bounds and unchanged bytes. Scene/listing tests cover late-node lookup, scopes, companion/orphan files and entry/output limits. No token-saving benchmark was performed.
+- New normal-editor case is registered in bootstrap/runner/CI, with actual Inspector-versus-selection identity, native getter isolation, dirty-scene denial, fixed-turn context/Stop cleanup and 300-unit navigation/animation cards across five languages and 1×/1.5×/2× fonts. Headless and Linux/X11/OpenGL runs pass with clean exits and zero warnings/errors. Existing localization (three processes), Auto apply and editor-scale cases pass headlessly with the same isolation and clean-exit gates.
+- Relevant animation/scene/tools/controller/account/activity/chat/session/hosted-budget components and three translation/five runner checks pass. The Tools suite retains deliberate invalid-source diagnostics; ordinary editor import/initialization is clean. The hosted default greeting still fits 32k with the actual root guide and Work schemas.
+- Authorized backend changes add only exact fields/types and strict authenticated vocabulary advertisement. Fifty-six selected backend regressions pass without skips, including seven actual Godot/FastAPI/PostgreSQL cases and a three-tool fragmented SSE/private-continuation round trip. Full backend Ruff/format/mypy pass. Legacy Cloud denies unadvertised extensions, keeps companion files visible and preserves original call arguments; refreshed advertisements are turn-fixed.
+- No live inference/credentials, owner service changes, commits/pushes, deployment, manifests/tags or publication were used. Plugin metadata remains 1.6.0 with unreleased additions. Real-model task usefulness, broader platforms/themes, fresh hosted CI/package acceptance and API rollout/catalog refresh remain follow-ups.
 
 ### 2026-11-06: Orca-only interface localization
 

@@ -96,6 +96,7 @@ func _run() -> void:
 	invalid_help_group.queue_free()
 	await process_frame
 	await _test_code_navigation()
+	await _test_search_navigation()
 	_finish()
 
 
@@ -147,6 +148,35 @@ func _test_code_navigation() -> void:
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		_failures.append(message)
+
+
+func _test_search_navigation() -> void:
+	var group = ToolActivityGroup.new()
+	get_root().add_child(group)
+	await process_frame
+	var opened := []
+	group.open_requested.connect(func(path, line, column): opened.append([path, line, column]))
+	var card = group.add_tool("search", "search_files", {"query": "Timer"})
+	var path := "res://tests/fixtures/inspect_scene_fixture.tscn"
+	group.complete_tool("search", {"outcome": "completed", "content": "search evidence", "data": {"truncated": true, "matches": JSON.parse_string(JSON.stringify([
+		{"filepath": path, "line": 20, "column": 2, "preview": "Timer"},
+		{"filepath": path, "line": 25, "column": 3, "preview": "connection"},
+		{"filepath": "res://addons/orca/scripts/tools.gd", "line": 1, "column": 1}
+	]))}}, 4)
+	group.set_expanded(true)
+	card._toggle_details()
+	check_search(card._match_list.get_child_count() == 2, "search cards accept numeric JSON locations and every safe text-file match")
+	card._match_list.get_child(1).pressed.emit()
+	check_search(opened == [[path, 25, 3]], "search opens selected .tscn result at its own location")
+	check_search(card._match_summary.visible and card._match_summary.text.contains("Incomplete"), "search displays count/incomplete coverage")
+	group.complete_tool("search", {"outcome": "completed", "content": "Historical search. Search again.", "data": {}}, 2)
+	check_search(card._match_list.get_child_count() == 0 and not card._open_button.visible and not card._match_summary.visible, "restored summaries retain no stale clickable evidence")
+	group.queue_free()
+	await process_frame
+
+
+func check_search(value: bool, message: String) -> void:
+	_expect(value, message)
 
 
 func _finish() -> void:

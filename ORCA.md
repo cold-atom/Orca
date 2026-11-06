@@ -1,7 +1,7 @@
-# Orca: The Godot AI Assistant
+# Orca: The Godot-Native AI Coding Agent
 
 ## Overview
-Orca (formerly GodoPilot) is an autonomous AI coding assistant integrated directly into the Godot Engine. It acts as an Editor Plugin, providing a docked chat interface where developers can interact with an AI agent powered by Large Language Models (LLMs). 
+Orca is a Godot-native AI coding agent embedded in the editor. It understands your project and editor context, proposes and applies validated changes under your control, and helps you run, diagnose, and improve your game.
 
 Instead of just answering questions, Orca uses **Function Calling** to actively participate in the development process. It can browse the project, read scripts, and propose reviewed code changes within the Godot workspace.
 
@@ -26,6 +26,13 @@ Localization requires fresh hosted CI and real-model language acceptance; broade
 platform/Store acceptance remains separate.
 
 ### Key Features & Components
+
+The unreleased checkout also adds focused saved-scene node/subtree inspection,
+read-only animation overview/track/keyframe reads, compact bounded directory
+listing, Inspector-target identity and per-match text-search navigation. New Cloud
+inspection vocabulary requires matching backend rollout and catalog refresh;
+original schemas remain available with older catalogs. These additions retain
+Orca's read-only context and reviewed-edit architecture. See `DEVELOPMENT.md`.
 1. **Editor Integration (`orca.gd`, `orca.tscn`, `chat_window.tscn`)**
    - Registers as a Godot `@tool` plugin.
    - Adds a toggle button to the main editor toolbar.
@@ -162,7 +169,7 @@ the previous greeting-budget failure with context and billing estimates separate
 
 ## What We Are Building (The Vision)
 
-We are building a truly autonomous copilot for game development in Godot, similar to GitHub Copilot or Roo Code (formerly Cline), but deeply integrated into the Godot ecosystem. The goal is to move beyond simple chat interfaces to an AI agent that understands the full context of a Godot project.
+Our goal is to deepen Orca's project understanding and extend its controlled inspect–edit–validate–run workflow across Godot's scenes, scripts, resources, and runtime diagnostics.
 
 ### Future Goals
 - **Expanded Toolset:** Broaden current reflected Godot API lookup and constrained scene/configuration capabilities without weakening review boundaries.

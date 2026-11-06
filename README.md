@@ -82,6 +82,15 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
+## Unreleased: Focused Godot Inspection
+
+The development checkout also adds exact-node/subtree saved-scene reads,
+read-only animation library/track/keyframe inspection, bounded compact directory
+listings, awareness of the Inspector's current target, and clickable text-search
+matches. Animations are read without scene/script loading or playback. Extended
+Cloud tools require the matching backend rollout and a model-catalog refresh.
+These additions are not in the published 1.6.0 ZIP.
+
 ## Unreleased: Interface Languages
 
 This checkout adds **English**, **简体中文 (Simplified Chinese)**, **Español

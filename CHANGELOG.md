@@ -6,12 +6,18 @@ All notable changes to Orca are documented in this file.
 
 ### Added
 
+- Focused saved-scene inspection by exact node or subtree, property-name filtering, scoped connections and bounded lookup beyond the initial node-result window.
+- Read-only saved animation inspection: AnimationPlayer/library overview and bounded track/keyframe/time-window reads, using native animation decoding without loading scene scripts or playing animations.
+- Request-scoped Inspector-target identity through public APIs, including targets different from the scene selection and confined embedded/unsaved resource identities.
+- Individually clickable ordinary text-search results with original excerpts, result counts, incomplete coverage and fresh path checks.
 - English, Simplified Chinese, Spanish, Japanese and Korean interface selection under Settings → System → Language, bundled offline translation catalogs, editor-wide persistence and live refresh preserving drafts, conversations, attachments and open reviews.
 - Response-language guidance follows explicit requests and the current message language, with the interface language as a fallback. The choice stays fixed through tool continuations and is removed from persisted context.
 - Translation catalog checks and three-process isolated editor regressions for switching, Japanese/Korean restart persistence, original data/permission preservation, actual reviewed edits/Revert and narrow larger-font layouts.
 
 ### Changed
 
+- Directory listings are sorted and capped by entries, output and time; paired `.uid`/`.import` sidecars fold with explicit counts, `include_sidecars` reveals them, and orphan sidecars remain visible.
+- Cloud requires an authenticated turn-fixed `focused_inspection` advertisement for new scene/listing arguments and animation tools; older catalogs retain the original schemas until backend rollout/catalog refresh.
 - Localized settings, chat controls, History, task/activity/review/trust/onboarding/update surfaces, tooltips and accessibility labels. Wrapped captions, flow actions and bounded selectors accommodate longer translations; code, paths, model names, original messages and raw evidence retain their source text.
 
 ## 1.6.0 - 2026-11-05

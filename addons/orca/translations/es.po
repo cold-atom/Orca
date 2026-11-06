@@ -705,6 +705,15 @@ msgstr "Buscar en el proyecto"
 msgid "Inspect scene"
 msgstr "Inspeccionar escena"
 
+msgid "Inspect animation"
+msgstr "Inspeccionar animación"
+
+msgid "%d result(s)%s"
+msgstr "%d resultado(s)%s"
+
+msgid " · Incomplete"
+msgstr " · Incompleto"
+
 msgid "Inspect scenes"
 msgstr "Inspeccionar escenas"
 

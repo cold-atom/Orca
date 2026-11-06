@@ -199,6 +199,8 @@ func _group_title() -> String:
 				title = "Inspect live scene"
 			"inspect_project_settings":
 				title = "Inspect project settings"
+			"inspect_animation":
+				title = "Inspect animation"
 			"read_project_skill":
 				title = "Read project skill" if count == 1 else "Read project skills"
 			"inspect_godot_api":
@@ -234,7 +236,8 @@ func _target_from_arguments(arguments: Dictionary) -> String:
 	if arguments.has("direction") and arguments.has("filepath"):
 		return str(arguments["filepath"]) + " · " + str(arguments["direction"])
 	if arguments.has("scene_path"):
-		return str(arguments["scene_path"])
+		var focus := str(arguments.get("animation_name", arguments.get("node_path", "")))
+		return str(arguments["scene_path"]) + (" :: " + focus if not focus.is_empty() else "")
 	if arguments.has("setting_path") and not str(arguments["setting_path"]).is_empty():
 		return str(arguments["setting_path"])
 	if arguments.has("filepath"):

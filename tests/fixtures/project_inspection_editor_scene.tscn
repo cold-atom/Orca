@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[node name="InspectionEditorFixture" type="Node2D"]
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 0.5
+
+[node name="Panel" type="Control" parent="."]
+offset_right = 100.0
+offset_bottom = 50.0

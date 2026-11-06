@@ -155,6 +155,7 @@ class FakeTools:
 		var definitions := [
 			{"type": "function", "function": {"name": "read_file", "parameters": {"type": "object"}}},
 			{"type": "function", "function": {"name": "inspect_scene", "parameters": {"type": "object"}}},
+			{"type": "function", "function": {"name": "inspect_animation", "parameters": {"type": "object"}}},
 			{"type": "function", "function": {"name": "inspect_editor_scene", "parameters": {"type": "object"}}},
 			{"type": "function", "function": {"name": "inspect_project_settings", "parameters": {"type": "object"}}},
 			{"type": "function", "function": {"name": "observe_game_run", "parameters": {"type": "object"}}},
@@ -343,7 +344,7 @@ class FakeTools:
 class SceneTools:
 	extends FakeTools
 	func execute_tool(tool_name: String, arguments: Dictionary, game_process_service = null) -> Dictionary:
-		if tool_name == "inspect_scene":
+		if tool_name in ["inspect_scene", "inspect_animation"]:
 			return preload("res://addons/orca/scripts/tools.gd").execute_tool(tool_name, arguments, game_process_service)
 		return super.execute_tool(tool_name, arguments, game_process_service)
 
@@ -1086,12 +1087,12 @@ func _test_scene_inspection_permission() -> void:
 		controller.set_mode(mode)
 		var proposals := [0]
 		controller.edit_proposed.connect(func(_turn_id: int, _proposal: Dictionary): proposals[0] += 1)
-		for tool_name in ["inspect_scene", "inspect_editor_scene"]:
+		for tool_name in ["inspect_scene", "inspect_editor_scene", "inspect_animation"]:
 			_expect(_tool_names(controller._get_tool_definitions()).has(tool_name), "both modes should expose " + tool_name)
-			var arguments := {"scene_path": "res://main.tscn"} if tool_name == "inspect_scene" else {"scope": "selection"}
+			var arguments := {"scope": "selection"} if tool_name == "inspect_editor_scene" else {"scene_path": "res://main.tscn"}
 			var result: Dictionary = await controller._execute_tool_call({"id": "inspect_" + tool_name, "type": "function", "function": {"name": tool_name, "arguments": JSON.stringify(arguments)}})
 			_expect(result.get("outcome") == "completed", tool_name + " should use the generic read-only execution path")
-		_expect(tools.execute_calls == 2 and proposals[0] == 0, "scene reads must execute once each without approval or mutation")
+		_expect(tools.execute_calls == 3 and proposals[0] == 0, "scene/animation reads must execute once each without approval or mutation")
 		var prompt: String = controller._get_system_prompt()
 		_expect(prompt.contains("inspect_editor_scene") and prompt.contains("not runtime evidence or a patch base"), "both prompts must distinguish live context from mutation and runtime evidence")
 		await _free_controller(controller)
@@ -2069,6 +2070,13 @@ func _test_compact_scene_tool_continuation() -> void:
 		_expect(compact.length() < pretty.length() and JSON.parse_string(compact) == JSON.parse_string(pretty), "model continuation must preserve every scene value while the activity card retains readable formatting")
 	_expect(api.requests.size() == 1 and _protocol_is_valid(api.requests[0].get("messages", [])), "successful numeric scene inspection must issue exactly one protocol-valid continuation")
 	_expect(controller._session_usage_summary().get("request_budget", {}).get("active", false), "request estimates must be available during continuation")
+	await _deliver_completion(controller, _tool_response([
+		_simple_tool_call("focused_scene", "inspect_scene", {"scene_path": "res://tests/fixtures/inspect_scene_fixture.tscn", "scope": "node", "node_path": "Timer"}),
+		_simple_tool_call("animation", "inspect_animation", {"scene_path": "res://tests/fixtures/animation_inspector_fixture.tscn", "animation_name": "walk", "start_time": 0.4, "end_time": 0.6}),
+		_simple_tool_call("invalid_animation", "inspect_animation", {"scene_path": "res://tests/fixtures/animation_inspector_fixture.tscn", "max_keys": false})
+	]))
+	_expect(activity.size() == 4 and activity[1].get("success", false) and activity[2].get("success", false) and not activity[3].get("success", true), "real focused and animation tools preserve both successful and failed read receipts in a batch")
+	_expect(api.requests.size() == 2 and _protocol_is_valid(controller.message_history), "multi-tool focused inspection has one matching receipt per call and one continuation")
 	controller.cancel_current_request()
 	_expect(not controller._session_usage_summary().get("request_budget", {}).get("active", true), "Stop must clear the active request-estimate state")
 	await _free_controller(controller)

@@ -40,6 +40,16 @@ Missing models open the picker; configured local providers can work without keys
 Finish setup with **Done**, then press **Send** when ready. Setup never sends your
 draft automatically. Existing configured users retain the normal chat empty state.
 
+## Focused Godot inspection (unreleased)
+
+This source checkout adds exact-node/subtree saved-scene inspection, read-only
+animation library/track/keyframe reads, bounded compact directory listing,
+Inspector-target context and individually clickable text-search results. Original
+evidence stays unchanged across language selection. Extended Cloud tools require
+matching backend API rollout and a model-catalog refresh; older catalogs retain
+the original schemas. Animation reads never load scenes/scripts or play animations.
+These additions are not in the published 1.6.0 ZIP.
+
 ## Interface languages (unreleased)
 
 **Settings → System → Language** offers **English**, **简体中文** and **Español**.

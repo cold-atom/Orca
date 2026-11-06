@@ -26,6 +26,8 @@ var _open_column := 1
 var _help_topic := ""
 var _match_scroll: ScrollContainer
 var _match_list: VBoxContainer
+var _match_summary: Label
+var _has_match_results := false
 
 
 func _enter_tree() -> void:
@@ -103,6 +105,12 @@ func _ready() -> void:
 	_details.add_theme_font_size_override("font_size", label_font_size)
 	_details.visible = false
 	content.add_child(_details)
+	_match_summary = Label.new()
+	_match_summary.clip_text = true
+	_match_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_match_summary.add_theme_color_override("font_color", Color(0.55, 0.62, 0.68))
+	_match_summary.visible = false
+	content.add_child(_match_summary)
 	_match_scroll = ScrollContainer.new()
 	_match_scroll.custom_minimum_size = Vector2(0, UiMetrics.scaled(160))
 	_match_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -131,8 +139,17 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 	var outcome := str(execution.get("outcome", "failed"))
 	var data: Dictionary = execution.get("data", {})
 	_details.text = result
-	if _tool_name in ["find_project_symbols", "find_symbol_references"]:
+	if _tool_name in ["search_files", "find_project_symbols", "find_symbol_references"]:
+		_open_path = ""
+		_open_button.hide()
+		_has_match_results = typeof(data.get("matches")) == TYPE_ARRAY
 		_set_navigation_matches(data.get("matches", []))
+		var count := _match_list.get_child_count()
+		var incomplete: bool = data.get("truncated", false) or data.get("truncation", {}).get("truncated", false) or (_has_match_results and data["matches"].size() > count)
+		var caption_arguments := [count, Localization.source(" · Incomplete") if incomplete else ""]
+		Localization.bind(_match_summary, &"text", "%d result(s)%s", caption_arguments)
+		Localization.bind(_match_summary, &"tooltip_text", "%d result(s)%s", caption_arguments)
+		_match_summary.visible = _expanded and _has_match_results
 	if data.has("open_path"):
 		_open_path = str(data["open_path"])
 		_open_line = maxi(1, int(data.get("open_line", 1)))
@@ -159,6 +176,7 @@ func _toggle_details() -> void:
 	_expanded = not _expanded
 	_details.visible = _expanded
 	_match_scroll.visible = _expanded and _match_list.get_child_count() > 0
+	_match_summary.visible = _expanded and _has_match_results
 	_update_header()
 
 
@@ -182,6 +200,8 @@ func _display_name(tool_name: String) -> String:
 			return "Search project"
 		"inspect_scene":
 			return "Inspect scene"
+		"inspect_animation":
+			return "Inspect animation"
 		"inspect_editor_scene":
 			return "Inspect live scene"
 		"inspect_project_settings":
@@ -251,7 +271,9 @@ func _target_from_arguments(arguments: Dictionary) -> String:
 		var direction := str(arguments.get("direction", ""))
 		return dependency_path + (" · " + direction if not direction.is_empty() else "")
 	if arguments.has("scene_path"):
-		return str(arguments["scene_path"])
+		var target := str(arguments["scene_path"])
+		var focus := str(arguments.get("animation_name", arguments.get("node_path", "")))
+		return target + (" :: " + focus if not focus.is_empty() else "")
 	if arguments.has("setting_path") and not str(arguments["setting_path"]).is_empty():
 		return str(arguments["setting_path"])
 	if arguments.has("filepath"):
@@ -285,14 +307,14 @@ func _set_navigation_matches(raw) -> void:
 	if typeof(raw) != TYPE_ARRAY:
 		_match_scroll.hide()
 		return
-	for entry in raw.slice(0, 100):
-		if typeof(entry) != TYPE_DICTIONARY or typeof(entry.get("filepath")) != TYPE_STRING or typeof(entry.get("line")) != TYPE_INT or typeof(entry.get("column")) != TYPE_INT:
+	for entry in raw.slice(0, 200 if _tool_name == "search_files" else 100):
+		if typeof(entry) != TYPE_DICTIONARY or typeof(entry.get("filepath")) != TYPE_STRING or not Tools._is_integer_number(entry.get("line")) or not Tools._is_integer_number(entry.get("column")):
 			continue
 		var path: String = entry["filepath"]
-		if not _safe_navigation_path(path) or int(entry["line"]) < 1 or int(entry["column"]) < 1:
+		if not _safe_match_path(path) or float(entry["line"]) < 1 or float(entry["line"]) > 10000000 or float(entry["column"]) < 1 or float(entry["column"]) > 10000000:
 			continue
-		var line: int = entry["line"]
-		var column: int = entry["column"]
+		var line := int(entry["line"])
+		var column := int(entry["column"])
 		var button := Button.new()
 		button.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		button.flat = true
@@ -300,17 +322,24 @@ func _set_navigation_matches(raw) -> void:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.clip_text = true
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		button.text = "%s:%d · %s" % [path.trim_prefix("res://"), line, str(entry.get("name", "")).left(128)]
-		button.tooltip_text = "%s:%d:%d\n%s · %s\n%s" % [path, line, column, str(entry.get("kind", "identifier")).left(32), str(entry.get("role", "reference_candidate")).left(32), str(entry.get("preview", "")).left(240)]
+		button.text = "%s:%d · %s" % [path.trim_prefix("res://"), line, str(entry.get("preview", "") if _tool_name == "search_files" else entry.get("name", "")).left(128)]
+		button.tooltip_text = "%s:%d:%d\n%s" % [path, line, column, str(entry.get("preview", "")).left(240)] if _tool_name == "search_files" else "%s:%d:%d\n%s · %s\n%s" % [path, line, column, str(entry.get("kind", "identifier")).left(32), str(entry.get("role", "reference_candidate")).left(32), str(entry.get("preview", "")).left(240)]
 		button.pressed.connect(_request_open.bind(path, line, column))
 		_match_list.add_child(button)
 	_match_scroll.visible = _expanded and _match_list.get_child_count() > 0
 
 
 func _request_open(path: String, line: int, column: int) -> void:
-	if _tool_name in ["find_project_symbols", "find_symbol_references"] and (not _safe_navigation_path(path) or not FileAccess.file_exists(path)):
+	if path.length() > 512 or not path.begins_with("res://") or not Tools._validate_path(path, false).is_empty() or not FileAccess.file_exists(path):
+		return
+	if _tool_name in ["search_files", "find_project_symbols", "find_symbol_references"] and (not _safe_match_path(path) or not FileAccess.file_exists(path)):
 		return
 	open_requested.emit(path, line, column)
+
+
+func _safe_match_path(path: String) -> bool:
+	if _tool_name != "search_files": return _safe_navigation_path(path)
+	return path.length() <= 512 and path.begins_with("res://") and not path.to_utf8_buffer().has(0) and ProjectSettings.localize_path(ProjectSettings.globalize_path(path).simplify_path()) == path and Tools._validate_path(path, false).is_empty()
 
 
 static func _safe_navigation_path(path: String) -> bool:

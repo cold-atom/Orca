@@ -133,6 +133,27 @@ func _run() -> void:
 	check(controller._turn_allows_tools(), "verified managed profile enables eligible tools automatically")
 	var old_names: Array = controller._get_tool_definitions().map(func(tool): return tool["function"]["name"])
 	check(old_names.has("read_file") and not old_names.has("find_project_symbols") and not old_names.has("find_symbol_references"), "legacy Cloud catalogs must retain existing tools without sending unsupported new schemas")
+	check(not old_names.has("inspect_animation"), "legacy Cloud catalogs omit animation inspection")
+	var legacy_listing: Dictionary = await controller._execute_tool_call({"id": "legacy_listing", "function": {"name": "list_directory", "arguments": '{"path":"res://tests/fixtures"}'}})
+	check(legacy_listing["outcome"] == "completed" and legacy_listing["execution"]["data"]["sidecars_omitted"] == 0 and not legacy_listing["arguments"].has("include_sidecars"), "legacy Cloud retains companion visibility without changing canonical call arguments")
+	for definition in controller._get_tool_definitions():
+		if definition["function"]["name"] == "inspect_scene": check(not definition["function"]["parameters"]["properties"].has("scope"), "legacy schemas omit focused-scene arguments")
+		if definition["function"]["name"] == "list_directory": check(not definition["function"]["parameters"]["properties"].has("include_sidecars"), "legacy schemas omit compact-listing options")
+	for call in [
+		{"name": "inspect_animation", "arguments": "{}"},
+		{"name": "inspect_scene", "arguments": '{"scene_path":"res://main.tscn","scope":"node","node_path":"."}'},
+		{"name": "list_directory", "arguments": '{"path":"res://","include_sidecars":true}'}
+	]:
+		var denied: Dictionary = await controller._execute_tool_call({"id": "unadvertised_inspection", "function": call})
+		check(denied["outcome"] == "failed" and denied["result"].contains("does not advertise"), "runtime denies every unadvertised focused tool/option")
+	service.models[0]["focused_inspection"] = true
+	controller._turn_provider_config = service.profile_config("model-fixture")
+	check(controller._get_tool_definitions().map(func(tool): return tool["function"]["name"]).has("inspect_animation"), "advertised focused inspection joins normal managed readiness")
+	service.models[0]["focused_inspection"] = false
+	check(controller._turn_allows_focused_inspection() and not service.profile_config("model-fixture")["hosted_focused_inspection"], "focus capability remains fixed through the active turn")
+	controller._turn_provider_config["hosted_focused_inspection"] = "true"
+	check(not controller._turn_allows_focused_inspection(), "malformed focus flag cannot enable tools")
+	controller._turn_provider_config = profile.duplicate(true)
 	var unavailable: Dictionary = await controller._execute_tool_call({"id": "unadvertised_navigation", "function": {"name": "find_project_symbols", "arguments": "{}"}})
 	check(unavailable["outcome"] == "failed" and unavailable["result"].contains("does not advertise"), "runtime checks must deny unadvertised Cloud navigation even when called directly")
 	service.models[0]["project_code_navigation"] = true
