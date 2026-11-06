@@ -30,6 +30,10 @@ The top-aligned card has a restrained star heading, border/shadow, themed suppor
 actions, quiet dismissal links and Close/Escape. There is no dimming, animation,
 focus grab or forced conversation scrolling. Only its own bounded viewport captures
 input; short/larger-font docks use internal card scrolling above the composer.
+Action captions retain natural flow widths when they fit and wrap within padded,
+text-height-driven native buttons when needed. The dock offers an explicit card
+width after reserving outer margins, scroll-container padding and vertical-scrollbar
+space; sizing never derives its limit from an already-expanded child minimum.
 
 One local editor-wide versioned EditorSettings record stores only bounded usage
 threshold counters, timestamps, presentation count and opt-out. No conversation,
@@ -47,9 +51,22 @@ approval/setup suppression, real streaming/tool/mode-rejection/failure/Stop path
 exact click-only destinations, unchanged session/model and full original empty-state/
 feed/header/composer/scrollbar geometry through show/dismiss, top-of-dock visibility,
 Close/Escape, 300-unit layouts and short-dock containment in all five locales at
-normal/1.5×/2× fonts, and opt-out through a
-second clean process. Headless and Linux/X11/OpenGL pass. External browser and real
+normal/1.5×/2× fonts, full overlay/scrollbar and wrapped-caption containment,
+Spanish/Korean 2× font layout with system fallback disabled on private font copies,
+actual pointer clicks through caption labels, and opt-out through a
+second clean process. Headless and Linux/X11/OpenGL pass locally. External browser and real
 star/review submission, other themes/platforms remain manual; source stays unreleased.
+
+The first pushed reminder implementation at `5b43329` failed
+[Tests run #62](https://github.com/cold-atom/Orca/actions/runs/42220289337) on Korean
+2× fonts. Restricting local system fonts reproduced a 287-unit card minimum in a
+280-unit conversation viewport; the complete overlay needed 313 units. Spanish
+also overflowed once outer margins and the scrollbar were counted. Local CJK
+fonts had masked the original card-only assertion. Wrapped captions and the
+explicit width budget correct the layout; the stronger regression exercises
+missing system fallback independently of installed fonts. Unit/component and all
+four native-helper jobs passed in that failed run, but later editor/transport/final
+checks were skipped. Fresh full hosted CI for the correction remains pending.
 
 ## Unreleased: Focused Godot Inspection
 
@@ -1453,6 +1470,12 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-06: Community invitation font-width regression correction
+
+- Reproduced the new reminder's Korean 2× CI failure by restricting available system fonts. Identified unwrapped native action-caption minima plus previously untested outer-margin/scrollbar overflow, including Spanish.
+- Preserved the existing action flow and native click/focus controls while adding wrapped, text-height-driven caption panels. Offered card width explicitly reserves margins and scrollbar space, preventing expanded child minima from feeding back into the width limit.
+- Strengthened the isolated editor case with complete viewport/caption containment, deterministic private-font fallback cases and actual pointer clicks. The full two-process reminder case passes headlessly and Linux/X11/OpenGL with clean exits and no engine errors/warnings. Chat component, three-process localization, editor-scale, three catalog/five runner checks and ordinary headless Godot 4.7.2 initialization pass. Owner startup is suppressed and test editor state is isolated. Fresh full hosted CI and additional platforms/themes remain follow-ups.
 
 ### 2026-11-06: Focused Godot inspection and navigable exploration
 

@@ -3327,6 +3327,12 @@ func _position_support_overlay() -> void:
 	_support_overlay.position = chat_scroll.global_position - global_position
 	_support_overlay.size = chat_scroll.size
 	var width := minf(UiMetrics.scaled(380), chat_scroll.size.x)
+	# Reserve scrollbar space before content becomes tall. Caption widths must use
+	# this offered viewport budget, not an already-expanded child minimum.
+	var padding := _support_overlay_margin.get_theme_constant("margin_left") + _support_overlay_margin.get_theme_constant("margin_right")
+	var scrollbar_width := _support_overlay_scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	var scroll_padding := _support_overlay_scroll.get_theme_stylebox("panel").get_minimum_size().x
+	_support_card.set_available_width(maxf(0.0, width - padding - scrollbar_width - scroll_padding))
 	_support_overlay_scroll.position = Vector2((chat_scroll.size.x - width) / 2.0, 0)
 	_support_overlay_scroll.size = Vector2(width, minf(chat_scroll.size.y, _support_overlay_margin.get_combined_minimum_size().y))
 

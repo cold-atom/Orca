@@ -85,6 +85,72 @@ func scale_card_fonts(factor: float) -> void:
 			child.add_theme_font_size_override("font_size", roundi(int(child.get_meta("fixture_font")) * factor))
 
 
+func check_card_layout(scenario: String) -> void:
+	var card = view._support_card
+	var viewport = view._support_overlay_scroll
+	check(card.get_combined_minimum_size().x <= view.chat_scroll.size.x, "narrow card stays within dock at %s (card minimum %.1f, dock %.1f)" % [scenario, card.get_combined_minimum_size().x, view.chat_scroll.size.x])
+	check(viewport.get_combined_minimum_size().x <= view.chat_scroll.size.x and view.chat_scroll.get_global_rect().encloses(viewport.get_global_rect()), "complete overlay including margins and scrollbar stays within dock at %s (viewport %.1f, minimum %.1f, dock %.1f)" % [scenario, viewport.size.x, viewport.get_combined_minimum_size().x, view.chat_scroll.size.x])
+	check(viewport.get_global_rect().position.y >= view.header.get_global_rect().end.y and viewport.get_global_rect().end.y <= view.composer.global_position.y, "overlay viewport remains between header and composer: " + scenario)
+	for button in [card.github_button, card.review_button, card.later_button, card.never_button, card.close_button]:
+		check(button.size.x >= button.get_combined_minimum_size().x and card.get_global_rect().encloses(button.get_global_rect()), "full localized button caption fits: " + scenario)
+		if button != card.close_button:
+			var caption: Label = button.get_parent().get_node("CaptionMargin/Caption")
+			check(button.get_global_rect().encloses(caption.get_global_rect()) and caption.size.y >= caption.get_minimum_size().y and caption.get_line_count() == caption.get_visible_line_count(), "entire wrapped action caption remains visible: " + scenario)
+	check(card.get_global_rect().encloses(card.title_label.get_global_rect()), "wrapped heading stays inside overlay: " + scenario)
+
+
+func disable_system_fallback(font: Font) -> void:
+	if font is FontFile: font.allow_system_fallback = false
+	if font is FontVariation and font.base_font != null: disable_system_fallback(font.base_font)
+	for fallback in font.fallbacks: disable_system_fallback(fallback)
+
+
+func test_bundled_font_layout() -> void:
+	# CI may not have CJK system fonts. Private duplicates exercise that fallback
+	# deterministically without changing the editor's shared font resources.
+	var originals: Dictionary = {}
+	var copies: Dictionary = {}
+	for child in view._support_card.find_children("*", "Control", true, false):
+		if child is Label or child is BaseButton:
+			var font: Font = child.get_theme_font("font")
+			originals[child] = font
+			if not copies.has(font):
+				copies[font] = font.duplicate(true)
+				disable_system_fallback(copies[font])
+			child.add_theme_font_override("font", copies[font])
+	for locale in ["es", "ko"]:
+		Localization.select_language(locale)
+		scale_card_fonts(2.0)
+		await settle()
+		check_card_layout(locale + "/2.0 without system fonts")
+	for child in originals: child.add_theme_font_override("font", originals[child])
+	scale_card_fonts(1.0)
+	await settle()
+
+
+func click_action(button: Button) -> void:
+	view._support_overlay_scroll.ensure_control_visible(button)
+	await settle()
+	var caption: Label = button.get_parent().get_node("CaptionMargin/Caption")
+	var point := caption.get_global_rect().get_center()
+	check(view._support_overlay_scroll.get_global_rect().has_point(point), "action caption is in the visible viewport before clicking")
+	root.warp_mouse(point)
+	await process_frame
+	var motion := InputEventMouseMotion.new()
+	motion.position = point
+	motion.global_position = point
+	root.push_input(motion, true)
+	for pressed in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.position = point
+		event.global_position = point
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+		root.push_input(event, true)
+	await settle()
+
+
 func run() -> void:
 	for frame in 60: await process_frame
 	while EditorInterface.get_resource_filesystem().is_scanning(): await process_frame
@@ -199,18 +265,14 @@ func _test_idle_and_layout() -> void:
 		for factor in [1.0, 1.5, 2.0]:
 			scale_card_fonts(factor)
 			await settle()
-			var card = view._support_card
-			check(card.get_combined_minimum_size().x <= view.chat_scroll.size.x, "narrow card stays within dock at " + locale + "/" + str(factor))
-			check(view._support_overlay_scroll.get_global_rect().position.y >= view.header.get_global_rect().end.y and view._support_overlay_scroll.get_global_rect().end.y <= view.composer.global_position.y, "overlay viewport remains between header and composer: " + locale)
-			for button in [card.github_button, card.review_button, card.later_button, card.never_button, card.close_button]:
-				check(button.size.x >= button.get_combined_minimum_size().x and card.get_global_rect().encloses(button.get_global_rect()), "full localized button caption fits: " + locale)
-			check(card.get_global_rect().encloses(card.title_label.get_global_rect()), "wrapped heading stays inside overlay: " + locale)
+			check_card_layout("%s/%.1f" % [locale, factor])
 		view.size.y = Metrics.scaled(450)
 		await settle()
 		check(view._support_overlay_scroll.get_global_rect().end.y <= view.composer.global_position.y and view._support_overlay_scroll.get_v_scroll_bar().visible, "short dock uses internal card scrolling instead of covering composer: " + locale)
 		view.size.y = Metrics.scaled(850)
 		scale_card_fonts(1.0)
 		await settle()
+	await test_bundled_font_layout()
 	Localization.select_language("en")
 	await settle()
 	view._support_card.later_button.pressed.emit()
@@ -241,11 +303,11 @@ func _test_idle_and_layout() -> void:
 	view._check_support_reminder()
 	var opened: Array = []
 	view.support_browser_opener = func(url): opened.append(url)
-	view._support_card.github_button.pressed.emit()
+	await click_action(view._support_card.github_button)
 	check(opened == [Card.GITHUB] and view._support_reminder.state()["stopped"], "GitHub opens only on click and retires future reminders")
 	eligible_idle()
 	view._check_support_reminder()
-	view._support_card.review_button.pressed.emit()
+	await click_action(view._support_card.review_button)
 	check(opened == [Card.GITHUB, Card.STORE] and view._support_reminder.state()["stopped"], "review action opens the exact supplied Store URL")
 	view._on_support_link_requested("https://example.invalid/")
 	check(opened.size() == 2, "arbitrary browser destinations are rejected")

@@ -53,8 +53,13 @@ failure and Stop. It checks fixed browser destinations through an injected opene
 no session/model-context insertion, unchanged original empty-state/feed/header/
 composer/scrollbar geometry through overlay show/dismiss, immediate below-header
 visibility, Close/Escape, and 300-unit/short-dock overlay layouts in all five
-languages at normal/1.5×/2× fonts. Headless and
-Linux/X11/OpenGL checks pass; actual external browser/star/review submission,
+languages at normal/1.5×/2× fonts. Containment includes the complete viewport,
+outer margins and vertical scrollbar, as well as every wrapped action-caption
+line. Spanish/Korean 2× cases disable system fallback on private copies of the
+editor fonts, so installed CJK fonts cannot mask the original CI width failure.
+Real pointer clicks on caption labels verify routing to the native buttons.
+Headless and Linux/X11/OpenGL checks pass locally; fresh hosted CI for the
+font-width correction remains pending. Actual external browser/star/review submission,
 additional themes and Windows/macOS remain manual checks.
 
 ## Focused Godot inspection (unreleased)
