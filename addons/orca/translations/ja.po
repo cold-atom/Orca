@@ -6,6 +6,36 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "If Orca has been useful to you, a GitHub star or an honest Godot Asset Library review would help other Godot developers discover the project. Thanks for supporting Orca!"
+msgstr "Orca がお役に立ちましたら、GitHub のスターや Godot アセットライブラリへの率直なレビューで、他の Godot 開発者がこのプロジェクトを見つけやすくなります。Orca へのご支援ありがとうございます！"
+
+msgid "Star on GitHub"
+msgstr "GitHub でスター"
+
+msgid "Finding Orca useful?"
+msgstr "Orca はお役に立っていますか？"
+
+msgid "A GitHub star or an honest Godot Asset Library review helps other Godot developers discover the project. Thanks for supporting Orca!"
+msgstr "GitHub のスターや Godot アセットライブラリへの率直なレビューで、他の Godot 開発者がこのプロジェクトを見つけやすくなります。Orca へのご支援ありがとうございます！"
+
+msgid "Dismiss support reminder"
+msgstr "支援の案内を閉じる"
+
+msgid "Leave a review"
+msgstr "レビューを書く"
+
+msgid "Not now"
+msgstr "今はしない"
+
+msgid "Don't ask again"
+msgstr "今後表示しない"
+
+msgid "Open Orca's GitHub repository in your browser"
+msgstr "ブラウザーで Orca の GitHub リポジトリを開く"
+
+msgid "Open Orca's Godot Asset Library page in your browser"
+msgstr "ブラウザーで Orca の Godot アセットライブラリページを開く"
+
 msgid "Settings"
 msgstr "設定"
 

@@ -8,6 +8,49 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
+## Unreleased: Quiet Community Invitation
+
+`support_reminder.gd` schedules a small `support_card.gd` overlay directly below
+the dock header after at least seven days since the first accepted interaction,
+ten accepted turns and three distinct UTC usage days. Tool continuations and
+approval decisions do not count as new turns; failed/cancelled accepted turns
+count equally. There is no satisfaction classification or automatic star/review
+lookup. The two static destinations are the official GitHub repository and
+`https://store.godotengine.org/asset/cold-atom/orca-ai-agent-for-godot/`, opened
+only from an explicit user click without appended user/project data.
+
+Presentation requires a visible, foreground, resumable idle conversation with no
+active turn/transport/commit, pending edit or mode approval, composer focus/draft/
+attachments, setup/menu/dialog, account transition, update activity/notice or game
+run. Thirty seconds of quiet time is required; ongoing feed-follow or reading older
+messages defers it. Send, composing and dock navigation hide an existing card
+immediately. A positioned, non-modal Control outside all feed/main containers
+preserves the original welcome logo, text, feed, header and composer geometry.
+The top-aligned card has a restrained star heading, border/shadow, themed support
+actions, quiet dismissal links and Close/Escape. There is no dimming, animation,
+focus grab or forced conversation scrolling. Only its own bounded viewport captures
+input; short/larger-font docks use internal card scrolling above the composer.
+
+One local editor-wide versioned EditorSettings record stores only bounded usage
+threshold counters, timestamps, presentation count and opt-out. No conversation,
+project/account identity, model context, support report or network telemetry is
+involved. A presentation consumes its slot even if subsequently hidden, with no
+reappearance in the same loaded dock. `Not now` or passive hiding permits at most
+one later presentation after sixty days and further use; two total presentations
+are the lifetime cap. Either support-link click or `Don't ask again` permanently
+retires the invitation. Malformed/future settings fail quiet, preserving opt-out;
+clock rollback cannot trigger early reminders. English and all four bundled
+translations refresh through Orca's private domain.
+
+The permanent isolated editor regression covers scheduling, quiet/busy/focus/draft/
+approval/setup suppression, real streaming/tool/mode-rejection/failure/Stop paths,
+exact click-only destinations, unchanged session/model and full original empty-state/
+feed/header/composer/scrollbar geometry through show/dismiss, top-of-dock visibility,
+Close/Escape, 300-unit layouts and short-dock containment in all five locales at
+normal/1.5×/2× fonts, and opt-out through a
+second clean process. Headless and Linux/X11/OpenGL pass. External browser and real
+star/review submission, other themes/platforms remain manual; source stays unreleased.
+
 ## Unreleased: Focused Godot Inspection
 
 The checkout adds exact-node/subtree saved-scene reads, read-only saved animation

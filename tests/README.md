@@ -6,7 +6,7 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
-`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `editor_ui_scale_test.gd`, `localization_editor_test.gd`, `project_inspection_editor_test.gd`
+`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `editor_ui_scale_test.gd`, `localization_editor_test.gd`, `project_inspection_editor_test.gd`, `support_reminder_editor_test.gd`
 and `update_editor_test.gd` extend the tool Node in
 `editor_test_case.gd`. Run them through `run_editor_test.py`, which enables a
 test-only EditorPlugin in a disposable project and uses the editor's existing
@@ -31,6 +31,8 @@ python3 tests/run_editor_test.py localization_editor_test.gd
 python3 tests/run_editor_test.py localization_editor_test.gd --graphical
 python3 tests/run_editor_test.py project_inspection_editor_test.gd
 python3 tests/run_editor_test.py project_inspection_editor_test.gd --graphical
+python3 tests/run_editor_test.py support_reminder_editor_test.gd
+python3 tests/run_editor_test.py support_reminder_editor_test.gd --graphical
 ```
 
 Set `GODOT_BIN` to Godot 4.7.2; `--godot` and `--temp-parent` are optional.
@@ -38,6 +40,22 @@ The graphical path is Linux/X11/OpenGL. This runner currently supports Linux
 isolation; it does not claim Windows/macOS fixture acceptance. Do not launch
 these Node cases with `--editor --script`. Other legacy editor cases below
 retain their existing entry points until separately migrated.
+
+## Quiet community invitation (unreleased)
+
+`support_reminder_editor_test.gd` uses two clean, isolated editor processes to
+exercise the seven-day/ten-interaction/three-active-day schedule, sixty-day
+cooldown with further use, two-presentation cap, malformed-state and clock rollback
+handling, and permanent opt-out persistence. Real dock/controller fixtures cover
+idle deferral, draft/focus/attachment/approval/setup/view-only suppression,
+immediate hiding on Send, streaming, tool continuation, mode approval/rejection,
+failure and Stop. It checks fixed browser destinations through an injected opener,
+no session/model-context insertion, unchanged original empty-state/feed/header/
+composer/scrollbar geometry through overlay show/dismiss, immediate below-header
+visibility, Close/Escape, and 300-unit/short-dock overlay layouts in all five
+languages at normal/1.5×/2× fonts. Headless and
+Linux/X11/OpenGL checks pass; actual external browser/star/review submission,
+additional themes and Windows/macOS remain manual checks.
 
 ## Focused Godot inspection (unreleased)
 

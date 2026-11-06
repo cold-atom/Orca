@@ -6,6 +6,36 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "If Orca has been useful to you, a GitHub star or an honest Godot Asset Library review would help other Godot developers discover the project. Thanks for supporting Orca!"
+msgstr "Orca가 도움이 되었다면 GitHub에 별을 남기거나 Godot 에셋 라이브러리에 솔직한 리뷰를 작성해 주세요. 다른 Godot 개발자들이 이 프로젝트를 발견하는 데 도움이 됩니다. Orca를 응원해 주셔서 감사합니다!"
+
+msgid "Star on GitHub"
+msgstr "GitHub에 별 남기기"
+
+msgid "Finding Orca useful?"
+msgstr "Orca가 도움이 되었나요?"
+
+msgid "A GitHub star or an honest Godot Asset Library review helps other Godot developers discover the project. Thanks for supporting Orca!"
+msgstr "GitHub에 별을 남기거나 Godot 에셋 라이브러리에 솔직한 리뷰를 작성하면 다른 Godot 개발자들이 이 프로젝트를 발견하는 데 도움이 됩니다. Orca를 응원해 주셔서 감사합니다!"
+
+msgid "Dismiss support reminder"
+msgstr "응원 안내 닫기"
+
+msgid "Leave a review"
+msgstr "리뷰 작성"
+
+msgid "Not now"
+msgstr "나중에"
+
+msgid "Don't ask again"
+msgstr "다시 묻지 않기"
+
+msgid "Open Orca's GitHub repository in your browser"
+msgstr "브라우저에서 Orca의 GitHub 저장소 열기"
+
+msgid "Open Orca's Godot Asset Library page in your browser"
+msgstr "브라우저에서 Orca의 Godot 에셋 라이브러리 페이지 열기"
+
 msgid "Settings"
 msgstr "설정"
 

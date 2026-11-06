@@ -13,7 +13,7 @@ UI_FILES = (
     "input_map_change_card", "main_scene_change_card", "project_settings_change_card",
     "scene_change_card", "tool_activity_card", "tool_activity_group", "task_list_panel",
     "mode_switch_card", "image_attachment_window", "image_attachment_tray",
-    "script_reference_tray", "connection_setup_panel", "update_panel",
+    "script_reference_tray", "connection_setup_panel", "update_panel", "support_card",
 )
 STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
 PLACEHOLDER = re.compile(r"%(?:[-+0-9.# ]*)[sdifuxX]")

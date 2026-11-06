@@ -107,6 +107,7 @@ jobs:
           python3 tests/run_editor_test.py remembered_edit_editor_test.gd
           python3 tests/run_editor_test.py update_editor_test.gd
           python3 tests/run_editor_test.py localization_editor_test.gd
+          python3 tests/run_editor_test.py support_reminder_editor_test.gd
           python3 tests/run_editor_test.py project_inspection_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_scene_inspector_editor_test.gd

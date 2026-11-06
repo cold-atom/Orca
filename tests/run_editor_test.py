@@ -20,6 +20,7 @@ CASES = {
     "remembered_edit_editor_test.gd": ["auto_apply_test.gd"],
     "update_editor_test.gd": [],
     "localization_editor_test.gd": [],
+    "support_reminder_editor_test.gd": [],
     "project_inspection_editor_test.gd": ["fixtures/project_inspection_editor_scene.tscn", "fixtures/animation_inspector_fixture.tscn"],
 }
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
@@ -153,6 +154,13 @@ def main() -> int:
                     return 1
             print(f"run_editor_test: PASS {args.case} (three clean editor processes; {'X11/OpenGL' if args.graphical else 'headless'})")
             return 0
+        if args.case == "support_reminder_editor_test.gd":
+            for phase in ["exercise", "restart"]:
+                env["ORCA_SUPPORT_TEST_PHASE"] = phase
+                if not execute([*common, *display], env, f"support_reminder_editor_test: PASS ({phase})"):
+                    return 1
+            print(f"run_editor_test: PASS {args.case} (two clean editor processes; {'X11/OpenGL' if args.graphical else 'headless'})")
+            return 0
         command = [*common, *display]
         if args.ui_only:
             command += ["--", "--ui-only"]
@@ -161,6 +169,7 @@ def main() -> int:
             "editor_ui_scale_test.gd": "editor_ui_scale_test: PASS",
             "update_editor_test.gd": "Update editor: PASS",
             "project_inspection_editor_test.gd": "project_inspection_editor_test: PASS",
+            "support_reminder_editor_test.gd": "support_reminder_editor_test: PASS",
         }[args.case]
         if not execute(command, env, marker):
             return 1

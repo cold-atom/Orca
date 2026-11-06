@@ -79,6 +79,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scripts/settings_view.gd` | Responsive in-dock provider, credential, model, effort, and metadata settings page. |
 | `addons/orca/scripts/localization.gd` | Orca-only TranslationDomain, bundled English-fallback catalogs, saved locale selection and non-rebuilding formatted UI refresh. |
 | `addons/orca/scripts/connection_setup_panel.gd` | Dismissible conversation-area connection overlay card with first-open/Send setup choices and draft-preserving navigation. |
+| `addons/orca/scripts/support_reminder.gd`, `support_card.gd` | Local editor-wide, usage-gated community invitation with idle-only below-header overlay, preserved empty-state geometry, bounded reminders and permanent dismissal. |
 | `addons/orca/scripts/account_service.gd` | Browser pairing, persistent account lifecycle, single-flight token refresh, sanitized account/catalog state and fixed-origin hosted authorization. |
 | `addons/orca/scripts/update_service.gd` | Public daily GitHub release checks, cached bounded metadata, verified staging, cancellation and explicit updater handoff. |
 | `addons/orca/scripts/update_package.gd` | Strict release ZIP/manifest checks, local-change detection, project-scoped update locks, transactional replacement and guarded rollback. |

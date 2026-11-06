@@ -31,6 +31,9 @@ const ScriptReferenceTray = preload("res://addons/orca/scripts/script_reference_
 const UpdatePanel = preload("res://addons/orca/scripts/update_panel.gd")
 const ConnectionSetupPanel = preload("res://addons/orca/scripts/connection_setup_panel.gd")
 const ScriptChangeJournal = preload("res://addons/orca/scripts/script_change_journal.gd")
+const SupportReminder = preload("res://addons/orca/scripts/support_reminder.gd")
+const SupportCard = preload("res://addons/orca/scripts/support_card.gd")
+const SUPPORT_QUIET_MSEC := 30000
 const PROMPT_MIN_LINES := 2
 const PROMPT_MAX_LINES := 7
 const PROMPT_MAX_DOCK_RATIO := 0.28
@@ -181,6 +184,14 @@ var _edit_permission_dialog_session_id := ""
 var _edit_permission_dialog_revision := -1
 var _edit_permission_dialog_change_id := ""
 var _edit_permission_dialog_turn_id := 0
+var _support_reminder = SupportReminder.new()
+var _support_card: PanelContainer
+var _support_overlay: Control
+var _support_overlay_scroll: ScrollContainer
+var _support_overlay_margin: MarginContainer
+var _support_quiet_since := 0
+var _support_presented := false
+var support_browser_opener := Callable()
 
 
 func _enter_tree() -> void:
@@ -315,6 +326,7 @@ func _ready() -> void:
 	agent_controller.refresh_session_usage()
 	_refresh_model_metadata()
 	call_deferred("_restore_active_session")
+	_setup_support_reminder()
 
 
 func _process(_delta: float) -> void:
@@ -479,6 +491,7 @@ func _scale_local_styleboxes(control: Control, names: Array[String]) -> void:
 
 func _on_prompt_focus_changed(focused: bool) -> void:
 	composer.add_theme_stylebox_override("panel", _composer_focus_style if focused else _composer_style)
+	_pause_support_reminder()
 
 
 func _setup_image_attachments() -> void:
@@ -935,6 +948,7 @@ func _add_message_script_references(label: RichTextLabel, references: Array) -> 
 
 
 func _sync_send_availability() -> void:
+	_pause_support_reminder()
 	send_button.disabled = not _request_active and (not _session_resumable or (prompt_input.text.strip_edges().is_empty() and _draft_images.is_empty() and _draft_script_paths.is_empty()))
 	_sync_image_button(_selected_image_capability())
 	_sync_send_icon_tint(_request_active)
@@ -1091,6 +1105,7 @@ func _on_turn_request_state_changed(turn_id: int, active: bool) -> void:
 			return
 		_active_turn_id = turn_id
 		_response_attribution.clear()
+		_support_reminder.record_use(int(Time.get_unix_time_from_system()))
 	elif turn_id != _active_turn_id:
 		return
 	_set_request_active(active)
@@ -1551,6 +1566,7 @@ func _on_agent_request_cancelled() -> void:
 
 
 func _set_request_active(active: bool) -> void:
+	_pause_support_reminder()
 	_request_active = active
 	send_icon_view.texture = _stop_icon if active else _send_icon
 	send_button.tooltip_text = "Stop response (draft text is kept)" if active else "Send message"
@@ -2473,6 +2489,7 @@ func _render_script_checkpoint(checkpoint_id: String) -> bool:
 
 
 func _clear_chat_feed() -> void:
+	_pause_support_reminder()
 	_dismiss_connection_setup(false)
 	_close_active_tool_group()
 	_tool_groups_by_call_id.clear()
@@ -2577,6 +2594,7 @@ func _on_dock_resized() -> void:
 	_sync_localized_empty_state()
 	_queue_prompt_height_sync()
 	_position_connection_overlay()
+	call_deferred("_position_support_overlay")
 	if mode_overlay.visible:
 		call_deferred("_position_mode_menu")
 
@@ -2590,6 +2608,10 @@ func _sync_localized_empty_state() -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if _support_card != null and _support_card.visible and event.is_action_pressed("ui_cancel"):
+		_on_support_dismiss_requested(false)
+		get_viewport().set_input_as_handled()
+		return
 	if _connection_overlay != null and _connection_overlay.visible and event.is_action_pressed("ui_cancel"):
 		_dismiss_connection_setup()
 		get_viewport().set_input_as_handled()
@@ -3254,3 +3276,133 @@ func _open_settings(focus_model: bool, setup_route: String = "") -> void:
 		settings_view.open_model_configuration()
 	else:
 		settings_view.open()
+
+
+func _setup_support_reminder() -> void:
+	_support_quiet_since = Time.get_ticks_msec()
+	# Positioned outside the main containers: showing it cannot reflow the feed,
+	# empty state or composer. Only the card's own rectangle receives mouse input.
+	_support_overlay = Control.new()
+	_support_overlay.name = "SupportOverlay"
+	_support_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_support_overlay.hide()
+	add_child(_support_overlay)
+	_support_overlay_scroll = ScrollContainer.new()
+	_support_overlay_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_support_overlay.add_child(_support_overlay_scroll)
+	_support_overlay_margin = MarginContainer.new()
+	_support_overlay_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_set_scaled_margins(_support_overlay_margin, 6, 6, 6, 6)
+	_support_overlay_scroll.add_child(_support_overlay_margin)
+	_support_card = SupportCard.new()
+	_support_card.name = "SupportCard"
+	_support_card.body_font_size = _body_font_size
+	_support_card.meta_font_size = _meta_font_size
+	_support_card.hide()
+	_support_overlay_margin.add_child(_support_card)
+	_support_card.link_requested.connect(_on_support_link_requested)
+	_support_card.dismiss_requested.connect(_on_support_dismiss_requested)
+	_support_card.minimum_size_changed.connect(func(): call_deferred("_position_support_overlay"))
+	chat_scroll.resized.connect(_position_support_overlay)
+	chat_scroll.item_rect_changed.connect(_position_support_overlay)
+	for surface in [self, main_content, mode_overlay, _connection_overlay, _edit_permission_dialog, _new_session_dialog, _image_picker, _image_preview, _image_attachment_window]:
+		if surface != null:
+			surface.visibility_changed.connect(_pause_support_reminder)
+	account_service.changed.connect(_pause_support_reminder)
+	game_process_service.run_state_changed.connect(func(_snapshot): _pause_support_reminder())
+	if update_service != null:
+		update_service.changed.connect(_pause_support_reminder)
+	var timer := Timer.new()
+	timer.name = "SupportIdleTimer"
+	timer.wait_time = 5.0
+	timer.timeout.connect(_check_support_reminder)
+	add_child(timer)
+	timer.start()
+	_position_support_overlay()
+
+
+func _position_support_overlay() -> void:
+	if _support_overlay == null:
+		return
+	_support_overlay.position = chat_scroll.global_position - global_position
+	_support_overlay.size = chat_scroll.size
+	var width := minf(UiMetrics.scaled(380), chat_scroll.size.x)
+	_support_overlay_scroll.position = Vector2((chat_scroll.size.x - width) / 2.0, 0)
+	_support_overlay_scroll.size = Vector2(width, minf(chat_scroll.size.y, _support_overlay_margin.get_combined_minimum_size().y))
+
+
+func _input(event: InputEvent) -> void:
+	if is_visible_in_tree() and (event is InputEventKey or event is InputEventMouseButton or event is InputEventMouseMotion) and (_support_card == null or not _support_card.visible):
+		_support_quiet_since = Time.get_ticks_msec()
+
+
+func _pause_support_reminder() -> void:
+	_support_quiet_since = Time.get_ticks_msec()
+	if is_instance_valid(_support_card):
+		_support_card.hide()
+	if is_instance_valid(_support_overlay):
+		_support_overlay.hide()
+
+
+func _support_idle() -> bool:
+	if not is_visible_in_tree() or not main_content.is_visible_in_tree() or _request_active or _active_turn_id != 0 or not _session_resumable or agent_controller == null or agent_controller.is_busy() or agent_controller._committing_edit or agent_controller.api_client.is_requesting():
+		return false
+	if not agent_controller._pending_change_id.is_empty() or not agent_controller._pending_work_mode_call_id.is_empty() or prompt_input.has_focus() or not prompt_input.text.is_empty() or not _draft_images.is_empty() or not _draft_script_paths.is_empty():
+		return false
+	for surface in [mode_overlay, _connection_overlay, _edit_permission_dialog, _new_session_dialog, _image_picker, _image_preview, _image_attachment_window]:
+		if surface != null and surface.visible:
+			return false
+	if account_service.state not in ["connected", "signed_out"] or account_service._refreshing or (update_service != null and update_service.busy()) or game_process_service.is_running():
+		return false
+	if update_notice != null and update_notice.visible:
+		return false
+	if Engine.is_editor_hint() and EditorInterface.is_playing_scene():
+		return false
+	# Headless fixtures have no OS focus. Graphical editors must be foreground.
+	if DisplayServer.get_name() != "headless" and not get_window().has_focus():
+		return false
+	return true
+
+
+func _check_support_reminder() -> void:
+	if _support_card == null:
+		return
+	if not _support_idle():
+		_pause_support_reminder()
+		return
+	if _support_card.visible:
+		if _support_reminder.state()["stopped"]:
+			_pause_support_reminder()
+		return
+	if _support_presented or Time.get_ticks_msec() - _support_quiet_since < SUPPORT_QUIET_MSEC:
+		return
+	# Do not jump someone away from older messages or add to a moving feed.
+	var bar := chat_scroll.get_v_scroll_bar()
+	if _scroll_follow_frames > 0 or bar.value < bar.max_value - bar.page - UiMetrics.scaled(4):
+		return
+	if not _support_reminder.mark_shown(int(Time.get_unix_time_from_system())):
+		return
+	_support_presented = true
+	_support_card.show()
+	_support_overlay.show()
+	_position_support_overlay()
+	call_deferred("_position_support_overlay")
+
+
+func _on_support_dismiss_requested(permanent: bool) -> void:
+	if permanent:
+		_support_reminder.stop()
+	_pause_support_reminder()
+
+
+func _on_support_link_requested(url: String) -> void:
+	if url not in [SupportCard.GITHUB, SupportCard.STORE] or not _support_idle() or not _support_card.visible:
+		return
+	# Opening a destination does not assert that the user starred/reviewed it.
+	# It simply retires the invitation.
+	_support_reminder.stop()
+	_pause_support_reminder()
+	if support_browser_opener.is_valid():
+		support_browser_opener.call(url)
+	else:
+		OS.shell_open(url)
