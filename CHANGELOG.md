@@ -2,7 +2,12 @@
 
 All notable changes to Orca are documented in this file.
 
-## Unreleased
+## 1.7.0 - 2026-11-06
+
+**Multilingual UI & Focused Godot Inspection** — release candidate for Godot
+4.7.2, prepared for the next GitHub build. Not yet published; 1.6.0 remains the
+latest published release. Adds interface languages, focused scene/animation
+exploration and a quiet community invitation to the 1.6.0 baseline.
 
 ### Added
 
@@ -13,12 +18,24 @@ All notable changes to Orca are documented in this file.
 - English, Simplified Chinese, Spanish, Japanese and Korean interface selection under Settings → System → Language, bundled offline translation catalogs, editor-wide persistence and live refresh preserving drafts, conversations, attachments and open reviews.
 - Response-language guidance follows explicit requests and the current message language, with the interface language as a fallback. The choice stays fixed through tool continuations and is removed from persisted context.
 - Translation catalog checks and three-process isolated editor regressions for switching, Japanese/Korean restart persistence, original data/permission preservation, actual reviewed edits/Revert and narrow larger-font layouts.
+- A quiet, dismissible community invitation below the dock header after seven days, ten accepted turns and three usage days. It appears only during idle use, opens the official GitHub or Godot Store page only on click, permits at most two lifetime presentations with a sixty-day cooldown, and permanently retires after a support-link click or Don't ask again. Bounded local usage counters contain no conversation, project or account data.
 
 ### Changed
 
 - Directory listings are sorted and capped by entries, output and time; paired `.uid`/`.import` sidecars fold with explicit counts, `include_sidecars` reveals them, and orphan sidecars remain visible.
 - Cloud requires an authenticated turn-fixed `focused_inspection` advertisement for new scene/listing arguments and animation tools; older catalogs retain the original schemas until backend rollout/catalog refresh.
 - Localized settings, chat controls, History, task/activity/review/trust/onboarding/update surfaces, tooltips and accessibility labels. Wrapped captions, flow actions and bounded selectors accommodate longer translations; code, paths, model names, original messages and raw evidence retain their source text.
+- Plugin/About/support-report metadata and current release guidance identify 1.7.0. Updater checks cover direct upgrades from 1.3.0/1.4.0/1.4.1/1.5.0/1.6.0, exact official ZIP naming, same-version suppression and downgrade prevention.
+
+### Fixed
+
+- Community invitation actions wrap within the complete dock width budget, including outer margins, padding and the vertical scrollbar. Narrow and short docks retain readable captions and unchanged welcome/feed/composer geometry at larger fonts, including Spanish/Korean layouts without system font fallback.
+
+### Known Limits
+
+- Extended Cloud inspection tools require the matching backend API deployment and an authenticated model-catalog refresh; older catalogs retain the original tools.
+- Animation inspection describes bounded saved text scene/native animation resources, not playback, gameplay correctness or unsaved external resource Inspector edits. Code/reference navigation remains lexical and saved-source-only.
+- Independent native-speaker review, real-model language adherence/inspection usefulness, broader themes/platforms and Asset Store moderation remain separate acceptance. Final-version CI and matching binary-free ZIP/native-helper assets are required before publication.
 
 ## 1.6.0 - 2026-11-05
 

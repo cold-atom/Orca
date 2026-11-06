@@ -2,18 +2,21 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory builds on published **Orca 1.6.0 — Auto Apply & Script Recovery**
-for Godot 4.7.2, with session-authorized script edits, an optional remembered
-project preference and durable recovery. This checkout also adds unreleased
-English/Simplified Chinese/Spanish/Japanese/Korean interface localization.
+This directory prepares **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
+for Godot 4.7.2. It adds English/Simplified Chinese/Spanish/Japanese/Korean
+interface localization, focused scene/animation exploration and a quiet community
+invitation to 1.6.0's session-authorized script edits and durable recovery.
+The candidate is not yet published; **1.6.0 remains the latest published release**.
 Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
 platform's credential helper from the matching official GitHub Release if missing.
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
-usable. Complete 1.6.0 final-commit CI/native packaging and release preparation passed. The owner
-reports working live model/project/helper/browser flows in their environment;
-broader platform acceptance and Asset Store moderation remain separate. The
-localization additions require fresh hosted CI and real-model acceptance. See the
+usable. The pre-bump full Tests/native packaging run at `5cee382` passed; the
+1.7.0 revision requires its own CI/package run. Native-speaker review, real-model
+language/inspection acceptance, broader platforms and Asset Store moderation
+remain separate. See the
+[1.7.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#170---2026-11-06)
+for the candidate, the
 [1.6.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#160---2026-11-05)
 for the published baseline, the
 [1.5.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#150---2026-11-02)
@@ -40,7 +43,7 @@ Missing models open the picker; configured local providers can work without keys
 Finish setup with **Done**, then press **Send** when ready. Setup never sends your
 draft automatically. Existing configured users retain the normal chat empty state.
 
-## Focused Godot inspection (unreleased)
+## Focused Godot inspection (1.7.0)
 
 This source checkout adds exact-node/subtree saved-scene inspection, read-only
 animation library/track/keyframe reads, bounded compact directory listing,
@@ -48,19 +51,29 @@ Inspector-target context and individually clickable text-search results. Origina
 evidence stays unchanged across language selection. Extended Cloud tools require
 matching backend API rollout and a model-catalog refresh; older catalogs retain
 the original schemas. Animation reads never load scenes/scripts or play animations.
-These additions are not in the published 1.6.0 ZIP.
+These additions are part of the 1.7.0 candidate, not the published 1.6.0 ZIP.
 
-## Interface languages (unreleased)
+## Interface languages (1.7.0)
 
-**Settings → System → Language** offers **English**, **简体中文** and **Español**.
+**Settings → System → Language** offers **English**, **简体中文**, **Español**,
+**日本語** and **한국어**.
 The choice is remembered locally across editor restarts/projects and refreshes
 Orca without clearing drafts, attachments, conversations or reviews. Translations
 are bundled and work offline. Godot's editor/project locale is independent.
 Replies follow explicit requests and the message language, using the selected
 interface language when unclear; the preference is held through each active turn.
 Original messages, code, model/path identities and raw evidence remain intact.
-These additions are not in the published 1.6.0 ZIP. See the
+See the
 [localization guide](https://github.com/cold-atom/Orca/blob/main/docs/LOCALIZATION.md).
+
+## Quiet community invitation (1.7.0)
+
+After sustained use, a small dismissible card may invite you to star Orca on
+GitHub or review it on the Godot Store. It waits for idle time and keeps the
+welcome/feed/composer layout intact. Links open only on click. Don't ask again
+or either support-link click retires it permanently; otherwise at most one later
+reminder can appear after sixty days and further use. Only bounded local usage
+counters are stored, without project/account identity, conversation data or telemetry.
 
 ## Safety Model
 

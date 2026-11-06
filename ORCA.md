@@ -11,23 +11,26 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-**Orca 1.6.0 — Auto Apply & Script Recovery** for **Godot 4.7.2** is published,
-with session-authorized automatic script edits, an optional remembered project
-preference and durable recovery. This checkout adds unreleased English/Simplified
-Chinese/Spanish/Japanese/Korean interface localization and turn-bound response-language guidance.
-See [localization](docs/LOCALIZATION.md) and
+This checkout prepares **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
+for **Godot 4.7.2**. The candidate adds English/Simplified Chinese/Spanish/Japanese/
+Korean interface localization, turn-bound response-language guidance, focused
+scene/animation exploration and a quiet community invitation. **1.6.0 remains
+the latest published release**, with session-authorized automatic script edits,
+an optional remembered project preference and durable recovery.
+See [localization](docs/LOCALIZATION.md),
+[1.7.0](CHANGELOG.md#170---2026-11-06) for the candidate,
 [1.6.0](CHANGELOG.md#160---2026-11-05) for the published release,
 [1.5.0](CHANGELOG.md#150---2026-11-02) for saved project code navigation and
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
-Complete 1.6.0 final-commit CI/native packaging and release preparation passed. The owner
-reports working live model/project/helper/browser flows in their environment.
-Localization requires fresh hosted CI and real-model language acceptance; broader
-platform/Store acceptance remains separate.
+The pre-bump [full Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023)
+passed, including the reminder font-width correction and four-platform native
+packaging. The 1.7.0 revision requires its own CI/package run. Independent language
+review, real-model usefulness and broader platform/Store acceptance remain separate.
 
 ### Key Features & Components
 
-The unreleased checkout also adds focused saved-scene node/subtree inspection,
+The 1.7.0 candidate adds focused saved-scene node/subtree inspection,
 read-only animation overview/track/keyframe reads, compact bounded directory
 listing, Inspector-target identity and per-match text-search navigation. New Cloud
 inspection vocabulary requires matching backend rollout and catalog refresh;
@@ -102,7 +105,7 @@ Orca's read-only context and reviewed-edit architecture. See `DEVELOPMENT.md`.
    - Uses Ollama `/api/tags` and LM Studio `/api/v1/models` metadata to hide known embedding models, with a conservative name fallback and unrestricted manual Model ID override.
    - Integrates with Godot's Editor Settings for persistence. Editor Settings is not an encrypted OS credential store.
     - The About page copies a memory-only strict-allowlist support report with Orca/Godot versions and coarse provider/request state while excluding endpoint addresses, credentials, model IDs, project and conversation data, model output, logs, file changes, and hashes.
-      - Provider, System, Account, and About use icon navigation. System offers English, Simplified Chinese, Spanish, Japanese and Korean in this unreleased checkout, with remembered live Orca-only switching; About links to docs, website, source, issues and discussions. Managed account credentials use the OS vault rather than EditorSettings.
+      - Provider, System, Account, and About use icon navigation. System offers English, Simplified Chinese, Spanish, Japanese and Korean in the 1.7.0 candidate, with remembered live Orca-only switching; About links to docs, website, source, issues and discussions. Managed account credentials use the OS vault rather than EditorSettings.
 8. **Image References (1.3.0)**
     - Attach up to four bounded PNG/JPEG/WebP still images with floating previews, removal, and larger preview actions. Vision capability is model/endpoint-specific and independent of Agent-tool support.
     - Paste screenshot pixels into the composer or drag existing project images from Godot's FileSystem dock. Desktop files use the image button's separate native drop/Browse window; dropping them onto the main editor still invokes Godot import.

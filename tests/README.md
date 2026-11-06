@@ -41,7 +41,7 @@ isolation; it does not claim Windows/macOS fixture acceptance. Do not launch
 these Node cases with `--editor --script`. Other legacy editor cases below
 retain their existing entry points until separately migrated.
 
-## Quiet community invitation (unreleased)
+## Quiet community invitation (1.7.0)
 
 `support_reminder_editor_test.gd` uses two clean, isolated editor processes to
 exercise the seven-day/ten-interaction/three-active-day schedule, sixty-day
@@ -58,11 +58,12 @@ outer margins and vertical scrollbar, as well as every wrapped action-caption
 line. Spanish/Korean 2× cases disable system fallback on private copies of the
 editor fonts, so installed CJK fonts cannot mask the original CI width failure.
 Real pointer clicks on caption labels verify routing to the native buttons.
-Headless and Linux/X11/OpenGL checks pass locally; fresh hosted CI for the
-font-width correction remains pending. Actual external browser/star/review submission,
+Headless and Linux/X11/OpenGL checks pass locally; the pre-bump full
+[Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023)
+also passed with the font-width correction. Actual external browser/star/review submission,
 additional themes and Windows/macOS remain manual checks.
 
-## Focused Godot inspection (unreleased)
+## Focused Godot inspection (1.7.0)
 
 Run `scene_inspector_test.gd`, `animation_inspector_test.gd`, `tools_test.gd`,
 `agent_controller_test.gd`, `account_service_test.gd`, `tool_activity_group_test.gd`,
@@ -87,7 +88,7 @@ scene/animation/listing round trip with private continuation and matching result
 Real-model competence/token savings, additional themes/platforms, and hosted
 deployment/catalog refresh remain separate acceptance.
 
-## Interface localization (unreleased)
+## Interface localization (1.7.0)
 
 ```bash
 python3 -m unittest discover -s tests -p translation_catalog_test.py -v
@@ -398,27 +399,30 @@ real user browser registration/verification, live hosted models, OS-vault unlock
 other platforms, session expiry and deployed HTTPS pairing/inference. Public HTTPS
 health responses establish reachability only, not authenticated or metered acceptance.
 
-## 1.6.0 release regression verification
+## 1.7.0 release regression verification
 
-The About/support-report expectations follow plugin version 1.6.0. Synthetic
+The About/support-report expectations follow plugin version 1.7.0. Synthetic
 1.3.0 → 1.4.0 installation/rollback fixtures intentionally retain both versions.
 Historical 1.4.1 update/catalog fixtures remain explicit. Current update metadata
-checks retain 1.5.0 coverage and verify 1.6.0 upgrades from
-1.3.0/1.4.0/1.4.1/1.5.0, exact official asset naming,
-same-version suppression and no downgrade from 1.6.0. Actual-source
+checks retain 1.5.0/1.6.0 coverage and verify 1.7.0 upgrades from
+1.3.0/1.4.0/1.4.1/1.5.0/1.6.0, exact official asset naming,
+same-version suppression and no downgrade from 1.7.0. Actual-source
 packaging reads the current version from `plugin.cfg`.
 For this release preparation, run the version-sensitive settings/support checks, updater
 component/editor/package tests, native helper acceptance and clean initialization
 with all three startup suppressions and isolated editor configuration/data/cache.
 Run the updater editor case through `python3 tests/run_editor_test.py update_editor_test.gd`,
-as both Tests and Prepare Orca release now do. The final-commit
-[Tests run at `0d53255`](https://github.com/cold-atom/Orca/actions/runs/41872899730)
-and release preparation passed, including all four native-helper platforms and
-binary-free packaging; 1.6.0 is published. Unreleased localization requires a new
-complete CI and same-revision helper/package run before release. Include the Auto apply and
-five-process remembered-default editor cases above. Real-model acceptance should
-exercise a small automatic script task, its inline diff, active-turn revocation,
-remembered startup and History/Revert with and without an independent edit.
+as both Tests and Prepare Orca release now do. The pre-bump full
+[Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023)
+passed, including the reminder font-width correction, editor/transport cases,
+all four native-helper platforms and binary-free packaging. The 1.7.0 revision
+requires a new complete CI and same-revision helper/package run before release;
+1.6.0 remains published. Include the localization, focused-inspection and
+two-process reminder editor cases, plus Auto apply and the five-process
+remembered-default cases above. Real-model acceptance should exercise language
+selection, focused scene/animation queries, a small automatic script task, its
+inline diff, active-turn revocation, remembered startup and History/Revert with
+and without an independent edit.
 Real browser/downloaded-helper/graphical platform
 acceptance is not established by metadata, CI or release notes.
 

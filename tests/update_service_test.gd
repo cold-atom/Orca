@@ -50,7 +50,14 @@ func _run() -> void:
 		check(automatic_edits.get("success", false) and automatic_edits.get("release", {}).get("version") == "1.6.0", "Auto apply release is newer than installed " + installed)
 		check(automatic_edits.get("release", {}).get("url") == Service.DOWNLOAD_ROOT + "v1.6.0/orca-v1.6.0.zip", "Auto apply update must select its exact version-bound official ZIP")
 	check(Service.normalize_release(release("1.6.0"), "1.6.0").get("release", {"bad": true}).is_empty(), "installed Auto apply release gives no same-version update")
-	check(Service.normalize_release(release("1.5.0"), "1.6.0").get("release", {"bad": true}).is_empty(), "latest published baseline must not downgrade a 1.6.0 candidate")
+	check(Service.normalize_release(release("1.5.0"), "1.6.0").get("release", {"bad": true}).is_empty(), "older code-navigation release must not downgrade installed Auto apply")
+	for installed in ["1.3.0", "1.4.0", "1.4.1", "1.5.0", "1.6.0"]:
+		var inspection := Service.normalize_release(release("1.7.0"), installed)
+		check(inspection.get("success", false) and inspection.get("release", {}).get("version") == "1.7.0", "multilingual inspection release is newer than installed " + installed)
+		check(inspection.get("release", {}).get("url") == Service.DOWNLOAD_ROOT + "v1.7.0/orca-v1.7.0.zip", "multilingual inspection update must select its exact version-bound official ZIP")
+	check(Service.normalize_release(release("1.7.0"), "1.7.0").get("release", {"bad": true}).is_empty(), "installed multilingual inspection release gives no same-version update")
+	for older in ["1.3.0", "1.4.0", "1.4.1", "1.5.0", "1.6.0"]:
+		check(Service.normalize_release(release(older), "1.7.0").get("release", {"bad": true}).is_empty(), "older release " + older + " must not downgrade installed 1.7.0")
 	check(Service.normalize_release(release("1.3.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "same version gives no update")
 	check(Service.normalize_release(release("1.2.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "older release never downgrades")
 	for field in ["draft", "prerelease"]:

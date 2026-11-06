@@ -8,7 +8,24 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Unreleased: Quiet Community Invitation
+## Orca 1.7.0 Release Candidate
+
+This checkout prepares **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
+for **Godot 4.7.2**. It adds five interface languages, focused saved-scene and
+animation inspection, navigable compact exploration and a quiet community
+invitation to 1.6.0. `addons/orca/plugin.cfg` and About/support expectations
+identify 1.7.0; the dated [changelog](CHANGELOG.md#170---2026-11-06) records the candidate.
+**1.6.0 remains the latest published release**; 1.7.0 is not yet published.
+
+The pre-bump [complete Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023)
+passed, including the reminder font-width correction, editor/transport checks,
+all four native-helper platforms and binary-free packaging. Final-version CI
+and matching ZIP/checksum/helpers are built from the new revision after push.
+Extended Cloud inspection still requires the matching backend API rollout and
+authenticated catalog refresh. Native-speaker review, real-model usefulness,
+broader themes/platforms and Store moderation remain separate acceptance.
+
+## 1.7.0: Quiet Community Invitation
 
 `support_reminder.gd` schedules a small `support_card.gd` overlay directly below
 the dock header after at least seven days since the first accepted interaction,
@@ -55,7 +72,7 @@ normal/1.5×/2× fonts, full overlay/scrollbar and wrapped-caption containment,
 Spanish/Korean 2× font layout with system fallback disabled on private font copies,
 actual pointer clicks through caption labels, and opt-out through a
 second clean process. Headless and Linux/X11/OpenGL pass locally. External browser and real
-star/review submission, other themes/platforms remain manual; source stays unreleased.
+star/review submission and other themes/platforms remain manual; 1.7.0 is a candidate.
 
 The first pushed reminder implementation at `5b43329` failed
 [Tests run #62](https://github.com/cold-atom/Orca/actions/runs/42220289337) on Korean
@@ -66,9 +83,11 @@ fonts had masked the original card-only assertion. Wrapped captions and the
 explicit width budget correct the layout; the stronger regression exercises
 missing system fallback independently of installed fonts. Unit/component and all
 four native-helper jobs passed in that failed run, but later editor/transport/final
-checks were skipped. Fresh full hosted CI for the correction remains pending.
+checks were skipped. The subsequent complete
+[Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023)
+passed with the correction; the 1.7.0 metadata revision requires its own run.
 
-## Unreleased: Focused Godot Inspection
+## 1.7.0: Focused Godot Inspection
 
 The checkout adds exact-node/subtree saved-scene reads, read-only saved animation
 inspection, bounded compact directory listings, public Inspector-target context,
@@ -83,7 +102,7 @@ arguments are withheld/denied, preserving older servers. Legacy Cloud listing
 keeps companions visible through an execution-only default copy so it never
 recommends an unavailable option or alters canonical call arguments. The separately
 authorized backend extends only exact validation fields/types and catalog advertisement;
-rollout/refresh is required for hosted use. Plugin metadata stays 1.6.0/unreleased.
+rollout/refresh is required for hosted use. These additions are in the 1.7.0 candidate.
 
 ### Saved-scene and animation evidence
 
@@ -143,7 +162,7 @@ again on click. Scripts open at their locations; scenes/resources use their nati
 editor surface and other files are revealed. Historical summaries reconstruct no
 stale result list. Activity labels and captions use all five Orca interface locales.
 
-## Unreleased: Interface Languages
+## 1.7.0: Interface Languages
 
 The development checkout adds English, Simplified Chinese (`zh_CN`), Spanish
 (`es`), Japanese (`ja`) and Korean (`ko`) interface selection, local EditorSettings
@@ -153,7 +172,8 @@ fallback. Original conversation/source/evidence and runtime permissions remain
 canonical. Response-language guidance is captured once per turn before callbacks,
 retained through continuations/finalization and removed from persisted history.
 See [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md) for the contract, contribution
-workflow, verification and limits. This work is not in the published 1.6.0 ZIP.
+workflow, verification and limits. This work is in the 1.7.0 candidate, not the
+published 1.6.0 ZIP.
 
 ## Published Orca 1.6.0 / 1.5.0
 
@@ -233,7 +253,7 @@ The plugin has public GitHub releases and remains a functional development-stage
 - A Plan turn can show one inline, turn-bound Work-mode request with explicit `Stay in Plan` and `Switch to Work` actions. Approval continues the same task automatically; rejection stays in Plan and suppresses another request for that turn.
 - Two-row compact header that keeps session context usage and cost visible at narrow dock widths.
 - During active or locally blocked requests, the header shows `Request ~… / …` from the conservative preflight estimate. Its tooltip separates the latest completed provider usage from the outgoing input budget and output/tool reserves. Idle completed requests retain `Context …`; estimates are memory-only and do not replace billing/session usage. Narrow labels keep their existing clipping and complete tooltips.
-- In-dock settings page with icon-based Provider, System, and About navigation, neutral charcoal selected surfaces and bright active icons, keyboard focus, and section tooltips. System offers English, Simplified Chinese, Spanish, Japanese and Korean in this unreleased checkout, with editor-wide local persistence and live Orca-only refresh. Provider settings include API key configuration, searchable model discovery, provider-reported or conservative known-model reasoning effort, model metadata, release information sourced from `plugin.cfg`, and a Done action.
+- In-dock settings page with icon-based Provider, System, and About navigation, neutral charcoal selected surfaces and bright active icons, keyboard focus, and section tooltips. System offers English, Simplified Chinese, Spanish, Japanese and Korean in the 1.7.0 candidate, with editor-wide local persistence and live Orca-only refresh. Provider settings include API key configuration, searchable model discovery, provider-reported or conservative known-model reasoning effort, model metadata, release information sourced from `plugin.cfg`, and a Done action.
 - The About page can copy a memory-only strict-allowlist support report containing Orca/Godot versions and coarse provider/request lifecycle metadata without endpoint addresses, credentials, project or conversation content, model output, logs, process output, proposal data, or hashes.
 - About includes compact Resources and Community & Development link rows for documentation, `aiorca.dev`, the GitHub repository, issue reporting, and discussions/feature requests. PanelContainer-driven minimum sizes keep titles, wrapped descriptions, padding, and browser arrows inside each clickable row at actual editor font sizes. Neutral hover surfaces, keyboard focus, and accessible names follow the dock's visual style. URLs are static user-provided destinations opened in the default browser only on explicit click; Orca appends no project, conversation, or diagnostic data. Editor-layout regressions verify text containment, no row/heading overlap, and narrow width with normal, 1.5×, and 2× font sizes after deferred container layout.
 - First-class managed Orca Cloud, OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Microsoft Foundry / Azure, Ollama, LM Studio, and Local OpenAI-compatible profiles plus an advanced custom OpenAI-compatible profile.
@@ -260,7 +280,7 @@ The plugin has public GitHub releases and remains a functional development-stage
 - The trusted copied `update_runner.gd` runs under the current Godot executable in `res://.orca-update/runner/`, a private minimal project outside the loaded addon. It waits for the initiating editor's exit before transactional directory replacement, retains one verified rollback copy and reopens the same project. Unix uses a fixed signal-0 process-existence probe because Godot's process API only tracks child PIDs, and a fixed positional-argument `exec` wrapper detaches closed installer pipes. Windows uses native Godot process APIs. This is never exposed as executable/argument/PID authority to the model.
 - Handoff snapshots the public active display backend (`DisplayServer.get_name()`), preserving headless relaunch even without an available desktop. Godot consumes `--headless` before returning `OS.get_cmdline_args()`, so command-line membership cannot determine this state. The independent restart fixture removes inherited X11/Wayland display variables and verifies the new editor's headless backend.
 - `res://.orca-update/` is import-isolated (`.gdignore`), Git-ignored and protected from agent reads/search/mutations/dependencies/script references. Its bounded ownership, lock, transaction and result records preserve recovery information. Verified rollback is explicit; a retained standalone launcher can restore the original even if the addon directory is absent. Modified/unknown bytes and locks are preserved for manual review.
-- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox; its updater editor case uses `run_editor_test.py` in the isolated normal-editor lifecycle. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.6.0 is published after complete CI; this source checkout adds unreleased localization and requires fresh CI/package acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
+- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox; its updater editor case uses `run_editor_test.py` in the isolated normal-editor lifecycle. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.6.0 is published after complete CI; this source checkout prepares 1.7.0 and requires final-version CI/package acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
 - Release preparation retains all four native build/real-test jobs from the selected tag, but packaging now uses `--require-platform-helpers --helper-assets <directory>` to emit a **binary-free** plugin ZIP/checksum plus four separate raw helper assets. The generated `native_helpers.json` pins those exact bytes to the plugin version; the unchanged updater manifest records it as an ordinary non-executable addon file. Known helper build products are excluded from the ZIP; unexpected ELF/PE/Mach-O or compiled-library filenames elsewhere are refused. Native workflow outputs are `orca-package`, `orca-native-release-assets` and a local-preparation tar.gz. Publication attaches the ZIP/checksum and matching raw helpers; downloading Actions artifacts never publishes them. Compiled helpers are Git-ignored/export-excluded and the formerly tracked Linux executable is removed. Explicit `--write-manifest` writes both catalog and update manifest into source; source snapshots must match the accepted ZIP and separately published helpers. A pinned source catalog cannot silently change during a rebuild. Workflow permissions/publication ownership remain unchanged. Exact steps are in `docs/UPDATES.md`.
 - The package artifact explicitly includes hidden files for its narrowly scoped `.ci/orca-v*.zip*` upload pattern; otherwise Actions excludes the hidden `.ci` directory during wildcard discovery, even after successful packaging. All four native build/vault/protocol/locking/cross-Godot-process jobs passed in [Tests run #42](https://github.com/cold-atom/Orca/actions/runs/40904709816); its aggregate upload and display-free updater test exposed these two subsequent failures. A new complete CI run and downloaded-package/platform updater acceptance remain required.
 - Release publication supplies an explicit **Full Changelog** link to `CHANGELOG.md` at the selected release tag. The changelog must be finalized before tagging; the version-bound link stays stable as the default branch advances.
@@ -836,7 +856,7 @@ Input: saved `.tscn` `scene_path`; optional exact `player_path` and qualified
 The overview omits key arrays; focused output retains track targets, native types,
 flags, interpolation and typed keys. No source hash or edit authorization is exposed.
 Extraction, bounds, native decoding, dependency confinement and exclusions are
-specified under Unreleased: Focused Godot Inspection above. Both modes are
+specified under 1.7.0: Focused Godot Inspection above. Both modes are
 read-only; Cloud additionally requires strict turn-bound vocabulary support.
 
 ### `inspect_editor_scene`
@@ -1353,7 +1373,7 @@ entry points pending a separate migration.
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
 - BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata remains 1.6.0, which is published with passing release-commit CI and release preparation. Interface localization is an unreleased source addition. Native-speaker translation review, real-model response-language/editing acceptance, broader platform/theme checks, Store moderation and third-party asset attribution records remain separate. Historical milestones retain their original verification state.
+- Plugin metadata identifies the 1.7.0 Multilingual UI & Focused Godot Inspection candidate; 1.6.0 remains published. The pre-bump full Tests/native/package run at `5cee382` passed, and final-version CI/package acceptance is required. Native-speaker translation review, real-model response-language/inspection/editing acceptance, broader platform/theme checks, Store moderation and third-party asset attribution records remain separate. Historical milestones retain their original verification state.
 
 ## Roadmap
 
@@ -1380,7 +1400,7 @@ entry points pending a separate migration.
 
 - Add multi-file change batches and transactional approval.
 - Broaden durable revert checkpoints beyond the implemented automatic-script journal to manual, structured and future multi-file changes.
-- Per-match text-search navigation is implemented in the unreleased focused-inspection update; richer grouped result presentation can follow real editor feedback.
+- Per-match text-search navigation is implemented in the 1.7.0 focused-inspection candidate; richer grouped result presentation can follow real editor feedback.
 - Add richer changed-file summaries and context-budget warnings.
 - Implement prompt enhancement and expand image context toward bounded screenshot observation; user image attachments are implemented in 1.3.0.
 - Future release: investigate a public cancellable native-drop routing API for seamless desktop image drops directly onto the composer. If unavailable, design/propose a Godot engine enhancement allowing editor controls to consume native drops before project import. Retain Orca's separate native attachment window until direct routing is supported and verified with zero project-file changes, rejected/cancelled intake, and platform/lifecycle coverage.
@@ -1470,6 +1490,13 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-06: Orca 1.7.0 release-candidate preparation
+
+- Owner selected 1.7.0 for the implemented five-language interface, focused Godot inspection/navigation and quiet community invitation. Updated `plugin.cfg`, About/support expectations, the release-workflow example and current product/security/localization/update/testing guidance. The dated candidate changelog includes the reminder and its complete-width/larger-font correction; 1.6.0 remains the latest published release.
+- Added updater metadata coverage for direct 1.7.0 upgrades from 1.3.0/1.4.0/1.4.1/1.5.0/1.6.0, exact official ZIP naming, same-version suppression and denial of all older releases. Historical install/rollback/catalog fixtures retain their versions. Read-only GitHub inspection confirms the pre-bump complete Tests/native/package run at `5cee382` passed, superseding the reminder correction's pending-CI wording.
+- Verification on Godot 4.7.2: clean headless editor/plugin initialization; settings/About, strict support-report, updater and native-helper catalog/header components; seven updater/package, eight native-packaging, three translation-catalog and five editor-runner Python checks pass. Updater/package acceptance ran without skips, validates the actual 1.7.0 addon and exercises historical installation/rollback/relaunch. The updater normal-editor case passes headlessly with a clean exit and no errors/warnings. Godot checks suppress owner account restore/update/helper startup and isolate XDG editor state; temporary fixtures are removed. Diff/artifact hygiene passes.
+- Preparation is local only at the owner's request. Commit/push, final-version full CI/four-platform packaging, backend rollout/catalog refresh, tagging/publication and Store submission remain owner actions. No source distribution manifest/catalog was generated. Live inference, graphical/manual platform acceptance and native-speaker review were not rerun for this metadata/documentation update.
 
 ### 2026-11-06: Community invitation font-width regression correction
 

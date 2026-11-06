@@ -3,11 +3,12 @@
 ## Supported Version
 
 Security work covers published Orca 1.6.0 Auto Apply & Script Recovery and the
-current development checkout. The published release includes code navigation,
-bounded session-authorized script editing and recovery with binary-free packaging.
-Current development adds Orca-only interface localization;
-it requires fresh CI/package acceptance before a next release. Asset Store
-moderation and broader graphical/platform acceptance remain separate.
+1.7.0 Multilingual UI & Focused Godot Inspection candidate. The candidate adds
+Orca-only interface localization, bounded read-only scene/animation exploration
+and a local usage-gated community invitation to the existing code navigation,
+session-authorized script editing and recovery. Packaging remains binary-free.
+The 1.7.0 revision requires its own CI/package acceptance before publication;
+Asset Store moderation and broader graphical/platform acceptance remain separate.
 
 ## Reporting A Vulnerability
 

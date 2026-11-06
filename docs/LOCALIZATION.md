@@ -1,9 +1,10 @@
 # Orca interface languages
 
-The development checkout adds **English**, **简体中文 (Simplified Chinese)**,
+The Orca **1.7.0 release candidate** adds **English**, **简体中文 (Simplified Chinese)**,
 **Español (Spanish)**, **日本語 (Japanese)** and **한국어 (Korean)** under
-**Settings → System → Language**. This work is unreleased; the published 1.6.0 ZIP
-predates it.
+**Settings → System → Language**. The candidate is not yet published; the
+published 1.6.0 ZIP predates this feature. See the
+[1.7.0 changelog](../CHANGELOG.md#170---2026-11-06).
 
 ## User behavior
 
