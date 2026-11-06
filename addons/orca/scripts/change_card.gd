@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
@@ -17,6 +18,10 @@ var _revert_button: Button
 var _open_button: Button
 var _syncing_scroll := false
 var _diff_font_size := 12
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -43,20 +48,26 @@ func _ready() -> void:
 	var header := HBoxContainer.new()
 	content.add_child(header)
 	_title_label = Label.new()
+	_title_label.clip_text = true
 	_title_label.add_theme_font_size_override("font_size", label_font_size)
 	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(_title_label)
 	_status_label = Label.new()
+	_status_label.clip_text = true
+	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
 	_status_label.add_theme_font_size_override("font_size", meta_font_size)
 	header.add_child(_status_label)
 	_validation_label = Label.new()
+	_validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_validation_label.add_theme_font_size_override("font_size", meta_font_size)
 	_validation_label.add_theme_color_override("font_color", Color(0.48, 0.78, 0.58))
 	_validation_label.visible = false
 	content.add_child(_validation_label)
 
 	_diff_label = RichTextLabel.new()
+	_diff_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_diff_label.bbcode_enabled = true
 	_diff_label.fit_content = false
 	_diff_label.selection_enabled = true
@@ -64,7 +75,7 @@ func _ready() -> void:
 	_diff_label.custom_minimum_size = Vector2(0, UiMetrics.scaled(70))
 	content.add_child(_diff_label)
 
-	var navigation := HBoxContainer.new()
+	var navigation := HFlowContainer.new()
 	navigation.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(navigation)
 
@@ -109,13 +120,13 @@ func _ready() -> void:
 func configure(proposal: Dictionary) -> void:
 	_proposal = proposal
 	var diff: Dictionary = proposal.get("diff", {})
-	_title_label.text = "Modified  " + str(proposal.get("filepath", ""))
+	Localization.bind(_title_label, &"text", "Modified  %s", [str(proposal.get("filepath", ""))])
 	_status_label.text = "+%d  -%d" % [diff.get("additions", 0), diff.get("deletions", 0)]
 	_status_label.add_theme_color_override("font_color", Color(0.62, 0.78, 0.68))
 	var validation: Dictionary = proposal.get("validation", {})
 	_open_button.disabled = not proposal.get("existed", false)
 	if not validation.is_empty():
-		_validation_label.text = "Validated: " + str(validation.get("message", "Passed"))
+		Localization.bind(_validation_label, &"text", "Validated: %s", [Localization.source(str(validation.get("message", "Passed")))])
 		_validation_label.visible = true
 	_diff_label.text = _format_unified_diff(diff.get("display_operations", []))
 	_diff_label.visible = not diff.get("display_operations", []).is_empty()
@@ -187,7 +198,7 @@ func _show_expanded_diff() -> void:
 		_diff_label.text = _format_unified_diff(_proposal["diff"].get("display_operations", []))
 		_diff_label.visible = not _proposal["diff"].get("display_operations", []).is_empty()
 	var dialog := Window.new()
-	dialog.title = "Review Changes · " + str(_proposal.get("filepath", ""))
+	Localization.bind(dialog, &"title", "Review Changes · %s", [str(_proposal.get("filepath", ""))])
 	var available := get_window().size
 	var maximum := Vector2i(maxi(1, int(available.x * 0.9)), maxi(1, int(available.y * 0.9)))
 	dialog.min_size = Vector2i(
@@ -280,6 +291,7 @@ func _create_code_pane(parent: Control, title: String, content: String) -> CodeE
 	label.text = title
 	pane.add_child(label)
 	var editor := CodeEdit.new()
+	editor.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	if Engine.is_editor_hint():
 		editor.theme = EditorInterface.get_editor_theme()
 		if str(_proposal.get("filepath", "")).get_extension().to_lower() == "gd":

@@ -7,6 +7,7 @@ signal model_requested
 signal dismiss_requested
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 var body_font_size := 13
 var meta_font_size := 11
@@ -19,6 +20,10 @@ var close_button: Button
 var later_button: Button
 var _account_title: Label
 var _account_description: Label
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -85,7 +90,7 @@ func configure(setup: Dictionary, connected: bool, account_state: String, locked
 	_account_title.text = "Use Orca models" if connected else "Continue Orca sign-in" if account_state in ["connecting", "pairing"] else "Sign in / Sign up with Orca"
 	_account_description.text = "Choose a model included in your account." if connected else "Finish connecting your account in the browser." if account_state in ["connecting", "pairing"] else "Use models through your Orca account."
 	account_button.accessibility_name = _account_title.text
-	account_button.tooltip_text = _account_title.text + "\n" + _account_description.text
+	Localization.bind(account_button, &"tooltip_text", "%s\n%s", [Localization.source(_account_title.text), Localization.source(_account_description.text)])
 	account_button.disabled = locked or account_state in ["restoring", "signing_out"]
 	provider_button.disabled = locked
 	model_button.disabled = locked
@@ -115,7 +120,7 @@ func _action(parent: Control, node_name: String, title: String, description: Str
 	var button := Button.new()
 	button.name = "Button"
 	button.accessibility_name = title
-	button.tooltip_text = title + "\n" + description
+	Localization.bind(button, &"tooltip_text", "%s\n%s", [Localization.source(title), Localization.source(description)])
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())

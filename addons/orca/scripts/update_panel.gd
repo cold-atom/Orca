@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 var service
 var compact := false
@@ -17,6 +18,10 @@ var progress: ProgressBar
 var _confirm: ConfirmationDialog
 var recovery_button: Button
 var browser_opener := Callable()
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -96,8 +101,9 @@ func _confirm_install(operation: String = "install") -> void:
 	_confirm.set_meta("operation", operation)
 	_confirm.title = "Restore Orca" if operation == "recover" else "Update Orca"
 	_confirm.ok_button_text = "Restore & Restart" if operation == "recover" else "Update & Restart"
-	_confirm.dialog_text = "Restore the verified previous Orca addon and restart Godot?" if operation == "recover" else "Download and install Orca " + str(service.release.get("version", "")) + " in this project, then restart Godot?\n\nThe previous addon will be retained for rollback."
-	_confirm.dialog_text += "\n\nSave your editor work first and close other editors of this project. Active Orca work and unsaved scripts/scenes must be finished before installation."
+	var parts: Array = [["Restore the verified previous Orca addon and restart Godot?", []]] if operation == "recover" else [["Download and install Orca %s in this project, then restart Godot?\n\nThe previous addon will be retained for rollback.", [str(service.release.get("version", ""))]]]
+	parts.append(["\n\nSave your editor work first and close other editors of this project. Active Orca work and unsaved scripts/scenes must be finished before installation.", []])
+	Localization.bind_parts(_confirm, &"dialog_text", parts)
 	_confirm.popup_centered(UiMetrics.scaled_vector(Vector2(440, 220)))
 
 
@@ -106,8 +112,13 @@ func refresh() -> void:
 		hide()
 		return
 	visible = not compact or (not service.release.is_empty() and not service.dismissed())
-	title_label.text = "Orca " + str(service.release.get("version", "")) + " is available" if not service.release.is_empty() else "Plugin updates"
+	Localization.bind(title_label, &"text", "Orca %s is available" if not service.release.is_empty() else "Plugin updates", [str(service.release.get("version", ""))] if not service.release.is_empty() else [])
 	status_label.text = service.status
+	var version := str(service.release.get("version", ""))
+	if service.status == "Orca " + version + " is available.":
+		Localization.bind(status_label, &"text", "Orca %s is available.", [version])
+	elif service.status == "Downloading Orca " + version + "…":
+		Localization.bind(status_label, &"text", "Downloading Orca %s…", [version])
 	status_label.visible = not compact or service.state not in ["available", "up_to_date", "idle"]
 	install_button.visible = not service.release.is_empty()
 	install_button.disabled = service.busy()

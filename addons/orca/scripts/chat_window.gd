@@ -20,6 +20,7 @@ const SettingsView = preload("res://addons/orca/scripts/settings_view.gd")
 const SessionStore = preload("res://addons/orca/scripts/session_store.gd")
 const HistoryView = preload("res://addons/orca/scripts/history_view.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 const ResponseAttribution = preload("res://addons/orca/scripts/response_attribution.gd")
 const ImageAttachments = preload("res://addons/orca/scripts/image_attachments.gd")
 const ImageCapability = preload("res://addons/orca/scripts/image_capability.gd")
@@ -181,6 +182,10 @@ var _edit_permission_dialog_change_id := ""
 var _edit_permission_dialog_turn_id := 0
 
 
+func _enter_tree() -> void:
+	Localization.attach(self)
+
+
 func _ready() -> void:
 	set_process(false)
 	chat_feed.resized.connect(_on_chat_feed_resized)
@@ -219,6 +224,8 @@ func _ready() -> void:
 	prompt_input.add_theme_font_size_override("font_size", _body_font_size + 1)
 	mode_button.add_theme_font_size_override("font_size", 1)
 	mode_label.add_theme_font_size_override("font_size", maxi(_meta_font_size - 1, 11))
+	mode_label.clip_text = true
+	mode_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	model_label.add_theme_font_size_override("font_size", maxi(_meta_font_size - 1, 11))
 	context_label.add_theme_font_size_override("font_size", maxi(_meta_font_size - 1, 11))
 	cost_label.add_theme_font_size_override("font_size", maxi(_meta_font_size - 1, 11))
@@ -340,6 +347,13 @@ func save_for_update() -> bool:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_DRAG_END:
 		_hide_image_drop_cue()
+	elif what == MainLoop.NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		_sync_localized_empty_state()
+		for label in chat_feed.find_children("*", "RichTextLabel", true, false):
+			if label.has_meta("orca_message_text"):
+				_queue_message_label_fit(label)
+		call_deferred("_on_dock_resized")
+		_queue_prompt_height_sync()
 
 
 func _setup_visual_theme(editor_theme: Theme) -> void:
@@ -502,7 +516,10 @@ func _setup_image_attachments() -> void:
 	_image_attachment_window.add_child(_image_picker)
 	image_button.pressed.connect(_on_image_button_pressed)
 	_image_preview = AcceptDialog.new()
-	_image_preview.title = "Image preview"
+	_image_preview.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	Localization.bind(_image_preview, &"title", "Image preview")
+	_image_preview.get_ok_button().auto_translate_mode = Node.AUTO_TRANSLATE_MODE_ALWAYS
+	_image_preview.get_ok_button().text = "Done"
 	_preview_texture = TextureRect.new()
 	_preview_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_preview_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -879,6 +896,7 @@ func _position_attachment_tray() -> void:
 
 func _show_image_preview(record: Dictionary) -> void:
 	_preview_texture.texture = ImageAttachments.texture(record)
+	Localization.clear(_image_preview, &"title")
 	_image_preview.title = str(record.get("name", "Image"))
 	_image_preview.popup_centered_ratio(0.7)
 
@@ -934,7 +952,7 @@ func _sync_image_button(capability: String) -> void:
 	elif _draft_images.size() >= ImageAttachments.MAX_IMAGES:
 		image_button.tooltip_text = "Four images attached. Remove an image to add another."
 	else:
-		image_button.tooltip_text = "%s supports image input. Opens a separate drop/Browse window. Paste screenshots or drag project images onto the input. Dropping desktop files on the main editor imports them; use the attachment window instead." % Config.get_model()
+		Localization.bind(image_button, &"tooltip_text", "%s supports image input. Opens a separate drop/Browse window. Paste screenshots or drag project images onto the input. Dropping desktop files on the main editor imports them; use the attachment window instead.", [Config.get_model()])
 	if _session_resumable and capability != "supported" and agent_controller != null and ImageAttachments.has_images(agent_controller.message_history):
 		image_button.tooltip_text += "\nPrevious session images are preserved. Text follow-ups send placeholders and any earlier descriptions instead of image pixels."
 
@@ -1755,18 +1773,18 @@ func _sync_edit_permission_ui(_enabled: bool = false) -> void:
 	_edit_permission_status.visible = compact
 	var caption := "Auto apply" if enabled else "Review edits"
 	var disabled: bool = not enabled and ((_request_active and not agent_controller.can_authorize_pending_script_edits()) or not _session_resumable or not work)
-	var tooltip: String
+	var parts: Array
 	if enabled:
 		var scope := "Remembered for this project: new Work conversations and editor restarts use Auto apply." if agent_controller.auto_apply_uses_project_default() else "Auto apply is enabled for this session only."
-		tooltip = scope + " Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action."
+		parts = [[scope, []], [" Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action.", []]]
 	else:
-		tooltip = "Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval."
+		parts = [["Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval.", []]]
 		if Config.project_script_edit_preference()["enabled"]:
-			tooltip += " The project default remains saved; Auto apply is paused here or unavailable in this mode/session."
+			parts.append([" The project default remains saved; Auto apply is paused here or unavailable in this mode/session.", []])
 	for control in [_edit_permission_button, _edit_permission_status]:
-		control.accessibility_name = "Script edit permission: " + caption
+		Localization.bind(control, &"accessibility_name", "Script edit permission: %s", [Localization.source(caption)])
 		control.disabled = disabled
-		control.tooltip_text = tooltip
+		Localization.bind_parts(control, &"tooltip_text", parts)
 		var color := Color(0.68, 0.9, 0.72) if enabled else Color(0.58, 0.61, 0.66) if control == _edit_permission_status else Color(0.7, 0.73, 0.78)
 		for key in ["font_color", "icon_normal_color"]:
 			control.add_theme_color_override(key, color)
@@ -1854,11 +1872,7 @@ func _sync_mode_ui(mode: int) -> void:
 		"font_color",
 		Color(0.68, 0.9, 0.72) if is_build else Color(0.97, 0.71, 0.43)
 	)
-	mode_button.tooltip_text = (
-		"Work mode: Explore, run the game, and propose reviewed project changes"
-		if is_build
-		else "Plan mode: Analyze and design without changing files"
-	) + "\nTab to switch modes in the prompt box"
+	Localization.bind_parts(mode_button, &"tooltip_text", [["Work mode: Explore, run the game, and propose reviewed project changes" if is_build else "Plan mode: Analyze and design without changing files", []], ["\nTab to switch modes in the prompt box", []]])
 	for index in range(_mode_items.size()):
 		var btn := _mode_items[index]
 		var panel := _mode_panels[index]
@@ -1895,8 +1909,12 @@ func _on_settings_done() -> void:
 func _sync_model_ui() -> void:
 	_close_image_attachment_window()
 	var model := Config.get_model().strip_edges()
+	model_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	Localization.clear(model_label, &"text")
 	model_label.text = model if not model.is_empty() else "No model"
-	model_label.tooltip_text = "Current model: %s\nClick to configure" % model_label.text
+	if model.is_empty():
+		Localization.bind(model_label, &"text", "No model")
+	Localization.bind(model_label, &"tooltip_text", "Current model: %s\nClick to configure", [model if not model.is_empty() else Localization.source("No model")])
 	_sync_send_availability()
 	_refresh_connection_setup()
 
@@ -2494,38 +2512,41 @@ func _sync_session_usage(summary: Dictionary) -> void:
 	var completed_requests := int(summary.get("completed_requests", 0))
 	var usage_complete := bool(summary.get("usage_complete", true))
 	if context_tokens > 0 or completed_requests == 0:
-		context_label.text = "Context %s" % _format_token_count(context_tokens)
+		var parts: Array = [["Context %s", [_format_token_count(context_tokens)]]]
 		if context_limit > 0:
-			context_label.text += " / %s" % _format_token_count(context_limit)
+			parts.append([" / %s", [_format_token_count(context_limit)]])
+		Localization.bind_parts(context_label, &"text", parts)
 	else:
 		context_label.text = "Context --"
 	var request_budget: Dictionary = summary.get("request_budget", {})
 	if not request_budget.is_empty() and (request_budget.get("active", false) or request_budget.get("status") == "blocked"):
-		context_label.text = "Request ~%s" % _format_token_count(int(request_budget.get("estimated_tokens", 0)))
+		var parts: Array = [["Request ~%s", [_format_token_count(int(request_budget.get("estimated_tokens", 0)))]]]
 		if int(request_budget.get("context_limit", 0)) > 0:
-			context_label.text += " / %s" % _format_token_count(int(request_budget["context_limit"]))
+			parts.append([" / %s", [_format_token_count(int(request_budget["context_limit"]))]])
+		Localization.bind_parts(context_label, &"text", parts)
 	var total_tokens := int(summary.get("input_tokens", 0)) + int(summary.get("output_tokens", 0))
-	context_label.tooltip_text = (
-		"Latest completed request (provider-reported): %s%s\nSession input: %s\nSession output: %s\nCached input: %s\nUsage reporting: %s"
-		% [
+	var tooltip_parts: Array = [[
+		"Latest completed request (provider-reported): %s%s\nSession input: %s\nSession output: %s\nCached input: %s\nUsage reporting: %s",
+		[
 			_format_token_count(context_tokens),
 			" / " + _format_token_count(context_limit) if context_limit > 0 else "",
 			_format_token_count(int(summary.get("input_tokens", 0))),
 			_format_token_count(int(summary.get("output_tokens", 0))),
 			_format_token_count(int(summary.get("cached_tokens", 0))),
-			"complete" if usage_complete else "partial or unavailable"
+			Localization.source("complete" if usage_complete else "partial or unavailable")
 		]
-	)
+	]]
 	if not request_budget.is_empty():
-		context_label.tooltip_text += "\n\nLocal request estimate: %d tokens (%s).\nSafe input budget: %d of %d tokens.\nReserved output: %d; future tool result: %d.\nIncludes request instructions, tool schemas/results, image reserves and private continuation when applicable. This estimate is separate from provider-reported usage and billing reservations." % [int(request_budget.get("estimated_tokens", 0)), str(request_budget.get("status", "prepared")), int(request_budget.get("input_budget", 0)), int(request_budget.get("context_limit", 0)), int(request_budget.get("output_reserve", 0)), int(request_budget.get("tool_reserve", 0))]
+		tooltip_parts.append(["\n\nLocal request estimate: %d tokens (%s).\nSafe input budget: %d of %d tokens.\nReserved output: %d; future tool result: %d.\nIncludes request instructions, tool schemas/results, image reserves and private continuation when applicable. This estimate is separate from provider-reported usage and billing reservations.", [int(request_budget.get("estimated_tokens", 0)), Localization.source(str(request_budget.get("status", "prepared"))), int(request_budget.get("input_budget", 0)), int(request_budget.get("context_limit", 0)), int(request_budget.get("output_reserve", 0)), int(request_budget.get("tool_reserve", 0))]])
+	Localization.bind_parts(context_label, &"tooltip_text", tooltip_parts)
 	if bool(summary.get("cost_available", false)):
-		cost_label.text = "Cost $%.4f" % float(summary.get("cost_usd", 0.0))
+		Localization.bind(cost_label, &"text", "Cost $%.4f", [float(summary.get("cost_usd", 0.0))])
 	else:
 		cost_label.text = "Cost --"
 	var cost_source := "estimated from public model pricing" if bool(summary.get("cost_estimated", false)) else "reported by the provider"
-	cost_label.tooltip_text = (
-		"Session cost: %s\nModel: %s\nBillable tokens reported: %s\nCost source: %s."
-		% [cost_label.text, str(summary.get("model", "")), _format_token_count(total_tokens), cost_source]
+	Localization.bind(cost_label, &"tooltip_text",
+		"Session cost: %s\nModel: %s\nBillable tokens reported: %s\nCost source: %s.",
+		["$%.4f" % float(summary.get("cost_usd", 0.0)) if bool(summary.get("cost_available", false)) else "--", str(summary.get("model", "")), _format_token_count(total_tokens), Localization.source(cost_source)]
 	)
 
 
@@ -2544,10 +2565,19 @@ func _format_token_count(tokens: int) -> String:
 
 
 func _on_dock_resized() -> void:
+	_sync_localized_empty_state()
 	_queue_prompt_height_sync()
 	_position_connection_overlay()
 	if mode_overlay.visible:
 		call_deferred("_position_mode_menu")
+
+
+func _sync_localized_empty_state() -> void:
+	if empty_title == null or chat_scroll == null:
+		return
+	var localized := Localization.language() != "en"
+	empty_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if localized else TextServer.AUTOWRAP_OFF
+	empty_content.custom_minimum_size.x = maxf(0, chat_scroll.size.x - UiMetrics.scaled(12)) if localized else 0.0
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -2585,6 +2615,9 @@ func _add_message(sender: String, message: String, color: Color, kind: String) -
 	chat_feed.add_child(panel)
 
 	var label := RichTextLabel.new()
+	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	label.set_meta("orca_message_text", true)
+	label.set_meta("orca_owned_message", kind not in ["user", "assistant"])
 	label.bbcode_enabled = true
 	label.fit_content = false
 	label.selection_enabled = true
@@ -2603,10 +2636,11 @@ func _add_message(sender: String, message: String, color: Color, kind: String) -
 
 func _update_message_label(label: RichTextLabel, sender: String, message: String, color: Color) -> void:
 	var formatted_message := _parse_markdown_to_bbcode(message)
+	var body = Localization.source(formatted_message) if label.get_meta("orca_owned_message", false) else formatted_message
 	if sender.is_empty():
-		label.text = "[color=#%s]%s[/color]" % [color.to_html(false), formatted_message]
+		Localization.bind(label, &"text", "[color=#%s]%s[/color]", [color.to_html(false), body])
 	else:
-		label.text = "[b][color=#%s]%s:[/color][/b]\n%s" % [color.to_html(false), _escape_bbcode(sender), formatted_message]
+		Localization.bind(label, &"text", "[b][color=#%s]%s:[/color][/b]\n%s", [color.to_html(false), Localization.source(_escape_bbcode(sender)) if sender in ["User", "System Error", "Storage Warning", "Recovery storage", "Recovery Ready", "History", "Change", "Script edits", "Orca (incomplete)"] else _escape_bbcode(sender), body])
 	_queue_message_label_fit(label)
 
 
@@ -2699,6 +2733,7 @@ func _set_response_footer(panel: PanelContainer, raw_attribution: Dictionary) ->
 	row.add_theme_constant_override("separation", UiMetrics.scaled_int(12))
 	footer.add_child(row)
 	var model := Label.new()
+	model.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	model.set_meta("orca_response_model", true)
 	model.text = attribution["model"]
 	model.tooltip_text = attribution["model"]
@@ -2722,6 +2757,8 @@ func _set_response_footer(panel: PanelContainer, raw_attribution: Dictionary) ->
 
 func _create_message_text_label() -> RichTextLabel:
 	var label := RichTextLabel.new()
+	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	label.set_meta("orca_message_text", true)
 	label.bbcode_enabled = true
 	label.fit_content = false
 	label.selection_enabled = true
@@ -2756,6 +2793,8 @@ func _add_code_block(parent: VBoxContainer, language: String, code: String) -> v
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_child(header)
 	var language_label := Label.new()
+	if not language.strip_edges().is_empty():
+		language_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	language_label.set_meta("orca_code_language", true)
 	language_label.text = _display_code_language(language)
 	language_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2774,6 +2813,7 @@ func _add_code_block(parent: VBoxContainer, language: String, code: String) -> v
 	header.add_child(copy_button)
 
 	var editor := CodeEdit.new()
+	editor.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	editor.set_meta("orca_code_editor", true)
 	editor.set_meta("orca_code_language", language.strip_edges().to_lower())
 	editor.text = code

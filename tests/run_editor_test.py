@@ -19,6 +19,7 @@ CASES = {
     "editor_ui_scale_test.gd": ["fixtures/gdscript_function_reader_fixture.gd"],
     "remembered_edit_editor_test.gd": ["auto_apply_test.gd"],
     "update_editor_test.gd": [],
+    "localization_editor_test.gd": [],
 }
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 DIAGNOSTIC = re.compile(r"(?m)^(?:ERROR:|SCRIPT ERROR:|WARNING:|handle_crash:)")
@@ -143,6 +144,13 @@ def main() -> int:
                 if not execute(command, env, f"remembered_edit_editor_test: 0 failures ({phase})"):
                     return 1
             print(f"run_editor_test: PASS {args.case} (five clean editor processes; {'X11/OpenGL' if args.graphical else 'headless'})")
+            return 0
+        if args.case == "localization_editor_test.gd":
+            for phase in ["exercise", "restart", "restart_ko"]:
+                env["ORCA_LOCALIZATION_TEST_PHASE"] = phase
+                if not execute([*common, *display], env, f"localization_editor_test: 0 failures ({phase})"):
+                    return 1
+            print(f"run_editor_test: PASS {args.case} (three clean editor processes; {'X11/OpenGL' if args.graphical else 'headless'})")
             return 0
         command = [*common, *display]
         if args.ui_only:

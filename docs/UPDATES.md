@@ -5,16 +5,14 @@ precede Asset Store moderation. Updating and native-helper installation are
 user-owned maintenance, never agent tools, and their public downloads require no
 Orca account or GitHub token.
 
-**1.6.0 — Auto Apply & Script Recovery** is a release candidate, not yet
-published. It adds session-authorized automatic project-script edits, an optional
-remembered project default and durable recovery to the published **1.5.0**
-code-navigation/binary-free baseline. The pre-bump `1851544` complete Tests run
-passed, including all four native-helper platforms and packaging. Final-version
-CI, exact same-revision ZIP/helpers/catalog and real-model Auto apply acceptance
-remain required before publication. The candidate's updater checks cover direct
+**1.6.0 — Auto Apply & Script Recovery** is published on GitHub. Final-commit
+Tests and release preparation/publication passed, including all four native-helper
+platforms and binary-free packaging. It adds automatic script edits, a remembered
+project default and durable recovery to 1.5.0. The source checkout's new interface
+languages are unreleased and require fresh CI/package acceptance. Updater checks cover direct
 upgrades from 1.3.0/1.4.0/1.4.1/1.5.0, same-version suppression and no downgrade.
-See [1.6.0](../CHANGELOG.md#160---2026-11-05) for the candidate.
-See [1.5.0](../CHANGELOG.md#150---2026-11-02) for the published release and
+See [1.6.0](../CHANGELOG.md#160---2026-11-05) for the latest published release.
+See [1.5.0](../CHANGELOG.md#150---2026-11-02) for code navigation and
 [1.4.1](../CHANGELOG.md#141---2026-10-30) for the earlier packaging fixes.
 Store moderation remains separate; Cloud navigation requires matching
 backend API deployment/catalog refresh. Prior Store downloads and the thumbnail

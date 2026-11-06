@@ -2,21 +2,20 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory prepares **Orca 1.6.0 — Auto Apply & Script Recovery** for Godot
-4.7.2, adding session-authorized script edits, an optional remembered project
-preference and durable recovery. It is a release candidate, not yet published;
-1.5.0 remains the latest published release.
+This directory builds on published **Orca 1.6.0 — Auto Apply & Script Recovery**
+for Godot 4.7.2, with session-authorized script edits, an optional remembered
+project preference and durable recovery. This checkout also adds unreleased
+English/Simplified Chinese/Spanish/Japanese/Korean interface localization.
 Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
 platform's credential helper from the matching official GitHub Release if missing.
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
-usable. Complete 1.5.0 CI/native packaging and GitHub publication passed. The owner
+usable. Complete 1.6.0 final-commit CI/native packaging and release preparation passed. The owner
 reports working live model/project/helper/browser flows in their environment;
 broader platform acceptance and Asset Store moderation remain separate. The
-pre-bump `1851544` complete Tests run passed; final-version CI/package and
-real-model Auto apply acceptance remain required. See the
+localization additions require fresh hosted CI and real-model acceptance. See the
 [1.6.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#160---2026-11-05)
-for this candidate, the
+for the published baseline, the
 [1.5.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#150---2026-11-02)
 for code navigation and the
 [1.4.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#140---2026-10-29)
@@ -40,6 +39,18 @@ display. The composer remains available, with text, selection and attachments ke
 Missing models open the picker; configured local providers can work without keys.
 Finish setup with **Done**, then press **Send** when ready. Setup never sends your
 draft automatically. Existing configured users retain the normal chat empty state.
+
+## Interface languages (unreleased)
+
+**Settings → System → Language** offers **English**, **简体中文** and **Español**.
+The choice is remembered locally across editor restarts/projects and refreshes
+Orca without clearing drafts, attachments, conversations or reviews. Translations
+are bundled and work offline. Godot's editor/project locale is independent.
+Replies follow explicit requests and the message language, using the selected
+interface language when unclear; the preference is held through each active turn.
+Original messages, code, model/path identities and raw evidence remain intact.
+These additions are not in the published 1.6.0 ZIP. See the
+[localization guide](https://github.com/cold-atom/Orca/blob/main/docs/LOCALIZATION.md).
 
 ## Safety Model
 

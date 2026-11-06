@@ -3,6 +3,7 @@ extends Window
 
 signal browse_requested
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 var status_label: Label
 var browse_button: Button
 
@@ -20,6 +21,10 @@ func _init() -> void:
 	size = Vector2i(UiMetrics.scaled_int(360), UiMetrics.scaled_int(240))
 	min_size = size
 	close_requested.connect(hide)
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -69,6 +74,6 @@ func _ready() -> void:
 func set_state(image_count: int, error: String = "") -> void:
 	if status_label == null:
 		return
-	status_label.text = error if not error.is_empty() else "%d / 4 images attached" % image_count
+	Localization.bind(status_label, &"text", "%s" if not error.is_empty() else "%d / 4 images attached", [Localization.source(error)] if not error.is_empty() else [image_count])
 	status_label.add_theme_color_override("font_color", Color(0.9, 0.57, 0.55) if not error.is_empty() else Color(0.75, 0.78, 0.82))
 	browse_button.disabled = image_count >= 4

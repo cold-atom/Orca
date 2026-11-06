@@ -130,6 +130,7 @@ var _restored_cost_estimated := false
 var _restored_context_limit := 0
 var _turn_provider_config: Dictionary = {}
 var _turn_include_history_images := true
+var _turn_ui_language := "en"
 var _request_attribution: Dictionary = {}
 var _tasks: Array[Dictionary] = []
 var _tool_loop_guard
@@ -443,6 +444,7 @@ func send_user_message(text: String, images: Array = [], references: Array = [])
 	_work_mode_requested_this_turn = false
 	_reset_tool_batch_regeneration_state()
 	_turn_provider_config = provider_config.duplicate(true)
+	_turn_ui_language = Config.get_ui_language()
 	_turn_include_history_images = include_history_images
 	_request_attribution.clear()
 	var turn_id := _active_turn_id
@@ -463,6 +465,9 @@ func send_user_message(text: String, images: Array = [], references: Array = [])
 
 func _add_turn_context() -> void:
 	var sections := PackedStringArray()
+	# Capture once before the initial request. Follow-ups, Plan-to-Work and
+	# no-tools finalization retain this private context; turn cleanup removes it.
+	sections.append(preload("res://addons/orca/scripts/localization.gd").response_instruction(_turn_ui_language))
 	if not _turn_allows_tools():
 		sections.append("CHAT MODE: This hosted profile does not currently provide project tools. Answer conversationally and do not request or claim tool actions." if _turn_provider_config.get("provider") == "orca_cloud" else "CHAT MODE: Project tools are disabled until this exact profile passes Orca's Agent compatibility check and the user enables tools. Answer conversationally and do not request or claim tool actions.")
 	var instruction_result := _load_project_instructions()

@@ -63,7 +63,7 @@ Orca can work with Godot concepts instead of treating the project as an unstruct
 Orca separates exploration from mutation:
 
 - **Plan mode** is read-only for project and external state.
-- **Work mode** defaults to **Review edits**, with Apply/Reject decisions. The 1.6.0 candidate also provides **Auto apply** for bounded project scripts, optionally remembered for the current project; scene/configuration changes retain review.
+- **Work mode** defaults to **Review edits**, with Apply/Reject decisions. Version 1.6.0 also provides **Auto apply** for bounded project scripts, optionally remembered for the current project; scene/configuration changes retain review.
 - When implementation is requested during a Plan turn, Orca can ask once to switch modes. It waits for an explicit **Stay in Plan** or **Switch to Work** decision and never treats that decision as approval for a file change.
 - File proposals are hash-bound, validated, checked for stale or unsaved state, shown as a diff, and guarded against overwriting newer work.
 - Applied proposals have conflict-checked Revert. Automatic script edits also retain durable local checkpoints for review/recovery after restart; manual and structured checkpoints remain in memory.
@@ -82,9 +82,20 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
+## Unreleased: Interface Languages
+
+This checkout adds **English**, **简体中文 (Simplified Chinese)**, **Español
+(Spanish)**, **日本語 (Japanese)** and **한국어 (Korean)** under
+**Settings → System → Language**. Selection updates Orca live
+and is remembered across editor restarts/projects. Bundled catalogs work offline;
+Godot's editor/project language and original messages/code remain intact. Replies
+follow the user's message language and explicit requests, using the interface
+language when unclear. See [localization](docs/LOCALIZATION.md) for details and
+translation contributions. These additions are not in the published 1.6.0 ZIP.
+
 ## What's New In 1.6.0: Auto Apply & Script Recovery
 
-**Orca 1.6.0** for **Godot 4.7.2** is a release candidate, not yet published.
+**Orca 1.6.0** for **Godot 4.7.2** is [published on GitHub](https://github.com/cold-atom/Orca/releases/tag/v1.6.0).
 It adds automatic script editing, an optional remembered project preference and
 durable recovery to the published 1.5.0 baseline. See the
 [1.6.0 changelog entry](CHANGELOG.md#160---2026-11-05).
@@ -118,9 +129,9 @@ records offer **Check recovery** without replaying the edit. Recovery is bounded
 8000 lines. Its plaintext local source is deleted with the conversation. Stop
 prevents further actions and keeps completed edits; Revert is a separate action.
 
-These additions are not in the published 1.5.0 ZIP. Final-version CI, exact
-four-platform package acceptance and real-model Auto apply acceptance remain
-required before publishing `orca-v1.6.0.zip` and its matching helper assets.
+These additions are available in `orca-v1.6.0.zip` with its checksum and matching
+separate helper assets. Final-commit Tests and release preparation passed.
+Real-model editing and broader platform acceptance remain separate checks.
 
 ## What's New In 1.5.0
 
@@ -337,7 +348,7 @@ See [SECURITY.md](SECURITY.md) for the complete security and operational model.
 ## Current Limits
 
 - Orca 1.6.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
-- The pre-bump `1851544` complete Tests run passed, including editor/transport checks, all four native-helper platforms and binary-free packaging. The 1.6.0 candidate requires fresh final-version CI/package acceptance and real-model Auto apply checks before publication. Prior owner feedback covers live 1.5.0 model/project/helper/browser flows, not the new editing workflow or an exhaustive platform matrix.
+- The published 1.6.0 final-commit Tests and release preparation passed, including editor/transport checks, all four native-helper platforms and binary-free packaging. Unreleased localization requires fresh CI; real-model language/editing acceptance and broader platforms remain separate from the automated checks.
 - Native attachment drops were verified on Linux/X11/Vulkan; other platforms/renderers and detached editor windows need acceptance testing.
 - Runtime verification uses bounded process output and predeclared startup or exit criteria. It cannot prove visual or gameplay correctness.
 - Pending approvals and manual/structured revert checkpoints do not survive restart. Bounded automatic-script checkpoints support explicit historical review/recovery.

@@ -13,11 +13,27 @@ const SETTING_MODEL_METADATA_CACHE = "orca/cache/model_metadata"
 const SETTING_PROVIDER_MODEL_CACHE = "orca/cache/provider_models_v3"
 const MAX_CACHED_PROVIDER_MODELS := 200
 const PROJECT_SCRIPT_EDITS_PREFIX := "orca/script_edits/projects/"
+const SETTING_UI_LANGUAGE := "orca/interface/language"
+const UI_LANGUAGES := ["en", "zh_CN", "es", "ja", "ko"]
 
 static func _get_editor_settings() -> EditorSettings:
 	if Engine.is_editor_hint():
 		return EditorInterface.get_editor_settings()
 	return null
+
+
+static func get_ui_language() -> String:
+	var settings := _get_editor_settings()
+	var value = settings.get_setting(SETTING_UI_LANGUAGE) if settings != null and settings.has_setting(SETTING_UI_LANGUAGE) else "en"
+	return value if typeof(value) == TYPE_STRING and value in UI_LANGUAGES else "en"
+
+
+static func set_ui_language(locale: String) -> bool:
+	var settings := _get_editor_settings()
+	if settings == null or locale not in UI_LANGUAGES:
+		return false
+	settings.set_setting(SETTING_UI_LANGUAGE, locale)
+	return get_ui_language() == locale
 
 
 static func project_script_edit_preference() -> Dictionary:

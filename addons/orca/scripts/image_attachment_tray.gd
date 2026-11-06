@@ -5,6 +5,7 @@ signal remove_requested(index: int)
 signal preview_requested(image: Dictionary)
 const ImageAttachments = preload("res://addons/orca/scripts/image_attachments.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 var _row: HBoxContainer
 
 
@@ -46,7 +47,7 @@ func configure(images: Array, removable: bool = true) -> void:
 		preview.add_theme_stylebox_override("pressed", thumbnail_hover)
 		preview.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		preview.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		preview.tooltip_text = "%s · %d × %d%s" % [record.get("name", "Image"), record["width"], record["height"], " · resized" if record.get("resized", false) else ""]
+		Localization.bind(preview, &"tooltip_text", "%s · %d × %d%s", [record.get("name", "Image"), record["width"], record["height"], Localization.source(" · resized" if record.get("resized", false) else "")])
 		preview.pressed.connect(func(): preview_requested.emit(record))
 		tile.add_child(preview)
 		var image := TextureRect.new()

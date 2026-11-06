@@ -1,0 +1,1579 @@
+msgid ""
+msgstr ""
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Settings"
+msgstr "Ajustes"
+
+msgid "Language"
+msgstr "Idioma"
+
+msgid "Done"
+msgstr "Listo"
+
+msgid "GENERAL SETTINGS"
+msgstr "AJUSTES GENERALES"
+
+msgid "Changes Orca's interface only. Replies follow your message language, using this language when unclear."
+msgstr "Solo cambia la interfaz de Orca. Las respuestas siguen el idioma de tu mensaje; si no está claro, usan este idioma."
+
+msgid "Provider"
+msgstr "Proveedor"
+
+msgid "System"
+msgstr "Sistema"
+
+msgid "Account"
+msgstr "Cuenta"
+
+msgid "About"
+msgstr "Acerca de"
+
+msgid "API CONFIGURATION"
+msgstr "CONFIGURACIÓN DE API"
+
+msgid "API Provider"
+msgstr "Proveedor de API"
+
+msgid "API Key"
+msgstr "Clave de API"
+
+msgid "Optional API Key"
+msgstr "Clave de API opcional"
+
+msgid "Enter API key"
+msgstr "Introduce la clave de API"
+
+msgid "Optional for local servers"
+msgstr "Opcional para servidores locales"
+
+msgid "Show"
+msgstr "Mostrar"
+
+msgid "Hide"
+msgstr "Ocultar"
+
+msgid "Get an API key"
+msgstr "Obtener una clave de API"
+
+msgid "Stored in Godot Editor Settings and used only for requests to the selected provider."
+msgstr "Se guarda en los ajustes del editor de Godot y solo se usa para solicitudes al proveedor seleccionado."
+
+msgid "Base URL"
+msgstr "URL base"
+
+msgid "Responses (reasoning + tools)"
+msgstr "Responses (razonamiento y herramientas)"
+
+msgid "Reasoning Continuation"
+msgstr "Continuación del razonamiento"
+
+msgid "Standard"
+msgstr "Estándar"
+
+msgid "DeepSeek reasoning"
+msgstr "Razonamiento de DeepSeek"
+
+msgid "For Azure DeepSeek deployments, preserve private reasoning through Chat or Responses tool follow-ups and remove one leaked leading </think> delimiter. Works with custom deployment names."
+msgstr "Para implementaciones de Azure DeepSeek: conserva el razonamiento privado al continuar con herramientas en Chat o Responses y elimina un delimitador </think> filtrado al inicio. Admite nombres personalizados de implementación."
+
+msgid "Model"
+msgstr "Modelo"
+
+msgid "Search available models..."
+msgstr "Buscar modelos disponibles…"
+
+msgid "Refresh"
+msgstr "Actualizar"
+
+msgid "Model ID"
+msgstr "ID del modelo"
+
+msgid "Exact deployment name"
+msgstr "Nombre exacto de la implementación"
+
+msgid "Enable unconfirmed image input"
+msgstr "Activar imágenes sin confirmar"
+
+msgid "Use only if this exact endpoint and model accept image_url content. This does not enable Agent tools or verify vision quality."
+msgstr "Úsalo solo si este endpoint y modelo exactos aceptan contenido image_url. No activa las herramientas del agente ni verifica la calidad visual."
+
+msgid "Reasoning Effort"
+msgstr "Nivel de razonamiento"
+
+msgid "Provider default"
+msgstr "Predeterminado del proveedor"
+
+msgid "None"
+msgstr "Ninguno"
+
+msgid "Minimal"
+msgstr "Mínimo"
+
+msgid "Low"
+msgstr "Bajo"
+
+msgid "Medium"
+msgstr "Medio"
+
+msgid "High"
+msgstr "Alto"
+
+msgid "Xhigh"
+msgstr "Muy alto"
+
+msgid "Max"
+msgstr "Máximo"
+
+msgid "Higher effort can improve difficult planning and debugging, but may use more tokens."
+msgstr "Un nivel mayor puede mejorar la planificación y depuración complejas, pero puede consumir más tokens."
+
+msgid "Supported levels depend on your deployment. Provider default does not disable reasoning. For GPT reasoning with tools, prefer Responses; use None on Chat only if the deployment supports it."
+msgstr "Los niveles admitidos dependen de tu implementación. El valor predeterminado no desactiva el razonamiento. Para GPT con razonamiento y herramientas, usa preferentemente Responses; elige Ninguno en Chat solo si la implementación lo admite."
+
+msgid "Use the resource's /openai/v1 base URL and exact deployment name. Responses supports reasoning with Orca function tools; requests use store=false. Select DeepSeek reasoning continuation for DeepSeek deployments."
+msgstr "Usa la URL base /openai/v1 del recurso y el nombre exacto de la implementación. Responses admite razonamiento con las funciones de Orca; las solicitudes usan store=false. Para DeepSeek, selecciona su continuación de razonamiento."
+
+msgid "For GPT reasoning with tools, prefer Responses. Chat without reasoning requires a deployment that supports None. Select DeepSeek reasoning continuation for DeepSeek deployments."
+msgstr "Para GPT con razonamiento y herramientas, usa preferentemente Responses. Chat sin razonamiento requiere una implementación que admita Ninguno. Para DeepSeek, selecciona su continuación de razonamiento."
+
+msgid "Request Timeouts"
+msgstr "Tiempos de espera"
+
+msgid "Use custom timeouts"
+msgstr "Usar tiempos personalizados"
+
+msgid "Override Orca's built-in response waits for this provider. Turning this off preserves your custom values."
+msgstr "Sustituye los tiempos de espera predeterminados de Orca para este proveedor. Desactivarlo conserva tus valores personalizados."
+
+msgid "Using Orca's default timeouts.\nHeaders: 30 s · Inactivity: 60 s"
+msgstr "Usando los tiempos predeterminados de Orca.\nCabeceras: 30 s · Inactividad: 60 s"
+
+msgid "Original timing: 30 seconds to connect, 30 seconds for response headers, 60 seconds without body data, and 45 seconds for an Agent compatibility check. Each full request is capped at 10 minutes."
+msgstr "Tiempos originales: 30 segundos para conectar, 30 para las cabeceras, 60 sin datos del cuerpo y 45 para comprobar la compatibilidad del agente. Cada solicitud completa tiene un límite de 10 minutos."
+
+msgid "Response start"
+msgstr "Inicio de respuesta"
+
+msgid "Stream inactivity"
+msgstr "Inactividad del flujo"
+
+msgid "Maximum wait for headers and initial response data, including model loading. Accepts 10–600 seconds."
+msgstr "Espera máxima para las cabeceras y los primeros datos, incluida la carga del modelo. Admite entre 10 y 600 segundos."
+
+msgid "Maximum pause after response data begins. Reasoning and keep-alive bytes count as activity. Accepts 10–600 seconds."
+msgstr "Pausa máxima tras comenzar la respuesta. Los datos de razonamiento y mantenimiento de conexión cuentan como actividad. Admite entre 10 y 600 segundos."
+
+msgid "Allow extra time for model loading and slow generation."
+msgstr "Permite más tiempo para cargar modelos y generar respuestas lentas."
+
+msgid "Control how long Orca waits for this provider."
+msgstr "Controla cuánto espera Orca a este proveedor."
+
+msgid "Saved per provider · 10–600 s\n10-minute limit · Stop available"
+msgstr "Guardado por proveedor · 10–600 s\nLímite de 10 minutos · Se puede detener"
+
+msgid "10-minute request limit.\nStop remains available."
+msgstr "Límite de 10 minutos por solicitud.\nSe puede detener en cualquier momento."
+
+msgid "Agent Compatibility"
+msgstr "Compatibilidad del agente"
+
+msgid "Test & Enable Agent tools"
+msgstr "Probar y activar herramientas"
+
+msgid "Run the project-free compatibility check and enable Agent tools for this exact profile only if it passes."
+msgstr "Comprueba la compatibilidad sin datos del proyecto y activa las herramientas del agente para este perfil exacto solo si la prueba pasa."
+
+msgid "Enable Agent tools"
+msgstr "Activar herramientas del agente"
+
+msgid "Enable Agent tools for this exact endpoint and model"
+msgstr "Activar herramientas para este endpoint y modelo exactos"
+
+msgid "This project-free check enables Agent tools when it passes. Agent tools may send project context and perform normal Plan/Work operations; edit permissions are controlled separately in the dock."
+msgstr "Esta prueba sin datos del proyecto activa las herramientas si pasa. Las herramientas pueden enviar contexto del proyecto y realizar operaciones de Planificar/Trabajar; los permisos de edición se controlan por separado en el panel."
+
+msgid "Agent tools enabled for this exact profile."
+msgstr "Herramientas activadas para este perfil exacto."
+
+msgid "Compatibility passed. Agent tools are off."
+msgstr "Compatibilidad confirmada. Las herramientas están desactivadas."
+
+msgid "Run the compatibility probe."
+msgstr "Ejecuta la prueba de compatibilidad."
+
+msgid "Run Test & Enable Agent tools for this profile."
+msgstr "Prueba y activa las herramientas para este perfil."
+
+msgid "Profile changed. Run Test & Enable Agent tools again."
+msgstr "El perfil cambió. Vuelve a probar y activar las herramientas."
+
+msgid "Profile changed during the check. Run Test & Enable Agent tools again."
+msgstr "El perfil cambió durante la prueba. Vuelve a probar y activar las herramientas."
+
+msgid "Compatibility passed, but Agent tools could not be enabled. Run the check again."
+msgstr "La compatibilidad se confirmó, pero no se pudieron activar las herramientas. Repite la prueba."
+
+msgid "Compatibility check failed: %s"
+msgstr "Falló la prueba de compatibilidad: %s"
+
+msgid "Testing Agent compatibility, step %d of 2..."
+msgstr "Comprobando compatibilidad, paso %d de 2…"
+
+msgid "Script edits"
+msgstr "Edición de scripts"
+
+msgid "Review edits"
+msgstr "Revisar cambios"
+
+msgid "Review edits (default)"
+msgstr "Revisar cambios (predeterminado)"
+
+msgid "Auto apply"
+msgstr "Aplicar automáticamente"
+
+msgid "Auto apply for this project"
+msgstr "Aplicación automática en este proyecto"
+
+msgid "Default script edits for this project"
+msgstr "Edición predeterminada de scripts para este proyecto"
+
+msgid "Default script-edit behavior for this project on this computer. Auto apply requires explicit confirmation."
+msgstr "Modo predeterminado de editar scripts en este proyecto y equipo. La aplicación automática requiere confirmación explícita."
+
+msgid "Remember Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only. Scene/configuration changes still require review. Clicking the green edit icon beside ORCA turns it off and clears the remembered choice."
+msgstr "Recuerda la aplicación automática para nuevas conversaciones de Trabajo y reinicios del editor en este proyecto. Planificar sigue siendo de solo lectura. Los cambios de escenas y configuración requieren revisión. El icono verde junto a ORCA la desactiva y borra la elección guardada."
+
+msgid "Allow automatic script edits"
+msgstr "Permitir edición automática de scripts"
+
+msgid "Orca can create and edit eligible project .gd scripts automatically in Work mode. Every edit is validated, shown in the feed, and checkpointed before writing.\n\nScene/configuration changes and script-execution trust still require approval. Unsaved files and conflicts remain protected.\n\nWithout remembering, permission is for this session only. Remembering enables Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only.\n\nClick the green edit icon beside ORCA in the header to revoke permission and clear any remembered default."
+msgstr "Orca puede crear y editar automáticamente los scripts .gd aptos del proyecto en modo Trabajar. Cada cambio se valida, se muestra en la conversación y se guarda en un punto de recuperación antes de escribir.\n\nLos cambios de escenas y configuración y la autorización para ejecutar scripts siguen requiriendo aprobación. Los archivos sin guardar y los conflictos mantienen su protección.\n\nSin recordar la elección, el permiso solo se aplica a esta sesión. Recordarla permite la aplicación automática en nuevas conversaciones de Trabajo y reinicios del editor para este proyecto. Planificar sigue siendo de solo lectura.\n\nHaz clic en el icono verde de edición junto a ORCA para revocar el permiso y borrar el valor predeterminado guardado."
+
+msgid "Remember for this project"
+msgstr "Recordar para este proyecto"
+
+msgid "Use Auto apply by default for this project"
+msgstr "Usar aplicación automática por defecto en este proyecto"
+
+msgid "Use Auto apply by default for this project. This is saved locally, outside project files and conversation history."
+msgstr "Usar aplicación automática por defecto en este proyecto. Se guarda localmente, fuera de los archivos del proyecto y del historial."
+
+msgid "Allow edits"
+msgstr "Permitir cambios"
+
+msgid "Script edit permission"
+msgstr "Permiso de edición de scripts"
+
+msgid "Script edit permission: %s"
+msgstr "Permiso de edición de scripts: %s"
+
+msgid "Remembered for this project: new Work conversations and editor restarts use Auto apply."
+msgstr "Recordado para este proyecto: las nuevas conversaciones de Trabajo y los reinicios usan aplicación automática."
+
+msgid "Auto apply is enabled for this session only."
+msgstr "La aplicación automática solo está activa en esta sesión."
+
+msgid " Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action."
+msgstr " Haz clic para revocar antes de la siguiente escritura y borrar el valor guardado. Detener conserva los cambios terminados; revertir es una acción independiente."
+
+msgid "Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval."
+msgstr "La revisión está activa. Haz clic en Trabajo cuando esté inactivo o al revisar un script para permitir la aplicación automática, con la opción de recordarla. Las propuestas de escenas y configuración aún requieren aprobación."
+
+msgid " The project default remains saved; Auto apply is paused here or unavailable in this mode/session."
+msgstr " El valor del proyecto sigue guardado; la aplicación automática está pausada aquí o no está disponible en este modo o sesión."
+
+msgid "The project preference could not be saved. No automatic edit permission was granted."
+msgstr "No se pudo guardar la preferencia del proyecto. No se concedió permiso de edición automática."
+
+msgid "Auto apply is off for this session, but its project default could not be saved."
+msgstr "La aplicación automática está desactivada en esta sesión, pero no se pudo guardar el valor del proyecto."
+
+msgid "ORCA ACCOUNT"
+msgstr "CUENTA DE ORCA"
+
+msgid "Sign in to access models provided by Orca."
+msgstr "Inicia sesión para acceder a los modelos de Orca."
+
+msgid "Sign in / Sign up"
+msgstr "Iniciar sesión / Registrarse"
+
+msgid "Open browser again"
+msgstr "Abrir el navegador de nuevo"
+
+msgid "Cancel connection"
+msgstr "Cancelar conexión"
+
+msgid "Choose model"
+msgstr "Elegir modelo"
+
+msgid "Refresh account"
+msgstr "Actualizar cuenta"
+
+msgid "Open Orca Console"
+msgstr "Abrir consola de Orca"
+
+msgid "Sign out"
+msgstr "Cerrar sesión"
+
+msgid "Your connection is remembered in your OS credential vault. Account passwords and model-provider keys stay outside the plugin."
+msgstr "La conexión se recuerda en el almacén de credenciales del sistema operativo. Las contraseñas y las claves de los proveedores permanecen fuera del plugin."
+
+msgid "Account service is unavailable."
+msgstr "El servicio de cuenta no está disponible."
+
+msgid "Pairing code: %s"
+msgstr "Código de vinculación: %s"
+
+msgid "Plan: %s\nAvailable usage: %s\nReserved: %s"
+msgstr "Plan: %s\nSaldo disponible: %s\nReservado: %s"
+
+msgid "unavailable"
+msgstr "no disponible"
+
+msgid "Signed out."
+msgstr "Sesión cerrada."
+
+msgid "Preparing connection…"
+msgstr "Preparando conexión…"
+
+msgid "Restoring your Orca connection…"
+msgstr "Restaurando tu conexión de Orca…"
+
+msgid "Connected."
+msgstr "Conectado."
+
+msgid "Version %s"
+msgstr "Versión %s"
+
+msgid "A safety-first AI development assistant for the Godot editor."
+msgstr "Un asistente de desarrollo con IA para Godot que prioriza la seguridad."
+
+msgid "Explore project context, prepare Godot-aware changes, and run bounded checks without leaving the editor."
+msgstr "Explora el contexto del proyecto, prepara cambios adaptados a Godot y ejecuta comprobaciones acotadas sin salir del editor."
+
+msgid "RESOURCES"
+msgstr "RECURSOS"
+
+msgid "Documentation"
+msgstr "Documentación"
+
+msgid "Guides and getting started"
+msgstr "Guías y primeros pasos"
+
+msgid "Orca website"
+msgstr "Sitio web de Orca"
+
+msgid "News and product updates"
+msgstr "Noticias y actualizaciones"
+
+msgid "COMMUNITY & DEVELOPMENT"
+msgstr "COMUNIDAD Y DESARROLLO"
+
+msgid "Source code and releases"
+msgstr "Código fuente y versiones"
+
+msgid "Report an issue"
+msgstr "Informar de un problema"
+
+msgid "Bugs and troubleshooting"
+msgstr "Errores y solución de problemas"
+
+msgid "Ideas & feature requests"
+msgstr "Ideas y nuevas funciones"
+
+msgid "Discuss improvements with the community"
+msgstr "Comenta mejoras con la comunidad"
+
+msgid "%s\n%s\n%s\nOpens in your browser"
+msgstr "%s\n%s\n%s\nSe abre en tu navegador"
+
+msgid "REVIEW-FIRST"
+msgstr "REVISIÓN PRIMERO"
+
+msgid "Plan mode is read-only. Work defaults to Review edits. You can allow bounded automatic script edits for one session or explicitly remember Auto apply for this project; scene/configuration changes retain approval."
+msgstr "Planificar es de solo lectura. Trabajar requiere revisión por defecto. Puedes permitir edición automática acotada de scripts en una sesión o recordarla explícitamente para este proyecto; los cambios de escenas y configuración requieren aprobación."
+
+msgid "COMPATIBILITY"
+msgstr "COMPATIBILIDAD"
+
+msgid "SUPPORT"
+msgstr "AYUDA"
+
+msgid "Copies a strict-allowlist report with Orca/Godot versions and coarse provider/request state. It excludes credentials, endpoint addresses, project data, conversations, model output, logs, and file changes."
+msgstr "Copia un informe con campos estrictamente permitidos: versiones de Orca/Godot y estado general del proveedor y la solicitud. Excluye credenciales, endpoints, datos del proyecto, conversaciones, respuestas del modelo, registros y cambios de archivos."
+
+msgid "Copy Privacy-Safe Diagnostic Report"
+msgstr "Copiar diagnóstico sin datos privados"
+
+msgid "Copied diagnostic report."
+msgstr "Informe de diagnóstico copiado."
+
+msgid "LICENSE"
+msgstr "LICENCIA"
+
+msgid "MIT License\nCopyright (c) 2026 Minghang Chamling"
+msgstr "Licencia MIT\nCopyright (c) 2026 Minghang Chamling"
+
+msgid "Select Refresh to load models from this endpoint."
+msgstr "Selecciona Actualizar para cargar modelos de este endpoint."
+
+msgid "Loading models..."
+msgstr "Cargando modelos…"
+
+msgid "Waiting to load models..."
+msgstr "Esperando para cargar modelos…"
+
+msgid "Enter an API key to load models."
+msgstr "Introduce una clave de API para cargar modelos."
+
+msgid "Enter the exact deployment name and run Test & Enable Agent tools."
+msgstr "Introduce el nombre exacto de la implementación y prueba y activa las herramientas."
+
+msgid "Enter a Model ID and run Test & Enable Agent tools."
+msgstr "Introduce un ID de modelo y prueba y activa las herramientas."
+
+msgid "Connect in Account to load Orca models."
+msgstr "Conecta desde Cuenta para cargar los modelos de Orca."
+
+msgid "Endpoint changed. Select Refresh to contact it."
+msgstr "El endpoint cambió. Selecciona Actualizar para conectarte."
+
+msgid "Using a manual Model ID. Select Refresh to restore discovered models."
+msgstr "Usando un ID manual. Selecciona Actualizar para recuperar los modelos descubiertos."
+
+msgid "Using an exact deployment name. Run Test & Enable Agent tools."
+msgstr "Usando un nombre exacto de implementación. Prueba y activa las herramientas."
+
+msgid "Using a manual Model ID. Run Test & Enable Agent tools."
+msgstr "Usando un ID manual. Prueba y activa las herramientas."
+
+msgid "Loaded %d models%s.%s"
+msgstr "Se cargaron %d modelos%s.%s"
+
+msgid " from cache"
+msgstr " desde la caché"
+
+msgid " Known embedding models are hidden; enter a Model ID manually to override discovery."
+msgstr " Los modelos de embeddings conocidos están ocultos; introduce un ID manual para sustituir el descubrimiento."
+
+msgid "%s — subscription required"
+msgstr "%s — requiere suscripción"
+
+msgid "No matching models."
+msgstr "No hay modelos coincidentes."
+
+msgid "Context: %s"
+msgstr "Contexto: %s"
+
+msgid "Input: $%.2f/M"
+msgstr "Entrada: $%.2f/M"
+
+msgid "Output: $%.2f/M"
+msgstr "Salida: $%.2f/M"
+
+msgid "Could not save this provider profile. Check the endpoint and API settings."
+msgstr "No se pudo guardar el perfil. Comprueba el endpoint y los ajustes de API."
+
+msgid "Invalid endpoint."
+msgstr "Endpoint no válido."
+
+msgid "Invalid endpoint: %s"
+msgstr "Endpoint no válido: %s"
+
+msgid "Loopback endpoint. Requests stay addressed to this machine."
+msgstr "Endpoint de bucle local. Las solicitudes se dirigen a este equipo."
+
+msgid "Lan"
+msgstr "Red local"
+
+msgid "Remote"
+msgstr "Remoto"
+
+msgid "%s endpoint%s %s"
+msgstr "Endpoint %s%s %s"
+
+msgid " HTTP is unencrypted."
+msgstr " HTTP no está cifrado."
+
+msgid "Trusted for this exact origin."
+msgstr "Este origen exacto es de confianza."
+
+msgid "Confirmation is required before sending data."
+msgstr "Se requiere confirmación antes de enviar datos."
+
+msgid "Trust AI Endpoint"
+msgstr "Confiar en el endpoint de IA"
+
+msgid "Allow Orca to send this profile's credentials, prompts, and project context to %s? This confirmation is stored for this exact scheme, host, and port.%s"
+msgstr "¿Permitir que Orca envíe las credenciales, instrucciones y contexto del proyecto de este perfil a %s? Esta confirmación se guarda para este esquema, host y puerto exactos.%s"
+
+msgid " This connection is HTTP and is not encrypted."
+msgstr " Esta conexión usa HTTP y no está cifrada."
+
+msgid "Endpoint changed before confirmation. Review it again."
+msgstr "El endpoint cambió antes de confirmar. Revísalo de nuevo."
+
+msgid "Work with Orca"
+msgstr "Trabaja con Orca"
+
+msgid "Plan, create, and debug your Godot project without leaving the editor."
+msgstr "Planifica, crea y depura tu proyecto de Godot sin salir del editor."
+
+msgid "Plan is read-only. Work can run the game and propose reviewed changes."
+msgstr "Planificar es de solo lectura. Trabajar puede ejecutar el juego y proponer cambios para revisión."
+
+msgid "New session"
+msgstr "Nueva sesión"
+
+msgid "Conversation history"
+msgstr "Historial de conversaciones"
+
+msgid "Orca settings"
+msgstr "Ajustes de Orca"
+
+msgid "Describe what you want to build or fix..."
+msgstr "Describe qué quieres crear o corregir…"
+
+msgid "Choose an agent mode"
+msgstr "Elige un modo del agente"
+
+msgid "Choose Plan for analysis or Work for reviewed changes."
+msgstr "Elige Planificar para analizar o Trabajar para cambios revisados."
+
+msgid "Work"
+msgstr "Trabajar"
+
+msgid "Plan"
+msgstr "Planificar"
+
+msgid "Inspect, run, and propose reviewed edits"
+msgstr "Inspecciona, ejecuta y propone cambios revisados"
+
+msgid "Analyze without changing files"
+msgstr "Analiza sin cambiar archivos"
+
+msgid "Work mode: Explore, run the game, and propose reviewed project changes"
+msgstr "Trabajar: explora, ejecuta el juego y propone cambios revisados"
+
+msgid "Plan mode: Analyze and design without changing files"
+msgstr "Planificar: analiza y diseña sin cambiar archivos"
+
+msgid "\nTab to switch modes in the prompt box"
+msgstr "\nPulsa Tab en el campo de texto para cambiar de modo"
+
+msgid "No model"
+msgstr "Sin modelo"
+
+msgid "Current model: %s\nClick to configure"
+msgstr "Modelo actual: %s\nHaz clic para configurar"
+
+msgid "Send message"
+msgstr "Enviar mensaje"
+
+msgid "Stop response (draft text is kept)"
+msgstr "Detener respuesta (conserva el borrador)"
+
+msgid "Thinking"
+msgstr "Pensando"
+
+msgid "Preparing response"
+msgstr "Preparando respuesta"
+
+msgid "Observing game"
+msgstr "Observando el juego"
+
+msgid "Assessing results"
+msgstr "Evaluando resultados"
+
+msgid "Finalizing safely"
+msgstr "Finalizando de forma segura"
+
+msgid "User"
+msgstr "Usuario"
+
+msgid "Orca (incomplete)"
+msgstr "Orca (incompleto)"
+
+msgid "Copy"
+msgstr "Copiar"
+
+msgid "Copy code"
+msgstr "Copiar código"
+
+msgid "Code"
+msgstr "Código"
+
+msgid "Start New Session"
+msgstr "Iniciar nueva sesión"
+
+msgid "Save this conversation to History and start a new session?\n\nApplied file changes will remain."
+msgstr "¿Guardar esta conversación en el historial e iniciar una sesión nueva?\n\nLos cambios aplicados se conservarán."
+
+msgid "HISTORY"
+msgstr "HISTORIAL"
+
+msgid "History"
+msgstr "Historial"
+
+msgid "New Chat"
+msgstr "Nuevo chat"
+
+msgid "Save the current session and start a new conversation"
+msgstr "Guardar la sesión actual e iniciar una conversación nueva"
+
+msgid "Conversations are stored locally for this project."
+msgstr "Las conversaciones se guardan localmente para este proyecto."
+
+msgid "Up to 50 recent sessions"
+msgstr "Hasta 50 sesiones recientes"
+
+msgid "Delete All"
+msgstr "Eliminar todo"
+
+msgid "No saved conversations yet."
+msgstr "Todavía no hay conversaciones guardadas."
+
+msgid " · %d changed"
+msgstr " · %d archivos modificados"
+
+msgid " · View only"
+msgstr " · Solo lectura"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+msgid "Current"
+msgstr "Actual"
+
+msgid "Open"
+msgstr "Abrir"
+
+msgid "Delete Conversation"
+msgstr "Eliminar conversación"
+
+msgid "Delete \"%s\"? This cannot be undone."
+msgstr "¿Eliminar «%s»? Esta acción no se puede deshacer."
+
+msgid "Delete All Conversations"
+msgstr "Eliminar todas las conversaciones"
+
+msgid "Delete all saved Orca conversations for this project? This cannot be undone."
+msgstr "¿Eliminar todas las conversaciones de Orca guardadas para este proyecto? Esta acción no se puede deshacer."
+
+msgid "Tasks %d/%d"
+msgstr "Tareas %d/%d"
+
+msgid "Pending"
+msgstr "Pendiente"
+
+msgid "In progress"
+msgstr "En curso"
+
+msgid "Completed"
+msgstr "Completado"
+
+msgid "Blocked"
+msgstr "Bloqueado"
+
+msgid "Cancelled"
+msgstr "Cancelado"
+
+msgid "Project activity"
+msgstr "Actividad del proyecto"
+
+msgid "Read file"
+msgstr "Leer archivo"
+
+msgid "Read files"
+msgstr "Leer archivos"
+
+msgid "List directory"
+msgstr "Listar directorio"
+
+msgid "List directories"
+msgstr "Listar directorios"
+
+msgid "Search project"
+msgstr "Buscar en el proyecto"
+
+msgid "Inspect scene"
+msgstr "Inspeccionar escena"
+
+msgid "Inspect scenes"
+msgstr "Inspeccionar escenas"
+
+msgid "Inspect live scene"
+msgstr "Inspeccionar escena del editor"
+
+msgid "Inspect project settings"
+msgstr "Inspeccionar ajustes del proyecto"
+
+msgid "Read project skill"
+msgstr "Leer habilidad del proyecto"
+
+msgid "Read project skills"
+msgstr "Leer habilidades del proyecto"
+
+msgid "Inspect Godot API"
+msgstr "Inspeccionar API de Godot"
+
+msgid "Read GDScript function"
+msgstr "Leer función GDScript"
+
+msgid "Read GDScript functions"
+msgstr "Leer funciones GDScript"
+
+msgid "Discover dependencies"
+msgstr "Descubrir dependencias"
+
+msgid "Find project symbols"
+msgstr "Buscar símbolos del proyecto"
+
+msgid "Find reference candidates"
+msgstr "Buscar posibles referencias"
+
+msgid "Inspect editor context"
+msgstr "Inspeccionar contexto del editor"
+
+msgid "Read game status and diagnostics"
+msgstr "Leer estado y diagnóstico del juego"
+
+msgid "Observe game run"
+msgstr "Observar ejecución del juego"
+
+msgid "Verify game criterion"
+msgstr "Verificar criterio del juego"
+
+msgid "Run current scene"
+msgstr "Ejecutar escena actual"
+
+msgid "Run main scene"
+msgstr "Ejecutar escena principal"
+
+msgid "Stop Orca game"
+msgstr "Detener juego de Orca"
+
+msgid "Update task checklist"
+msgstr "Actualizar lista de tareas"
+
+msgid "Work mode decision"
+msgstr "Decisión de modo Trabajar"
+
+msgid "Prepare file patch"
+msgstr "Preparar parche de archivo"
+
+msgid "Prepare Input Map changes"
+msgstr "Preparar cambios de entradas"
+
+msgid "Prepare main scene change"
+msgstr "Preparar cambio de escena principal"
+
+msgid "Prepare Project Settings changes"
+msgstr "Preparar cambios de ajustes"
+
+msgid "Prepare scene changes"
+msgstr "Preparar cambios de escena"
+
+msgid "Selected nodes"
+msgstr "Nodos seleccionados"
+
+msgid "Scene hierarchy"
+msgstr "Jerarquía de la escena"
+
+msgid "Open Docs"
+msgstr "Documentación"
+
+msgid "RUNNING"
+msgstr "EN CURSO"
+
+msgid "DONE"
+msgstr "LISTO"
+
+msgid "COMPLETED"
+msgstr "COMPLETADO"
+
+msgid "FAILED"
+msgstr "FALLÓ"
+
+msgid "INTERRUPTED"
+msgstr "INTERRUMPIDO"
+
+msgid "CANCELLED"
+msgstr "CANCELADO"
+
+msgid "REJECTED"
+msgstr "RECHAZADO"
+
+msgid "APPLYING"
+msgstr "APLICANDO"
+
+msgid "APPLIED"
+msgstr "APLICADO"
+
+msgid "APPLIED RECOVERY"
+msgstr "APLICADO; REVISAR RECUPERACIÓN"
+
+msgid "REVERTED"
+msgstr "REVERTIDO"
+
+msgid "REVERT FAILED"
+msgstr "FALLÓ LA REVERSIÓN"
+
+msgid "RECOVERY CONFLICT"
+msgstr "CONFLICTO DE RECUPERACIÓN"
+
+msgid "APPLY RECOVERY REQUIRED"
+msgstr "REVISAR RECUPERACIÓN TRAS APLICAR"
+
+msgid "REVERT RECOVERY REQUIRED"
+msgstr "REVISAR RECUPERACIÓN TRAS REVERTIR"
+
+msgid "%d call · %s"
+msgstr "%d llamada · %s"
+
+msgid "%d calls · %s"
+msgstr "%d llamadas · %s"
+
+msgid "Switch to Work mode?"
+msgstr "¿Cambiar al modo Trabajar?"
+
+msgid "Orca needs Work mode to continue this task. Switching modes does not approve any file change."
+msgstr "Orca necesita el modo Trabajar para continuar. Cambiar de modo no aprueba ningún cambio de archivo."
+
+msgid "Switch to Work"
+msgstr "Cambiar a Trabajar"
+
+msgid "Stay in Plan"
+msgstr "Seguir planificando"
+
+msgid "Reason: %s"
+msgstr "Motivo: %s"
+
+msgid "Work mode enabled"
+msgstr "Modo Trabajar activado"
+
+msgid "Continuing this task in Work mode. Changes still require approval."
+msgstr "Continuando en modo Trabajar. Los cambios aún requieren aprobación."
+
+msgid "Remaining in Plan mode"
+msgstr "Se mantiene Planificar"
+
+msgid "Orca will finish this turn without making project changes."
+msgstr "Orca terminará este turno sin modificar el proyecto."
+
+msgid "Mode switch cancelled"
+msgstr "Cambio de modo cancelado"
+
+msgid "Mode switch unavailable"
+msgstr "Cambio de modo no disponible"
+
+msgid "Orca remains in Plan mode."
+msgstr "Orca sigue en modo Planificar."
+
+msgid "Switching to Work mode..."
+msgstr "Cambiando al modo Trabajar…"
+
+msgid "Staying in Plan mode..."
+msgstr "Manteniendo Planificar…"
+
+msgid "Expand Diff"
+msgstr "Ampliar diferencias"
+
+msgid "Open File"
+msgstr "Abrir archivo"
+
+msgid "Apply"
+msgstr "Aplicar"
+
+msgid "Reject"
+msgstr "Rechazar"
+
+msgid "Revert"
+msgstr "Revertir"
+
+msgid "Check recovery"
+msgstr "Revisar recuperación"
+
+msgid "Modified  %s"
+msgstr "Modificado  %s"
+
+msgid "Validated: %s"
+msgstr "Validado: %s"
+
+msgid "Passed"
+msgstr "Correcto"
+
+msgid "Revert rechecks current file state."
+msgstr "Revertir vuelve a comprobar el estado actual del archivo."
+
+msgid "Revert is available in idle Work mode."
+msgstr "Se puede revertir en Trabajar cuando esté inactivo."
+
+msgid "Review Changes · %s"
+msgstr "Revisar cambios · %s"
+
+msgid "Previous"
+msgstr "Anterior"
+
+msgid "Proposed"
+msgstr "Propuesto"
+
+msgid "Close"
+msgstr "Cerrar"
+
+msgid "Project Settings"
+msgstr "Ajustes del proyecto"
+
+msgid "Project File"
+msgstr "Archivo del proyecto"
+
+msgid "Project Main Scene"
+msgstr "Escena principal del proyecto"
+
+msgid "Scene"
+msgstr "Escena"
+
+msgid "Not configured"
+msgstr "Sin configurar"
+
+msgid "REVIEW"
+msgstr "REVISIÓN"
+
+msgid "%d action"
+msgstr "%d acción"
+
+msgid "%d actions"
+msgstr "%d acciones"
+
+msgid "%d setting"
+msgstr "%d ajuste"
+
+msgid "%d settings"
+msgstr "%d ajustes"
+
+msgid "Change"
+msgstr "Cambio"
+
+msgid "Scene Change"
+msgstr "Cambio de escena"
+
+msgid "TRUST REVIEW"
+msgstr "REVISIÓN DE CONFIANZA"
+
+msgid "Trust and Prepare"
+msgstr "Confiar y preparar"
+
+msgid "Authorize Script Attach"
+msgstr "Autorizar adjuntar script"
+
+msgid "Authorize Script Detach"
+msgstr "Autorizar quitar script"
+
+msgid "Create Scene"
+msgstr "Crear escena"
+
+msgid "Set Scene Property"
+msgstr "Definir propiedad de escena"
+
+msgid "Rename Scene Node"
+msgstr "Renombrar nodo de escena"
+
+msgid "Reparent Scene Node"
+msgstr "Cambiar padre del nodo"
+
+msgid "Add Scene Node"
+msgstr "Añadir nodo de escena"
+
+msgid "Remove Scene Node"
+msgstr "Eliminar nodo de escena"
+
+msgid "Attach Scene Script"
+msgstr "Adjuntar script a escena"
+
+msgid "Detach Scene Script"
+msgstr "Quitar script de escena"
+
+msgid "Instantiate Child Scene"
+msgstr "Instanciar escena hija"
+
+msgid "Connect Scene Signal"
+msgstr "Conectar señal de escena"
+
+msgid "Disconnect Scene Signal"
+msgstr "Desconectar señal de escena"
+
+msgid "Attach"
+msgstr "Adjuntar"
+
+msgid "Detach"
+msgstr "Quitar"
+
+msgid "Connect"
+msgstr "Conectar"
+
+msgid "Disconnect"
+msgstr "Desconectar"
+
+msgid "Get started with Orca"
+msgstr "Empieza con Orca"
+
+msgid "Connect a model to continue"
+msgstr "Conecta un modelo para continuar"
+
+msgid "Choose a model to continue"
+msgstr "Elige un modelo para continuar"
+
+msgid "Restoring your connection"
+msgstr "Restaurando tu conexión"
+
+msgid "Close connection setup"
+msgstr "Cerrar configuración de conexión"
+
+msgid "Sign in / Sign up with Orca"
+msgstr "Iniciar sesión / Registrarse en Orca"
+
+msgid "Use models through your Orca account."
+msgstr "Usa modelos con tu cuenta de Orca."
+
+msgid "Bring your own API key"
+msgstr "Usar tu propia clave de API"
+
+msgid "Connect your preferred provider—or use local models."
+msgstr "Conecta tu proveedor preferido o usa modelos locales."
+
+msgid "Choose a model"
+msgstr "Elegir un modelo"
+
+msgid "Open model selection in Provider Settings."
+msgstr "Abre la selección de modelos en los ajustes del proveedor."
+
+msgid "Set up later"
+msgstr "Configurar más tarde"
+
+msgid "Choose how you’d like to connect."
+msgstr "Elige cómo quieres conectarte."
+
+msgid "Your draft is kept while you connect."
+msgstr "Tu borrador se conserva mientras te conectas."
+
+msgid "Use Orca models"
+msgstr "Usar modelos de Orca"
+
+msgid "Continue Orca sign-in"
+msgstr "Continuar inicio de sesión"
+
+msgid "Choose a model included in your account."
+msgstr "Elige un modelo incluido en tu cuenta."
+
+msgid "Finish connecting your account in the browser."
+msgstr "Termina de conectar tu cuenta en el navegador."
+
+msgid "Sign in to Orca or connect your own provider. Your draft is ready when you are."
+msgstr "Inicia sesión en Orca o conecta tu proveedor. Tu borrador seguirá listo cuando tú lo estés."
+
+msgid "Choose an available model included in your Orca account. Your draft has been kept."
+msgstr "Elige un modelo disponible de tu cuenta de Orca. Tu borrador se ha conservado."
+
+msgid "Choose a model in Provider Settings. Your draft has been kept."
+msgstr "Elige un modelo en los ajustes del proveedor. Tu borrador se ha conservado."
+
+msgid "Restoring your Orca connection… Your draft has been kept."
+msgstr "Restaurando tu conexión de Orca… Tu borrador se ha conservado."
+
+msgid "Plugin updates"
+msgstr "Actualizaciones del plugin"
+
+msgid "Orca %s is available"
+msgstr "Orca %s está disponible"
+
+msgid "Update & Restart"
+msgstr "Actualizar y reiniciar"
+
+msgid "Check for updates"
+msgstr "Buscar actualizaciones"
+
+msgid "What’s new"
+msgstr "Novedades"
+
+msgid "Open official release notes in your browser"
+msgstr "Abrir las notas oficiales de la versión en tu navegador"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Later"
+msgstr "Más tarde"
+
+msgid "Check automatically (daily)"
+msgstr "Comprobar cada día"
+
+msgid "Restore previous addon & restart"
+msgstr "Restaurar plugin anterior y reiniciar"
+
+msgid "Restore the verified rollback copy for this project"
+msgstr "Restaurar la copia de respaldo verificada de este proyecto"
+
+msgid "Update Orca"
+msgstr "Actualizar Orca"
+
+msgid "Restore Orca"
+msgstr "Restaurar Orca"
+
+msgid "Restore & Restart"
+msgstr "Restaurar y reiniciar"
+
+msgid "Restore the verified previous Orca addon and restart Godot?"
+msgstr "¿Restaurar el plugin anterior de Orca verificado y reiniciar Godot?"
+
+msgid "Download and install Orca %s in this project, then restart Godot?\n\nThe previous addon will be retained for rollback."
+msgstr "¿Descargar e instalar Orca %s en este proyecto y reiniciar Godot?\n\nEl plugin anterior se conservará para poder restaurarlo."
+
+msgid "\n\nSave your editor work first and close other editors of this project. Active Orca work and unsaved scripts/scenes must be finished before installation."
+msgstr "\n\nGuarda primero tu trabajo y cierra otros editores de este proyecto. Finaliza el trabajo activo de Orca y guarda los scripts y escenas antes de instalar."
+
+msgid "You have the latest stable Orca release."
+msgstr "Tienes la última versión estable de Orca."
+
+msgid "Checking for updates…"
+msgstr "Buscando actualizaciones…"
+
+msgid "Update check cancelled."
+msgstr "Búsqueda de actualizaciones cancelada."
+
+msgid "Update cancelled."
+msgstr "Actualización cancelada."
+
+msgid "Attach images"
+msgstr "Adjuntar imágenes"
+
+msgid "Attach images — Orca"
+msgstr "Adjuntar imágenes — Orca"
+
+msgid "Image preview"
+msgstr "Vista previa de imagen"
+
+msgid "Drop images here"
+msgstr "Arrastra imágenes aquí"
+
+msgid "PNG, JPEG, or WebP · up to four images\nAttachments stay outside your project files."
+msgstr "PNG, JPEG o WebP · hasta cuatro imágenes\nLos adjuntos no se guardan en los archivos del proyecto."
+
+msgid "Browse…"
+msgstr "Examinar…"
+
+msgid "%d / 4 images attached"
+msgstr "%d / 4 imágenes adjuntas"
+
+msgid "Remove image"
+msgstr "Quitar imagen"
+
+msgid " · resized"
+msgstr " · redimensionada"
+
+msgid "Remove script reference"
+msgstr "Quitar referencia de script"
+
+msgid "Drop images to attach"
+msgstr "Arrastra imágenes para adjuntar"
+
+msgid "Drop scripts to attach"
+msgstr "Arrastra scripts para adjuntar"
+
+msgid "This saved conversation is view-only."
+msgstr "Esta conversación guardada es de solo lectura."
+
+msgid "This model does not support image input."
+msgstr "Este modelo no admite imágenes."
+
+msgid "Image support is unconfirmed. Configure it in Provider settings."
+msgstr "La compatibilidad con imágenes no está confirmada. Configúrala en los ajustes del proveedor."
+
+msgid "Four images attached. Remove an image to add another."
+msgstr "Hay cuatro imágenes adjuntas. Quita una para añadir otra."
+
+msgid "%s supports image input. Opens a separate drop/Browse window. Paste screenshots or drag project images onto the input. Dropping desktop files on the main editor imports them; use the attachment window instead."
+msgstr "%s admite imágenes. Abre una ventana independiente para arrastrar o examinar. Pega capturas o arrastra imágenes del proyecto al campo de texto. Los archivos del escritorio se importan al soltarlos en el editor principal; usa la ventana de adjuntos."
+
+msgid "Drop PNG, JPEG, or WebP still-image files only."
+msgstr "Arrastra solo imágenes estáticas PNG, JPEG o WebP."
+
+msgid "Only local image files can be attached."
+msgstr "Solo se pueden adjuntar archivos de imagen locales."
+
+msgid "Attach at most four images per message."
+msgstr "Adjunta como máximo cuatro imágenes por mensaje."
+
+msgid "Attach at most four project scripts."
+msgstr "Adjunta como máximo cuatro scripts del proyecto."
+
+msgid "Attach at most four scripts per message."
+msgstr "Adjunta como máximo cuatro scripts por mensaje."
+
+msgid "This conversation is not accepting attachments."
+msgstr "Esta conversación no acepta adjuntos."
+
+msgid "This conversation is not accepting script references."
+msgstr "Esta conversación no acepta referencias de scripts."
+
+msgid "Could not prepare image."
+msgstr "No se pudo preparar la imagen."
+
+msgid "Could not read clipboard image."
+msgstr "No se pudo leer la imagen del portapapeles."
+
+msgid "Could not prepare script references."
+msgstr "No se pudieron preparar las referencias de scripts."
+
+msgid "Invalid script reference."
+msgstr "Referencia de script no válida."
+
+msgid "The referenced script could not be opened."
+msgstr "No se pudo abrir el script referenciado."
+
+msgid "Submission was not accepted. Your draft has been kept."
+msgstr "No se aceptó el envío. Tu borrador se ha conservado."
+
+msgid "This saved session is view-only"
+msgstr "Esta sesión guardada es de solo lectura"
+
+msgid "This interrupted or truncated session is view-only. Start a new chat to continue."
+msgstr "Esta sesión interrumpida o truncada es de solo lectura. Inicia un chat nuevo para continuar."
+
+msgid "Describe unfinished work from the recovery checkpoint..."
+msgstr "Describe el trabajo pendiente del punto de recuperación…"
+
+msgid "Start a new chat to continue after this interrupted tool turn"
+msgstr "Inicia un chat nuevo para continuar tras este turno de herramientas interrumpido"
+
+msgid "Response stopped."
+msgstr "Respuesta detenida."
+
+msgid "Recovery Ready"
+msgstr "Recuperación disponible"
+
+msgid "Recovery storage"
+msgstr "Almacenamiento de recuperación"
+
+msgid "System Error"
+msgstr "Error del sistema"
+
+msgid "Storage Warning"
+msgstr "Aviso de almacenamiento"
+
+msgid "Could not clear the active conversation checkpoint."
+msgstr "No se pudo borrar el punto de recuperación de la conversación activa."
+
+msgid "Could not save the script-change checkpoint."
+msgstr "No se pudo guardar el punto de recuperación del cambio de script."
+
+msgid "Some local session files could not be removed."
+msgstr "No se pudieron eliminar algunos archivos locales de sesión."
+
+msgid "Restored script-change checkpoint. Changes are never replayed. Revert rechecks current disk and editor state."
+msgstr "Punto de recuperación del script restaurado. Los cambios nunca se repiten. Revertir comprueba el estado actual del disco y del editor."
+
+msgid "Completed successfully."
+msgstr "Completado correctamente."
+
+msgid "Completed with cleanup required."
+msgstr "Completado; requiere limpieza."
+
+msgid "Recovery required. See the associated change record."
+msgstr "Se requiere recuperación. Consulta el registro de cambios asociado."
+
+msgid "Tool did not complete."
+msgstr "La herramienta no terminó."
+
+msgid "Tool was cancelled."
+msgstr "La herramienta se canceló."
+
+msgid "Task checklist update failed."
+msgstr "No se pudo actualizar la lista de tareas."
+
+msgid "Unknown"
+msgstr "Desconocido"
+
+msgid "Unknown error"
+msgstr "Error desconocido"
+
+msgid "Session context usage"
+msgstr "Uso del contexto de la sesión"
+
+msgid "Session cost"
+msgstr "Costo de la sesión"
+
+msgid "Context %s"
+msgstr "Contexto %s"
+
+msgid "Context --"
+msgstr "Contexto --"
+
+msgid "Context 0"
+msgstr "Contexto 0"
+
+msgid "Cost $%.4f"
+msgstr "Costo $%.4f"
+
+msgid "Cost $0.0000"
+msgstr "Costo $0.0000"
+
+msgid "Cost --"
+msgstr "Costo --"
+
+msgid "Request ~%s"
+msgstr "Solicitud ~%s"
+
+msgid "Latest completed request (provider-reported): %s%s\nSession input: %s\nSession output: %s\nCached input: %s\nUsage reporting: %s"
+msgstr "Última solicitud completada (según el proveedor): %s%s\nEntrada de sesión: %s\nSalida de sesión: %s\nEntrada en caché: %s\nInforme de uso: %s"
+
+msgid "Session cost: %s\nModel: %s\nBillable tokens reported: %s\nCost source: %s."
+msgstr "Costo de sesión: %s\nModelo: %s\nTokens facturables informados: %s\nOrigen del costo: %s."
+
+msgid "Input Map  %s"
+msgstr "Mapa de entradas  %s"
+
+msgid "Open Scene"
+msgstr "Abrir escena"
+
+msgid "Warning: %s"
+msgstr "Aviso: %s"
+
+msgid "Target  %s\nNode    %s\nScript  %s\n\nThis first approval permits Godot to compile, load, and instantiate the reviewed script after an immediate hash recheck while preparing and revalidating a candidate. It does not modify the scene. Godot cannot lock the file against external replacement during loading."
+msgstr "Destino  %s\nNodo     %s\nScript   %s\n\nEsta primera aprobación permite que Godot compile, cargue e instancie el script revisado tras comprobar de nuevo su hash, al preparar y revalidar una escena candidata. No modifica la escena. Godot no puede bloquear el archivo para impedir su sustitución externa durante la carga."
+
+msgid "Target    %s\nNode      %s (%s)\nPrevious  %s\nProposed  %s\nBase      %s"
+msgstr "Destino    %s\nNodo       %s (%s)\nAnterior   %s\nPropuesto  %s\nBase       %s"
+
+msgid "Target  %s\nParent  %s\nNode    %s \"%s\"\nResult  %s nodes"
+msgstr "Destino    %s\nPadre      %s\nNodo       %s «%s»\nResultado  %s nodos"
+
+msgid "Target    %s\nNode      %s\nProperty  %s\nPrevious  %s\nProposed  %s"
+msgstr "Destino    %s\nNodo       %s\nPropiedad  %s\nAnterior   %s\nPropuesto  %s"
+
+msgid "Target    %s\nPrevious  %s\nProposed  %s"
+msgstr "Destino    %s\nAnterior   %s\nPropuesto  %s"
+
+msgid "Target  %s\nRemove  %s \"%s\"\nResult  %s nodes"
+msgstr "Destino    %s\nEliminar   %s «%s»\nResultado  %s nodos"
+
+msgid "Target    %s\nNode      %s\nPrevious  %s\nProposed  %s"
+msgstr "Destino    %s\nNodo       %s\nAnterior   %s\nPropuesto  %s"
+
+msgid "Target  %s\nParent  %s\nScene   %s\nNode    %s"
+msgstr "Destino  %s\nPadre    %s\nEscena   %s\nNodo     %s"
+
+msgid "Target  %s\nSignal  %s.%s\nMethod  %s.%s\nFlags   %s"
+msgstr "Destino  %s\nSeñal    %s.%s\nMétodo   %s.%s\nOpciones %s"
+
+msgid "Target  %s\nRoot    %s \"%s\""
+msgstr "Destino  %s\nRaíz     %s «%s»"
+
+msgid "ADD"
+msgstr "AÑADIR"
+
+msgid "REMOVE"
+msgstr "ELIMINAR"
+
+msgid "UPDATE"
+msgstr "ACTUALIZAR"
+
+msgid "  Previous: %s\n"
+msgstr "  Anterior: %s\n"
+
+msgid "  Proposed: %s\n"
+msgstr "  Propuesto: %s\n"
+
+msgid "Current model: gpt-4o\nClick to configure"
+msgstr "Modelo actual: gpt-4o\nHaz clic para configurar"
+
+msgid "complete"
+msgstr "completo"
+
+msgid "partial or unavailable"
+msgstr "parcial o no disponible"
+
+msgid "estimated from public model pricing"
+msgstr "estimado a partir de precios públicos"
+
+msgid "reported by the provider"
+msgstr "informado por el proveedor"
+
+msgid "prepared"
+msgstr "preparado"
+
+msgid "blocked"
+msgstr "bloqueado"
+
+msgid "active"
+msgstr "activo"
+
+msgid "\n\nLocal request estimate: %d tokens (%s).\nSafe input budget: %d of %d tokens.\nReserved output: %d; future tool result: %d.\nIncludes request instructions, tool schemas/results, image reserves and private continuation when applicable. This estimate is separate from provider-reported usage and billing reservations."
+msgstr "\n\nEstimación local: %d tokens (%s).\nPresupuesto seguro de entrada: %d de %d tokens.\nSalida reservada: %d; próximo resultado de herramienta: %d.\nIncluye instrucciones, esquemas y resultados de herramientas, reservas de imágenes y continuación privada cuando corresponda. Es independiente del uso informado por el proveedor y las reservas de facturación."
+
+msgid "Sign in to use Orca-hosted models."
+msgstr "Inicia sesión para usar los modelos alojados por Orca."
+
+msgid "Secure credential storage is unavailable. Enable your OS credential vault."
+msgstr "El almacenamiento seguro no está disponible. Activa el almacén de credenciales del sistema operativo."
+
+msgid "Orca Cloud could not start sign-in. Check your connection and try again."
+msgstr "Orca Cloud no pudo iniciar la conexión. Comprueba tu conexión e inténtalo de nuevo."
+
+msgid "Sign in or sign up in your browser, then approve this editor."
+msgstr "Inicia sesión o regístrate en el navegador y autoriza este editor."
+
+msgid "The account service returned invalid credentials. Start sign-in again."
+msgstr "El servicio devolvió credenciales no válidas. Inicia sesión de nuevo."
+
+msgid "The OS credential vault could not be opened. Unlock it and sign in again."
+msgstr "No se pudo abrir el almacén de credenciales. Desbloquéalo e inicia sesión de nuevo."
+
+msgid "Your connection could not be saved securely. Unlock the OS vault and try again."
+msgstr "No se pudo guardar la conexión de forma segura. Desbloquea el almacén e inténtalo de nuevo."
+
+msgid "Sign-in was declined or interrupted. Start a new connection."
+msgstr "Se rechazó o interrumpió el inicio de sesión. Inicia otra conexión."
+
+msgid "The pairing code expired. Sign in again to get a new code."
+msgstr "El código de vinculación caducó. Inicia sesión de nuevo para obtener otro."
+
+msgid "Sign-in cancelled."
+msgstr "Inicio de sesión cancelado."
+
+msgid "Refresh your account connection before the next request."
+msgstr "Actualiza la conexión de tu cuenta antes de la siguiente solicitud."
+
+msgid "Account information could not be refreshed. Reconnect if your session was revoked."
+msgstr "No se pudo actualizar la cuenta. Vuelve a conectarte si se revocó tu sesión."
+
+msgid "The account service returned invalid account information."
+msgstr "El servicio devolvió información de cuenta no válida."
+
+msgid "Your account is connected. Hosted models are ready to use."
+msgstr "Tu cuenta está conectada. Los modelos alojados están listos."
+
+msgid "Signing out…"
+msgstr "Cerrando sesión…"
+
+msgid "Signed out locally. Check Orca Console to revoke the editor session if the backend or OS vault was unavailable."
+msgstr "Sesión cerrada localmente. Si el backend o el almacén no estaban disponibles, revoca la sesión del editor desde la consola de Orca."
+
+msgid "The backend is offline. Your saved connection is retained; use Refresh account when it is available."
+msgstr "El backend está desconectado. Tu conexión guardada se conserva; actualiza la cuenta cuando vuelva a estar disponible."
+
+msgid "Your saved connection could not be restored. Check the backend and OS vault, then sign in again if needed."
+msgstr "No se pudo restaurar la conexión guardada. Comprueba el backend y el almacén de credenciales e inicia sesión si es necesario."
+
+msgid "Updates come from official Orca GitHub Releases."
+msgstr "Las actualizaciones provienen de las versiones oficiales de Orca en GitHub."
+
+msgid "Orca %s is available."
+msgstr "Orca %s está disponible."
+
+msgid "Downloading Orca %s…"
+msgstr "Descargando Orca %s…"
+
+msgid "Update installed. Your previous addon is retained for rollback."
+msgstr "Actualización instalada. El plugin anterior se conserva para restaurarlo."
+
+msgid "The previous addon was restored."
+msgstr "Se restauró el plugin anterior."
+
+msgid "The previous update stopped."
+msgstr "La actualización anterior se detuvo."
+
+msgid "Checking GitHub Releases…"
+msgstr "Comprobando versiones de GitHub…"
+
+msgid "Could not check for updates."
+msgstr "No se pudieron buscar actualizaciones."
+
+msgid "Unsupported release metadata."
+msgstr "Metadatos de versión no compatibles."
+
+msgid "Checking installed addon files…"
+msgstr "Comprobando archivos del plugin instalado…"
+
+msgid "Verifying and staging the release…"
+msgstr "Verificando y preparando la versión…"
+
+msgid "Verified. Preparing the editor restart…"
+msgstr "Verificado. Preparando el reinicio del editor…"
+
+msgid "Closing Godot; the verified updater will reopen this project."
+msgstr "Cerrando Godot; el actualizador verificado volverá a abrir este proyecto."
+
+msgid "GDScript is valid."
+msgstr "GDScript es válido."
+
+msgid "No GDScript validation required."
+msgstr "No se requiere validar GDScript."
+
+msgid "Parsed and verified project.godot Input Map state."
+msgstr "Se analizó y verificó el mapa de entradas de project.godot."
+
+msgid "Loaded the saved target as a PackedScene and verified project.godot."
+msgstr "Se cargó el destino guardado como PackedScene y se verificó project.godot."
+
+msgid "Validated allowlisted typed settings and parsed the candidate project.godot."
+msgstr "Se validaron los ajustes tipados permitidos y se analizó el project.godot propuesto."
+
+msgid "Packed, saved, and reloaded the complete proposed scene as a PackedScene."
+msgstr "La escena propuesta completa se empaquetó, guardó y volvió a cargar como PackedScene."
+
+msgid "Trusted script loaded; packed, saved, and reloaded the complete proposed scene."
+msgstr "Script autorizado cargado; la escena propuesta completa se empaquetó, guardó y volvió a cargar."
+
+msgid "Hash-bound intent validated without loading the scene or compiling the script. Approval may execute script initialization while constructing and revalidating the candidate."
+msgstr "Se validó la intención vinculada al hash sin cargar la escena ni compilar el script. La aprobación puede ejecutar su inicialización al construir y revalidar la escena candidata."
+
+msgid "Viewport width"
+msgstr "Ancho del viewport"
+
+msgid "Viewport height"
+msgstr "Alto del viewport"
+
+msgid "Window width override"
+msgstr "Ancho de ventana personalizado"
+
+msgid "Window height override"
+msgstr "Alto de ventana personalizado"
+
+msgid "Stretch mode"
+msgstr "Modo de escalado"
+
+msgid "Stretch aspect"
+msgstr "Proporción de escalado"
+
+msgid "API Key (optional)"
+msgstr "Clave de API (opcional)"
+
+msgid "OpenAI API Key"
+msgstr "Clave de API de OpenAI"
+
+msgid "Gemini API Key"
+msgstr "Clave de API de Gemini"
+
+msgid "OpenRouter API Key"
+msgstr "Clave de API de OpenRouter"
+
+msgid "DeepSeek API Key"
+msgstr "Clave de API de DeepSeek"
+
+msgid "Azure API Key"
+msgstr "Clave de API de Azure"
+
+msgid "xAI API Key"
+msgstr "Clave de API de xAI"
+
+msgid "OpenAI-compatible"
+msgstr "Compatible con OpenAI"
+
+msgid "Local OpenAI-compatible"
+msgstr "Local compatible con OpenAI"

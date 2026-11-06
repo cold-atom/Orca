@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
@@ -14,6 +15,10 @@ var _open_button: Button
 var _apply_button: Button
 var _reject_button: Button
 var _revert_button: Button
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -32,10 +37,15 @@ func _ready() -> void:
 	var header := HBoxContainer.new()
 	content.add_child(header)
 	_title_label = Label.new()
+	_title_label.clip_text = true
+	_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_title_label.text = "Scene Change"
 	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_title_label)
 	_status_label = Label.new()
+	_status_label.clip_text = true
+	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
 	_status_label.text = "REVIEW"
 	header.add_child(_status_label)
 	_validation_label = Label.new()
@@ -53,8 +63,8 @@ func _ready() -> void:
 	_open_button.disabled = true
 	_open_button.pressed.connect(func(): open_requested.emit(str(_proposal.get("filepath", "")), 1, 1))
 	content.add_child(_open_button)
-	var actions := HBoxContainer.new()
-	actions.alignment = BoxContainer.ALIGNMENT_END
+	var actions := HFlowContainer.new()
+	actions.alignment = FlowContainer.ALIGNMENT_END
 	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(actions)
 	var spacer := Control.new()
@@ -80,9 +90,9 @@ func configure(proposal: Dictionary) -> void:
 	var summary: Dictionary = proposal.get("scene_summary", {})
 	var trust_review := str(proposal.get("approval_stage", "")) == "script_trust"
 	_status_label.text = "TRUST REVIEW" if trust_review else "REVIEW"
-	_status_label.tooltip_text = ""
+	_status_label.tooltip_text = _status_label.text
 	_status_label.remove_theme_color_override("font_color")
-	_validation_label.text = ("Warning: " if trust_review else "Validated: ") + str(proposal.get("validation", {}).get("message", "Passed"))
+	Localization.bind(_validation_label, &"text", "Warning: %s" if trust_review else "Validated: %s", [Localization.source(str(proposal.get("validation", {}).get("message", "Passed")))])
 	_validation_label.add_theme_color_override("font_color", Color(0.95, 0.68, 0.28) if trust_review else Color(0.48, 0.78, 0.58))
 	_apply_button.text = "Trust and Prepare" if trust_review else "Apply"
 	_apply_button.visible = true
@@ -99,37 +109,37 @@ func configure(proposal: Dictionary) -> void:
 				var attaching := str(summary.get("operation", "")) == "attach_script"
 				_title_label.text = ("Authorize Script Attach" if attaching else "Authorize Script Detach") if trust_review else ("Attach Scene Script" if attaching else "Detach Scene Script")
 				if trust_review:
-					details.text = "Target  %s\nNode    %s\nScript  %s\n\nThis first approval permits Godot to compile, load, and instantiate the reviewed script after an immediate hash recheck while preparing and revalidating a candidate. It does not modify the scene. Godot cannot lock the file against external replacement during loading." % [target, str(summary.get("node_path", "")), str(summary.get("script_path", ""))]
+					Localization.bind(details, &"text", "Target  %s\nNode    %s\nScript  %s\n\nThis first approval permits Godot to compile, load, and instantiate the reviewed script after an immediate hash recheck while preparing and revalidating a candidate. It does not modify the scene. Godot cannot lock the file against external replacement during loading.", [target, str(summary.get("node_path", "")), str(summary.get("script_path", ""))])
 				else:
-					details.text = "Target    %s\nNode      %s (%s)\nPrevious  %s\nProposed  %s\nBase      %s" % [target, str(summary.get("node_path", "")), str(summary.get("node_type", "")), _display_script(str(summary.get("before_script", ""))), _display_script(str(summary.get("after_script", ""))), str(summary.get("script_base", ""))]
+					Localization.bind(details, &"text", "Target    %s\nNode      %s (%s)\nPrevious  %s\nProposed  %s\nBase      %s", [target, str(summary.get("node_path", "")), str(summary.get("node_type", "")), _display_script(str(summary.get("before_script", ""))), _display_script(str(summary.get("after_script", ""))), str(summary.get("script_base", ""))])
 			"add_node":
 				_title_label.text = "Add Scene Node"
 				var added: Dictionary = summary.get("added_node", {})
-				details.text = "Target  %s\nParent  %s\nNode    %s \"%s\"\nResult  %s nodes" % [target, str(added.get("parent_path", "")), str(added.get("type", "")), str(added.get("name", "")), str(summary.get("after_node_count", ""))]
+				Localization.bind(details, &"text", "Target  %s\nParent  %s\nNode    %s \"%s\"\nResult  %s nodes", [target, str(added.get("parent_path", "")), str(added.get("type", "")), str(added.get("name", "")), str(summary.get("after_node_count", ""))])
 			"set_property":
 				_title_label.text = "Set Scene Property"
-				details.text = "Target    %s\nNode      %s\nProperty  %s\nPrevious  %s\nProposed  %s" % [target, str(summary.get("node_path", "")), str(summary.get("property_name", "")), JSON.stringify(summary.get("before")), JSON.stringify(summary.get("after"))]
+				Localization.bind(details, &"text", "Target    %s\nNode      %s\nProperty  %s\nPrevious  %s\nProposed  %s", [target, str(summary.get("node_path", "")), str(summary.get("property_name", "")), JSON.stringify(summary.get("before")), JSON.stringify(summary.get("after"))])
 			"rename_node":
 				_title_label.text = "Rename Scene Node"
-				details.text = "Target    %s\nPrevious  %s\nProposed  %s" % [target, str(summary.get("old_path", "")), str(summary.get("new_path", ""))]
+				Localization.bind(details, &"text", "Target    %s\nPrevious  %s\nProposed  %s", [target, str(summary.get("old_path", "")), str(summary.get("new_path", ""))])
 			"remove_node":
 				_title_label.text = "Remove Scene Node"
 				var removed: Dictionary = summary.get("removed_node", {})
-				details.text = "Target  %s\nRemove  %s \"%s\"\nResult  %s nodes" % [target, str(removed.get("type", "")), str(removed.get("path", "")), str(summary.get("after_node_count", ""))]
+				Localization.bind(details, &"text", "Target  %s\nRemove  %s \"%s\"\nResult  %s nodes", [target, str(removed.get("type", "")), str(removed.get("path", "")), str(summary.get("after_node_count", ""))])
 			"reparent_node":
 				_title_label.text = "Reparent Scene Node"
-				details.text = "Target    %s\nNode      %s\nPrevious  %s\nProposed  %s" % [target, str(summary.get("node_name", "")), str(summary.get("old_parent_path", "")), str(summary.get("new_parent_path", ""))]
+				Localization.bind(details, &"text", "Target    %s\nNode      %s\nPrevious  %s\nProposed  %s", [target, str(summary.get("node_name", "")), str(summary.get("old_parent_path", "")), str(summary.get("new_parent_path", ""))])
 			"instantiate_child_scene":
 				_title_label.text = "Instantiate Child Scene"
 				var instance: Dictionary = summary.get("instance", {})
-				details.text = "Target  %s\nParent  %s\nScene   %s\nNode    %s" % [target, str(instance.get("parent_path", "")), str(instance.get("scene_path", "")), str(instance.get("path", ""))]
+				Localization.bind(details, &"text", "Target  %s\nParent  %s\nScene   %s\nNode    %s", [target, str(instance.get("parent_path", "")), str(instance.get("scene_path", "")), str(instance.get("path", ""))])
 			"connect_signal", "disconnect_signal":
 				_title_label.text = "Connect Scene Signal" if str(summary.get("operation")) == "connect_signal" else "Disconnect Scene Signal"
 				var connection: Dictionary = summary.get("connection", {})
-				details.text = "Target  %s\nSignal  %s.%s\nMethod  %s.%s\nFlags   %s" % [target, str(connection.get("source", "")), str(connection.get("signal", "")), str(connection.get("target", "")), str(connection.get("method", "")), _connection_flags(int(connection.get("flags", 0)))]
+				Localization.bind(details, &"text", "Target  %s\nSignal  %s.%s\nMethod  %s.%s\nFlags   %s", [target, str(connection.get("source", "")), str(connection.get("signal", "")), str(connection.get("target", "")), str(connection.get("method", "")), _connection_flags(int(connection.get("flags", 0)))])
 			_:
 				_title_label.text = "Create Scene"
-				details.text = "Target  %s\nRoot    %s \"%s\"" % [target, str(summary.get("root_type", "")), str(summary.get("root_name", ""))]
+				Localization.bind(details, &"text", "Target  %s\nRoot    %s \"%s\"", [target, str(summary.get("root_type", "")), str(summary.get("root_name", ""))])
 		details.tooltip_text = str(proposal.get("filepath", ""))
 
 

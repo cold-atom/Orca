@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
@@ -13,6 +14,10 @@ var _review_label: RichTextLabel
 var _apply_button: Button
 var _reject_button: Button
 var _revert_button: Button
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -31,24 +36,30 @@ func _ready() -> void:
 	var header := HBoxContainer.new()
 	content.add_child(header)
 	var title := Label.new()
-	title.text = "Input Map  res://project.godot"
+	title.clip_text = true
+	Localization.bind(title, &"text", "Input Map  %s", ["res://project.godot"])
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(title)
 	_status_label = Label.new()
+	_status_label.clip_text = true
+	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
 	header.add_child(_status_label)
 	_validation_label = Label.new()
+	_validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_validation_label.add_theme_color_override("font_color", Color(0.48, 0.78, 0.58))
 	content.add_child(_validation_label)
 	_review_label = RichTextLabel.new()
+	_review_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_review_label.bbcode_enabled = true
 	_review_label.fit_content = false
 	_review_label.selection_enabled = true
 	_review_label.custom_minimum_size = Vector2(0, UiMetrics.scaled(110))
 	_review_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_child(_review_label)
-	var actions := HBoxContainer.new()
-	actions.alignment = BoxContainer.ALIGNMENT_END
+	var actions := HFlowContainer.new()
+	actions.alignment = FlowContainer.ALIGNMENT_END
 	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(actions)
 	var open_button := Button.new()
@@ -77,9 +88,9 @@ func _ready() -> void:
 func configure(proposal: Dictionary) -> void:
 	_proposal = proposal
 	var review: Array = proposal.get("review", [])
-	_status_label.text = "%d action%s" % [review.size(), "" if review.size() == 1 else "s"]
-	_validation_label.text = "Validated: " + str(proposal.get("validation", {}).get("message", "Passed"))
-	_review_label.text = _format_review(review)
+	Localization.bind(_status_label, &"text", "%d action" if review.size() == 1 else "%d actions", [review.size()])
+	Localization.bind(_validation_label, &"text", "Validated: %s", [Localization.source(str(proposal.get("validation", {}).get("message", "Passed")))])
+	_bind_review(review)
 
 
 func set_status(status: String, message: String) -> void:
@@ -94,17 +105,16 @@ func set_status(status: String, message: String) -> void:
 	_status_label.add_theme_color_override("font_color", Color(0.45, 0.82, 0.55) if status == "applied" else Color(0.62, 0.65, 0.7) if status in ["rejected", "reverted"] else Color(0.95, 0.4, 0.4))
 
 
-func _format_review(review: Array) -> String:
-	var lines := PackedStringArray()
+func _bind_review(review: Array) -> void:
+	var parts: Array = []
 	for item in review:
 		var operation := str(item.get("operation", "update"))
 		var color := "#8fd7a6" if operation == "add" else "#f0a8a8" if operation == "remove" else "#e2c879"
-		lines.append("[color=%s][b]%s[/b][/color]  %s" % [color, operation.to_upper(), _escape(str(item.get("action", "")))])
-		if item.get("before") != null:
-			lines.append("  Previous: " + _escape(_format_action(item["before"])))
-		if item.get("after") != null:
-			lines.append("  Proposed: " + _escape(_format_action(item["after"])))
-	return "\n".join(lines)
+		parts.append(["[color=%s][b]%s[/b][/color]  %s\n", [color, Localization.source(operation.to_upper()), _escape(str(item.get("action", "")))]])
+		for pair in [["before", "  Previous: %s\n"], ["after", "  Proposed: %s\n"]]:
+			if item.get(pair[0]) != null:
+				parts.append([pair[1], [_escape(_format_action(item[pair[0]]))]])
+	Localization.bind_parts(_review_label, &"text", parts)
 
 
 func _format_action(action: Dictionary) -> String:

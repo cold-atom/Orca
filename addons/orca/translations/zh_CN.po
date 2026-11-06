@@ -1,0 +1,1579 @@
+msgid ""
+msgstr ""
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Language"
+msgstr "语言"
+
+msgid "Done"
+msgstr "完成"
+
+msgid "GENERAL SETTINGS"
+msgstr "常规设置"
+
+msgid "Changes Orca's interface only. Replies follow your message language, using this language when unclear."
+msgstr "仅更改 Orca 的界面语言。回复使用您消息的语言；无法确定时使用此语言。"
+
+msgid "Provider"
+msgstr "提供商"
+
+msgid "System"
+msgstr "系统"
+
+msgid "Account"
+msgstr "账户"
+
+msgid "About"
+msgstr "关于"
+
+msgid "API CONFIGURATION"
+msgstr "API 配置"
+
+msgid "API Provider"
+msgstr "API 提供商"
+
+msgid "API Key"
+msgstr "API 密钥"
+
+msgid "Optional API Key"
+msgstr "API 密钥（可选）"
+
+msgid "Enter API key"
+msgstr "输入 API 密钥"
+
+msgid "Optional for local servers"
+msgstr "本地服务器可不填写"
+
+msgid "Show"
+msgstr "显示"
+
+msgid "Hide"
+msgstr "隐藏"
+
+msgid "Get an API key"
+msgstr "获取 API 密钥"
+
+msgid "Stored in Godot Editor Settings and used only for requests to the selected provider."
+msgstr "保存在 Godot 编辑器设置中，仅用于向所选提供商发送请求。"
+
+msgid "Base URL"
+msgstr "基础 URL"
+
+msgid "Responses (reasoning + tools)"
+msgstr "Responses（推理与工具）"
+
+msgid "Reasoning Continuation"
+msgstr "推理续接"
+
+msgid "Standard"
+msgstr "标准"
+
+msgid "DeepSeek reasoning"
+msgstr "DeepSeek 推理"
+
+msgid "For Azure DeepSeek deployments, preserve private reasoning through Chat or Responses tool follow-ups and remove one leaked leading </think> delimiter. Works with custom deployment names."
+msgstr "用于 Azure DeepSeek 部署：在 Chat 或 Responses 工具续接中保留私有推理，并移除开头泄漏的一个 </think> 分隔符。支持自定义部署名称。"
+
+msgid "Model"
+msgstr "模型"
+
+msgid "Search available models..."
+msgstr "搜索可用模型…"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Model ID"
+msgstr "模型 ID"
+
+msgid "Exact deployment name"
+msgstr "准确的部署名称"
+
+msgid "Enable unconfirmed image input"
+msgstr "启用尚未确认的图像输入"
+
+msgid "Use only if this exact endpoint and model accept image_url content. This does not enable Agent tools or verify vision quality."
+msgstr "仅当此端点和模型确实支持 image_url 内容时使用。此选项不会启用智能体工具，也不验证视觉识别质量。"
+
+msgid "Reasoning Effort"
+msgstr "推理强度"
+
+msgid "Provider default"
+msgstr "提供商默认值"
+
+msgid "None"
+msgstr "无"
+
+msgid "Minimal"
+msgstr "最低"
+
+msgid "Low"
+msgstr "低"
+
+msgid "Medium"
+msgstr "中"
+
+msgid "High"
+msgstr "高"
+
+msgid "Xhigh"
+msgstr "极高"
+
+msgid "Max"
+msgstr "最高"
+
+msgid "Higher effort can improve difficult planning and debugging, but may use more tokens."
+msgstr "更高的推理强度有助于复杂规划和调试，但可能消耗更多令牌。"
+
+msgid "Supported levels depend on your deployment. Provider default does not disable reasoning. For GPT reasoning with tools, prefer Responses; use None on Chat only if the deployment supports it."
+msgstr "支持的强度取决于您的部署。提供商默认值不会关闭推理。GPT 推理与工具配合时优先使用 Responses；仅在部署支持时，才可在 Chat 中选择“无”。"
+
+msgid "Use the resource's /openai/v1 base URL and exact deployment name. Responses supports reasoning with Orca function tools; requests use store=false. Select DeepSeek reasoning continuation for DeepSeek deployments."
+msgstr "使用资源的 /openai/v1 基础 URL 和准确的部署名称。Responses 支持推理与 Orca 函数工具；请求使用 store=false。DeepSeek 部署请选择 DeepSeek 推理续接。"
+
+msgid "For GPT reasoning with tools, prefer Responses. Chat without reasoning requires a deployment that supports None. Select DeepSeek reasoning continuation for DeepSeek deployments."
+msgstr "GPT 推理与工具配合时优先使用 Responses。Chat 关闭推理需要部署支持“无”。DeepSeek 部署请选择 DeepSeek 推理续接。"
+
+msgid "Request Timeouts"
+msgstr "请求超时"
+
+msgid "Use custom timeouts"
+msgstr "使用自定义超时"
+
+msgid "Override Orca's built-in response waits for this provider. Turning this off preserves your custom values."
+msgstr "覆盖 Orca 为此提供商设置的默认响应等待时间。关闭后保留您的自定义值。"
+
+msgid "Using Orca's default timeouts.\nHeaders: 30 s · Inactivity: 60 s"
+msgstr "使用 Orca 默认超时。\n响应头：30 秒 · 无活动：60 秒"
+
+msgid "Original timing: 30 seconds to connect, 30 seconds for response headers, 60 seconds without body data, and 45 seconds for an Agent compatibility check. Each full request is capped at 10 minutes."
+msgstr "默认时间：连接 30 秒、响应头 30 秒、响应体无数据 60 秒、智能体兼容性检查 45 秒。每个完整请求最长 10 分钟。"
+
+msgid "Response start"
+msgstr "响应开始"
+
+msgid "Stream inactivity"
+msgstr "流式传输无活动"
+
+msgid "Maximum wait for headers and initial response data, including model loading. Accepts 10–600 seconds."
+msgstr "等待响应头和初始响应数据的最长时间，包含模型加载时间。允许 10–600 秒。"
+
+msgid "Maximum pause after response data begins. Reasoning and keep-alive bytes count as activity. Accepts 10–600 seconds."
+msgstr "收到响应数据后允许的最长暂停时间。推理和保活数据均视为活动。允许 10–600 秒。"
+
+msgid "Allow extra time for model loading and slow generation."
+msgstr "为模型加载和较慢的生成留出更多时间。"
+
+msgid "Control how long Orca waits for this provider."
+msgstr "设置 Orca 等待此提供商的时间。"
+
+msgid "Saved per provider · 10–600 s\n10-minute limit · Stop available"
+msgstr "按提供商保存 · 10–600 秒\n最长 10 分钟 · 可随时停止"
+
+msgid "10-minute request limit.\nStop remains available."
+msgstr "请求最长 10 分钟。\n仍可随时停止。"
+
+msgid "Agent Compatibility"
+msgstr "智能体兼容性"
+
+msgid "Test & Enable Agent tools"
+msgstr "测试并启用智能体工具"
+
+msgid "Run the project-free compatibility check and enable Agent tools for this exact profile only if it passes."
+msgstr "运行不含项目数据的兼容性检查，仅在通过后为此准确配置启用智能体工具。"
+
+msgid "Enable Agent tools"
+msgstr "启用智能体工具"
+
+msgid "Enable Agent tools for this exact endpoint and model"
+msgstr "为此准确端点和模型启用智能体工具"
+
+msgid "This project-free check enables Agent tools when it passes. Agent tools may send project context and perform normal Plan/Work operations; edit permissions are controlled separately in the dock."
+msgstr "此检查不含项目数据，通过后启用智能体工具。工具可发送项目上下文并执行正常的规划/工作操作；编辑权限在面板中单独控制。"
+
+msgid "Agent tools enabled for this exact profile."
+msgstr "已为此准确配置启用智能体工具。"
+
+msgid "Compatibility passed. Agent tools are off."
+msgstr "兼容性检查已通过。智能体工具未启用。"
+
+msgid "Run the compatibility probe."
+msgstr "请运行兼容性检查。"
+
+msgid "Run Test & Enable Agent tools for this profile."
+msgstr "请为此配置运行“测试并启用智能体工具”。"
+
+msgid "Profile changed. Run Test & Enable Agent tools again."
+msgstr "配置已更改。请重新测试并启用智能体工具。"
+
+msgid "Profile changed during the check. Run Test & Enable Agent tools again."
+msgstr "检查期间配置已更改。请重新测试并启用智能体工具。"
+
+msgid "Compatibility passed, but Agent tools could not be enabled. Run the check again."
+msgstr "兼容性检查已通过，但无法启用智能体工具。请重新检查。"
+
+msgid "Compatibility check failed: %s"
+msgstr "兼容性检查失败：%s"
+
+msgid "Testing Agent compatibility, step %d of 2..."
+msgstr "正在测试智能体兼容性，第 %d 步，共 2 步…"
+
+msgid "Script edits"
+msgstr "脚本编辑"
+
+msgid "Review edits"
+msgstr "审核修改"
+
+msgid "Review edits (default)"
+msgstr "审核修改（默认）"
+
+msgid "Auto apply"
+msgstr "自动应用"
+
+msgid "Auto apply for this project"
+msgstr "为此项目自动应用"
+
+msgid "Default script edits for this project"
+msgstr "此项目的默认脚本编辑方式"
+
+msgid "Default script-edit behavior for this project on this computer. Auto apply requires explicit confirmation."
+msgstr "此电脑上该项目的默认脚本编辑方式。自动应用需要明确确认。"
+
+msgid "Remember Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only. Scene/configuration changes still require review. Clicking the green edit icon beside ORCA turns it off and clears the remembered choice."
+msgstr "记住自动应用设置，用于此项目的新工作会话和编辑器重启。规划模式保持只读。场景和配置修改仍需审核。点击 ORCA 旁的绿色编辑图标可关闭并清除记住的选择。"
+
+msgid "Allow automatic script edits"
+msgstr "允许自动编辑脚本"
+
+msgid "Orca can create and edit eligible project .gd scripts automatically in Work mode. Every edit is validated, shown in the feed, and checkpointed before writing.\n\nScene/configuration changes and script-execution trust still require approval. Unsaved files and conflicts remain protected.\n\nWithout remembering, permission is for this session only. Remembering enables Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only.\n\nClick the green edit icon beside ORCA in the header to revoke permission and clear any remembered default."
+msgstr "Orca 可在工作模式下自动创建和编辑符合条件的项目 .gd 脚本。每次修改都会经过验证、显示在会话中，并在写入前保存恢复检查点。\n\n场景和配置修改以及脚本执行信任仍需批准。未保存的文件和冲突仍受到保护。\n\n不勾选记住时，权限仅限当前会话。记住后，此项目的新工作会话和编辑器重启可启用自动应用。规划模式保持只读。\n\n点击标题栏 ORCA 旁的绿色编辑图标可撤销权限并清除记住的默认设置。"
+
+msgid "Remember for this project"
+msgstr "为此项目记住选择"
+
+msgid "Use Auto apply by default for this project"
+msgstr "此项目默认使用自动应用"
+
+msgid "Use Auto apply by default for this project. This is saved locally, outside project files and conversation history."
+msgstr "此项目默认使用自动应用。设置保存在本地，不存入项目文件或会话历史。"
+
+msgid "Allow edits"
+msgstr "允许编辑"
+
+msgid "Script edit permission"
+msgstr "脚本编辑权限"
+
+msgid "Script edit permission: %s"
+msgstr "脚本编辑权限：%s"
+
+msgid "Remembered for this project: new Work conversations and editor restarts use Auto apply."
+msgstr "已为此项目记住：新工作会话和编辑器重启使用自动应用。"
+
+msgid "Auto apply is enabled for this session only."
+msgstr "自动应用仅在当前会话启用。"
+
+msgid " Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action."
+msgstr " 点击可在下次写入前撤销权限并清除记住的默认设置。停止会保留已完成的修改；还原是独立操作。"
+
+msgid "Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval."
+msgstr "当前需要审核修改。在工作模式空闲时或审核项目脚本时点击，可允许当前会话自动应用，并可选择为此项目记住。场景和配置提案仍需批准。"
+
+msgid " The project default remains saved; Auto apply is paused here or unavailable in this mode/session."
+msgstr " 项目默认设置仍已保存；自动应用在此处已暂停，或在当前模式/会话中不可用。"
+
+msgid "The project preference could not be saved. No automatic edit permission was granted."
+msgstr "无法保存项目偏好设置。未授予自动编辑权限。"
+
+msgid "Auto apply is off for this session, but its project default could not be saved."
+msgstr "此会话的自动应用已关闭，但无法保存项目默认设置。"
+
+msgid "ORCA ACCOUNT"
+msgstr "ORCA 账户"
+
+msgid "Sign in to access models provided by Orca."
+msgstr "登录以使用 Orca 提供的模型。"
+
+msgid "Sign in / Sign up"
+msgstr "登录 / 注册"
+
+msgid "Open browser again"
+msgstr "再次打开浏览器"
+
+msgid "Cancel connection"
+msgstr "取消连接"
+
+msgid "Choose model"
+msgstr "选择模型"
+
+msgid "Refresh account"
+msgstr "刷新账户"
+
+msgid "Open Orca Console"
+msgstr "打开 Orca 控制台"
+
+msgid "Sign out"
+msgstr "退出登录"
+
+msgid "Your connection is remembered in your OS credential vault. Account passwords and model-provider keys stay outside the plugin."
+msgstr "连接凭据保存在操作系统凭据库中。账户密码和模型提供商密钥不存入插件。"
+
+msgid "Account service is unavailable."
+msgstr "账户服务不可用。"
+
+msgid "Pairing code: %s"
+msgstr "配对码：%s"
+
+msgid "Plan: %s\nAvailable usage: %s\nReserved: %s"
+msgstr "套餐：%s\n可用额度：%s\n预留额度：%s"
+
+msgid "unavailable"
+msgstr "不可用"
+
+msgid "Signed out."
+msgstr "已退出登录。"
+
+msgid "Preparing connection…"
+msgstr "正在准备连接…"
+
+msgid "Restoring your Orca connection…"
+msgstr "正在恢复 Orca 连接…"
+
+msgid "Connected."
+msgstr "已连接。"
+
+msgid "Version %s"
+msgstr "版本 %s"
+
+msgid "A safety-first AI development assistant for the Godot editor."
+msgstr "内置于 Godot 编辑器、以安全为先的 AI 开发助手。"
+
+msgid "Explore project context, prepare Godot-aware changes, and run bounded checks without leaving the editor."
+msgstr "无需离开编辑器，即可探索项目上下文、准备符合 Godot 特性的修改并运行有限检查。"
+
+msgid "RESOURCES"
+msgstr "资源"
+
+msgid "Documentation"
+msgstr "文档"
+
+msgid "Guides and getting started"
+msgstr "指南与入门"
+
+msgid "Orca website"
+msgstr "Orca 网站"
+
+msgid "News and product updates"
+msgstr "新闻与产品更新"
+
+msgid "COMMUNITY & DEVELOPMENT"
+msgstr "社区与开发"
+
+msgid "Source code and releases"
+msgstr "源代码与版本发布"
+
+msgid "Report an issue"
+msgstr "报告问题"
+
+msgid "Bugs and troubleshooting"
+msgstr "缺陷与故障排查"
+
+msgid "Ideas & feature requests"
+msgstr "建议与功能请求"
+
+msgid "Discuss improvements with the community"
+msgstr "与社区讨论改进建议"
+
+msgid "%s\n%s\n%s\nOpens in your browser"
+msgstr "%s\n%s\n%s\n在浏览器中打开"
+
+msgid "REVIEW-FIRST"
+msgstr "审核优先"
+
+msgid "Plan mode is read-only. Work defaults to Review edits. You can allow bounded automatic script edits for one session or explicitly remember Auto apply for this project; scene/configuration changes retain approval."
+msgstr "规划模式为只读。工作模式默认要求审核修改。您可在当前会话允许有限的自动脚本编辑，或明确为此项目记住自动应用；场景和配置修改仍需批准。"
+
+msgid "COMPATIBILITY"
+msgstr "兼容性"
+
+msgid "SUPPORT"
+msgstr "支持"
+
+msgid "Copies a strict-allowlist report with Orca/Godot versions and coarse provider/request state. It excludes credentials, endpoint addresses, project data, conversations, model output, logs, and file changes."
+msgstr "复制仅含严格允许字段的报告，包括 Orca/Godot 版本和概略的提供商/请求状态。不包含凭据、端点地址、项目数据、会话、模型输出、日志或文件修改。"
+
+msgid "Copy Privacy-Safe Diagnostic Report"
+msgstr "复制保护隐私的诊断报告"
+
+msgid "Copied diagnostic report."
+msgstr "已复制诊断报告。"
+
+msgid "LICENSE"
+msgstr "许可证"
+
+msgid "MIT License\nCopyright (c) 2026 Minghang Chamling"
+msgstr "MIT 许可证\n版权所有 (c) 2026 Minghang Chamling"
+
+msgid "Select Refresh to load models from this endpoint."
+msgstr "点击刷新以从此端点加载模型。"
+
+msgid "Loading models..."
+msgstr "正在加载模型…"
+
+msgid "Waiting to load models..."
+msgstr "等待加载模型…"
+
+msgid "Enter an API key to load models."
+msgstr "输入 API 密钥以加载模型。"
+
+msgid "Enter the exact deployment name and run Test & Enable Agent tools."
+msgstr "输入准确的部署名称，然后测试并启用智能体工具。"
+
+msgid "Enter a Model ID and run Test & Enable Agent tools."
+msgstr "输入模型 ID，然后测试并启用智能体工具。"
+
+msgid "Connect in Account to load Orca models."
+msgstr "在账户页连接以加载 Orca 模型。"
+
+msgid "Endpoint changed. Select Refresh to contact it."
+msgstr "端点已更改。点击刷新以连接。"
+
+msgid "Using a manual Model ID. Select Refresh to restore discovered models."
+msgstr "正在使用手动模型 ID。点击刷新以恢复发现的模型。"
+
+msgid "Using an exact deployment name. Run Test & Enable Agent tools."
+msgstr "正在使用准确的部署名称。请测试并启用智能体工具。"
+
+msgid "Using a manual Model ID. Run Test & Enable Agent tools."
+msgstr "正在使用手动模型 ID。请测试并启用智能体工具。"
+
+msgid "Loaded %d models%s.%s"
+msgstr "已加载 %d 个模型%s。%s"
+
+msgid " from cache"
+msgstr "（来自缓存）"
+
+msgid " Known embedding models are hidden; enter a Model ID manually to override discovery."
+msgstr " 已隐藏已知嵌入模型；可手动输入模型 ID 以覆盖发现结果。"
+
+msgid "%s — subscription required"
+msgstr "%s — 需要订阅"
+
+msgid "No matching models."
+msgstr "没有匹配的模型。"
+
+msgid "Context: %s"
+msgstr "上下文：%s"
+
+msgid "Input: $%.2f/M"
+msgstr "输入：$%.2f/百万令牌"
+
+msgid "Output: $%.2f/M"
+msgstr "输出：$%.2f/百万令牌"
+
+msgid "Could not save this provider profile. Check the endpoint and API settings."
+msgstr "无法保存此提供商配置。请检查端点和 API 设置。"
+
+msgid "Invalid endpoint."
+msgstr "无效端点。"
+
+msgid "Invalid endpoint: %s"
+msgstr "无效端点：%s"
+
+msgid "Loopback endpoint. Requests stay addressed to this machine."
+msgstr "回环端点。请求仅发送到本机地址。"
+
+msgid "Lan"
+msgstr "局域网"
+
+msgid "Remote"
+msgstr "远程"
+
+msgid "%s endpoint%s %s"
+msgstr "%s端点%s %s"
+
+msgid " HTTP is unencrypted."
+msgstr " HTTP 未加密。"
+
+msgid "Trusted for this exact origin."
+msgstr "已信任此准确来源。"
+
+msgid "Confirmation is required before sending data."
+msgstr "发送数据前需要确认。"
+
+msgid "Trust AI Endpoint"
+msgstr "信任 AI 端点"
+
+msgid "Allow Orca to send this profile's credentials, prompts, and project context to %s? This confirmation is stored for this exact scheme, host, and port.%s"
+msgstr "允许 Orca 将此配置的凭据、提示词和项目上下文发送到 %s 吗？此确认仅对应准确的协议、主机和端口。%s"
+
+msgid " This connection is HTTP and is not encrypted."
+msgstr " 此连接使用 HTTP，未加密。"
+
+msgid "Endpoint changed before confirmation. Review it again."
+msgstr "确认前端点已更改。请重新审核。"
+
+msgid "Work with Orca"
+msgstr "与 Orca 一起开发"
+
+msgid "Plan, create, and debug your Godot project without leaving the editor."
+msgstr "无需离开编辑器，即可规划、创建和调试您的 Godot 项目。"
+
+msgid "Plan is read-only. Work can run the game and propose reviewed changes."
+msgstr "规划模式为只读。工作模式可运行游戏并提出待审核的修改。"
+
+msgid "New session"
+msgstr "新建会话"
+
+msgid "Conversation history"
+msgstr "会话历史"
+
+msgid "Orca settings"
+msgstr "Orca 设置"
+
+msgid "Describe what you want to build or fix..."
+msgstr "描述您想创建或修复的内容…"
+
+msgid "Choose an agent mode"
+msgstr "选择智能体模式"
+
+msgid "Choose Plan for analysis or Work for reviewed changes."
+msgstr "选择规划进行分析，或选择工作进行待审核的修改。"
+
+msgid "Work"
+msgstr "工作"
+
+msgid "Plan"
+msgstr "规划"
+
+msgid "Inspect, run, and propose reviewed edits"
+msgstr "检查、运行并提出待审核的修改"
+
+msgid "Analyze without changing files"
+msgstr "分析而不修改文件"
+
+msgid "Work mode: Explore, run the game, and propose reviewed project changes"
+msgstr "工作模式：探索项目、运行游戏并提出待审核的修改"
+
+msgid "Plan mode: Analyze and design without changing files"
+msgstr "规划模式：分析和设计而不修改文件"
+
+msgid "\nTab to switch modes in the prompt box"
+msgstr "\n在输入框中按 Tab 切换模式"
+
+msgid "No model"
+msgstr "未选择模型"
+
+msgid "Current model: %s\nClick to configure"
+msgstr "当前模型：%s\n点击配置"
+
+msgid "Send message"
+msgstr "发送消息"
+
+msgid "Stop response (draft text is kept)"
+msgstr "停止回复（保留草稿）"
+
+msgid "Thinking"
+msgstr "正在思考"
+
+msgid "Preparing response"
+msgstr "正在准备回复"
+
+msgid "Observing game"
+msgstr "正在观察游戏"
+
+msgid "Assessing results"
+msgstr "正在评估结果"
+
+msgid "Finalizing safely"
+msgstr "正在安全结束任务"
+
+msgid "User"
+msgstr "用户"
+
+msgid "Orca (incomplete)"
+msgstr "Orca（未完成）"
+
+msgid "Copy"
+msgstr "复制"
+
+msgid "Copy code"
+msgstr "复制代码"
+
+msgid "Code"
+msgstr "代码"
+
+msgid "Start New Session"
+msgstr "新建会话"
+
+msgid "Save this conversation to History and start a new session?\n\nApplied file changes will remain."
+msgstr "将此会话保存到历史并新建会话吗？\n\n已应用的文件修改会保留。"
+
+msgid "HISTORY"
+msgstr "历史"
+
+msgid "History"
+msgstr "历史"
+
+msgid "New Chat"
+msgstr "新建聊天"
+
+msgid "Save the current session and start a new conversation"
+msgstr "保存当前会话并新建聊天"
+
+msgid "Conversations are stored locally for this project."
+msgstr "会话保存在此项目的本地历史中。"
+
+msgid "Up to 50 recent sessions"
+msgstr "最多保留 50 个最近会话"
+
+msgid "Delete All"
+msgstr "全部删除"
+
+msgid "No saved conversations yet."
+msgstr "尚无已保存的会话。"
+
+msgid " · %d changed"
+msgstr " · %d 个文件已修改"
+
+msgid " · View only"
+msgstr " · 仅供查看"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Current"
+msgstr "当前"
+
+msgid "Open"
+msgstr "打开"
+
+msgid "Delete Conversation"
+msgstr "删除会话"
+
+msgid "Delete \"%s\"? This cannot be undone."
+msgstr "删除“%s”吗？此操作无法撤销。"
+
+msgid "Delete All Conversations"
+msgstr "删除全部会话"
+
+msgid "Delete all saved Orca conversations for this project? This cannot be undone."
+msgstr "删除此项目所有已保存的 Orca 会话吗？此操作无法撤销。"
+
+msgid "Tasks %d/%d"
+msgstr "任务 %d/%d"
+
+msgid "Pending"
+msgstr "待处理"
+
+msgid "In progress"
+msgstr "进行中"
+
+msgid "Completed"
+msgstr "已完成"
+
+msgid "Blocked"
+msgstr "受阻"
+
+msgid "Cancelled"
+msgstr "已取消"
+
+msgid "Project activity"
+msgstr "项目活动"
+
+msgid "Read file"
+msgstr "读取文件"
+
+msgid "Read files"
+msgstr "读取文件"
+
+msgid "List directory"
+msgstr "列出目录"
+
+msgid "List directories"
+msgstr "列出目录"
+
+msgid "Search project"
+msgstr "搜索项目"
+
+msgid "Inspect scene"
+msgstr "检查场景"
+
+msgid "Inspect scenes"
+msgstr "检查场景"
+
+msgid "Inspect live scene"
+msgstr "检查编辑器实时场景"
+
+msgid "Inspect project settings"
+msgstr "检查项目设置"
+
+msgid "Read project skill"
+msgstr "读取项目技能"
+
+msgid "Read project skills"
+msgstr "读取项目技能"
+
+msgid "Inspect Godot API"
+msgstr "检查 Godot API"
+
+msgid "Read GDScript function"
+msgstr "读取 GDScript 函数"
+
+msgid "Read GDScript functions"
+msgstr "读取 GDScript 函数"
+
+msgid "Discover dependencies"
+msgstr "查找依赖关系"
+
+msgid "Find project symbols"
+msgstr "查找项目符号"
+
+msgid "Find reference candidates"
+msgstr "查找候选引用"
+
+msgid "Inspect editor context"
+msgstr "检查编辑器上下文"
+
+msgid "Read game status and diagnostics"
+msgstr "读取游戏状态与诊断"
+
+msgid "Observe game run"
+msgstr "观察游戏运行"
+
+msgid "Verify game criterion"
+msgstr "验证游戏条件"
+
+msgid "Run current scene"
+msgstr "运行当前场景"
+
+msgid "Run main scene"
+msgstr "运行主场景"
+
+msgid "Stop Orca game"
+msgstr "停止 Orca 启动的游戏"
+
+msgid "Update task checklist"
+msgstr "更新任务清单"
+
+msgid "Work mode decision"
+msgstr "工作模式决定"
+
+msgid "Prepare file patch"
+msgstr "准备文件补丁"
+
+msgid "Prepare Input Map changes"
+msgstr "准备输入映射修改"
+
+msgid "Prepare main scene change"
+msgstr "准备主场景修改"
+
+msgid "Prepare Project Settings changes"
+msgstr "准备项目设置修改"
+
+msgid "Prepare scene changes"
+msgstr "准备场景修改"
+
+msgid "Selected nodes"
+msgstr "选中的节点"
+
+msgid "Scene hierarchy"
+msgstr "场景层级"
+
+msgid "Open Docs"
+msgstr "打开文档"
+
+msgid "RUNNING"
+msgstr "运行中"
+
+msgid "DONE"
+msgstr "完成"
+
+msgid "COMPLETED"
+msgstr "已完成"
+
+msgid "FAILED"
+msgstr "失败"
+
+msgid "INTERRUPTED"
+msgstr "已中断"
+
+msgid "CANCELLED"
+msgstr "已取消"
+
+msgid "REJECTED"
+msgstr "已拒绝"
+
+msgid "APPLYING"
+msgstr "应用中"
+
+msgid "APPLIED"
+msgstr "已应用"
+
+msgid "APPLIED RECOVERY"
+msgstr "已应用，需恢复检查"
+
+msgid "REVERTED"
+msgstr "已还原"
+
+msgid "REVERT FAILED"
+msgstr "还原失败"
+
+msgid "RECOVERY CONFLICT"
+msgstr "恢复冲突"
+
+msgid "APPLY RECOVERY REQUIRED"
+msgstr "应用后需恢复检查"
+
+msgid "REVERT RECOVERY REQUIRED"
+msgstr "还原后需恢复检查"
+
+msgid "%d call · %s"
+msgstr "%d 次调用 · %s"
+
+msgid "%d calls · %s"
+msgstr "%d 次调用 · %s"
+
+msgid "Switch to Work mode?"
+msgstr "切换到工作模式吗？"
+
+msgid "Orca needs Work mode to continue this task. Switching modes does not approve any file change."
+msgstr "Orca 需要工作模式才能继续此任务。切换模式不代表批准任何文件修改。"
+
+msgid "Switch to Work"
+msgstr "切换到工作"
+
+msgid "Stay in Plan"
+msgstr "保持规划"
+
+msgid "Reason: %s"
+msgstr "原因：%s"
+
+msgid "Work mode enabled"
+msgstr "已启用工作模式"
+
+msgid "Continuing this task in Work mode. Changes still require approval."
+msgstr "在工作模式下继续此任务。修改仍需批准。"
+
+msgid "Remaining in Plan mode"
+msgstr "保持规划模式"
+
+msgid "Orca will finish this turn without making project changes."
+msgstr "Orca 将结束本轮回复，不修改项目。"
+
+msgid "Mode switch cancelled"
+msgstr "模式切换已取消"
+
+msgid "Mode switch unavailable"
+msgstr "无法切换模式"
+
+msgid "Orca remains in Plan mode."
+msgstr "Orca 保持规划模式。"
+
+msgid "Switching to Work mode..."
+msgstr "正在切换到工作模式…"
+
+msgid "Staying in Plan mode..."
+msgstr "保持规划模式…"
+
+msgid "Expand Diff"
+msgstr "展开差异"
+
+msgid "Open File"
+msgstr "打开文件"
+
+msgid "Apply"
+msgstr "应用"
+
+msgid "Reject"
+msgstr "拒绝"
+
+msgid "Revert"
+msgstr "还原"
+
+msgid "Check recovery"
+msgstr "检查恢复状态"
+
+msgid "Modified  %s"
+msgstr "已修改  %s"
+
+msgid "Validated: %s"
+msgstr "已验证：%s"
+
+msgid "Passed"
+msgstr "通过"
+
+msgid "Revert rechecks current file state."
+msgstr "还原前会重新检查当前文件状态。"
+
+msgid "Revert is available in idle Work mode."
+msgstr "工作模式空闲时可还原。"
+
+msgid "Review Changes · %s"
+msgstr "审核修改 · %s"
+
+msgid "Previous"
+msgstr "原内容"
+
+msgid "Proposed"
+msgstr "拟议内容"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Project Settings"
+msgstr "项目设置"
+
+msgid "Project File"
+msgstr "项目文件"
+
+msgid "Project Main Scene"
+msgstr "项目主场景"
+
+msgid "Scene"
+msgstr "场景"
+
+msgid "Not configured"
+msgstr "未配置"
+
+msgid "REVIEW"
+msgstr "待审核"
+
+msgid "%d action"
+msgstr "%d 个操作"
+
+msgid "%d actions"
+msgstr "%d 个操作"
+
+msgid "%d setting"
+msgstr "%d 个设置"
+
+msgid "%d settings"
+msgstr "%d 个设置"
+
+msgid "Change"
+msgstr "修改"
+
+msgid "Scene Change"
+msgstr "场景修改"
+
+msgid "TRUST REVIEW"
+msgstr "信任审核"
+
+msgid "Trust and Prepare"
+msgstr "信任并准备"
+
+msgid "Authorize Script Attach"
+msgstr "授权附加脚本"
+
+msgid "Authorize Script Detach"
+msgstr "授权移除脚本"
+
+msgid "Create Scene"
+msgstr "创建场景"
+
+msgid "Set Scene Property"
+msgstr "设置场景属性"
+
+msgid "Rename Scene Node"
+msgstr "重命名场景节点"
+
+msgid "Reparent Scene Node"
+msgstr "更改场景节点父级"
+
+msgid "Add Scene Node"
+msgstr "添加场景节点"
+
+msgid "Remove Scene Node"
+msgstr "移除场景节点"
+
+msgid "Attach Scene Script"
+msgstr "附加场景脚本"
+
+msgid "Detach Scene Script"
+msgstr "移除场景脚本"
+
+msgid "Instantiate Child Scene"
+msgstr "实例化子场景"
+
+msgid "Connect Scene Signal"
+msgstr "连接场景信号"
+
+msgid "Disconnect Scene Signal"
+msgstr "断开场景信号"
+
+msgid "Attach"
+msgstr "附加"
+
+msgid "Detach"
+msgstr "移除"
+
+msgid "Connect"
+msgstr "连接"
+
+msgid "Disconnect"
+msgstr "断开"
+
+msgid "Get started with Orca"
+msgstr "开始使用 Orca"
+
+msgid "Connect a model to continue"
+msgstr "连接模型以继续"
+
+msgid "Choose a model to continue"
+msgstr "选择模型以继续"
+
+msgid "Restoring your connection"
+msgstr "正在恢复连接"
+
+msgid "Close connection setup"
+msgstr "关闭连接设置"
+
+msgid "Sign in / Sign up with Orca"
+msgstr "登录 / 注册 Orca"
+
+msgid "Use models through your Orca account."
+msgstr "通过 Orca 账户使用模型。"
+
+msgid "Bring your own API key"
+msgstr "使用自己的 API 密钥"
+
+msgid "Connect your preferred provider—or use local models."
+msgstr "连接您选择的提供商，或使用本地模型。"
+
+msgid "Choose a model"
+msgstr "选择模型"
+
+msgid "Open model selection in Provider Settings."
+msgstr "在提供商设置中打开模型选择。"
+
+msgid "Set up later"
+msgstr "稍后设置"
+
+msgid "Choose how you’d like to connect."
+msgstr "选择连接方式。"
+
+msgid "Your draft is kept while you connect."
+msgstr "连接期间会保留您的草稿。"
+
+msgid "Use Orca models"
+msgstr "使用 Orca 模型"
+
+msgid "Continue Orca sign-in"
+msgstr "继续登录 Orca"
+
+msgid "Choose a model included in your account."
+msgstr "选择您账户包含的模型。"
+
+msgid "Finish connecting your account in the browser."
+msgstr "在浏览器中完成账户连接。"
+
+msgid "Sign in to Orca or connect your own provider. Your draft is ready when you are."
+msgstr "登录 Orca 或连接您自己的提供商。草稿会保留，准备好后即可发送。"
+
+msgid "Choose an available model included in your Orca account. Your draft has been kept."
+msgstr "选择 Orca 账户中可用的模型。您的草稿已保留。"
+
+msgid "Choose a model in Provider Settings. Your draft has been kept."
+msgstr "在提供商设置中选择模型。您的草稿已保留。"
+
+msgid "Restoring your Orca connection… Your draft has been kept."
+msgstr "正在恢复 Orca 连接…您的草稿已保留。"
+
+msgid "Plugin updates"
+msgstr "插件更新"
+
+msgid "Orca %s is available"
+msgstr "Orca %s 已发布"
+
+msgid "Update & Restart"
+msgstr "更新并重启"
+
+msgid "Check for updates"
+msgstr "检查更新"
+
+msgid "What’s new"
+msgstr "更新内容"
+
+msgid "Open official release notes in your browser"
+msgstr "在浏览器中打开官方版本说明"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Later"
+msgstr "稍后"
+
+msgid "Check automatically (daily)"
+msgstr "每日自动检查"
+
+msgid "Restore previous addon & restart"
+msgstr "恢复上一版本插件并重启"
+
+msgid "Restore the verified rollback copy for this project"
+msgstr "恢复此项目已验证的回滚副本"
+
+msgid "Update Orca"
+msgstr "更新 Orca"
+
+msgid "Restore Orca"
+msgstr "恢复 Orca"
+
+msgid "Restore & Restart"
+msgstr "恢复并重启"
+
+msgid "Restore the verified previous Orca addon and restart Godot?"
+msgstr "恢复已验证的上一版本 Orca 插件并重启 Godot 吗？"
+
+msgid "Download and install Orca %s in this project, then restart Godot?\n\nThe previous addon will be retained for rollback."
+msgstr "在此项目下载并安装 Orca %s，然后重启 Godot 吗？\n\n上一版本插件会保留以便回滚。"
+
+msgid "\n\nSave your editor work first and close other editors of this project. Active Orca work and unsaved scripts/scenes must be finished before installation."
+msgstr "\n\n请先保存编辑器中的工作，并关闭此项目的其他编辑器。安装前必须结束 Orca 当前任务并保存脚本和场景。"
+
+msgid "You have the latest stable Orca release."
+msgstr "您已安装最新稳定版 Orca。"
+
+msgid "Checking for updates…"
+msgstr "正在检查更新…"
+
+msgid "Update check cancelled."
+msgstr "更新检查已取消。"
+
+msgid "Update cancelled."
+msgstr "更新已取消。"
+
+msgid "Attach images"
+msgstr "附加图像"
+
+msgid "Attach images — Orca"
+msgstr "附加图像 — Orca"
+
+msgid "Image preview"
+msgstr "图像预览"
+
+msgid "Drop images here"
+msgstr "将图像拖放到此处"
+
+msgid "PNG, JPEG, or WebP · up to four images\nAttachments stay outside your project files."
+msgstr "PNG、JPEG 或 WebP · 最多四张图像\n附件不会写入项目文件。"
+
+msgid "Browse…"
+msgstr "浏览…"
+
+msgid "%d / 4 images attached"
+msgstr "已附加 %d / 4 张图像"
+
+msgid "Remove image"
+msgstr "移除图像"
+
+msgid " · resized"
+msgstr " · 已调整尺寸"
+
+msgid "Remove script reference"
+msgstr "移除脚本引用"
+
+msgid "Drop images to attach"
+msgstr "拖放图像以附加"
+
+msgid "Drop scripts to attach"
+msgstr "拖放脚本以附加"
+
+msgid "This saved conversation is view-only."
+msgstr "此已保存会话仅供查看。"
+
+msgid "This model does not support image input."
+msgstr "此模型不支持图像输入。"
+
+msgid "Image support is unconfirmed. Configure it in Provider settings."
+msgstr "图像支持尚未确认。请在提供商设置中配置。"
+
+msgid "Four images attached. Remove an image to add another."
+msgstr "已附加四张图像。请先移除一张才能继续添加。"
+
+msgid "%s supports image input. Opens a separate drop/Browse window. Paste screenshots or drag project images onto the input. Dropping desktop files on the main editor imports them; use the attachment window instead."
+msgstr "%s 支持图像输入。点击打开独立的拖放/浏览窗口。可在输入框粘贴截图或拖放项目图像。桌面文件拖放到主编辑器会触发导入，请使用附件窗口。"
+
+msgid "Drop PNG, JPEG, or WebP still-image files only."
+msgstr "仅可拖放 PNG、JPEG 或 WebP 静态图像文件。"
+
+msgid "Only local image files can be attached."
+msgstr "仅可附加本地图像文件。"
+
+msgid "Attach at most four images per message."
+msgstr "每条消息最多附加四张图像。"
+
+msgid "Attach at most four project scripts."
+msgstr "最多附加四个项目脚本。"
+
+msgid "Attach at most four scripts per message."
+msgstr "每条消息最多附加四个脚本。"
+
+msgid "This conversation is not accepting attachments."
+msgstr "此会话当前不接受附件。"
+
+msgid "This conversation is not accepting script references."
+msgstr "此会话当前不接受脚本引用。"
+
+msgid "Could not prepare image."
+msgstr "无法准备图像。"
+
+msgid "Could not read clipboard image."
+msgstr "无法读取剪贴板图像。"
+
+msgid "Could not prepare script references."
+msgstr "无法准备脚本引用。"
+
+msgid "Invalid script reference."
+msgstr "无效脚本引用。"
+
+msgid "The referenced script could not be opened."
+msgstr "无法打开引用的脚本。"
+
+msgid "Submission was not accepted. Your draft has been kept."
+msgstr "提交未被接受。您的草稿已保留。"
+
+msgid "This saved session is view-only"
+msgstr "此已保存会话仅供查看"
+
+msgid "This interrupted or truncated session is view-only. Start a new chat to continue."
+msgstr "此中断或截断的会话仅供查看。请新建聊天以继续。"
+
+msgid "Describe unfinished work from the recovery checkpoint..."
+msgstr "描述恢复检查点中尚未完成的工作…"
+
+msgid "Start a new chat to continue after this interrupted tool turn"
+msgstr "此轮工具调用已中断，请新建聊天以继续"
+
+msgid "Response stopped."
+msgstr "回复已停止。"
+
+msgid "Recovery Ready"
+msgstr "恢复信息已就绪"
+
+msgid "Recovery storage"
+msgstr "恢复存储"
+
+msgid "System Error"
+msgstr "系统错误"
+
+msgid "Storage Warning"
+msgstr "存储警告"
+
+msgid "Could not clear the active conversation checkpoint."
+msgstr "无法清除当前会话检查点。"
+
+msgid "Could not save the script-change checkpoint."
+msgstr "无法保存脚本修改检查点。"
+
+msgid "Some local session files could not be removed."
+msgstr "无法移除部分本地会话文件。"
+
+msgid "Restored script-change checkpoint. Changes are never replayed. Revert rechecks current disk and editor state."
+msgstr "已恢复脚本修改检查点。不会重新执行修改。还原前会重新检查磁盘和编辑器状态。"
+
+msgid "Completed successfully."
+msgstr "已成功完成。"
+
+msgid "Completed with cleanup required."
+msgstr "已完成，需要清理。"
+
+msgid "Recovery required. See the associated change record."
+msgstr "需要恢复检查。请查看对应的修改记录。"
+
+msgid "Tool did not complete."
+msgstr "工具未完成。"
+
+msgid "Tool was cancelled."
+msgstr "工具已取消。"
+
+msgid "Task checklist update failed."
+msgstr "任务清单更新失败。"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "Session context usage"
+msgstr "会话上下文用量"
+
+msgid "Session cost"
+msgstr "会话费用"
+
+msgid "Context %s"
+msgstr "上下文 %s"
+
+msgid "Context --"
+msgstr "上下文 --"
+
+msgid "Context 0"
+msgstr "上下文 0"
+
+msgid "Cost $%.4f"
+msgstr "费用 $%.4f"
+
+msgid "Cost $0.0000"
+msgstr "费用 $0.0000"
+
+msgid "Cost --"
+msgstr "费用 --"
+
+msgid "Request ~%s"
+msgstr "请求 ~%s"
+
+msgid "Latest completed request (provider-reported): %s%s\nSession input: %s\nSession output: %s\nCached input: %s\nUsage reporting: %s"
+msgstr "最近完成的请求（提供商报告）：%s%s\n会话输入：%s\n会话输出：%s\n缓存输入：%s\n用量报告：%s"
+
+msgid "Session cost: %s\nModel: %s\nBillable tokens reported: %s\nCost source: %s."
+msgstr "会话费用：%s\n模型：%s\n已报告的计费令牌：%s\n费用来源：%s。"
+
+msgid "Input Map  %s"
+msgstr "输入映射  %s"
+
+msgid "Open Scene"
+msgstr "打开场景"
+
+msgid "Warning: %s"
+msgstr "警告：%s"
+
+msgid "Target  %s\nNode    %s\nScript  %s\n\nThis first approval permits Godot to compile, load, and instantiate the reviewed script after an immediate hash recheck while preparing and revalidating a candidate. It does not modify the scene. Godot cannot lock the file against external replacement during loading."
+msgstr "目标  %s\n节点  %s\n脚本  %s\n\n首次批准允许 Godot 在立即重新检查哈希后，编译、加载和实例化已审核脚本，以准备和重新验证候选场景。此步骤不修改场景。Godot 无法在加载时锁定文件以防止外部替换。"
+
+msgid "Target    %s\nNode      %s (%s)\nPrevious  %s\nProposed  %s\nBase      %s"
+msgstr "目标    %s\n节点    %s（%s）\n原值    %s\n拟议值  %s\n基类    %s"
+
+msgid "Target  %s\nParent  %s\nNode    %s \"%s\"\nResult  %s nodes"
+msgstr "目标    %s\n父节点  %s\n节点    %s “%s”\n结果    %s 个节点"
+
+msgid "Target    %s\nNode      %s\nProperty  %s\nPrevious  %s\nProposed  %s"
+msgstr "目标    %s\n节点    %s\n属性    %s\n原值    %s\n拟议值  %s"
+
+msgid "Target    %s\nPrevious  %s\nProposed  %s"
+msgstr "目标    %s\n原值    %s\n拟议值  %s"
+
+msgid "Target  %s\nRemove  %s \"%s\"\nResult  %s nodes"
+msgstr "目标  %s\n移除  %s “%s”\n结果  %s 个节点"
+
+msgid "Target    %s\nNode      %s\nPrevious  %s\nProposed  %s"
+msgstr "目标    %s\n节点    %s\n原值    %s\n拟议值  %s"
+
+msgid "Target  %s\nParent  %s\nScene   %s\nNode    %s"
+msgstr "目标    %s\n父节点  %s\n场景    %s\n节点    %s"
+
+msgid "Target  %s\nSignal  %s.%s\nMethod  %s.%s\nFlags   %s"
+msgstr "目标  %s\n信号  %s.%s\n方法  %s.%s\n标志  %s"
+
+msgid "Target  %s\nRoot    %s \"%s\""
+msgstr "目标    %s\n根节点  %s “%s”"
+
+msgid "ADD"
+msgstr "添加"
+
+msgid "REMOVE"
+msgstr "移除"
+
+msgid "UPDATE"
+msgstr "更新"
+
+msgid "  Previous: %s\n"
+msgstr "  原值：%s\n"
+
+msgid "  Proposed: %s\n"
+msgstr "  拟议值：%s\n"
+
+msgid "Current model: gpt-4o\nClick to configure"
+msgstr "当前模型：gpt-4o\n点击配置"
+
+msgid "complete"
+msgstr "完整"
+
+msgid "partial or unavailable"
+msgstr "部分或不可用"
+
+msgid "estimated from public model pricing"
+msgstr "根据公开模型价格估算"
+
+msgid "reported by the provider"
+msgstr "由提供商报告"
+
+msgid "prepared"
+msgstr "已准备"
+
+msgid "blocked"
+msgstr "受阻"
+
+msgid "active"
+msgstr "活动中"
+
+msgid "\n\nLocal request estimate: %d tokens (%s).\nSafe input budget: %d of %d tokens.\nReserved output: %d; future tool result: %d.\nIncludes request instructions, tool schemas/results, image reserves and private continuation when applicable. This estimate is separate from provider-reported usage and billing reservations."
+msgstr "\n\n本地请求估算：%d 个令牌（%s）。\n安全输入预算：%d / %d 个令牌。\n预留输出：%d；后续工具结果：%d。\n包含请求指令、工具定义和结果、图像预留额度，以及适用时的私有续接状态。此估算与提供商报告的用量和计费预留额度分别计算。"
+
+msgid "Sign in to use Orca-hosted models."
+msgstr "登录以使用 Orca 托管模型。"
+
+msgid "Secure credential storage is unavailable. Enable your OS credential vault."
+msgstr "安全凭据存储不可用。请启用操作系统凭据库。"
+
+msgid "Orca Cloud could not start sign-in. Check your connection and try again."
+msgstr "Orca Cloud 无法开始登录。请检查连接并重试。"
+
+msgid "Sign in or sign up in your browser, then approve this editor."
+msgstr "在浏览器中登录或注册，然后批准此编辑器连接。"
+
+msgid "The account service returned invalid credentials. Start sign-in again."
+msgstr "账户服务返回了无效凭据。请重新登录。"
+
+msgid "The OS credential vault could not be opened. Unlock it and sign in again."
+msgstr "无法打开操作系统凭据库。请解锁后重新登录。"
+
+msgid "Your connection could not be saved securely. Unlock the OS vault and try again."
+msgstr "无法安全保存连接。请解锁操作系统凭据库并重试。"
+
+msgid "Sign-in was declined or interrupted. Start a new connection."
+msgstr "登录被拒绝或中断。请重新连接。"
+
+msgid "The pairing code expired. Sign in again to get a new code."
+msgstr "配对码已过期。请重新登录以获取新码。"
+
+msgid "Sign-in cancelled."
+msgstr "登录已取消。"
+
+msgid "Refresh your account connection before the next request."
+msgstr "请在下次请求前刷新账户连接。"
+
+msgid "Account information could not be refreshed. Reconnect if your session was revoked."
+msgstr "无法刷新账户信息。如果会话已撤销，请重新连接。"
+
+msgid "The account service returned invalid account information."
+msgstr "账户服务返回了无效账户信息。"
+
+msgid "Your account is connected. Hosted models are ready to use."
+msgstr "账户已连接。托管模型已可使用。"
+
+msgid "Signing out…"
+msgstr "正在退出登录…"
+
+msgid "Signed out locally. Check Orca Console to revoke the editor session if the backend or OS vault was unavailable."
+msgstr "已在本地退出。如果后端或操作系统凭据库不可用，请在 Orca 控制台撤销编辑器会话。"
+
+msgid "The backend is offline. Your saved connection is retained; use Refresh account when it is available."
+msgstr "后端离线。已保留您的连接；恢复可用后请刷新账户。"
+
+msgid "Your saved connection could not be restored. Check the backend and OS vault, then sign in again if needed."
+msgstr "无法恢复已保存的连接。请检查后端和操作系统凭据库，必要时重新登录。"
+
+msgid "Updates come from official Orca GitHub Releases."
+msgstr "更新来自 Orca 官方 GitHub 版本发布。"
+
+msgid "Orca %s is available."
+msgstr "Orca %s 已发布。"
+
+msgid "Downloading Orca %s…"
+msgstr "正在下载 Orca %s…"
+
+msgid "Update installed. Your previous addon is retained for rollback."
+msgstr "更新已安装。已保留上一版本插件以便回滚。"
+
+msgid "The previous addon was restored."
+msgstr "已恢复上一版本插件。"
+
+msgid "The previous update stopped."
+msgstr "上次更新已停止。"
+
+msgid "Checking GitHub Releases…"
+msgstr "正在检查 GitHub 版本发布…"
+
+msgid "Could not check for updates."
+msgstr "无法检查更新。"
+
+msgid "Unsupported release metadata."
+msgstr "不支持的版本元数据。"
+
+msgid "Checking installed addon files…"
+msgstr "正在检查已安装的插件文件…"
+
+msgid "Verifying and staging the release…"
+msgstr "正在验证并暂存版本…"
+
+msgid "Verified. Preparing the editor restart…"
+msgstr "验证完成。正在准备重启编辑器…"
+
+msgid "Closing Godot; the verified updater will reopen this project."
+msgstr "正在关闭 Godot；已验证的更新程序将重新打开此项目。"
+
+msgid "GDScript is valid."
+msgstr "GDScript 有效。"
+
+msgid "No GDScript validation required."
+msgstr "无需验证 GDScript。"
+
+msgid "Parsed and verified project.godot Input Map state."
+msgstr "已解析并验证 project.godot 的输入映射状态。"
+
+msgid "Loaded the saved target as a PackedScene and verified project.godot."
+msgstr "已将保存的目标加载为 PackedScene，并验证 project.godot。"
+
+msgid "Validated allowlisted typed settings and parsed the candidate project.godot."
+msgstr "已验证允许的类型化设置，并解析候选 project.godot。"
+
+msgid "Packed, saved, and reloaded the complete proposed scene as a PackedScene."
+msgstr "已将完整拟议场景打包、保存并重新加载为 PackedScene。"
+
+msgid "Trusted script loaded; packed, saved, and reloaded the complete proposed scene."
+msgstr "已加载受信任脚本，并打包、保存和重新加载完整拟议场景。"
+
+msgid "Hash-bound intent validated without loading the scene or compiling the script. Approval may execute script initialization while constructing and revalidating the candidate."
+msgstr "已验证绑定哈希的意图，未加载场景或编译脚本。批准后，在构建和重新验证候选场景时可能执行脚本初始化。"
+
+msgid "Viewport width"
+msgstr "视口宽度"
+
+msgid "Viewport height"
+msgstr "视口高度"
+
+msgid "Window width override"
+msgstr "窗口宽度覆盖值"
+
+msgid "Window height override"
+msgstr "窗口高度覆盖值"
+
+msgid "Stretch mode"
+msgstr "拉伸模式"
+
+msgid "Stretch aspect"
+msgstr "拉伸宽高比"
+
+msgid "API Key (optional)"
+msgstr "API 密钥（可选）"
+
+msgid "OpenAI API Key"
+msgstr "OpenAI API 密钥"
+
+msgid "Gemini API Key"
+msgstr "Gemini API 密钥"
+
+msgid "OpenRouter API Key"
+msgstr "OpenRouter API 密钥"
+
+msgid "DeepSeek API Key"
+msgstr "DeepSeek API 密钥"
+
+msgid "Azure API Key"
+msgstr "Azure API 密钥"
+
+msgid "xAI API Key"
+msgstr "xAI API 密钥"
+
+msgid "OpenAI-compatible"
+msgstr "兼容 OpenAI"
+
+msgid "Local OpenAI-compatible"
+msgstr "本地兼容 OpenAI"

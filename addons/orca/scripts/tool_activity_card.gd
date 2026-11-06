@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 const Tools = preload("res://addons/orca/scripts/tools.gd")
 
 signal open_requested(filepath: String, line: int, column: int)
@@ -18,12 +19,17 @@ var _help_button: Button
 var _expanded := false
 var _tool_name := ""
 var _target := ""
+var _target_is_caption := false
 var _open_path := ""
 var _open_line := 1
 var _open_column := 1
 var _help_topic := ""
 var _match_scroll: ScrollContainer
 var _match_list: VBoxContainer
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -62,18 +68,23 @@ func _ready() -> void:
 	header.add_child(_header_button)
 
 	_status_label = Label.new()
+	_status_label.clip_text = true
+	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
+	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_status_label.text = "RUNNING"
 	_status_label.add_theme_color_override("font_color", Color(0.55, 0.72, 0.95))
 	_status_label.add_theme_font_size_override("font_size", meta_font_size)
 	header.add_child(_status_label)
 
+	var navigation := HFlowContainer.new()
+	content.add_child(navigation)
 	_open_button = Button.new()
 	_open_button.text = "Open"
 	_open_button.flat = true
 	_open_button.add_theme_font_size_override("font_size", label_font_size)
 	_open_button.visible = false
 	_open_button.pressed.connect(func(): _request_open(_open_path, _open_line, _open_column))
-	header.add_child(_open_button)
+	navigation.add_child(_open_button)
 
 	_help_button = Button.new()
 	_help_button.text = "Open Docs"
@@ -81,9 +92,10 @@ func _ready() -> void:
 	_help_button.add_theme_font_size_override("font_size", label_font_size)
 	_help_button.visible = false
 	_help_button.pressed.connect(func(): help_requested.emit(_help_topic))
-	header.add_child(_help_button)
+	navigation.add_child(_help_button)
 
 	_details = TextEdit.new()
+	_details.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_details.custom_minimum_size = Vector2(0, UiMetrics.scaled(150))
 	_details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_details.editable = false
@@ -104,6 +116,7 @@ func _ready() -> void:
 func configure(tool_name: String, arguments: Dictionary) -> void:
 	_tool_name = tool_name
 	_target = _target_from_arguments(arguments)
+	_target_is_caption = tool_name == "inspect_editor_scene" and str(arguments.get("scope", "selection")) in ["selection", "scene"]
 	_help_topic = ""
 	_help_button.visible = false
 	if arguments.has("filepath"):
@@ -129,8 +142,8 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 	if is_safe_help_topic(help_topic):
 		_help_topic = help_topic
 		_help_button.visible = true
-	_status_label.text = outcome.to_upper() + " · " + _format_duration(duration_ms)
-	_status_label.tooltip_text = _status_label.text
+	Localization.bind(_status_label, &"text", "%s · %s", [Localization.source(outcome.to_upper()), _format_duration(duration_ms)])
+	Localization.bind(_status_label, &"tooltip_text", "%s · %s", [Localization.source(outcome.to_upper()), _format_duration(duration_ms)])
 	if _tool_name in ["find_project_symbols", "find_symbol_references"]:
 		# The group retains aggregate timing; keep per-call status readable in
 		# narrow docks at large fonts and retain timing in the full tooltip.
@@ -152,10 +165,11 @@ func _toggle_details() -> void:
 func _update_header() -> void:
 	var arrow := "v" if _expanded else ">"
 	var label := _display_name(_tool_name)
+	var parts: Array = [["%s", [Localization.source(label)]]]
 	if not _target.is_empty():
-		label += "  " + _target
-	_header_button.text = arrow + "  " + label
-	_header_button.tooltip_text = label
+		parts.append(["  %s", [Localization.source(_target) if _target_is_caption else _target]])
+	Localization.bind_parts(_header_button, &"tooltip_text", parts)
+	Localization.bind_parts(_header_button, &"text", [["%s  ", [arrow]]] + parts)
 
 
 func _display_name(tool_name: String) -> String:
@@ -280,6 +294,7 @@ func _set_navigation_matches(raw) -> void:
 		var line: int = entry["line"]
 		var column: int = entry["column"]
 		var button := Button.new()
+		button.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		button.flat = true
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL

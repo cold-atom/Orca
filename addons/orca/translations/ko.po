@@ -1,0 +1,1579 @@
+msgid ""
+msgstr ""
+"Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Settings"
+msgstr "설정"
+
+msgid "Language"
+msgstr "언어"
+
+msgid "Done"
+msgstr "완료"
+
+msgid "GENERAL SETTINGS"
+msgstr "일반 설정"
+
+msgid "Changes Orca's interface only. Replies follow your message language, using this language when unclear."
+msgstr "Orca의 인터페이스만 변경합니다. 답변은 메시지의 언어를 따르며, 언어가 불분명하면 이 언어를 사용합니다."
+
+msgid "Provider"
+msgstr "제공업체"
+
+msgid "System"
+msgstr "시스템"
+
+msgid "Account"
+msgstr "계정"
+
+msgid "About"
+msgstr "Orca 정보"
+
+msgid "API CONFIGURATION"
+msgstr "API 설정"
+
+msgid "API Provider"
+msgstr "API 제공업체"
+
+msgid "API Key"
+msgstr "API 키"
+
+msgid "Optional API Key"
+msgstr "API 키(선택 사항)"
+
+msgid "Enter API key"
+msgstr "API 키 입력"
+
+msgid "Optional for local servers"
+msgstr "로컬 서버에서는 선택 사항"
+
+msgid "Show"
+msgstr "표시"
+
+msgid "Hide"
+msgstr "숨기기"
+
+msgid "Get an API key"
+msgstr "API 키 받기"
+
+msgid "Stored in Godot Editor Settings and used only for requests to the selected provider."
+msgstr "Godot 에디터 설정에 저장되며, 선택한 제공업체에 보내는 요청에만 사용됩니다."
+
+msgid "Base URL"
+msgstr "기본 URL"
+
+msgid "Responses (reasoning + tools)"
+msgstr "Responses(추론 + 도구)"
+
+msgid "Reasoning Continuation"
+msgstr "추론 이어가기"
+
+msgid "Standard"
+msgstr "표준"
+
+msgid "DeepSeek reasoning"
+msgstr "DeepSeek 추론"
+
+msgid "For Azure DeepSeek deployments, preserve private reasoning through Chat or Responses tool follow-ups and remove one leaked leading </think> delimiter. Works with custom deployment names."
+msgstr "Azure DeepSeek 배포에서는 Chat 또는 Responses의 후속 도구 요청에서도 비공개 추론을 유지하고, 앞부분에 노출된 </think> 구분자 하나를 제거합니다. 사용자 지정 배포 이름도 지원합니다."
+
+msgid "Model"
+msgstr "모델"
+
+msgid "Search available models..."
+msgstr "사용 가능한 모델 검색…"
+
+msgid "Refresh"
+msgstr "새로고침"
+
+msgid "Model ID"
+msgstr "모델 ID"
+
+msgid "Exact deployment name"
+msgstr "정확한 배포 이름"
+
+msgid "Enable unconfirmed image input"
+msgstr "미확인 이미지 입력 활성화"
+
+msgid "Use only if this exact endpoint and model accept image_url content. This does not enable Agent tools or verify vision quality."
+msgstr "이 엔드포인트와 모델이 image_url 콘텐츠를 지원하는 경우에만 사용하세요. 에이전트 도구를 활성화하거나 이미지 인식 품질을 검증하지는 않습니다."
+
+msgid "Reasoning Effort"
+msgstr "추론 수준"
+
+msgid "Provider default"
+msgstr "제공업체 기본값"
+
+msgid "None"
+msgstr "없음"
+
+msgid "Minimal"
+msgstr "최소"
+
+msgid "Low"
+msgstr "낮음"
+
+msgid "Medium"
+msgstr "중간"
+
+msgid "High"
+msgstr "높음"
+
+msgid "Xhigh"
+msgstr "매우 높음"
+
+msgid "Max"
+msgstr "최대"
+
+msgid "Higher effort can improve difficult planning and debugging, but may use more tokens."
+msgstr "추론 수준을 높이면 복잡한 계획과 디버깅의 품질이 향상될 수 있지만, 더 많은 토큰을 사용할 수 있습니다."
+
+msgid "Supported levels depend on your deployment. Provider default does not disable reasoning. For GPT reasoning with tools, prefer Responses; use None on Chat only if the deployment supports it."
+msgstr "지원 수준은 배포에 따라 다릅니다. 제공업체 기본값은 추론을 비활성화하지 않습니다. GPT 추론과 도구를 함께 사용하려면 Responses를 권장합니다. Chat에서 '없음'은 배포가 지원하는 경우에만 사용하세요."
+
+msgid "Use the resource's /openai/v1 base URL and exact deployment name. Responses supports reasoning with Orca function tools; requests use store=false. Select DeepSeek reasoning continuation for DeepSeek deployments."
+msgstr "리소스의 /openai/v1 기본 URL과 정확한 배포 이름을 사용하세요. Responses는 Orca 함수 도구와 추론을 함께 지원하며, 요청에 store=false를 사용합니다. DeepSeek 배포에서는 DeepSeek 추론 이어가기를 선택하세요."
+
+msgid "For GPT reasoning with tools, prefer Responses. Chat without reasoning requires a deployment that supports None. Select DeepSeek reasoning continuation for DeepSeek deployments."
+msgstr "GPT 추론과 도구를 함께 사용하려면 Responses를 권장합니다. 추론 없는 Chat에는 '없음'을 지원하는 배포가 필요합니다. DeepSeek 배포에서는 DeepSeek 추론 이어가기를 선택하세요."
+
+msgid "Request Timeouts"
+msgstr "요청 시간 제한"
+
+msgid "Use custom timeouts"
+msgstr "시간 제한 직접 설정"
+
+msgid "Override Orca's built-in response waits for this provider. Turning this off preserves your custom values."
+msgstr "이 제공업체의 기본 응답 대기 시간을 변경합니다. 비활성화해도 설정한 값은 유지됩니다."
+
+msgid "Using Orca's default timeouts.\nHeaders: 30 s · Inactivity: 60 s"
+msgstr "Orca 기본 시간 제한 사용 중.\n헤더: 30초 · 무응답: 60초"
+
+msgid "Original timing: 30 seconds to connect, 30 seconds for response headers, 60 seconds without body data, and 45 seconds for an Agent compatibility check. Each full request is capped at 10 minutes."
+msgstr "기본 시간: 연결 30초, 응답 헤더 30초, 본문 데이터가 없는 시간 60초, 에이전트 호환성 검사 45초입니다. 전체 요청의 최대 시간은 10분입니다."
+
+msgid "Response start"
+msgstr "응답 시작"
+
+msgid "Stream inactivity"
+msgstr "스트림 무응답"
+
+msgid "Maximum wait for headers and initial response data, including model loading. Accepts 10–600 seconds."
+msgstr "모델 로딩을 포함한 헤더와 첫 응답 데이터의 최대 대기 시간입니다. 10~600초로 설정할 수 있습니다."
+
+msgid "Maximum pause after response data begins. Reasoning and keep-alive bytes count as activity. Accepts 10–600 seconds."
+msgstr "응답 데이터 수신이 시작된 후 허용하는 최대 무응답 시간입니다. 추론 및 연결 유지 데이터도 활동으로 계산됩니다. 10~600초로 설정할 수 있습니다."
+
+msgid "Allow extra time for model loading and slow generation."
+msgstr "모델 로딩과 느린 생성에 더 긴 대기 시간을 허용합니다."
+
+msgid "Control how long Orca waits for this provider."
+msgstr "이 제공업체의 대기 시간을 설정합니다."
+
+msgid "Saved per provider · 10–600 s\n10-minute limit · Stop available"
+msgstr "제공업체별 저장 · 10~600초\n최대 10분 · 중지 가능"
+
+msgid "10-minute request limit.\nStop remains available."
+msgstr "요청 시간은 최대 10분입니다.\n언제든 중지할 수 있습니다."
+
+msgid "Agent Compatibility"
+msgstr "에이전트 호환성"
+
+msgid "Test & Enable Agent tools"
+msgstr "도구 검사 및 활성화"
+
+msgid "Run the project-free compatibility check and enable Agent tools for this exact profile only if it passes."
+msgstr "프로젝트 데이터 없이 호환성을 검사하고, 통과한 경우에만 이 프로필의 에이전트 도구를 활성화합니다."
+
+msgid "Enable Agent tools"
+msgstr "에이전트 도구 활성화"
+
+msgid "Enable Agent tools for this exact endpoint and model"
+msgstr "이 엔드포인트와 모델의 도구 활성화"
+
+msgid "This project-free check enables Agent tools when it passes. Agent tools may send project context and perform normal Plan/Work operations; edit permissions are controlled separately in the dock."
+msgstr "프로젝트 데이터 없이 수행하는 이 검사를 통과하면 에이전트 도구가 활성화됩니다. 도구는 프로젝트 컨텍스트를 전송하고 일반적인 계획/작업 모드의 작업을 수행할 수 있습니다. 편집 권한은 도크에서 별도로 관리합니다."
+
+msgid "Agent tools enabled for this exact profile."
+msgstr "이 프로필의 에이전트 도구가 활성화되었습니다."
+
+msgid "Compatibility passed. Agent tools are off."
+msgstr "호환성 검사를 통과했습니다. 도구는 비활성화 상태입니다."
+
+msgid "Run the compatibility probe."
+msgstr "호환성 검사를 실행하세요."
+
+msgid "Run Test & Enable Agent tools for this profile."
+msgstr "이 프로필의 도구 검사 및 활성화를 실행하세요."
+
+msgid "Profile changed. Run Test & Enable Agent tools again."
+msgstr "프로필이 변경되었습니다. 도구 검사 및 활성화를 다시 실행하세요."
+
+msgid "Profile changed during the check. Run Test & Enable Agent tools again."
+msgstr "검사 중 프로필이 변경되었습니다. 도구 검사 및 활성화를 다시 실행하세요."
+
+msgid "Compatibility passed, but Agent tools could not be enabled. Run the check again."
+msgstr "호환성 검사를 통과했지만 도구를 활성화하지 못했습니다. 다시 검사하세요."
+
+msgid "Compatibility check failed: %s"
+msgstr "호환성 검사 실패: %s"
+
+msgid "Testing Agent compatibility, step %d of 2..."
+msgstr "에이전트 호환성 검사 중, %d / 2단계…"
+
+msgid "Script edits"
+msgstr "스크립트 편집"
+
+msgid "Review edits"
+msgstr "변경 검토"
+
+msgid "Review edits (default)"
+msgstr "변경 검토(기본값)"
+
+msgid "Auto apply"
+msgstr "자동 적용"
+
+msgid "Auto apply for this project"
+msgstr "이 프로젝트에 자동 적용"
+
+msgid "Default script edits for this project"
+msgstr "이 프로젝트의 기본 스크립트 편집"
+
+msgid "Default script-edit behavior for this project on this computer. Auto apply requires explicit confirmation."
+msgstr "이 컴퓨터에서 이 프로젝트에 사용할 기본 스크립트 편집 방식입니다. 자동 적용에는 명시적인 확인이 필요합니다."
+
+msgid "Remember Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only. Scene/configuration changes still require review. Clicking the green edit icon beside ORCA turns it off and clears the remembered choice."
+msgstr "이 프로젝트의 새로운 작업 모드 대화와 에디터 재시작 후에도 자동 적용을 사용합니다. 계획 모드는 읽기 전용입니다. 씬/설정 변경은 여전히 검토가 필요합니다. ORCA 옆의 녹색 편집 아이콘을 클릭하면 자동 적용이 꺼지고 저장한 선택도 해제됩니다."
+
+msgid "Allow automatic script edits"
+msgstr "스크립트 자동 편집 허용"
+
+msgid "Orca can create and edit eligible project .gd scripts automatically in Work mode. Every edit is validated, shown in the feed, and checkpointed before writing.\n\nScene/configuration changes and script-execution trust still require approval. Unsaved files and conflicts remain protected.\n\nWithout remembering, permission is for this session only. Remembering enables Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only.\n\nClick the green edit icon beside ORCA in the header to revoke permission and clear any remembered default."
+msgstr "Orca가 작업 모드에서 대상 프로젝트 .gd 스크립트를 자동으로 만들고 편집할 수 있습니다. 모든 변경은 검증되어 대화에 표시되며, 쓰기 전에 체크포인트가 저장됩니다.\n\n씬/설정 변경과 스크립트 실행 신뢰 확인에는 여전히 승인이 필요합니다. 저장하지 않은 파일과 충돌도 보호됩니다.\n\n선택을 저장하지 않으면 권한은 이 세션에만 적용됩니다. 저장하면 이 프로젝트의 새로운 작업 모드 대화와 에디터 재시작 후에도 자동 적용을 사용합니다. 계획 모드는 읽기 전용입니다.\n\n헤더의 ORCA 옆 녹색 편집 아이콘을 클릭하면 권한과 저장된 기본값을 해제할 수 있습니다."
+
+msgid "Remember for this project"
+msgstr "이 프로젝트에 선택 저장"
+
+msgid "Use Auto apply by default for this project"
+msgstr "이 프로젝트에서 자동 적용을 기본값으로 사용"
+
+msgid "Use Auto apply by default for this project. This is saved locally, outside project files and conversation history."
+msgstr "이 프로젝트에서 자동 적용을 기본값으로 사용합니다. 프로젝트 파일과 대화 기록 외부에 로컬로 저장됩니다."
+
+msgid "Allow edits"
+msgstr "편집 허용"
+
+msgid "Script edit permission"
+msgstr "스크립트 편집 권한"
+
+msgid "Script edit permission: %s"
+msgstr "스크립트 편집 권한: %s"
+
+msgid "Remembered for this project: new Work conversations and editor restarts use Auto apply."
+msgstr "이 프로젝트에 선택 저장됨: 새로운 작업 모드 대화와 에디터 재시작 후에도 자동 적용을 사용합니다."
+
+msgid "Auto apply is enabled for this session only."
+msgstr "자동 적용은 이 세션에서만 활성화됩니다."
+
+msgid " Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action."
+msgstr " 클릭하면 다음 쓰기 전에 권한과 저장된 기본값이 해제됩니다. 중지해도 완료된 변경은 유지되며, 되돌리기는 별도 작업입니다."
+
+msgid "Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval."
+msgstr "변경 검토가 활성화되어 있습니다. 작업 모드 대기 중 또는 프로젝트 스크립트 검토 중에 클릭하면 세션의 자동 적용을 허용할 수 있으며, 이 프로젝트에 선택을 저장할 수도 있습니다. 씬/설정 제안에는 여전히 승인이 필요합니다."
+
+msgid " The project default remains saved; Auto apply is paused here or unavailable in this mode/session."
+msgstr " 프로젝트 기본값은 저장되어 있습니다. 자동 적용이 일시 중지되었거나 이 모드/세션에서는 사용할 수 없습니다."
+
+msgid "The project preference could not be saved. No automatic edit permission was granted."
+msgstr "프로젝트 설정을 저장하지 못했습니다. 자동 편집 권한은 부여되지 않았습니다."
+
+msgid "Auto apply is off for this session, but its project default could not be saved."
+msgstr "이 세션의 자동 적용은 꺼졌지만, 프로젝트 기본값을 저장하지 못했습니다."
+
+msgid "ORCA ACCOUNT"
+msgstr "ORCA 계정"
+
+msgid "Sign in to access models provided by Orca."
+msgstr "Orca에서 제공하는 모델을 사용하려면 로그인하세요."
+
+msgid "Sign in / Sign up"
+msgstr "로그인 / 가입"
+
+msgid "Open browser again"
+msgstr "브라우저 다시 열기"
+
+msgid "Cancel connection"
+msgstr "연결 취소"
+
+msgid "Choose model"
+msgstr "모델 선택"
+
+msgid "Refresh account"
+msgstr "계정 새로고침"
+
+msgid "Open Orca Console"
+msgstr "Orca Console 열기"
+
+msgid "Sign out"
+msgstr "로그아웃"
+
+msgid "Your connection is remembered in your OS credential vault. Account passwords and model-provider keys stay outside the plugin."
+msgstr "연결 정보는 OS 자격 증명 저장소에 보관됩니다. 계정 비밀번호와 모델 제공업체 키는 플러그인에 저장되지 않습니다."
+
+msgid "Account service is unavailable."
+msgstr "계정 서비스를 사용할 수 없습니다."
+
+msgid "Pairing code: %s"
+msgstr "연결 코드: %s"
+
+msgid "Plan: %s\nAvailable usage: %s\nReserved: %s"
+msgstr "요금제: %s\n사용 가능 잔량: %s\n예약됨: %s"
+
+msgid "unavailable"
+msgstr "사용 불가"
+
+msgid "Signed out."
+msgstr "로그아웃되었습니다."
+
+msgid "Preparing connection…"
+msgstr "연결 준비 중…"
+
+msgid "Restoring your Orca connection…"
+msgstr "Orca 연결 복원 중…"
+
+msgid "Connected."
+msgstr "연결되었습니다."
+
+msgid "Version %s"
+msgstr "버전 %s"
+
+msgid "A safety-first AI development assistant for the Godot editor."
+msgstr "안전을 우선하는 Godot 에디터용 AI 개발 도우미."
+
+msgid "Explore project context, prepare Godot-aware changes, and run bounded checks without leaving the editor."
+msgstr "에디터 안에서 프로젝트 상황을 살펴보고, Godot에 맞는 변경을 준비하며, 범위를 제한한 검사를 실행할 수 있습니다."
+
+msgid "RESOURCES"
+msgstr "자료"
+
+msgid "Documentation"
+msgstr "문서"
+
+msgid "Guides and getting started"
+msgstr "가이드 및 시작하기"
+
+msgid "Orca website"
+msgstr "Orca 웹사이트"
+
+msgid "News and product updates"
+msgstr "소식 및 제품 업데이트"
+
+msgid "COMMUNITY & DEVELOPMENT"
+msgstr "커뮤니티 및 개발"
+
+msgid "Source code and releases"
+msgstr "소스 코드 및 릴리스"
+
+msgid "Report an issue"
+msgstr "문제 신고"
+
+msgid "Bugs and troubleshooting"
+msgstr "버그 및 문제 해결"
+
+msgid "Ideas & feature requests"
+msgstr "아이디어 및 기능 요청"
+
+msgid "Discuss improvements with the community"
+msgstr "커뮤니티와 개선 사항 논의"
+
+msgid "%s\n%s\n%s\nOpens in your browser"
+msgstr "%s\n%s\n%s\n브라우저에서 열립니다"
+
+msgid "REVIEW-FIRST"
+msgstr "검토 우선"
+
+msgid "Plan mode is read-only. Work defaults to Review edits. You can allow bounded automatic script edits for one session or explicitly remember Auto apply for this project; scene/configuration changes retain approval."
+msgstr "계획 모드는 읽기 전용입니다. 작업 모드는 변경 검토가 기본값입니다. 세션마다 제한된 스크립트 자동 편집을 허용하거나, 이 프로젝트에 자동 적용 선택을 명시적으로 저장할 수 있습니다. 씬/설정 변경에는 여전히 승인이 필요합니다."
+
+msgid "COMPATIBILITY"
+msgstr "호환성"
+
+msgid "SUPPORT"
+msgstr "지원"
+
+msgid "Copies a strict-allowlist report with Orca/Godot versions and coarse provider/request state. It excludes credentials, endpoint addresses, project data, conversations, model output, logs, and file changes."
+msgstr "Orca/Godot 버전과 제공업체/요청의 개략적인 상태를 포함한, 허용된 항목만의 보고서를 복사합니다. 자격 증명, 엔드포인트 주소, 프로젝트 데이터, 대화, 모델 출력, 로그, 파일 변경은 제외합니다."
+
+msgid "Copy Privacy-Safe Diagnostic Report"
+msgstr "개인정보 제외 진단 복사"
+
+msgid "Copied diagnostic report."
+msgstr "진단 보고서를 복사했습니다."
+
+msgid "LICENSE"
+msgstr "라이선스"
+
+msgid "MIT License\nCopyright (c) 2026 Minghang Chamling"
+msgstr "MIT 라이선스\nCopyright (c) 2026 Minghang Chamling"
+
+msgid "Select Refresh to load models from this endpoint."
+msgstr "새로고침을 눌러 이 엔드포인트의 모델을 불러오세요."
+
+msgid "Loading models..."
+msgstr "모델 불러오는 중…"
+
+msgid "Waiting to load models..."
+msgstr "모델 로딩 대기 중…"
+
+msgid "Enter an API key to load models."
+msgstr "모델을 불러오려면 API 키를 입력하세요."
+
+msgid "Enter the exact deployment name and run Test & Enable Agent tools."
+msgstr "정확한 배포 이름을 입력하고 도구 검사 및 활성화를 실행하세요."
+
+msgid "Enter a Model ID and run Test & Enable Agent tools."
+msgstr "모델 ID를 입력하고 도구 검사 및 활성화를 실행하세요."
+
+msgid "Connect in Account to load Orca models."
+msgstr "Orca 모델을 불러오려면 계정에서 연결하세요."
+
+msgid "Endpoint changed. Select Refresh to contact it."
+msgstr "엔드포인트가 변경되었습니다. 새로고침을 눌러 연결하세요."
+
+msgid "Using a manual Model ID. Select Refresh to restore discovered models."
+msgstr "직접 입력한 모델 ID를 사용 중입니다. 새로고침을 누르면 검색된 모델로 돌아갑니다."
+
+msgid "Using an exact deployment name. Run Test & Enable Agent tools."
+msgstr "정확한 배포 이름을 사용 중입니다. 도구 검사 및 활성화를 실행하세요."
+
+msgid "Using a manual Model ID. Run Test & Enable Agent tools."
+msgstr "직접 입력한 모델 ID를 사용 중입니다. 도구 검사 및 활성화를 실행하세요."
+
+msgid "Loaded %d models%s.%s"
+msgstr "%d개 모델을 불러왔습니다%s.%s"
+
+msgid " from cache"
+msgstr "(캐시에서)"
+
+msgid " Known embedding models are hidden; enter a Model ID manually to override discovery."
+msgstr " 알려진 임베딩 모델은 숨겨집니다. 모델 ID를 직접 입력하면 검색 결과보다 우선합니다."
+
+msgid "%s — subscription required"
+msgstr "%s — 구독 필요"
+
+msgid "No matching models."
+msgstr "일치하는 모델이 없습니다."
+
+msgid "Context: %s"
+msgstr "컨텍스트: %s"
+
+msgid "Input: $%.2f/M"
+msgstr "입력: $%.2f/M"
+
+msgid "Output: $%.2f/M"
+msgstr "출력: $%.2f/M"
+
+msgid "Could not save this provider profile. Check the endpoint and API settings."
+msgstr "제공업체 프로필을 저장하지 못했습니다. 엔드포인트와 API 설정을 확인하세요."
+
+msgid "Invalid endpoint."
+msgstr "잘못된 엔드포인트입니다."
+
+msgid "Invalid endpoint: %s"
+msgstr "잘못된 엔드포인트: %s"
+
+msgid "Loopback endpoint. Requests stay addressed to this machine."
+msgstr "루프백 엔드포인트입니다. 요청은 이 컴퓨터로 전송됩니다."
+
+msgid "Lan"
+msgstr "LAN"
+
+msgid "Remote"
+msgstr "원격"
+
+msgid "%s endpoint%s %s"
+msgstr "%s 엔드포인트%s %s"
+
+msgid " HTTP is unencrypted."
+msgstr " HTTP는 암호화되지 않습니다."
+
+msgid "Trusted for this exact origin."
+msgstr "이 정확한 접속 주소는 신뢰되었습니다."
+
+msgid "Confirmation is required before sending data."
+msgstr "데이터를 보내기 전에 확인이 필요합니다."
+
+msgid "Trust AI Endpoint"
+msgstr "AI 엔드포인트 신뢰"
+
+msgid "Allow Orca to send this profile's credentials, prompts, and project context to %s? This confirmation is stored for this exact scheme, host, and port.%s"
+msgstr "Orca가 이 프로필의 자격 증명, 프롬프트, 프로젝트 컨텍스트를 %s에 보내도록 허용할까요? 이 확인은 해당 스킴, 호스트, 포트의 정확한 조합에 대해 저장됩니다.%s"
+
+msgid " This connection is HTTP and is not encrypted."
+msgstr " 이 연결은 HTTP이며 암호화되지 않습니다."
+
+msgid "Endpoint changed before confirmation. Review it again."
+msgstr "확인 전에 엔드포인트가 변경되었습니다. 다시 검토하세요."
+
+msgid "Work with Orca"
+msgstr "Orca와 개발하기"
+
+msgid "Plan, create, and debug your Godot project without leaving the editor."
+msgstr "에디터 안에서 Godot 프로젝트를 계획하고, 만들고, 디버깅하세요."
+
+msgid "Plan is read-only. Work can run the game and propose reviewed changes."
+msgstr "계획 모드는 읽기 전용입니다. 작업 모드는 게임을 실행하고 검토할 변경을 제안할 수 있습니다."
+
+msgid "New session"
+msgstr "새 세션"
+
+msgid "Conversation history"
+msgstr "대화 기록"
+
+msgid "Orca settings"
+msgstr "Orca 설정"
+
+msgid "Describe what you want to build or fix..."
+msgstr "만들거나 수정할 내용을 입력하세요…"
+
+msgid "Choose an agent mode"
+msgstr "에이전트 모드 선택"
+
+msgid "Choose Plan for analysis or Work for reviewed changes."
+msgstr "분석에는 계획 모드, 검토할 변경에는 작업 모드를 선택하세요."
+
+msgid "Work"
+msgstr "작업"
+
+msgid "Plan"
+msgstr "계획"
+
+msgid "Inspect, run, and propose reviewed edits"
+msgstr "조사, 실행 및 변경 제안"
+
+msgid "Analyze without changing files"
+msgstr "파일 변경 없이 분석"
+
+msgid "Work mode: Explore, run the game, and propose reviewed project changes"
+msgstr "작업 모드: 조사, 게임 실행 및 검토할 프로젝트 변경 제안"
+
+msgid "Plan mode: Analyze and design without changing files"
+msgstr "계획 모드: 파일 변경 없이 분석 및 설계"
+
+msgid "\nTab to switch modes in the prompt box"
+msgstr "\n입력란에서 Tab을 눌러 모드 전환"
+
+msgid "No model"
+msgstr "모델 미선택"
+
+msgid "Current model: %s\nClick to configure"
+msgstr "현재 모델: %s\n클릭하여 설정"
+
+msgid "Send message"
+msgstr "메시지 보내기"
+
+msgid "Stop response (draft text is kept)"
+msgstr "응답 중지(초안 유지)"
+
+msgid "Thinking"
+msgstr "생각 중"
+
+msgid "Preparing response"
+msgstr "응답 준비 중"
+
+msgid "Observing game"
+msgstr "게임 관찰 중"
+
+msgid "Assessing results"
+msgstr "결과 평가 중"
+
+msgid "Finalizing safely"
+msgstr "안전하게 마무리 중"
+
+msgid "User"
+msgstr "사용자"
+
+msgid "Orca (incomplete)"
+msgstr "Orca(미완료)"
+
+msgid "Copy"
+msgstr "복사"
+
+msgid "Copy code"
+msgstr "코드 복사"
+
+msgid "Code"
+msgstr "코드"
+
+msgid "Start New Session"
+msgstr "새 세션 시작"
+
+msgid "Save this conversation to History and start a new session?\n\nApplied file changes will remain."
+msgstr "이 대화를 기록에 저장하고 새 세션을 시작할까요?\n\n적용된 파일 변경은 유지됩니다."
+
+msgid "HISTORY"
+msgstr "기록"
+
+msgid "History"
+msgstr "기록"
+
+msgid "New Chat"
+msgstr "새 대화"
+
+msgid "Save the current session and start a new conversation"
+msgstr "현재 세션을 저장하고 새 대화 시작"
+
+msgid "Conversations are stored locally for this project."
+msgstr "대화는 이 프로젝트에 대해 로컬로 저장됩니다."
+
+msgid "Up to 50 recent sessions"
+msgstr "최근 세션 최대 50개"
+
+msgid "Delete All"
+msgstr "모두 삭제"
+
+msgid "No saved conversations yet."
+msgstr "아직 저장된 대화가 없습니다."
+
+msgid " · %d changed"
+msgstr " · %d개 파일 변경"
+
+msgid " · View only"
+msgstr " · 보기 전용"
+
+msgid "Delete"
+msgstr "삭제"
+
+msgid "Current"
+msgstr "현재"
+
+msgid "Open"
+msgstr "열기"
+
+msgid "Delete Conversation"
+msgstr "대화 삭제"
+
+msgid "Delete \"%s\"? This cannot be undone."
+msgstr "'%s'을(를) 삭제할까요? 이 작업은 되돌릴 수 없습니다."
+
+msgid "Delete All Conversations"
+msgstr "모든 대화 삭제"
+
+msgid "Delete all saved Orca conversations for this project? This cannot be undone."
+msgstr "이 프로젝트의 저장된 Orca 대화를 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다."
+
+msgid "Tasks %d/%d"
+msgstr "할 일 %d/%d"
+
+msgid "Pending"
+msgstr "대기"
+
+msgid "In progress"
+msgstr "진행 중"
+
+msgid "Completed"
+msgstr "완료"
+
+msgid "Blocked"
+msgstr "차단됨"
+
+msgid "Cancelled"
+msgstr "취소됨"
+
+msgid "Project activity"
+msgstr "프로젝트 활동"
+
+msgid "Read file"
+msgstr "파일 읽기"
+
+msgid "Read files"
+msgstr "파일 읽기"
+
+msgid "List directory"
+msgstr "폴더 목록 보기"
+
+msgid "List directories"
+msgstr "폴더 목록 보기"
+
+msgid "Search project"
+msgstr "프로젝트 검색"
+
+msgid "Inspect scene"
+msgstr "씬 조사"
+
+msgid "Inspect scenes"
+msgstr "씬 조사"
+
+msgid "Inspect live scene"
+msgstr "편집 중인 씬 조사"
+
+msgid "Inspect project settings"
+msgstr "프로젝트 설정 조사"
+
+msgid "Read project skill"
+msgstr "프로젝트 스킬 읽기"
+
+msgid "Read project skills"
+msgstr "프로젝트 스킬 읽기"
+
+msgid "Inspect Godot API"
+msgstr "Godot API 조사"
+
+msgid "Read GDScript function"
+msgstr "GDScript 함수 읽기"
+
+msgid "Read GDScript functions"
+msgstr "GDScript 함수 읽기"
+
+msgid "Discover dependencies"
+msgstr "의존성 조사"
+
+msgid "Find project symbols"
+msgstr "프로젝트 심볼 검색"
+
+msgid "Find reference candidates"
+msgstr "참조 후보 검색"
+
+msgid "Inspect editor context"
+msgstr "에디터 상황 조사"
+
+msgid "Read game status and diagnostics"
+msgstr "게임 상태 및 진단 읽기"
+
+msgid "Observe game run"
+msgstr "게임 실행 관찰"
+
+msgid "Verify game criterion"
+msgstr "게임 검증 조건 확인"
+
+msgid "Run current scene"
+msgstr "현재 씬 실행"
+
+msgid "Run main scene"
+msgstr "메인 씬 실행"
+
+msgid "Stop Orca game"
+msgstr "Orca가 실행한 게임 중지"
+
+msgid "Update task checklist"
+msgstr "할 일 목록 업데이트"
+
+msgid "Work mode decision"
+msgstr "작업 모드 전환 결정"
+
+msgid "Prepare file patch"
+msgstr "파일 패치 준비"
+
+msgid "Prepare Input Map changes"
+msgstr "입력 맵 변경 준비"
+
+msgid "Prepare main scene change"
+msgstr "메인 씬 변경 준비"
+
+msgid "Prepare Project Settings changes"
+msgstr "프로젝트 설정 변경 준비"
+
+msgid "Prepare scene changes"
+msgstr "씬 변경 준비"
+
+msgid "Selected nodes"
+msgstr "선택한 노드"
+
+msgid "Scene hierarchy"
+msgstr "씬 계층"
+
+msgid "Open Docs"
+msgstr "문서 열기"
+
+msgid "RUNNING"
+msgstr "실행 중"
+
+msgid "DONE"
+msgstr "완료"
+
+msgid "COMPLETED"
+msgstr "완료"
+
+msgid "FAILED"
+msgstr "실패"
+
+msgid "INTERRUPTED"
+msgstr "중단됨"
+
+msgid "CANCELLED"
+msgstr "취소됨"
+
+msgid "REJECTED"
+msgstr "거부됨"
+
+msgid "APPLYING"
+msgstr "적용 중"
+
+msgid "APPLIED"
+msgstr "적용됨"
+
+msgid "APPLIED RECOVERY"
+msgstr "적용됨 · 복구 확인 필요"
+
+msgid "REVERTED"
+msgstr "되돌림"
+
+msgid "REVERT FAILED"
+msgstr "되돌리기 실패"
+
+msgid "RECOVERY CONFLICT"
+msgstr "복구 충돌"
+
+msgid "APPLY RECOVERY REQUIRED"
+msgstr "적용 후 복구 확인 필요"
+
+msgid "REVERT RECOVERY REQUIRED"
+msgstr "되돌린 후 복구 확인 필요"
+
+msgid "%d call · %s"
+msgstr "%d회 호출 · %s"
+
+msgid "%d calls · %s"
+msgstr "%d회 호출 · %s"
+
+msgid "Switch to Work mode?"
+msgstr "작업 모드로 전환할까요?"
+
+msgid "Orca needs Work mode to continue this task. Switching modes does not approve any file change."
+msgstr "이 작업을 계속하려면 작업 모드가 필요합니다. 모드 전환은 파일 변경의 승인이 아닙니다."
+
+msgid "Switch to Work"
+msgstr "작업으로 전환"
+
+msgid "Stay in Plan"
+msgstr "계획 유지"
+
+msgid "Reason: %s"
+msgstr "이유: %s"
+
+msgid "Work mode enabled"
+msgstr "작업 모드 활성화됨"
+
+msgid "Continuing this task in Work mode. Changes still require approval."
+msgstr "작업 모드에서 계속합니다. 변경에는 여전히 승인이 필요합니다."
+
+msgid "Remaining in Plan mode"
+msgstr "계획 모드 유지"
+
+msgid "Orca will finish this turn without making project changes."
+msgstr "프로젝트를 변경하지 않고 이 턴을 마칩니다."
+
+msgid "Mode switch cancelled"
+msgstr "모드 전환 취소됨"
+
+msgid "Mode switch unavailable"
+msgstr "모드 전환 불가"
+
+msgid "Orca remains in Plan mode."
+msgstr "Orca는 계획 모드를 유지합니다."
+
+msgid "Switching to Work mode..."
+msgstr "작업 모드로 전환 중…"
+
+msgid "Staying in Plan mode..."
+msgstr "계획 모드 유지 중…"
+
+msgid "Expand Diff"
+msgstr "차이 확대"
+
+msgid "Open File"
+msgstr "파일 열기"
+
+msgid "Apply"
+msgstr "적용"
+
+msgid "Reject"
+msgstr "거부"
+
+msgid "Revert"
+msgstr "되돌리기"
+
+msgid "Check recovery"
+msgstr "복구 상태 확인"
+
+msgid "Modified  %s"
+msgstr "수정됨  %s"
+
+msgid "Validated: %s"
+msgstr "검증: %s"
+
+msgid "Passed"
+msgstr "통과"
+
+msgid "Revert rechecks current file state."
+msgstr "되돌리기 전에 현재 파일 상태를 다시 확인합니다."
+
+msgid "Revert is available in idle Work mode."
+msgstr "작업 모드의 대기 상태에서 되돌릴 수 있습니다."
+
+msgid "Review Changes · %s"
+msgstr "변경 검토 · %s"
+
+msgid "Previous"
+msgstr "이전"
+
+msgid "Proposed"
+msgstr "제안"
+
+msgid "Close"
+msgstr "닫기"
+
+msgid "Project Settings"
+msgstr "프로젝트 설정"
+
+msgid "Project File"
+msgstr "프로젝트 파일"
+
+msgid "Project Main Scene"
+msgstr "프로젝트 메인 씬"
+
+msgid "Scene"
+msgstr "씬"
+
+msgid "Not configured"
+msgstr "미설정"
+
+msgid "REVIEW"
+msgstr "검토"
+
+msgid "%d action"
+msgstr "%d개 액션"
+
+msgid "%d actions"
+msgstr "%d개 액션"
+
+msgid "%d setting"
+msgstr "%d개 설정"
+
+msgid "%d settings"
+msgstr "%d개 설정"
+
+msgid "Change"
+msgstr "변경"
+
+msgid "Scene Change"
+msgstr "씬 변경"
+
+msgid "TRUST REVIEW"
+msgstr "신뢰 검토"
+
+msgid "Trust and Prepare"
+msgstr "신뢰 및 준비"
+
+msgid "Authorize Script Attach"
+msgstr "스크립트 연결 승인"
+
+msgid "Authorize Script Detach"
+msgstr "스크립트 분리 승인"
+
+msgid "Create Scene"
+msgstr "씬 만들기"
+
+msgid "Set Scene Property"
+msgstr "씬 속성 설정"
+
+msgid "Rename Scene Node"
+msgstr "씬 노드 이름 변경"
+
+msgid "Reparent Scene Node"
+msgstr "씬 노드 부모 변경"
+
+msgid "Add Scene Node"
+msgstr "씬 노드 추가"
+
+msgid "Remove Scene Node"
+msgstr "씬 노드 제거"
+
+msgid "Attach Scene Script"
+msgstr "씬 스크립트 연결"
+
+msgid "Detach Scene Script"
+msgstr "씬 스크립트 분리"
+
+msgid "Instantiate Child Scene"
+msgstr "자식 씬 인스턴스화"
+
+msgid "Connect Scene Signal"
+msgstr "씬 시그널 연결"
+
+msgid "Disconnect Scene Signal"
+msgstr "씬 시그널 연결 해제"
+
+msgid "Attach"
+msgstr "연결"
+
+msgid "Detach"
+msgstr "분리"
+
+msgid "Connect"
+msgstr "연결"
+
+msgid "Disconnect"
+msgstr "연결 해제"
+
+msgid "Get started with Orca"
+msgstr "Orca 시작하기"
+
+msgid "Connect a model to continue"
+msgstr "모델에 연결하여 계속하기"
+
+msgid "Choose a model to continue"
+msgstr "모델을 선택하여 계속하기"
+
+msgid "Restoring your connection"
+msgstr "연결 복원 중"
+
+msgid "Close connection setup"
+msgstr "연결 설정 닫기"
+
+msgid "Sign in / Sign up with Orca"
+msgstr "Orca 로그인 / 가입"
+
+msgid "Use models through your Orca account."
+msgstr "Orca 계정으로 모델을 사용하세요."
+
+msgid "Bring your own API key"
+msgstr "내 API 키 사용"
+
+msgid "Connect your preferred provider—or use local models."
+msgstr "원하는 제공업체에 연결하거나 로컬 모델을 사용하세요."
+
+msgid "Choose a model"
+msgstr "모델 선택"
+
+msgid "Open model selection in Provider Settings."
+msgstr "제공업체 설정에서 모델 선택을 엽니다."
+
+msgid "Set up later"
+msgstr "나중에 설정"
+
+msgid "Choose how you’d like to connect."
+msgstr "연결 방법을 선택하세요."
+
+msgid "Your draft is kept while you connect."
+msgstr "연결하는 동안 초안은 유지됩니다."
+
+msgid "Use Orca models"
+msgstr "Orca 모델 사용"
+
+msgid "Continue Orca sign-in"
+msgstr "Orca 로그인 계속하기"
+
+msgid "Choose a model included in your account."
+msgstr "계정에 포함된 모델을 선택하세요."
+
+msgid "Finish connecting your account in the browser."
+msgstr "브라우저에서 계정 연결을 완료하세요."
+
+msgid "Sign in to Orca or connect your own provider. Your draft is ready when you are."
+msgstr "Orca에 로그인하거나 사용 중인 제공업체에 연결하세요. 준비가 끝나면 기존 초안을 사용할 수 있습니다."
+
+msgid "Choose an available model included in your Orca account. Your draft has been kept."
+msgstr "Orca 계정에 포함된 사용 가능한 모델을 선택하세요. 초안은 유지되었습니다."
+
+msgid "Choose a model in Provider Settings. Your draft has been kept."
+msgstr "제공업체 설정에서 모델을 선택하세요. 초안은 유지되었습니다."
+
+msgid "Restoring your Orca connection… Your draft has been kept."
+msgstr "Orca 연결 복원 중… 초안은 유지되었습니다."
+
+msgid "Plugin updates"
+msgstr "플러그인 업데이트"
+
+msgid "Orca %s is available"
+msgstr "Orca %s 사용 가능"
+
+msgid "Update & Restart"
+msgstr "업데이트 및 재시작"
+
+msgid "Check for updates"
+msgstr "업데이트 확인"
+
+msgid "What’s new"
+msgstr "새로운 기능"
+
+msgid "Open official release notes in your browser"
+msgstr "브라우저에서 공식 릴리스 노트 열기"
+
+msgid "Cancel"
+msgstr "취소"
+
+msgid "Later"
+msgstr "나중에"
+
+msgid "Check automatically (daily)"
+msgstr "매일 자동 확인"
+
+msgid "Restore previous addon & restart"
+msgstr "이전 애드온 복원 및 재시작"
+
+msgid "Restore the verified rollback copy for this project"
+msgstr "이 프로젝트의 검증된 백업 복원"
+
+msgid "Update Orca"
+msgstr "Orca 업데이트"
+
+msgid "Restore Orca"
+msgstr "Orca 복원"
+
+msgid "Restore & Restart"
+msgstr "복원 및 재시작"
+
+msgid "Restore the verified previous Orca addon and restart Godot?"
+msgstr "검증된 이전 Orca 애드온을 복원하고 Godot를 재시작할까요?"
+
+msgid "Download and install Orca %s in this project, then restart Godot?\n\nThe previous addon will be retained for rollback."
+msgstr "이 프로젝트에 Orca %s을(를) 다운로드하여 설치하고 Godot를 재시작할까요?\n\n이전 애드온은 복원을 위해 유지됩니다."
+
+msgid "\n\nSave your editor work first and close other editors of this project. Active Orca work and unsaved scripts/scenes must be finished before installation."
+msgstr "\n\n먼저 편집 내용을 저장하고 이 프로젝트를 연 다른 에디터를 닫으세요. 설치 전에 진행 중인 Orca 작업을 마치고 스크립트/씬을 저장해야 합니다."
+
+msgid "You have the latest stable Orca release."
+msgstr "최신 안정 버전의 Orca를 사용 중입니다."
+
+msgid "Checking for updates…"
+msgstr "업데이트 확인 중…"
+
+msgid "Update check cancelled."
+msgstr "업데이트 확인이 취소되었습니다."
+
+msgid "Update cancelled."
+msgstr "업데이트가 취소되었습니다."
+
+msgid "Attach images"
+msgstr "이미지 첨부"
+
+msgid "Attach images — Orca"
+msgstr "이미지 첨부 — Orca"
+
+msgid "Image preview"
+msgstr "이미지 미리보기"
+
+msgid "Drop images here"
+msgstr "여기에 이미지 놓기"
+
+msgid "PNG, JPEG, or WebP · up to four images\nAttachments stay outside your project files."
+msgstr "PNG, JPEG, WebP · 최대 4개 이미지\n첨부 이미지는 프로젝트 파일에 저장되지 않습니다."
+
+msgid "Browse…"
+msgstr "찾아보기…"
+
+msgid "%d / 4 images attached"
+msgstr "%d / 4개 이미지 첨부됨"
+
+msgid "Remove image"
+msgstr "이미지 제거"
+
+msgid " · resized"
+msgstr " · 크기 조정됨"
+
+msgid "Remove script reference"
+msgstr "스크립트 참조 제거"
+
+msgid "Drop images to attach"
+msgstr "이미지를 놓아 첨부"
+
+msgid "Drop scripts to attach"
+msgstr "스크립트를 놓아 첨부"
+
+msgid "This saved conversation is view-only."
+msgstr "이 저장된 대화는 보기 전용입니다."
+
+msgid "This model does not support image input."
+msgstr "이 모델은 이미지 입력을 지원하지 않습니다."
+
+msgid "Image support is unconfirmed. Configure it in Provider settings."
+msgstr "이미지 지원이 확인되지 않았습니다. 제공업체 설정에서 지정하세요."
+
+msgid "Four images attached. Remove an image to add another."
+msgstr "이미지 4개가 첨부되었습니다. 추가하려면 이미지 하나를 제거하세요."
+
+msgid "%s supports image input. Opens a separate drop/Browse window. Paste screenshots or drag project images onto the input. Dropping desktop files on the main editor imports them; use the attachment window instead."
+msgstr "%s 모델은 이미지 입력을 지원합니다. 드롭/찾아보기용 별도 창을 엽니다. 스크린샷을 붙여넣거나 프로젝트 이미지를 입력란으로 끌어오세요. 데스크톱 파일을 메인 에디터에 놓으면 가져오기 처리되므로, 첨부 창을 사용하세요."
+
+msgid "Drop PNG, JPEG, or WebP still-image files only."
+msgstr "PNG, JPEG, WebP 정지 이미지 파일만 놓으세요."
+
+msgid "Only local image files can be attached."
+msgstr "로컬 이미지 파일만 첨부할 수 있습니다."
+
+msgid "Attach at most four images per message."
+msgstr "메시지마다 이미지를 최대 4개 첨부할 수 있습니다."
+
+msgid "Attach at most four project scripts."
+msgstr "프로젝트 스크립트를 최대 4개 첨부할 수 있습니다."
+
+msgid "Attach at most four scripts per message."
+msgstr "메시지마다 스크립트를 최대 4개 첨부할 수 있습니다."
+
+msgid "This conversation is not accepting attachments."
+msgstr "이 대화에서는 첨부를 받지 않습니다."
+
+msgid "This conversation is not accepting script references."
+msgstr "이 대화에서는 스크립트 참조를 받지 않습니다."
+
+msgid "Could not prepare image."
+msgstr "이미지를 준비하지 못했습니다."
+
+msgid "Could not read clipboard image."
+msgstr "클립보드 이미지를 읽지 못했습니다."
+
+msgid "Could not prepare script references."
+msgstr "스크립트 참조를 준비하지 못했습니다."
+
+msgid "Invalid script reference."
+msgstr "잘못된 스크립트 참조입니다."
+
+msgid "The referenced script could not be opened."
+msgstr "참조된 스크립트를 열지 못했습니다."
+
+msgid "Submission was not accepted. Your draft has been kept."
+msgstr "전송이 수락되지 않았습니다. 초안은 유지되었습니다."
+
+msgid "This saved session is view-only"
+msgstr "이 저장된 세션은 보기 전용입니다"
+
+msgid "This interrupted or truncated session is view-only. Start a new chat to continue."
+msgstr "이 중단되거나 일부가 누락된 세션은 보기 전용입니다. 계속하려면 새 대화를 시작하세요."
+
+msgid "Describe unfinished work from the recovery checkpoint..."
+msgstr "복구 체크포인트의 미완료 작업을 입력하세요…"
+
+msgid "Start a new chat to continue after this interrupted tool turn"
+msgstr "중단된 도구 턴 이후 계속하려면 새 대화를 시작하세요"
+
+msgid "Response stopped."
+msgstr "응답이 중지되었습니다."
+
+msgid "Recovery Ready"
+msgstr "복구 준비 완료"
+
+msgid "Recovery storage"
+msgstr "복구 저장소"
+
+msgid "System Error"
+msgstr "시스템 오류"
+
+msgid "Storage Warning"
+msgstr "저장소 경고"
+
+msgid "Could not clear the active conversation checkpoint."
+msgstr "현재 대화의 체크포인트를 삭제하지 못했습니다."
+
+msgid "Could not save the script-change checkpoint."
+msgstr "스크립트 변경 체크포인트를 저장하지 못했습니다."
+
+msgid "Some local session files could not be removed."
+msgstr "일부 로컬 세션 파일을 제거하지 못했습니다."
+
+msgid "Restored script-change checkpoint. Changes are never replayed. Revert rechecks current disk and editor state."
+msgstr "스크립트 변경 체크포인트를 복원했습니다. 변경은 다시 실행되지 않습니다. 되돌리기 전에 현재 디스크와 에디터 상태를 다시 확인합니다."
+
+msgid "Completed successfully."
+msgstr "성공적으로 완료되었습니다."
+
+msgid "Completed with cleanup required."
+msgstr "완료되었지만 정리 작업이 필요합니다."
+
+msgid "Recovery required. See the associated change record."
+msgstr "복구가 필요합니다. 관련 변경 기록을 확인하세요."
+
+msgid "Tool did not complete."
+msgstr "도구가 완료되지 않았습니다."
+
+msgid "Tool was cancelled."
+msgstr "도구가 취소되었습니다."
+
+msgid "Task checklist update failed."
+msgstr "할 일 목록 업데이트에 실패했습니다."
+
+msgid "Unknown"
+msgstr "알 수 없음"
+
+msgid "Unknown error"
+msgstr "알 수 없는 오류"
+
+msgid "Session context usage"
+msgstr "세션 컨텍스트 사용량"
+
+msgid "Session cost"
+msgstr "세션 비용"
+
+msgid "Context %s"
+msgstr "컨텍스트 %s"
+
+msgid "Context --"
+msgstr "컨텍스트 --"
+
+msgid "Context 0"
+msgstr "컨텍스트 0"
+
+msgid "Cost $%.4f"
+msgstr "비용 $%.4f"
+
+msgid "Cost $0.0000"
+msgstr "비용 $0.0000"
+
+msgid "Cost --"
+msgstr "비용 --"
+
+msgid "Request ~%s"
+msgstr "요청 ~%s"
+
+msgid "Latest completed request (provider-reported): %s%s\nSession input: %s\nSession output: %s\nCached input: %s\nUsage reporting: %s"
+msgstr "최근 완료된 요청(제공업체 보고): %s%s\n세션 입력: %s\n세션 출력: %s\n캐시 입력: %s\n사용량 보고: %s"
+
+msgid "Session cost: %s\nModel: %s\nBillable tokens reported: %s\nCost source: %s."
+msgstr "세션 비용: %s\n모델: %s\n보고된 과금 대상 토큰: %s\n비용 정보 출처: %s."
+
+msgid "Input Map  %s"
+msgstr "입력 맵  %s"
+
+msgid "Open Scene"
+msgstr "씬 열기"
+
+msgid "Warning: %s"
+msgstr "경고: %s"
+
+msgid "Target  %s\nNode    %s\nScript  %s\n\nThis first approval permits Godot to compile, load, and instantiate the reviewed script after an immediate hash recheck while preparing and revalidating a candidate. It does not modify the scene. Godot cannot lock the file against external replacement during loading."
+msgstr "대상        %s\n노드        %s\n스크립트    %s\n\n이 첫 번째 승인은 후보를 준비하고 재검증할 때, 직전 해시 확인 후 Godot가 검토된 스크립트를 컴파일하고, 불러오고, 인스턴스화하도록 허용합니다. 씬은 변경하지 않습니다. Godot는 로딩 중 외부의 파일 교체를 막도록 파일을 잠글 수 없습니다."
+
+msgid "Target    %s\nNode      %s (%s)\nPrevious  %s\nProposed  %s\nBase      %s"
+msgstr "대상    %s\n노드    %s (%s)\n이전    %s\n제안    %s\n기준    %s"
+
+msgid "Target  %s\nParent  %s\nNode    %s \"%s\"\nResult  %s nodes"
+msgstr "대상    %s\n부모    %s\n노드    %s '%s'\n결과    노드 %s개"
+
+msgid "Target    %s\nNode      %s\nProperty  %s\nPrevious  %s\nProposed  %s"
+msgstr "대상    %s\n노드    %s\n속성    %s\n이전    %s\n제안    %s"
+
+msgid "Target    %s\nPrevious  %s\nProposed  %s"
+msgstr "대상    %s\n이전    %s\n제안    %s"
+
+msgid "Target  %s\nRemove  %s \"%s\"\nResult  %s nodes"
+msgstr "대상    %s\n제거    %s '%s'\n결과    노드 %s개"
+
+msgid "Target    %s\nNode      %s\nPrevious  %s\nProposed  %s"
+msgstr "대상    %s\n노드    %s\n이전    %s\n제안    %s"
+
+msgid "Target  %s\nParent  %s\nScene   %s\nNode    %s"
+msgstr "대상    %s\n부모    %s\n씬      %s\n노드    %s"
+
+msgid "Target  %s\nSignal  %s.%s\nMethod  %s.%s\nFlags   %s"
+msgstr "대상      %s\n시그널    %s.%s\n메서드    %s.%s\n플래그    %s"
+
+msgid "Target  %s\nRoot    %s \"%s\""
+msgstr "대상    %s\n루트    %s '%s'"
+
+msgid "ADD"
+msgstr "추가"
+
+msgid "REMOVE"
+msgstr "제거"
+
+msgid "UPDATE"
+msgstr "수정"
+
+msgid "  Previous: %s\n"
+msgstr "  이전: %s\n"
+
+msgid "  Proposed: %s\n"
+msgstr "  제안: %s\n"
+
+msgid "Current model: gpt-4o\nClick to configure"
+msgstr "현재 모델: gpt-4o\n클릭하여 설정"
+
+msgid "complete"
+msgstr "완전함"
+
+msgid "partial or unavailable"
+msgstr "일부만 제공 또는 사용 불가"
+
+msgid "estimated from public model pricing"
+msgstr "공개 모델 요금에서 추정"
+
+msgid "reported by the provider"
+msgstr "제공업체 보고"
+
+msgid "prepared"
+msgstr "준비됨"
+
+msgid "blocked"
+msgstr "차단됨"
+
+msgid "active"
+msgstr "진행 중"
+
+msgid "\n\nLocal request estimate: %d tokens (%s).\nSafe input budget: %d of %d tokens.\nReserved output: %d; future tool result: %d.\nIncludes request instructions, tool schemas/results, image reserves and private continuation when applicable. This estimate is separate from provider-reported usage and billing reservations."
+msgstr "\n\n로컬 요청 추정: %d토큰(%s).\n안전한 입력 예산: %d / %d토큰.\n출력 예약: %d; 후속 도구 결과: %d.\n요청 지침, 도구 스키마/결과, 이미지 예약량 및 해당하는 경우 비공개 이어가기 정보를 포함합니다. 이 추정은 제공업체 보고 사용량 및 과금 예약량과 별개입니다."
+
+msgid "Sign in to use Orca-hosted models."
+msgstr "Orca 호스팅 모델을 사용하려면 로그인하세요."
+
+msgid "Secure credential storage is unavailable. Enable your OS credential vault."
+msgstr "안전한 자격 증명 저장소를 사용할 수 없습니다. OS 자격 증명 저장소를 활성화하세요."
+
+msgid "Orca Cloud could not start sign-in. Check your connection and try again."
+msgstr "Orca Cloud 로그인을 시작하지 못했습니다. 연결을 확인하고 다시 시도하세요."
+
+msgid "Sign in or sign up in your browser, then approve this editor."
+msgstr "브라우저에서 로그인하거나 가입한 후 이 에디터를 승인하세요."
+
+msgid "The account service returned invalid credentials. Start sign-in again."
+msgstr "계정 서비스가 잘못된 자격 증명을 반환했습니다. 로그인을 다시 시작하세요."
+
+msgid "The OS credential vault could not be opened. Unlock it and sign in again."
+msgstr "OS 자격 증명 저장소를 열지 못했습니다. 잠금을 해제하고 다시 로그인하세요."
+
+msgid "Your connection could not be saved securely. Unlock the OS vault and try again."
+msgstr "연결 정보를 안전하게 저장하지 못했습니다. OS 저장소의 잠금을 해제하고 다시 시도하세요."
+
+msgid "Sign-in was declined or interrupted. Start a new connection."
+msgstr "로그인이 거부되거나 중단되었습니다. 새 연결을 시작하세요."
+
+msgid "The pairing code expired. Sign in again to get a new code."
+msgstr "연결 코드가 만료되었습니다. 다시 로그인하여 새 코드를 받으세요."
+
+msgid "Sign-in cancelled."
+msgstr "로그인이 취소되었습니다."
+
+msgid "Refresh your account connection before the next request."
+msgstr "다음 요청 전에 계정 연결을 새로고침하세요."
+
+msgid "Account information could not be refreshed. Reconnect if your session was revoked."
+msgstr "계정 정보를 새로고침하지 못했습니다. 세션이 해제된 경우 다시 연결하세요."
+
+msgid "The account service returned invalid account information."
+msgstr "계정 서비스가 잘못된 계정 정보를 반환했습니다."
+
+msgid "Your account is connected. Hosted models are ready to use."
+msgstr "계정이 연결되었습니다. 호스팅 모델을 사용할 수 있습니다."
+
+msgid "Signing out…"
+msgstr "로그아웃 중…"
+
+msgid "Signed out locally. Check Orca Console to revoke the editor session if the backend or OS vault was unavailable."
+msgstr "로컬에서 로그아웃되었습니다. 백엔드 또는 OS 저장소를 사용할 수 없었다면 Orca Console에서 에디터 세션을 해제하세요."
+
+msgid "The backend is offline. Your saved connection is retained; use Refresh account when it is available."
+msgstr "백엔드가 오프라인입니다. 저장된 연결 정보는 유지됩니다. 사용 가능해지면 계정 새로고침을 실행하세요."
+
+msgid "Your saved connection could not be restored. Check the backend and OS vault, then sign in again if needed."
+msgstr "저장된 연결을 복원하지 못했습니다. 백엔드와 OS 저장소를 확인하고 필요하면 다시 로그인하세요."
+
+msgid "Updates come from official Orca GitHub Releases."
+msgstr "업데이트는 공식 Orca GitHub Releases에서 가져옵니다."
+
+msgid "Orca %s is available."
+msgstr "Orca %s을(를) 사용할 수 있습니다."
+
+msgid "Downloading Orca %s…"
+msgstr "Orca %s 다운로드 중…"
+
+msgid "Update installed. Your previous addon is retained for rollback."
+msgstr "업데이트가 설치되었습니다. 이전 애드온은 복원을 위해 유지됩니다."
+
+msgid "The previous addon was restored."
+msgstr "이전 애드온이 복원되었습니다."
+
+msgid "The previous update stopped."
+msgstr "이전 업데이트가 중지되었습니다."
+
+msgid "Checking GitHub Releases…"
+msgstr "GitHub Releases 확인 중…"
+
+msgid "Could not check for updates."
+msgstr "업데이트를 확인하지 못했습니다."
+
+msgid "Unsupported release metadata."
+msgstr "지원하지 않는 릴리스 메타데이터입니다."
+
+msgid "Checking installed addon files…"
+msgstr "설치된 애드온 파일 확인 중…"
+
+msgid "Verifying and staging the release…"
+msgstr "릴리스 검증 및 준비 중…"
+
+msgid "Verified. Preparing the editor restart…"
+msgstr "검증되었습니다. 에디터 재시작 준비 중…"
+
+msgid "Closing Godot; the verified updater will reopen this project."
+msgstr "Godot를 종료합니다. 검증된 업데이트 도구가 이 프로젝트를 다시 엽니다."
+
+msgid "GDScript is valid."
+msgstr "GDScript가 유효합니다."
+
+msgid "No GDScript validation required."
+msgstr "GDScript 검증이 필요하지 않습니다."
+
+msgid "Parsed and verified project.godot Input Map state."
+msgstr "project.godot 입력 맵 상태를 분석하고 검증했습니다."
+
+msgid "Loaded the saved target as a PackedScene and verified project.godot."
+msgstr "저장된 대상을 PackedScene으로 불러오고 project.godot를 검증했습니다."
+
+msgid "Validated allowlisted typed settings and parsed the candidate project.godot."
+msgstr "허용된 타입 지정 설정을 검증하고 후보 project.godot를 분석했습니다."
+
+msgid "Packed, saved, and reloaded the complete proposed scene as a PackedScene."
+msgstr "제안된 전체 씬을 PackedScene으로 패킹하고, 저장하고, 다시 불러왔습니다."
+
+msgid "Trusted script loaded; packed, saved, and reloaded the complete proposed scene."
+msgstr "신뢰된 스크립트를 불러왔으며, 제안된 전체 씬을 패킹하고, 저장하고, 다시 불러왔습니다."
+
+msgid "Hash-bound intent validated without loading the scene or compiling the script. Approval may execute script initialization while constructing and revalidating the candidate."
+msgstr "씬을 불러오거나 스크립트를 컴파일하지 않고 해시에 연결된 의도를 검증했습니다. 승인하면 후보를 구성하고 재검증하는 동안 스크립트 초기화가 실행될 수 있습니다."
+
+msgid "Viewport width"
+msgstr "뷰포트 너비"
+
+msgid "Viewport height"
+msgstr "뷰포트 높이"
+
+msgid "Window width override"
+msgstr "창 너비 재정의"
+
+msgid "Window height override"
+msgstr "창 높이 재정의"
+
+msgid "Stretch mode"
+msgstr "늘이기 모드"
+
+msgid "Stretch aspect"
+msgstr "늘이기 화면 비율"
+
+msgid "API Key (optional)"
+msgstr "API 키(선택 사항)"
+
+msgid "OpenAI API Key"
+msgstr "OpenAI API 키"
+
+msgid "Gemini API Key"
+msgstr "Gemini API 키"
+
+msgid "OpenRouter API Key"
+msgstr "OpenRouter API 키"
+
+msgid "DeepSeek API Key"
+msgstr "DeepSeek API 키"
+
+msgid "Azure API Key"
+msgstr "Azure API 키"
+
+msgid "xAI API Key"
+msgstr "xAI API 키"
+
+msgid "OpenAI-compatible"
+msgstr "OpenAI 호환"
+
+msgid "Local OpenAI-compatible"
+msgstr "로컬 OpenAI 호환"

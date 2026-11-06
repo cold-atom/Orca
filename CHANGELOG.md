@@ -2,12 +2,24 @@
 
 All notable changes to Orca are documented in this file.
 
+## Unreleased
+
+### Added
+
+- English, Simplified Chinese, Spanish, Japanese and Korean interface selection under Settings → System → Language, bundled offline translation catalogs, editor-wide persistence and live refresh preserving drafts, conversations, attachments and open reviews.
+- Response-language guidance follows explicit requests and the current message language, with the interface language as a fallback. The choice stays fixed through tool continuations and is removed from persisted context.
+- Translation catalog checks and three-process isolated editor regressions for switching, Japanese/Korean restart persistence, original data/permission preservation, actual reviewed edits/Revert and narrow larger-font layouts.
+
+### Changed
+
+- Localized settings, chat controls, History, task/activity/review/trust/onboarding/update surfaces, tooltips and accessibility labels. Wrapped captions, flow actions and bounded selectors accommodate longer translations; code, paths, model names, original messages and raw evidence retain their source text.
+
 ## 1.6.0 - 2026-11-05
 
-**Auto Apply & Script Recovery** — release candidate, not yet published. Adds
-explicitly authorized automatic script editing and restart recovery to the
-published 1.5.0 baseline. Final-version CI, exact four-platform package acceptance
-and real-model Auto apply acceptance remain required before publication.
+**Auto Apply & Script Recovery** — published on GitHub with passing release-commit
+Tests, four-platform native packaging and release preparation. Adds explicitly
+authorized automatic script editing and restart recovery to the 1.5.0 baseline.
+Real-model and broader platform acceptance remain distinct from automated checks.
 
 ### Added
 
@@ -20,7 +32,7 @@ and real-model Auto apply acceptance remain required before publication.
 - Auto-apply and editor-scale tests now run as tool Nodes in a normal, fully isolated editor lifecycle. Their runner rejects crashes, missing completion, errors and shutdown warnings even after zero failed assertions; full headless and Linux/X11/OpenGL checks exit cleanly.
 - Edit permission uses the compact ORCA title icon in existing conversations and a discoverable floating Review edits chip only in empty review-state chats. Its confirmation has bounded first-open dimensions, scrolling text and always-visible actions. Automatic edits retain the same inline red/green diff preview as manual reviews.
 - Edit authorization is enforced at runtime through original-proposal approval or the bounded session grant, with required pre-write checkpoint persistence, fresh validation/hash/dirty-state checks and immediate revocation checks. Stop preserves true completed-write receipts. Checkpoint storage failures pause automatic editing.
-- Plugin/About/support-report metadata and current release guidance now identify the 1.6.0 candidate. Updater checks cover upgrades from 1.3.0/1.4.0/1.4.1/1.5.0, exact official asset naming, same-version suppression and no downgrade to 1.5.0.
+- Plugin/About/support-report metadata and current release guidance identify 1.6.0. Updater checks cover upgrades from 1.3.0/1.4.0/1.4.1/1.5.0, exact official asset naming, same-version suppression and no downgrade to 1.5.0.
 
 ### Fixed
 

@@ -6,6 +6,7 @@ signal help_requested(topic: String)
 
 const ToolActivityCard = preload("res://addons/orca/scripts/tool_activity_card.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 var _header_button: Button
 var _status_label: Label
@@ -15,8 +16,13 @@ var _accepting := true
 var _cards: Dictionary = {}
 var _tool_names: Dictionary = {}
 var _targets: Dictionary = {}
+var _target_captions: Dictionary = {}
 var _outcomes: Dictionary = {}
 var _durations: Dictionary = {}
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -80,6 +86,7 @@ func add_tool(call_id: String, tool_name: String, arguments: Dictionary):
 	_cards[call_id] = card
 	_tool_names[call_id] = tool_name
 	_targets[call_id] = card._target_from_arguments(arguments) if tool_name == "inspect_editor_scene" else _target_from_arguments(arguments)
+	_target_captions[call_id] = card._target_is_caption
 	_outcomes[call_id] = "running"
 	_durations[call_id] = 0
 	_update_header()
@@ -146,13 +153,19 @@ func _update_header() -> void:
 		return
 	var count := call_count()
 	var title := _group_title()
-	_header_button.text = ("v" if _expanded else ">") + "  " + title
-	_header_button.tooltip_text = title
+	var parts: Array = [["%s", [Localization.source(title)]]]
+	if count > 0:
+		if count == 1:
+			var first = _targets.keys()[0]
+			var target := str(_targets.get(first, ""))
+			if not target.is_empty():
+				parts.append(["  %s", [Localization.source(target) if _target_captions.get(first, false) else target]])
+		parts.append([" · %d", [count]])
+	Localization.bind_parts(_header_button, &"tooltip_text", parts)
+	Localization.bind_parts(_header_button, &"text", [["%s  ", ["v" if _expanded else ">"]]] + parts)
 	var outcome := aggregate_outcome()
 	var duration := total_duration_ms()
-	_status_label.text = outcome.to_upper()
-	if outcome != "running":
-		_status_label.text += " · " + _format_duration(duration)
+	Localization.bind_parts(_status_label, &"text", [["%s", [Localization.source(outcome.to_upper())]]] + ([[" · %s", [_format_duration(duration)]]] if outcome != "running" else []))
 	var color := Color(0.55, 0.72, 0.95)
 	if outcome == "completed":
 		color = Color(0.45, 0.82, 0.55)
@@ -161,7 +174,7 @@ func _update_header() -> void:
 	elif outcome == "interrupted":
 		color = Color(0.78, 0.64, 0.36)
 	_status_label.add_theme_color_override("font_color", color)
-	_status_label.tooltip_text = "%d call%s · %s" % [count, "" if count == 1 else "s", _format_duration(duration)]
+	Localization.bind(_status_label, &"tooltip_text", "%d call · %s" if count == 1 else "%d calls · %s", [count, _format_duration(duration)])
 
 
 func _group_title() -> String:
@@ -204,11 +217,7 @@ func _group_title() -> String:
 				title = "Read game status and diagnostics"
 			"observe_game_run":
 				title = "Observe game run"
-	if count == 1:
-		var target := str(_targets.get(_targets.keys()[0], ""))
-		if not target.is_empty():
-			title += "  " + target
-	return "%s · %d" % [title, count]
+	return title
 
 
 func _target_from_arguments(arguments: Dictionary) -> String:

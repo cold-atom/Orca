@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
@@ -13,6 +14,10 @@ var _review: VBoxContainer
 var _apply_button: Button
 var _reject_button: Button
 var _revert_button: Button
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -31,12 +36,18 @@ func _ready() -> void:
 	var header := HBoxContainer.new()
 	content.add_child(header)
 	var title := Label.new()
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.text = "Project Settings"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 	_status_label = Label.new()
+	_status_label.clip_text = true
+	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
 	header.add_child(_status_label)
 	_validation_label = Label.new()
+	_validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_validation_label.add_theme_color_override("font_color", Color(0.48, 0.78, 0.58))
 	content.add_child(_validation_label)
 	_review = VBoxContainer.new()
@@ -49,8 +60,8 @@ func _ready() -> void:
 	open_button.flat = true
 	open_button.pressed.connect(func(): open_requested.emit("res://project.godot", 1, 1))
 	navigation.add_child(open_button)
-	var actions := HBoxContainer.new()
-	actions.alignment = BoxContainer.ALIGNMENT_END
+	var actions := HFlowContainer.new()
+	actions.alignment = FlowContainer.ALIGNMENT_END
 	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(actions)
 	var spacer := Control.new()
@@ -74,11 +85,11 @@ func _ready() -> void:
 func configure(proposal: Dictionary) -> void:
 	_proposal = proposal
 	var items: Array = proposal.get("review", [])
-	_status_label.text = "%d setting%s" % [items.size(), "" if items.size() == 1 else "s"]
-	_validation_label.text = "Validated: " + str(proposal.get("validation", {}).get("message", "Passed"))
+	Localization.bind(_status_label, &"text", "%d setting" if items.size() == 1 else "%d settings", [items.size()])
+	Localization.bind(_validation_label, &"text", "Validated: %s", [Localization.source(str(proposal.get("validation", {}).get("message", "Passed")))])
 	for item in items:
 		var label := Label.new()
-		label.text = "%s\n  %s -> %s" % [str(item.get("label", item.get("setting_path", ""))), _format_value(item.get("before")), _format_value(item.get("after"))]
+		Localization.bind(label, &"text", "%s\n  %s -> %s", [Localization.source(str(item.get("label", item.get("setting_path", "")))), _format_value(item.get("before")), _format_value(item.get("after"))])
 		label.tooltip_text = str(item.get("setting_path", ""))
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL

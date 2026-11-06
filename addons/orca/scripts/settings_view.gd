@@ -12,6 +12,7 @@ const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const AgentCompatibilityProbe = preload("res://addons/orca/scripts/agent_compatibility_probe.gd")
 const SupportDiagnosticReport = preload("res://addons/orca/scripts/support_diagnostic_report.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 const UpdatePanel = preload("res://addons/orca/scripts/update_panel.gd")
 const ImageCapability = preload("res://addons/orca/scripts/image_capability.gd")
 const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
@@ -27,7 +28,7 @@ var provider_selector: OptionButton
 var api_key_label: Label
 var api_key_input: LineEdit
 var show_key_button: Button
-var key_link: LinkButton
+var key_link: Button
 var model_search: LineEdit
 var model_selector: OptionButton
 var custom_url_label: Label
@@ -108,6 +109,15 @@ var _loading_provider := false
 var _body_font_size := 13
 var _meta_font_size := 11
 var _support_request_metadata: Dictionary = {}
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
+
+
+func _notification(what: int) -> void:
+	if what == MainLoop.NOTIFICATION_TRANSLATION_CHANGED and language_selector != null:
+		language_selector.select(Localization.LOCALES.find(Localization.language()))
 
 
 func _ready() -> void:
@@ -267,11 +277,13 @@ func _build_ui() -> void:
 
 	var section := Label.new()
 	section.text = "API CONFIGURATION"
+	section.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	section.add_theme_font_size_override("font_size", _meta_font_size)
 	section.add_theme_color_override("font_color", Color(0.66, 0.7, 0.76))
 	content.add_child(section)
 	content.add_child(_field_label("API Provider"))
 	provider_selector = OptionButton.new()
+	provider_selector.clip_text = true
 	provider_selector.fit_to_longest_item = false
 	provider_selector.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	provider_selector.item_selected.connect(_on_provider_selected)
@@ -292,8 +304,14 @@ func _build_ui() -> void:
 	show_key_button.toggle_mode = true
 	show_key_button.toggled.connect(_on_show_key_toggled)
 	key_row.add_child(show_key_button)
-	key_link = LinkButton.new()
+	key_link = Button.new()
 	key_link.text = "Get an API key"
+	key_link.tooltip_text = key_link.text
+	key_link.flat = true
+	key_link.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	key_link.clip_text = true
+	key_link.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	key_link.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	key_link.pressed.connect(_on_key_link_pressed)
 	content.add_child(key_link)
 	var key_help := Label.new()
@@ -315,6 +333,7 @@ func _build_ui() -> void:
 	api_mode_label = _field_label("API")
 	content.add_child(api_mode_label)
 	api_mode_selector = OptionButton.new()
+	api_mode_selector.clip_text = true
 	api_mode_selector.fit_to_longest_item = false
 	api_mode_selector.add_item("Responses (reasoning + tools)")
 	api_mode_selector.set_item_metadata(0, "responses")
@@ -329,6 +348,7 @@ func _build_ui() -> void:
 	continuation_label = _field_label("Reasoning Continuation")
 	content.add_child(continuation_label)
 	continuation_selector = OptionButton.new()
+	continuation_selector.clip_text = true
 	continuation_selector.fit_to_longest_item = false
 	continuation_selector.add_item("Standard")
 	continuation_selector.set_item_metadata(0, "standard")
@@ -346,6 +366,7 @@ func _build_ui() -> void:
 	var model_row := HBoxContainer.new()
 	content.add_child(model_row)
 	model_selector = OptionButton.new()
+	model_selector.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	model_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	model_selector.fit_to_longest_item = false
 	model_selector.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -369,6 +390,8 @@ func _build_ui() -> void:
 	effort_label = _field_label("Reasoning Effort")
 	content.add_child(effort_label)
 	effort_selector = OptionButton.new()
+	effort_selector.fit_to_longest_item = false
+	effort_selector.clip_text = true
 	effort_selector.item_selected.connect(_on_effort_selected)
 	content.add_child(effort_selector)
 	effort_help = Label.new()
@@ -636,13 +659,17 @@ func _build_system_view() -> ScrollContainer:
 	content.add_child(_field_label("Language"))
 	language_selector = OptionButton.new()
 	language_selector.name = "LanguageSelector"
-	language_selector.add_item("English")
-	language_selector.select(0)
-	language_selector.disabled = true
-	language_selector.tooltip_text = "English is the only supported language currently."
+	language_selector.fit_to_longest_item = false
+	language_selector.clip_text = true
+	language_selector.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	for index in Localization.LOCALES.size():
+		language_selector.add_item(Localization.LANGUAGE_NAMES[index])
+		language_selector.set_item_metadata(index, Localization.LOCALES[index])
+	language_selector.select(Localization.LOCALES.find(Localization.language()))
+	language_selector.item_selected.connect(_on_language_selected)
 	content.add_child(language_selector)
 	var language_help := Label.new()
-	language_help.text = "More languages will be available in a future update."
+	language_help.text = "Changes Orca's interface only. Replies follow your message language, using this language when unclear."
 	language_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	language_help.add_theme_color_override("font_color", Color(0.66, 0.69, 0.74))
 	content.add_child(language_help)
@@ -650,6 +677,7 @@ func _build_system_view() -> ScrollContainer:
 	content.add_child(_field_label("Script edits"))
 	script_edit_default_selector = OptionButton.new()
 	script_edit_default_selector.name = "ScriptEditDefault"
+	script_edit_default_selector.fit_to_longest_item = false
 	script_edit_default_selector.add_item("Review edits (default)", 0)
 	script_edit_default_selector.add_item("Auto apply for this project", 1)
 	script_edit_default_selector.clip_text = true
@@ -670,6 +698,13 @@ func _build_system_view() -> ScrollContainer:
 	update_panel.service = update_service
 	content.add_child(update_panel)
 	return scroll
+
+
+func _on_language_selected(index: int) -> void:
+	if index < 0 or index >= language_selector.item_count:
+		return
+	Localization.select_language(str(language_selector.get_item_metadata(index)))
+	language_selector.select(Localization.LOCALES.find(Localization.language()))
 
 
 func sync_script_edit_default() -> void:
@@ -750,11 +785,12 @@ func _render_account() -> void:
 	_account_code_label.visible = account_service != null and account_service.state == "pairing"
 	_account_status_label.text = str(account_service.status) if account_service != null else "Account service is unavailable."
 	if pairing:
-		_account_code_label.text = "Pairing code: " + str(account_service.pairing_code)
+		Localization.bind(_account_code_label, &"text", "Pairing code: %s", [str(account_service.pairing_code)])
 	if connected:
+		_account_name_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		_account_name_label.text = str(account_service.account.get("display_name", ""))
 		var allowance: Dictionary = account_service.account.get("allowance", {})
-		_account_usage_label.text = "Plan: %s\nAvailable usage: %s\nReserved: %s" % [str(account_service.account.get("plan_name", "Free")), _account_money(int(allowance["available_units"])) if allowance.has("available_units") else "unavailable", _account_money(int(allowance["reserved_units"])) if allowance.has("reserved_units") else "unavailable"]
+		Localization.bind(_account_usage_label, &"text", "Plan: %s\nAvailable usage: %s\nReserved: %s", [str(account_service.account.get("plan_name", "Free")), _account_money(int(allowance["available_units"])) if allowance.has("available_units") else Localization.source("unavailable"), _account_money(int(allowance["reserved_units"])) if allowance.has("reserved_units") else Localization.source("unavailable")])
 	var parent = get_parent()
 	var controller = parent.get("agent_controller") if parent != null else null
 	account_sign_out_button.disabled = locked or (controller != null and controller.is_busy())
@@ -849,7 +885,7 @@ func _build_about_view() -> ScrollContainer:
 	content.add_child(product_name)
 	about_version_label = Label.new()
 	about_version_label.name = "AboutVersion"
-	about_version_label.text = "Version " + _plugin_version()
+	Localization.bind(about_version_label, &"text", "Version %s", [_plugin_version()])
 	about_version_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	about_version_label.add_theme_color_override("font_color", Color(0.58, 0.72, 0.82))
 	content.add_child(about_version_label)
@@ -928,7 +964,7 @@ func _about_link(node_name: String, title: String, description: String, url: Str
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var button := Button.new()
 	button.name = node_name
-	button.tooltip_text = title + "\n" + description + "\n" + url + "\nOpens in your browser"
+	Localization.bind(button, &"tooltip_text", "%s\n%s\n%s\nOpens in your browser", [Localization.source(title), Localization.source(description), url])
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.accessibility_name = title
@@ -997,6 +1033,7 @@ func _on_about_link_pressed(url: String) -> void:
 func _about_heading(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", _meta_font_size)
 	label.add_theme_color_override("font_color", Color(0.48, 0.68, 0.8))
 	return label
@@ -1032,6 +1069,7 @@ func _about_logo_texture() -> Texture2D:
 func _field_label(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", _body_font_size)
 	return label
 
@@ -1095,7 +1133,7 @@ func _load_provider(provider_id: String) -> void:
 	_current_provider = provider_id
 	_current_models.clear()
 	_model_service.cancel()
-	model_selector.clear()
+	_clear_model_choices()
 	model_selector.disabled = false
 	refresh_button.disabled = false
 	model_search.text = ""
@@ -1166,7 +1204,7 @@ func _on_api_key_changed(_text: String) -> void:
 		return
 	_model_service.cancel()
 	_current_models.clear()
-	model_selector.clear()
+	_clear_model_choices()
 	model_selector.disabled = false
 	refresh_button.disabled = false
 	metadata_label.text = ""
@@ -1185,7 +1223,7 @@ func _on_custom_url_changed(_text: String) -> void:
 	if bool(definition.get("model_discovery", false)):
 		_model_service.cancel()
 		_current_models.clear()
-		model_selector.clear()
+		_clear_model_choices()
 		model_selector.disabled = false
 		refresh_button.disabled = false
 		metadata_label.text = ""
@@ -1198,7 +1236,7 @@ func _on_manual_model_changed(text: String) -> void:
 	if not _loading_provider:
 		_selected_model = text.strip_edges()
 		_current_models.clear()
-		model_selector.clear()
+		_clear_model_choices()
 		metadata_label.text = ""
 		_set_efforts(PackedStringArray(), _selected_effort)
 		var discovery := bool(ProviderRegistry.get_provider(_current_provider).definition().get("model_discovery", _current_provider != "custom"))
@@ -1267,7 +1305,7 @@ func _on_models_loaded(provider_id: String, models: Array, from_cache: bool) -> 
 	model_selector.disabled = false
 	refresh_button.disabled = false
 	var local_note := " Known embedding models are hidden; enter a Model ID manually to override discovery." if bool(ProviderRegistry.get_provider(provider_id).definition().get("local", false)) else ""
-	status_label.text = "Loaded %d models%s.%s" % [models.size(), " from cache" if from_cache else "", local_note]
+	Localization.bind(status_label, &"text", "Loaded %d models%s.%s", [models.size(), Localization.source(" from cache" if from_cache else ""), Localization.source(local_note)])
 	_populate_models(model_search.text)
 
 
@@ -1284,15 +1322,17 @@ func _on_model_search_changed(query: String) -> void:
 
 
 func _populate_models(query: String) -> void:
-	model_selector.clear()
+	_clear_model_choices()
 	var normalized_query := query.strip_edges().to_lower()
 	var selected_index := -1
 	for model in _current_models:
 		var searchable := (str(model.get("name", "")) + " " + str(model.get("id", ""))).to_lower()
 		if not normalized_query.is_empty() and normalized_query not in searchable:
 			continue
-		model_selector.add_item(str(model.get("name", model.get("id", ""))) + (" — subscription required" if _current_provider == "orca_cloud" and not model.get("allowed", false) else ""))
+		model_selector.add_item(str(model.get("name", model.get("id", ""))))
 		var index := model_selector.item_count - 1
+		if _current_provider == "orca_cloud" and not model.get("allowed", false):
+			Localization.bind(model_selector.get_popup(), StringName("item_%d/text" % index), "%s — subscription required", [str(model.get("name", model.get("id", "")))])
 		model_selector.set_item_metadata(index, model.get("id", ""))
 		if _current_provider == "orca_cloud":
 			model_selector.set_item_disabled(index, not model.get("allowed", false) or model.get("availability") != "available")
@@ -1303,6 +1343,11 @@ func _populate_models(query: String) -> void:
 		return
 	model_selector.select(selected_index if selected_index >= 0 else 0)
 	_on_model_selected(model_selector.selected)
+
+
+func _clear_model_choices() -> void:
+	Localization.clear(model_selector.get_popup())
+	model_selector.clear()
 
 
 func _on_model_selected(index: int) -> void:
@@ -1316,7 +1361,7 @@ func _on_model_selected(index: int) -> void:
 		_loading_provider = was_loading
 	var model := _find_model(_selected_model)
 	_set_efforts(model.get("efforts", PackedStringArray()), _selected_effort)
-	metadata_label.text = _format_model_metadata(model)
+	_bind_model_metadata(model)
 	if not _loading_provider:
 		_cancel_agent_probe_for_change()
 		_sync_agent_compatibility()
@@ -1386,20 +1431,16 @@ func _find_model(model_id: String) -> Dictionary:
 	return {}
 
 
-func _format_model_metadata(model: Dictionary) -> String:
-	if model.is_empty():
-		return ""
-	var parts := PackedStringArray()
-	var context := int(model.get("context_window", 0))
-	if context > 0:
-		parts.append("Context: " + _format_tokens(context))
-	var input_price := float(model.get("input_per_million", -1.0))
-	var output_price := float(model.get("output_per_million", -1.0))
-	if input_price >= 0.0:
-		parts.append("Input: $%.2f/M" % input_price)
-	if output_price >= 0.0:
-		parts.append("Output: $%.2f/M" % output_price)
-	return "   ".join(parts)
+func _bind_model_metadata(model: Dictionary) -> void:
+	var parts: Array = []
+	if int(model.get("context_window", 0)) > 0:
+		parts.append(["Context: %s", [_format_tokens(int(model["context_window"]))]])
+	for pair in [["input_per_million", "Input: $%.2f/M"], ["output_per_million", "Output: $%.2f/M"]]:
+		if float(model.get(pair[0], -1.0)) >= 0.0:
+			if not parts.is_empty():
+				parts.append(["   ", []])
+			parts.append([pair[1], [float(model[pair[0]])]])
+	Localization.bind_parts(metadata_label, &"text", parts)
 
 
 func _format_tokens(tokens: int) -> String:
@@ -1479,7 +1520,7 @@ func _update_endpoint_status() -> void:
 		return
 	var inspected := EndpointPolicy.inspect_base_url(custom_url_input.text)
 	if not inspected.get("success", false):
-		endpoint_status_label.text = "Invalid endpoint: " + str(inspected.get("error", "Unknown error"))
+		Localization.bind(endpoint_status_label, &"text", "Invalid endpoint: %s", [Localization.source(str(inspected.get("error", "Unknown error")))])
 		return
 	var scope := str(inspected.get("scope", "remote")).capitalize()
 	if inspected.get("is_loopback", false):
@@ -1487,7 +1528,7 @@ func _update_endpoint_status() -> void:
 		return
 	var warning := " HTTP is unencrypted." if inspected.get("uses_plaintext", false) else ""
 	var trusted := Config.get_confirmed_origin(_current_provider) == str(inspected.get("origin", ""))
-	endpoint_status_label.text = "%s endpoint%s %s" % [scope, warning, "Trusted for this exact origin." if trusted else "Confirmation is required before sending data."]
+	Localization.bind(endpoint_status_label, &"text", "%s endpoint%s %s", [Localization.source(scope), Localization.source(warning), Localization.source("Trusted for this exact origin." if trusted else "Confirmation is required before sending data.")])
 
 
 func _request_endpoint_trust(action: String, inspected: Dictionary) -> void:
@@ -1495,7 +1536,7 @@ func _request_endpoint_trust(action: String, inspected: Dictionary) -> void:
 	_pending_trust_origin = str(inspected.get("origin", ""))
 	_pending_trust_provider = _current_provider
 	var plaintext := " This connection is HTTP and is not encrypted." if inspected.get("uses_plaintext", false) else ""
-	_trust_dialog.dialog_text = "Allow Orca to send this profile's credentials, prompts, and project context to %s? This confirmation is stored for this exact scheme, host, and port.%s" % [_pending_trust_origin, plaintext]
+	Localization.bind(_trust_dialog, &"dialog_text", "Allow Orca to send this profile's credentials, prompts, and project context to %s? This confirmation is stored for this exact scheme, host, and port.%s", [_pending_trust_origin, Localization.source(plaintext)])
 	_trust_dialog.popup_centered()
 
 
@@ -1579,7 +1620,7 @@ func _start_agent_probe() -> void:
 
 
 func _on_probe_step_changed(step: int) -> void:
-	agent_status_label.text = "Testing Agent compatibility, step %d of 2..." % step
+	Localization.bind(agent_status_label, &"text", "Testing Agent compatibility, step %d of 2...", [step])
 
 
 func _on_probe_passed(binding: Dictionary) -> void:
@@ -1602,7 +1643,7 @@ func _on_probe_passed(binding: Dictionary) -> void:
 
 func _on_probe_failed(_binding: Dictionary, message: String) -> void:
 	_agent_enable_intent = ""
-	agent_status_label.text = "Compatibility check failed: " + message
+	Localization.bind(agent_status_label, &"text", "Compatibility check failed: %s", [Localization.source(message)])
 	agent_probe_button.disabled = false
 	agent_enable_toggle.disabled = true
 	agent_enable_toggle.set_pressed_no_signal(false)

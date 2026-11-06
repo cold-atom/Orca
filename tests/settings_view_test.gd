@@ -34,7 +34,7 @@ func _run() -> void:
 	await process_frame
 	_expect(view.system_scroll.visible and not view.settings_scroll.visible and not view.about_scroll.visible, "System should replace the other sections")
 	_expect(view.system_tab_button.button_pressed and not view.provider_tab_button.button_pressed and not view.about_tab_button.button_pressed, "only System should be selected")
-	_expect(view.language_selector.item_count == 1 and view.language_selector.get_item_text(0) == "English" and view.language_selector.selected == 0 and view.language_selector.disabled, "language should display English without offering unsupported choices")
+	_expect(view.language_selector.item_count == 5 and view.language_selector.get_item_text(0) == "English" and view.language_selector.get_item_text(1) == "简体中文" and view.language_selector.get_item_text(2) == "Español" and view.language_selector.get_item_text(3) == "日本語" and view.language_selector.get_item_metadata(3) == "ja" and view.language_selector.get_item_text(4) == "한국어" and view.language_selector.get_item_metadata(4) == "ko" and view.language_selector.selected == 0 and not view.language_selector.disabled, "language offers the five supported native-name choices with English initially selected")
 	_expect(view.system_scroll.is_ancestor_of(view.update_panel) and view.update_panel.get_parent() == view.language_selector.get_parent() and view.update_panel.get_index() > view.language_selector.get_index(), "General Settings should own plugin updates below Language")
 	_expect(view.find_children("PluginUpdates", "", true, false).size() == 1, "Settings should create exactly one update card")
 	_expect(view.get_combined_minimum_size().x <= 300.0, "System should fit the 300 px dock width")

@@ -1,0 +1,1579 @@
+msgid ""
+msgstr ""
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Settings"
+msgstr "設定"
+
+msgid "Language"
+msgstr "言語"
+
+msgid "Done"
+msgstr "完了"
+
+msgid "GENERAL SETTINGS"
+msgstr "一般設定"
+
+msgid "Changes Orca's interface only. Replies follow your message language, using this language when unclear."
+msgstr "Orca のインターフェースのみ変更します。返信はメッセージの言語に従い、判別できない場合はこの言語を使います。"
+
+msgid "Provider"
+msgstr "プロバイダー"
+
+msgid "System"
+msgstr "システム"
+
+msgid "Account"
+msgstr "アカウント"
+
+msgid "About"
+msgstr "Orca について"
+
+msgid "API CONFIGURATION"
+msgstr "API 設定"
+
+msgid "API Provider"
+msgstr "API プロバイダー"
+
+msgid "API Key"
+msgstr "API キー"
+
+msgid "Optional API Key"
+msgstr "API キー（任意）"
+
+msgid "Enter API key"
+msgstr "API キーを入力"
+
+msgid "Optional for local servers"
+msgstr "ローカルサーバーでは任意"
+
+msgid "Show"
+msgstr "表示"
+
+msgid "Hide"
+msgstr "非表示"
+
+msgid "Get an API key"
+msgstr "API キーを取得"
+
+msgid "Stored in Godot Editor Settings and used only for requests to the selected provider."
+msgstr "Godot のエディター設定に保存され、選択したプロバイダーへのリクエストにのみ使用されます。"
+
+msgid "Base URL"
+msgstr "ベース URL"
+
+msgid "Responses (reasoning + tools)"
+msgstr "Responses（推論＋ツール）"
+
+msgid "Reasoning Continuation"
+msgstr "推論の継続"
+
+msgid "Standard"
+msgstr "標準"
+
+msgid "DeepSeek reasoning"
+msgstr "DeepSeek 推論"
+
+msgid "For Azure DeepSeek deployments, preserve private reasoning through Chat or Responses tool follow-ups and remove one leaked leading </think> delimiter. Works with custom deployment names."
+msgstr "Azure DeepSeek デプロイでは、Chat または Responses のツール継続時に非公開の推論を保持し、先頭に漏れた </think> 区切りを 1 つ除去します。独自のデプロイ名にも対応します。"
+
+msgid "Model"
+msgstr "モデル"
+
+msgid "Search available models..."
+msgstr "利用可能なモデルを検索…"
+
+msgid "Refresh"
+msgstr "更新"
+
+msgid "Model ID"
+msgstr "モデル ID"
+
+msgid "Exact deployment name"
+msgstr "正確なデプロイ名"
+
+msgid "Enable unconfirmed image input"
+msgstr "未確認の画像入力を有効にする"
+
+msgid "Use only if this exact endpoint and model accept image_url content. This does not enable Agent tools or verify vision quality."
+msgstr "このエンドポイントとモデルが image_url コンテンツを受け付ける場合にのみ使用してください。エージェントツールの有効化や画像認識の品質検証は行いません。"
+
+msgid "Reasoning Effort"
+msgstr "推論レベル"
+
+msgid "Provider default"
+msgstr "プロバイダーの既定値"
+
+msgid "None"
+msgstr "なし"
+
+msgid "Minimal"
+msgstr "最小"
+
+msgid "Low"
+msgstr "低"
+
+msgid "Medium"
+msgstr "中"
+
+msgid "High"
+msgstr "高"
+
+msgid "Xhigh"
+msgstr "非常に高い"
+
+msgid "Max"
+msgstr "最大"
+
+msgid "Higher effort can improve difficult planning and debugging, but may use more tokens."
+msgstr "推論レベルを上げると複雑な計画やデバッグの精度が向上する場合がありますが、使用トークン数も増える可能性があります。"
+
+msgid "Supported levels depend on your deployment. Provider default does not disable reasoning. For GPT reasoning with tools, prefer Responses; use None on Chat only if the deployment supports it."
+msgstr "対応レベルはデプロイによって異なります。プロバイダーの既定値は推論を無効にしません。GPT の推論とツールを併用する場合は Responses を推奨します。Chat で「なし」を使うのはデプロイが対応している場合のみです。"
+
+msgid "Use the resource's /openai/v1 base URL and exact deployment name. Responses supports reasoning with Orca function tools; requests use store=false. Select DeepSeek reasoning continuation for DeepSeek deployments."
+msgstr "リソースの /openai/v1 ベース URL と正確なデプロイ名を使用してください。Responses は Orca の関数ツールと推論の併用に対応し、リクエストでは store=false を使用します。DeepSeek デプロイでは DeepSeek 推論の継続を選択してください。"
+
+msgid "For GPT reasoning with tools, prefer Responses. Chat without reasoning requires a deployment that supports None. Select DeepSeek reasoning continuation for DeepSeek deployments."
+msgstr "GPT の推論とツールを併用する場合は Responses を推奨します。推論なしの Chat には「なし」に対応するデプロイが必要です。DeepSeek デプロイでは DeepSeek 推論の継続を選択してください。"
+
+msgid "Request Timeouts"
+msgstr "リクエストのタイムアウト"
+
+msgid "Use custom timeouts"
+msgstr "タイムアウトをカスタマイズ"
+
+msgid "Override Orca's built-in response waits for this provider. Turning this off preserves your custom values."
+msgstr "このプロバイダーの応答待ち時間を変更します。無効にしても設定した値は保持されます。"
+
+msgid "Using Orca's default timeouts.\nHeaders: 30 s · Inactivity: 60 s"
+msgstr "Orca の既定のタイムアウトを使用中。\nヘッダー：30 秒 · 無通信：60 秒"
+
+msgid "Original timing: 30 seconds to connect, 30 seconds for response headers, 60 seconds without body data, and 45 seconds for an Agent compatibility check. Each full request is capped at 10 minutes."
+msgstr "既定値：接続は 30 秒、応答ヘッダーは 30 秒、本文データの無通信は 60 秒、エージェントの互換性チェックは 45 秒です。リクエスト全体の上限は 10 分です。"
+
+msgid "Response start"
+msgstr "応答開始"
+
+msgid "Stream inactivity"
+msgstr "ストリームの無通信"
+
+msgid "Maximum wait for headers and initial response data, including model loading. Accepts 10–600 seconds."
+msgstr "モデルの読み込みを含む、ヘッダーと最初の応答データの最大待ち時間です。10～600 秒で設定できます。"
+
+msgid "Maximum pause after response data begins. Reasoning and keep-alive bytes count as activity. Accepts 10–600 seconds."
+msgstr "応答データの受信開始後に許容する最大無通信時間です。推論や接続維持のデータも通信として扱います。10～600 秒で設定できます。"
+
+msgid "Allow extra time for model loading and slow generation."
+msgstr "モデルの読み込みや遅い生成に、より長い待ち時間を設定します。"
+
+msgid "Control how long Orca waits for this provider."
+msgstr "このプロバイダーの待ち時間を設定します。"
+
+msgid "Saved per provider · 10–600 s\n10-minute limit · Stop available"
+msgstr "プロバイダーごとに保存 · 10～600 秒\n上限 10 分 · 停止可能"
+
+msgid "10-minute request limit.\nStop remains available."
+msgstr "リクエストの上限は 10 分です。\nいつでも停止できます。"
+
+msgid "Agent Compatibility"
+msgstr "エージェントの互換性"
+
+msgid "Test & Enable Agent tools"
+msgstr "ツールを検証して有効化"
+
+msgid "Run the project-free compatibility check and enable Agent tools for this exact profile only if it passes."
+msgstr "プロジェクト情報を使わず互換性を検証し、成功した場合にのみ、このプロファイルのエージェントツールを有効にします。"
+
+msgid "Enable Agent tools"
+msgstr "エージェントツールを有効にする"
+
+msgid "Enable Agent tools for this exact endpoint and model"
+msgstr "このエンドポイントとモデルのツールを有効にする"
+
+msgid "This project-free check enables Agent tools when it passes. Agent tools may send project context and perform normal Plan/Work operations; edit permissions are controlled separately in the dock."
+msgstr "プロジェクト情報を使わないこの検証に成功すると、エージェントツールが有効になります。ツールはプロジェクトのコンテキストを送信し、通常の計画／作業モードの操作を行う場合があります。編集権限はドックで別途管理します。"
+
+msgid "Agent tools enabled for this exact profile."
+msgstr "このプロファイルのエージェントツールは有効です。"
+
+msgid "Compatibility passed. Agent tools are off."
+msgstr "互換性の検証に成功しました。ツールは無効です。"
+
+msgid "Run the compatibility probe."
+msgstr "互換性チェックを実行してください。"
+
+msgid "Run Test & Enable Agent tools for this profile."
+msgstr "このプロファイルのツールを検証して有効化してください。"
+
+msgid "Profile changed. Run Test & Enable Agent tools again."
+msgstr "プロファイルが変更されました。ツールを再検証して有効化してください。"
+
+msgid "Profile changed during the check. Run Test & Enable Agent tools again."
+msgstr "検証中にプロファイルが変更されました。ツールを再検証して有効化してください。"
+
+msgid "Compatibility passed, but Agent tools could not be enabled. Run the check again."
+msgstr "互換性の検証に成功しましたが、ツールを有効にできませんでした。再検証してください。"
+
+msgid "Compatibility check failed: %s"
+msgstr "互換性チェックに失敗：%s"
+
+msgid "Testing Agent compatibility, step %d of 2..."
+msgstr "エージェントの互換性を検証中、ステップ %d / 2…"
+
+msgid "Script edits"
+msgstr "スクリプトの編集"
+
+msgid "Review edits"
+msgstr "変更をレビュー"
+
+msgid "Review edits (default)"
+msgstr "変更をレビュー（既定）"
+
+msgid "Auto apply"
+msgstr "自動適用"
+
+msgid "Auto apply for this project"
+msgstr "このプロジェクトで自動適用"
+
+msgid "Default script edits for this project"
+msgstr "このプロジェクトの既定のスクリプト編集"
+
+msgid "Default script-edit behavior for this project on this computer. Auto apply requires explicit confirmation."
+msgstr "このコンピューター上での、このプロジェクトの既定のスクリプト編集方法です。自動適用には明示的な確認が必要です。"
+
+msgid "Remember Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only. Scene/configuration changes still require review. Clicking the green edit icon beside ORCA turns it off and clears the remembered choice."
+msgstr "このプロジェクトの新しい作業モードの会話やエディター再起動後も、自動適用を有効にします。計画モードは読み取り専用です。シーンや設定の変更には引き続きレビューが必要です。ORCA の横にある緑の編集アイコンをクリックすると無効になり、保存した選択も解除されます。"
+
+msgid "Allow automatic script edits"
+msgstr "スクリプトの自動編集を許可"
+
+msgid "Orca can create and edit eligible project .gd scripts automatically in Work mode. Every edit is validated, shown in the feed, and checkpointed before writing.\n\nScene/configuration changes and script-execution trust still require approval. Unsaved files and conflicts remain protected.\n\nWithout remembering, permission is for this session only. Remembering enables Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only.\n\nClick the green edit icon beside ORCA in the header to revoke permission and clear any remembered default."
+msgstr "Orca が作業モードで対象のプロジェクト .gd スクリプトを自動作成・編集できるようにします。すべての変更は検証され、会話に表示され、書き込み前にチェックポイントが保存されます。\n\nシーンや設定の変更とスクリプト実行の信頼確認には、引き続き承認が必要です。未保存のファイルや競合も保護されます。\n\n選択を保存しない場合、権限はこのセッションのみ有効です。保存すると、このプロジェクトの新しい作業モードの会話やエディター再起動後も自動適用が有効になります。計画モードは読み取り専用です。\n\nヘッダーの ORCA の横にある緑の編集アイコンをクリックすると、権限と保存した既定値を解除できます。"
+
+msgid "Remember for this project"
+msgstr "このプロジェクトで選択を保存"
+
+msgid "Use Auto apply by default for this project"
+msgstr "このプロジェクトでは自動適用を既定にする"
+
+msgid "Use Auto apply by default for this project. This is saved locally, outside project files and conversation history."
+msgstr "このプロジェクトでは自動適用を既定にします。プロジェクトファイルや会話履歴とは別に、ローカルに保存されます。"
+
+msgid "Allow edits"
+msgstr "編集を許可"
+
+msgid "Script edit permission"
+msgstr "スクリプトの編集権限"
+
+msgid "Script edit permission: %s"
+msgstr "スクリプトの編集権限：%s"
+
+msgid "Remembered for this project: new Work conversations and editor restarts use Auto apply."
+msgstr "このプロジェクトで選択を保存済み：新しい作業モードの会話やエディター再起動後も自動適用が有効です。"
+
+msgid "Auto apply is enabled for this session only."
+msgstr "自動適用はこのセッションのみ有効です。"
+
+msgid " Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action."
+msgstr " クリックすると次の書き込み前に権限と保存した既定値を解除します。停止しても完了済みの変更は残ります。元に戻す操作は別途必要です。"
+
+msgid "Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval."
+msgstr "変更のレビューが有効です。作業モードの待機中、またはプロジェクトスクリプトのレビュー中にクリックすると、セッションの自動適用を許可できます。このプロジェクトで選択を保存することもできます。シーンや設定の提案には引き続き承認が必要です。"
+
+msgid " The project default remains saved; Auto apply is paused here or unavailable in this mode/session."
+msgstr " プロジェクトの既定値は保存されています。自動適用は一時停止中、またはこのモード／セッションでは利用できません。"
+
+msgid "The project preference could not be saved. No automatic edit permission was granted."
+msgstr "プロジェクトの設定を保存できませんでした。自動編集の権限は付与されていません。"
+
+msgid "Auto apply is off for this session, but its project default could not be saved."
+msgstr "このセッションの自動適用は無効ですが、プロジェクトの既定値を保存できませんでした。"
+
+msgid "ORCA ACCOUNT"
+msgstr "ORCA アカウント"
+
+msgid "Sign in to access models provided by Orca."
+msgstr "Orca が提供するモデルを利用するにはログインしてください。"
+
+msgid "Sign in / Sign up"
+msgstr "ログイン／新規登録"
+
+msgid "Open browser again"
+msgstr "ブラウザーを再度開く"
+
+msgid "Cancel connection"
+msgstr "接続をキャンセル"
+
+msgid "Choose model"
+msgstr "モデルを選択"
+
+msgid "Refresh account"
+msgstr "アカウントを更新"
+
+msgid "Open Orca Console"
+msgstr "Orca Console を開く"
+
+msgid "Sign out"
+msgstr "ログアウト"
+
+msgid "Your connection is remembered in your OS credential vault. Account passwords and model-provider keys stay outside the plugin."
+msgstr "接続情報は OS の資格情報ストアに保存されます。アカウントのパスワードやモデルプロバイダーのキーはプラグインに保存されません。"
+
+msgid "Account service is unavailable."
+msgstr "アカウントサービスを利用できません。"
+
+msgid "Pairing code: %s"
+msgstr "ペアリングコード：%s"
+
+msgid "Plan: %s\nAvailable usage: %s\nReserved: %s"
+msgstr "プラン：%s\n利用可能な残量：%s\n予約済み：%s"
+
+msgid "unavailable"
+msgstr "利用不可"
+
+msgid "Signed out."
+msgstr "ログアウトしました。"
+
+msgid "Preparing connection…"
+msgstr "接続を準備中…"
+
+msgid "Restoring your Orca connection…"
+msgstr "Orca への接続を復元中…"
+
+msgid "Connected."
+msgstr "接続済み。"
+
+msgid "Version %s"
+msgstr "バージョン %s"
+
+msgid "A safety-first AI development assistant for the Godot editor."
+msgstr "安全性を重視した、Godot エディター向け AI 開発アシスタント。"
+
+msgid "Explore project context, prepare Godot-aware changes, and run bounded checks without leaving the editor."
+msgstr "エディター内でプロジェクトの状況を調べ、Godot に適した変更を準備し、範囲を限定した検証を実行できます。"
+
+msgid "RESOURCES"
+msgstr "リソース"
+
+msgid "Documentation"
+msgstr "ドキュメント"
+
+msgid "Guides and getting started"
+msgstr "ガイドと使い方"
+
+msgid "Orca website"
+msgstr "Orca ウェブサイト"
+
+msgid "News and product updates"
+msgstr "ニュースと製品の更新情報"
+
+msgid "COMMUNITY & DEVELOPMENT"
+msgstr "コミュニティと開発"
+
+msgid "Source code and releases"
+msgstr "ソースコードとリリース"
+
+msgid "Report an issue"
+msgstr "問題を報告"
+
+msgid "Bugs and troubleshooting"
+msgstr "不具合とトラブルシューティング"
+
+msgid "Ideas & feature requests"
+msgstr "アイデアと機能リクエスト"
+
+msgid "Discuss improvements with the community"
+msgstr "コミュニティで改善案を話し合う"
+
+msgid "%s\n%s\n%s\nOpens in your browser"
+msgstr "%s\n%s\n%s\nブラウザーで開きます"
+
+msgid "REVIEW-FIRST"
+msgstr "レビューを優先"
+
+msgid "Plan mode is read-only. Work defaults to Review edits. You can allow bounded automatic script edits for one session or explicitly remember Auto apply for this project; scene/configuration changes retain approval."
+msgstr "計画モードは読み取り専用です。作業モードは変更のレビューが既定です。範囲を限定したスクリプトの自動編集をセッションごとに許可するか、このプロジェクトで自動適用の選択を明示的に保存できます。シーンや設定の変更には引き続き承認が必要です。"
+
+msgid "COMPATIBILITY"
+msgstr "互換性"
+
+msgid "SUPPORT"
+msgstr "サポート"
+
+msgid "Copies a strict-allowlist report with Orca/Godot versions and coarse provider/request state. It excludes credentials, endpoint addresses, project data, conversations, model output, logs, and file changes."
+msgstr "Orca／Godot のバージョンとプロバイダー／リクエストの概要状態を含む、許可された項目のみのレポートをコピーします。資格情報、エンドポイントのアドレス、プロジェクト情報、会話、モデルの出力、ログ、ファイル変更は含みません。"
+
+msgid "Copy Privacy-Safe Diagnostic Report"
+msgstr "個人情報を除いた診断をコピー"
+
+msgid "Copied diagnostic report."
+msgstr "診断レポートをコピーしました。"
+
+msgid "LICENSE"
+msgstr "ライセンス"
+
+msgid "MIT License\nCopyright (c) 2026 Minghang Chamling"
+msgstr "MIT ライセンス\nCopyright (c) 2026 Minghang Chamling"
+
+msgid "Select Refresh to load models from this endpoint."
+msgstr "「更新」でこのエンドポイントのモデルを読み込みます。"
+
+msgid "Loading models..."
+msgstr "モデルを読み込み中…"
+
+msgid "Waiting to load models..."
+msgstr "モデルの読み込みを待機中…"
+
+msgid "Enter an API key to load models."
+msgstr "モデルを読み込むには API キーを入力してください。"
+
+msgid "Enter the exact deployment name and run Test & Enable Agent tools."
+msgstr "正確なデプロイ名を入力し、ツールを検証して有効化してください。"
+
+msgid "Enter a Model ID and run Test & Enable Agent tools."
+msgstr "モデル ID を入力し、ツールを検証して有効化してください。"
+
+msgid "Connect in Account to load Orca models."
+msgstr "Orca のモデルを読み込むには「アカウント」で接続してください。"
+
+msgid "Endpoint changed. Select Refresh to contact it."
+msgstr "エンドポイントが変更されました。「更新」で接続します。"
+
+msgid "Using a manual Model ID. Select Refresh to restore discovered models."
+msgstr "手動入力のモデル ID を使用中です。「更新」で取得したモデルに戻ります。"
+
+msgid "Using an exact deployment name. Run Test & Enable Agent tools."
+msgstr "正確なデプロイ名を使用中です。ツールを検証して有効化してください。"
+
+msgid "Using a manual Model ID. Run Test & Enable Agent tools."
+msgstr "手動入力のモデル ID を使用中です。ツールを検証して有効化してください。"
+
+msgid "Loaded %d models%s.%s"
+msgstr "%d 個のモデルを読み込みました%s。%s"
+
+msgid " from cache"
+msgstr "（キャッシュから）"
+
+msgid " Known embedding models are hidden; enter a Model ID manually to override discovery."
+msgstr " 既知の埋め込みモデルは非表示です。モデル ID を手動入力すると取得結果より優先されます。"
+
+msgid "%s — subscription required"
+msgstr "%s — サブスクリプションが必要"
+
+msgid "No matching models."
+msgstr "一致するモデルはありません。"
+
+msgid "Context: %s"
+msgstr "コンテキスト：%s"
+
+msgid "Input: $%.2f/M"
+msgstr "入力：$%.2f/M"
+
+msgid "Output: $%.2f/M"
+msgstr "出力：$%.2f/M"
+
+msgid "Could not save this provider profile. Check the endpoint and API settings."
+msgstr "プロバイダーのプロファイルを保存できませんでした。エンドポイントと API 設定を確認してください。"
+
+msgid "Invalid endpoint."
+msgstr "無効なエンドポイントです。"
+
+msgid "Invalid endpoint: %s"
+msgstr "無効なエンドポイント：%s"
+
+msgid "Loopback endpoint. Requests stay addressed to this machine."
+msgstr "ループバックのエンドポイントです。リクエストはこのコンピューターに送信されます。"
+
+msgid "Lan"
+msgstr "LAN"
+
+msgid "Remote"
+msgstr "リモート"
+
+msgid "%s endpoint%s %s"
+msgstr "%s エンドポイント%s %s"
+
+msgid " HTTP is unencrypted."
+msgstr " HTTP は暗号化されていません。"
+
+msgid "Trusted for this exact origin."
+msgstr "この接続先は信頼済みです。"
+
+msgid "Confirmation is required before sending data."
+msgstr "データの送信前に確認が必要です。"
+
+msgid "Trust AI Endpoint"
+msgstr "AI エンドポイントを信頼"
+
+msgid "Allow Orca to send this profile's credentials, prompts, and project context to %s? This confirmation is stored for this exact scheme, host, and port.%s"
+msgstr "このプロファイルの資格情報、プロンプト、プロジェクトのコンテキストを Orca が %s に送信することを許可しますか？この確認は、指定のスキーム、ホスト、ポートの組み合わせに対して保存されます。%s"
+
+msgid " This connection is HTTP and is not encrypted."
+msgstr " この接続は HTTP で、暗号化されていません。"
+
+msgid "Endpoint changed before confirmation. Review it again."
+msgstr "確認前にエンドポイントが変更されました。もう一度確認してください。"
+
+msgid "Work with Orca"
+msgstr "Orca と開発"
+
+msgid "Plan, create, and debug your Godot project without leaving the editor."
+msgstr "エディター内で Godot プロジェクトの計画、制作、デバッグを行えます。"
+
+msgid "Plan is read-only. Work can run the game and propose reviewed changes."
+msgstr "計画モードは読み取り専用です。作業モードではゲームの実行とレビュー付きの変更提案ができます。"
+
+msgid "New session"
+msgstr "新しいセッション"
+
+msgid "Conversation history"
+msgstr "会話履歴"
+
+msgid "Orca settings"
+msgstr "Orca の設定"
+
+msgid "Describe what you want to build or fix..."
+msgstr "作りたいものや修正したい内容を入力…"
+
+msgid "Choose an agent mode"
+msgstr "エージェントモードを選択"
+
+msgid "Choose Plan for analysis or Work for reviewed changes."
+msgstr "分析には計画モード、レビュー付きの変更には作業モードを選択してください。"
+
+msgid "Work"
+msgstr "作業"
+
+msgid "Plan"
+msgstr "計画"
+
+msgid "Inspect, run, and propose reviewed edits"
+msgstr "調査・実行・変更の提案"
+
+msgid "Analyze without changing files"
+msgstr "ファイルを変更せずに分析"
+
+msgid "Work mode: Explore, run the game, and propose reviewed project changes"
+msgstr "作業モード：調査、ゲームの実行、レビュー付きの変更提案"
+
+msgid "Plan mode: Analyze and design without changing files"
+msgstr "計画モード：ファイルを変更せずに分析と設計"
+
+msgid "\nTab to switch modes in the prompt box"
+msgstr "\n入力欄で Tab キーを押すとモードを切り替えます"
+
+msgid "No model"
+msgstr "モデル未選択"
+
+msgid "Current model: %s\nClick to configure"
+msgstr "現在のモデル：%s\nクリックして設定"
+
+msgid "Send message"
+msgstr "メッセージを送信"
+
+msgid "Stop response (draft text is kept)"
+msgstr "応答を停止（下書きは保持）"
+
+msgid "Thinking"
+msgstr "思考中"
+
+msgid "Preparing response"
+msgstr "応答を準備中"
+
+msgid "Observing game"
+msgstr "ゲームを観察中"
+
+msgid "Assessing results"
+msgstr "結果を評価中"
+
+msgid "Finalizing safely"
+msgstr "安全に終了処理中"
+
+msgid "User"
+msgstr "ユーザー"
+
+msgid "Orca (incomplete)"
+msgstr "Orca（未完了）"
+
+msgid "Copy"
+msgstr "コピー"
+
+msgid "Copy code"
+msgstr "コードをコピー"
+
+msgid "Code"
+msgstr "コード"
+
+msgid "Start New Session"
+msgstr "新しいセッションを開始"
+
+msgid "Save this conversation to History and start a new session?\n\nApplied file changes will remain."
+msgstr "この会話を履歴に保存し、新しいセッションを開始しますか？\n\n適用済みのファイル変更は残ります。"
+
+msgid "HISTORY"
+msgstr "履歴"
+
+msgid "History"
+msgstr "履歴"
+
+msgid "New Chat"
+msgstr "新しいチャット"
+
+msgid "Save the current session and start a new conversation"
+msgstr "現在のセッションを保存して新しい会話を開始"
+
+msgid "Conversations are stored locally for this project."
+msgstr "会話はこのプロジェクト用にローカルに保存されます。"
+
+msgid "Up to 50 recent sessions"
+msgstr "最近のセッションを最大 50 件保存"
+
+msgid "Delete All"
+msgstr "すべて削除"
+
+msgid "No saved conversations yet."
+msgstr "保存された会話はまだありません。"
+
+msgid " · %d changed"
+msgstr " · %d ファイル変更"
+
+msgid " · View only"
+msgstr " · 閲覧専用"
+
+msgid "Delete"
+msgstr "削除"
+
+msgid "Current"
+msgstr "現在"
+
+msgid "Open"
+msgstr "開く"
+
+msgid "Delete Conversation"
+msgstr "会話を削除"
+
+msgid "Delete \"%s\"? This cannot be undone."
+msgstr "「%s」を削除しますか？この操作は取り消せません。"
+
+msgid "Delete All Conversations"
+msgstr "すべての会話を削除"
+
+msgid "Delete all saved Orca conversations for this project? This cannot be undone."
+msgstr "このプロジェクトの Orca の保存済み会話をすべて削除しますか？この操作は取り消せません。"
+
+msgid "Tasks %d/%d"
+msgstr "タスク %d/%d"
+
+msgid "Pending"
+msgstr "未着手"
+
+msgid "In progress"
+msgstr "進行中"
+
+msgid "Completed"
+msgstr "完了"
+
+msgid "Blocked"
+msgstr "保留"
+
+msgid "Cancelled"
+msgstr "キャンセル済み"
+
+msgid "Project activity"
+msgstr "プロジェクトの操作"
+
+msgid "Read file"
+msgstr "ファイルを読む"
+
+msgid "Read files"
+msgstr "ファイルを読む"
+
+msgid "List directory"
+msgstr "フォルダーを一覧表示"
+
+msgid "List directories"
+msgstr "フォルダーを一覧表示"
+
+msgid "Search project"
+msgstr "プロジェクトを検索"
+
+msgid "Inspect scene"
+msgstr "シーンを調査"
+
+msgid "Inspect scenes"
+msgstr "シーンを調査"
+
+msgid "Inspect live scene"
+msgstr "編集中のシーンを調査"
+
+msgid "Inspect project settings"
+msgstr "プロジェクト設定を調査"
+
+msgid "Read project skill"
+msgstr "プロジェクトのスキルを読む"
+
+msgid "Read project skills"
+msgstr "プロジェクトのスキルを読む"
+
+msgid "Inspect Godot API"
+msgstr "Godot API を調査"
+
+msgid "Read GDScript function"
+msgstr "GDScript 関数を読む"
+
+msgid "Read GDScript functions"
+msgstr "GDScript 関数を読む"
+
+msgid "Discover dependencies"
+msgstr "依存関係を調査"
+
+msgid "Find project symbols"
+msgstr "プロジェクトのシンボルを検索"
+
+msgid "Find reference candidates"
+msgstr "参照候補を検索"
+
+msgid "Inspect editor context"
+msgstr "エディターの状況を調査"
+
+msgid "Read game status and diagnostics"
+msgstr "ゲームの状態と診断を取得"
+
+msgid "Observe game run"
+msgstr "ゲームの実行を観察"
+
+msgid "Verify game criterion"
+msgstr "ゲームの検証条件を確認"
+
+msgid "Run current scene"
+msgstr "現在のシーンを実行"
+
+msgid "Run main scene"
+msgstr "メインシーンを実行"
+
+msgid "Stop Orca game"
+msgstr "Orca が実行したゲームを停止"
+
+msgid "Update task checklist"
+msgstr "タスク一覧を更新"
+
+msgid "Work mode decision"
+msgstr "作業モードへの切り替え判断"
+
+msgid "Prepare file patch"
+msgstr "ファイルのパッチを準備"
+
+msgid "Prepare Input Map changes"
+msgstr "入力マップの変更を準備"
+
+msgid "Prepare main scene change"
+msgstr "メインシーンの変更を準備"
+
+msgid "Prepare Project Settings changes"
+msgstr "プロジェクト設定の変更を準備"
+
+msgid "Prepare scene changes"
+msgstr "シーンの変更を準備"
+
+msgid "Selected nodes"
+msgstr "選択中のノード"
+
+msgid "Scene hierarchy"
+msgstr "シーン階層"
+
+msgid "Open Docs"
+msgstr "ドキュメント"
+
+msgid "RUNNING"
+msgstr "実行中"
+
+msgid "DONE"
+msgstr "完了"
+
+msgid "COMPLETED"
+msgstr "完了"
+
+msgid "FAILED"
+msgstr "失敗"
+
+msgid "INTERRUPTED"
+msgstr "中断"
+
+msgid "CANCELLED"
+msgstr "キャンセル済み"
+
+msgid "REJECTED"
+msgstr "却下"
+
+msgid "APPLYING"
+msgstr "適用中"
+
+msgid "APPLIED"
+msgstr "適用済み"
+
+msgid "APPLIED RECOVERY"
+msgstr "適用済み・復旧確認が必要"
+
+msgid "REVERTED"
+msgstr "元に戻しました"
+
+msgid "REVERT FAILED"
+msgstr "復元に失敗"
+
+msgid "RECOVERY CONFLICT"
+msgstr "復旧の競合"
+
+msgid "APPLY RECOVERY REQUIRED"
+msgstr "適用後の復旧確認が必要"
+
+msgid "REVERT RECOVERY REQUIRED"
+msgstr "復元後の復旧確認が必要"
+
+msgid "%d call · %s"
+msgstr "%d 回の呼び出し · %s"
+
+msgid "%d calls · %s"
+msgstr "%d 回の呼び出し · %s"
+
+msgid "Switch to Work mode?"
+msgstr "作業モードに切り替えますか？"
+
+msgid "Orca needs Work mode to continue this task. Switching modes does not approve any file change."
+msgstr "このタスクを続行するには作業モードが必要です。モードの切り替えはファイル変更の承認にはなりません。"
+
+msgid "Switch to Work"
+msgstr "作業に切り替え"
+
+msgid "Stay in Plan"
+msgstr "計画を継続"
+
+msgid "Reason: %s"
+msgstr "理由：%s"
+
+msgid "Work mode enabled"
+msgstr "作業モードが有効"
+
+msgid "Continuing this task in Work mode. Changes still require approval."
+msgstr "作業モードでタスクを続行します。変更には引き続き承認が必要です。"
+
+msgid "Remaining in Plan mode"
+msgstr "計画モードを継続"
+
+msgid "Orca will finish this turn without making project changes."
+msgstr "プロジェクトを変更せずにこのターンを終了します。"
+
+msgid "Mode switch cancelled"
+msgstr "モード切り替えをキャンセル"
+
+msgid "Mode switch unavailable"
+msgstr "モードを切り替えられません"
+
+msgid "Orca remains in Plan mode."
+msgstr "計画モードを継続します。"
+
+msgid "Switching to Work mode..."
+msgstr "作業モードに切り替え中…"
+
+msgid "Staying in Plan mode..."
+msgstr "計画モードを継続中…"
+
+msgid "Expand Diff"
+msgstr "差分を拡大"
+
+msgid "Open File"
+msgstr "ファイルを開く"
+
+msgid "Apply"
+msgstr "適用"
+
+msgid "Reject"
+msgstr "却下"
+
+msgid "Revert"
+msgstr "元に戻す"
+
+msgid "Check recovery"
+msgstr "復旧状態を確認"
+
+msgid "Modified  %s"
+msgstr "変更済み  %s"
+
+msgid "Validated: %s"
+msgstr "検証：%s"
+
+msgid "Passed"
+msgstr "検証済み"
+
+msgid "Revert rechecks current file state."
+msgstr "元に戻す前に現在のファイル状態を再確認します。"
+
+msgid "Revert is available in idle Work mode."
+msgstr "作業モードの待機中に元に戻せます。"
+
+msgid "Review Changes · %s"
+msgstr "変更のレビュー · %s"
+
+msgid "Previous"
+msgstr "変更前"
+
+msgid "Proposed"
+msgstr "提案"
+
+msgid "Close"
+msgstr "閉じる"
+
+msgid "Project Settings"
+msgstr "プロジェクト設定"
+
+msgid "Project File"
+msgstr "プロジェクトファイル"
+
+msgid "Project Main Scene"
+msgstr "プロジェクトのメインシーン"
+
+msgid "Scene"
+msgstr "シーン"
+
+msgid "Not configured"
+msgstr "未設定"
+
+msgid "REVIEW"
+msgstr "レビュー"
+
+msgid "%d action"
+msgstr "%d 個のアクション"
+
+msgid "%d actions"
+msgstr "%d 個のアクション"
+
+msgid "%d setting"
+msgstr "%d 個の設定"
+
+msgid "%d settings"
+msgstr "%d 個の設定"
+
+msgid "Change"
+msgstr "変更"
+
+msgid "Scene Change"
+msgstr "シーンの変更"
+
+msgid "TRUST REVIEW"
+msgstr "信頼確認"
+
+msgid "Trust and Prepare"
+msgstr "信頼して準備"
+
+msgid "Authorize Script Attach"
+msgstr "スクリプトの追加を承認"
+
+msgid "Authorize Script Detach"
+msgstr "スクリプトの取り外しを承認"
+
+msgid "Create Scene"
+msgstr "シーンを作成"
+
+msgid "Set Scene Property"
+msgstr "シーンのプロパティを設定"
+
+msgid "Rename Scene Node"
+msgstr "シーンのノード名を変更"
+
+msgid "Reparent Scene Node"
+msgstr "シーンの親ノードを変更"
+
+msgid "Add Scene Node"
+msgstr "シーンにノードを追加"
+
+msgid "Remove Scene Node"
+msgstr "シーンからノードを削除"
+
+msgid "Attach Scene Script"
+msgstr "シーンにスクリプトを追加"
+
+msgid "Detach Scene Script"
+msgstr "シーンからスクリプトを取り外す"
+
+msgid "Instantiate Child Scene"
+msgstr "子シーンをインスタンス化"
+
+msgid "Connect Scene Signal"
+msgstr "シーンのシグナルを接続"
+
+msgid "Disconnect Scene Signal"
+msgstr "シーンのシグナル接続を解除"
+
+msgid "Attach"
+msgstr "追加"
+
+msgid "Detach"
+msgstr "取り外す"
+
+msgid "Connect"
+msgstr "接続"
+
+msgid "Disconnect"
+msgstr "接続解除"
+
+msgid "Get started with Orca"
+msgstr "Orca を使い始める"
+
+msgid "Connect a model to continue"
+msgstr "モデルに接続して続行"
+
+msgid "Choose a model to continue"
+msgstr "モデルを選択して続行"
+
+msgid "Restoring your connection"
+msgstr "接続を復元中"
+
+msgid "Close connection setup"
+msgstr "接続設定を閉じる"
+
+msgid "Sign in / Sign up with Orca"
+msgstr "Orca にログイン／新規登録"
+
+msgid "Use models through your Orca account."
+msgstr "Orca アカウントでモデルを利用します。"
+
+msgid "Bring your own API key"
+msgstr "自分の API キーを使う"
+
+msgid "Connect your preferred provider—or use local models."
+msgstr "お好みのプロバイダーに接続するか、ローカルモデルを利用します。"
+
+msgid "Choose a model"
+msgstr "モデルを選択"
+
+msgid "Open model selection in Provider Settings."
+msgstr "プロバイダー設定でモデルの選択を開きます。"
+
+msgid "Set up later"
+msgstr "後で設定"
+
+msgid "Choose how you’d like to connect."
+msgstr "接続方法を選択してください。"
+
+msgid "Your draft is kept while you connect."
+msgstr "接続中も下書きは保持されます。"
+
+msgid "Use Orca models"
+msgstr "Orca のモデルを使う"
+
+msgid "Continue Orca sign-in"
+msgstr "Orca へのログインを続行"
+
+msgid "Choose a model included in your account."
+msgstr "アカウントで利用できるモデルを選択してください。"
+
+msgid "Finish connecting your account in the browser."
+msgstr "ブラウザーでアカウントの接続を完了してください。"
+
+msgid "Sign in to Orca or connect your own provider. Your draft is ready when you are."
+msgstr "Orca にログインするか、お使いのプロバイダーに接続してください。下書きはそのまま残ります。"
+
+msgid "Choose an available model included in your Orca account. Your draft has been kept."
+msgstr "Orca アカウントで利用できるモデルを選択してください。下書きは保持されています。"
+
+msgid "Choose a model in Provider Settings. Your draft has been kept."
+msgstr "プロバイダー設定でモデルを選択してください。下書きは保持されています。"
+
+msgid "Restoring your Orca connection… Your draft has been kept."
+msgstr "Orca への接続を復元中… 下書きは保持されています。"
+
+msgid "Plugin updates"
+msgstr "プラグインの更新"
+
+msgid "Orca %s is available"
+msgstr "Orca %s が利用可能"
+
+msgid "Update & Restart"
+msgstr "更新して再起動"
+
+msgid "Check for updates"
+msgstr "更新を確認"
+
+msgid "What’s new"
+msgstr "新機能"
+
+msgid "Open official release notes in your browser"
+msgstr "公式リリースノートをブラウザーで開く"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "Later"
+msgstr "後で"
+
+msgid "Check automatically (daily)"
+msgstr "毎日自動で確認"
+
+msgid "Restore previous addon & restart"
+msgstr "前のアドオンに戻して再起動"
+
+msgid "Restore the verified rollback copy for this project"
+msgstr "このプロジェクトの検証済みバックアップを復元"
+
+msgid "Update Orca"
+msgstr "Orca を更新"
+
+msgid "Restore Orca"
+msgstr "Orca を復元"
+
+msgid "Restore & Restart"
+msgstr "復元して再起動"
+
+msgid "Restore the verified previous Orca addon and restart Godot?"
+msgstr "検証済みの前の Orca アドオンを復元し、Godot を再起動しますか？"
+
+msgid "Download and install Orca %s in this project, then restart Godot?\n\nThe previous addon will be retained for rollback."
+msgstr "このプロジェクトに Orca %s をダウンロード・インストールし、Godot を再起動しますか？\n\n前のアドオンは復元用に保持されます。"
+
+msgid "\n\nSave your editor work first and close other editors of this project. Active Orca work and unsaved scripts/scenes must be finished before installation."
+msgstr "\n\n先に編集内容を保存し、このプロジェクトを開いている他のエディターを閉じてください。インストール前に Orca の作業を終了し、スクリプトやシーンを保存する必要があります。"
+
+msgid "You have the latest stable Orca release."
+msgstr "最新の安定版 Orca を使用しています。"
+
+msgid "Checking for updates…"
+msgstr "更新を確認中…"
+
+msgid "Update check cancelled."
+msgstr "更新の確認をキャンセルしました。"
+
+msgid "Update cancelled."
+msgstr "更新をキャンセルしました。"
+
+msgid "Attach images"
+msgstr "画像を添付"
+
+msgid "Attach images — Orca"
+msgstr "画像を添付 — Orca"
+
+msgid "Image preview"
+msgstr "画像プレビュー"
+
+msgid "Drop images here"
+msgstr "ここに画像をドロップ"
+
+msgid "PNG, JPEG, or WebP · up to four images\nAttachments stay outside your project files."
+msgstr "PNG、JPEG、WebP · 最大 4 枚\n添付画像はプロジェクトファイルに保存されません。"
+
+msgid "Browse…"
+msgstr "参照…"
+
+msgid "%d / 4 images attached"
+msgstr "%d / 4 枚の画像を添付済み"
+
+msgid "Remove image"
+msgstr "画像を削除"
+
+msgid " · resized"
+msgstr " · サイズ変更済み"
+
+msgid "Remove script reference"
+msgstr "スクリプト参照を削除"
+
+msgid "Drop images to attach"
+msgstr "画像をドロップして添付"
+
+msgid "Drop scripts to attach"
+msgstr "スクリプトをドロップして添付"
+
+msgid "This saved conversation is view-only."
+msgstr "この保存済みの会話は閲覧専用です。"
+
+msgid "This model does not support image input."
+msgstr "このモデルは画像入力に対応していません。"
+
+msgid "Image support is unconfirmed. Configure it in Provider settings."
+msgstr "画像入力への対応は未確認です。プロバイダー設定で指定してください。"
+
+msgid "Four images attached. Remove an image to add another."
+msgstr "4 枚の画像を添付済みです。追加するには画像を 1 枚削除してください。"
+
+msgid "%s supports image input. Opens a separate drop/Browse window. Paste screenshots or drag project images onto the input. Dropping desktop files on the main editor imports them; use the attachment window instead."
+msgstr "%s は画像入力に対応しています。ドロップ／参照用の別ウィンドウを開きます。スクリーンショットの貼り付けやプロジェクト画像のドラッグは入力欄で行えます。デスクトップのファイルをメインエディターにドロップするとインポートされるため、添付ウィンドウを使ってください。"
+
+msgid "Drop PNG, JPEG, or WebP still-image files only."
+msgstr "PNG、JPEG、WebP の静止画像ファイルのみドロップしてください。"
+
+msgid "Only local image files can be attached."
+msgstr "ローカルの画像ファイルのみ添付できます。"
+
+msgid "Attach at most four images per message."
+msgstr "画像はメッセージごとに最大 4 枚添付できます。"
+
+msgid "Attach at most four project scripts."
+msgstr "プロジェクトのスクリプトは最大 4 個添付できます。"
+
+msgid "Attach at most four scripts per message."
+msgstr "スクリプトはメッセージごとに最大 4 個添付できます。"
+
+msgid "This conversation is not accepting attachments."
+msgstr "この会話では添付を受け付けていません。"
+
+msgid "This conversation is not accepting script references."
+msgstr "この会話ではスクリプト参照を受け付けていません。"
+
+msgid "Could not prepare image."
+msgstr "画像を準備できませんでした。"
+
+msgid "Could not read clipboard image."
+msgstr "クリップボードの画像を読み取れませんでした。"
+
+msgid "Could not prepare script references."
+msgstr "スクリプト参照を準備できませんでした。"
+
+msgid "Invalid script reference."
+msgstr "無効なスクリプト参照です。"
+
+msgid "The referenced script could not be opened."
+msgstr "参照先のスクリプトを開けませんでした。"
+
+msgid "Submission was not accepted. Your draft has been kept."
+msgstr "送信は受け付けられませんでした。下書きは保持されています。"
+
+msgid "This saved session is view-only"
+msgstr "この保存済みセッションは閲覧専用です"
+
+msgid "This interrupted or truncated session is view-only. Start a new chat to continue."
+msgstr "この中断または一部が欠落したセッションは閲覧専用です。続行するには新しいチャットを開始してください。"
+
+msgid "Describe unfinished work from the recovery checkpoint..."
+msgstr "復旧チェックポイントの未完了の作業を入力…"
+
+msgid "Start a new chat to continue after this interrupted tool turn"
+msgstr "中断されたツールのターン後に続行するには、新しいチャットを開始してください"
+
+msgid "Response stopped."
+msgstr "応答を停止しました。"
+
+msgid "Recovery Ready"
+msgstr "復旧準備完了"
+
+msgid "Recovery storage"
+msgstr "復旧用ストレージ"
+
+msgid "System Error"
+msgstr "システムエラー"
+
+msgid "Storage Warning"
+msgstr "ストレージの警告"
+
+msgid "Could not clear the active conversation checkpoint."
+msgstr "現在の会話のチェックポイントを削除できませんでした。"
+
+msgid "Could not save the script-change checkpoint."
+msgstr "スクリプト変更のチェックポイントを保存できませんでした。"
+
+msgid "Some local session files could not be removed."
+msgstr "一部のローカルセッションファイルを削除できませんでした。"
+
+msgid "Restored script-change checkpoint. Changes are never replayed. Revert rechecks current disk and editor state."
+msgstr "スクリプト変更のチェックポイントを復元しました。変更を再実行することはありません。元に戻す際には現在のディスクとエディターの状態を再確認します。"
+
+msgid "Completed successfully."
+msgstr "正常に完了しました。"
+
+msgid "Completed with cleanup required."
+msgstr "完了しましたが、後処理が必要です。"
+
+msgid "Recovery required. See the associated change record."
+msgstr "復旧が必要です。関連する変更記録を確認してください。"
+
+msgid "Tool did not complete."
+msgstr "ツールは完了しませんでした。"
+
+msgid "Tool was cancelled."
+msgstr "ツールはキャンセルされました。"
+
+msgid "Task checklist update failed."
+msgstr "タスク一覧の更新に失敗しました。"
+
+msgid "Unknown"
+msgstr "不明"
+
+msgid "Unknown error"
+msgstr "不明なエラー"
+
+msgid "Session context usage"
+msgstr "セッションのコンテキスト使用量"
+
+msgid "Session cost"
+msgstr "セッションの費用"
+
+msgid "Context %s"
+msgstr "コンテキスト %s"
+
+msgid "Context --"
+msgstr "コンテキスト --"
+
+msgid "Context 0"
+msgstr "コンテキスト 0"
+
+msgid "Cost $%.4f"
+msgstr "費用 $%.4f"
+
+msgid "Cost $0.0000"
+msgstr "費用 $0.0000"
+
+msgid "Cost --"
+msgstr "費用 --"
+
+msgid "Request ~%s"
+msgstr "リクエスト ~%s"
+
+msgid "Latest completed request (provider-reported): %s%s\nSession input: %s\nSession output: %s\nCached input: %s\nUsage reporting: %s"
+msgstr "直近の完了リクエスト（プロバイダー報告）：%s%s\nセッション入力：%s\nセッション出力：%s\nキャッシュ入力：%s\n使用量の報告：%s"
+
+msgid "Session cost: %s\nModel: %s\nBillable tokens reported: %s\nCost source: %s."
+msgstr "セッションの費用：%s\nモデル：%s\n報告された課金対象トークン：%s\n費用の情報源：%s。"
+
+msgid "Input Map  %s"
+msgstr "入力マップ  %s"
+
+msgid "Open Scene"
+msgstr "シーンを開く"
+
+msgid "Warning: %s"
+msgstr "警告：%s"
+
+msgid "Target  %s\nNode    %s\nScript  %s\n\nThis first approval permits Godot to compile, load, and instantiate the reviewed script after an immediate hash recheck while preparing and revalidating a candidate. It does not modify the scene. Godot cannot lock the file against external replacement during loading."
+msgstr "対象          %s\nノード        %s\nスクリプト    %s\n\nこの最初の承認により、候補の準備と再検証時にハッシュを直前に再確認したうえで、レビュー済みスクリプトを Godot がコンパイル・読み込み・インスタンス化することを許可します。シーンは変更しません。Godot は読み込み中の外部からのファイル置き換えをロックできません。"
+
+msgid "Target    %s\nNode      %s (%s)\nPrevious  %s\nProposed  %s\nBase      %s"
+msgstr "対象      %s\nノード    %s (%s)\n変更前    %s\n提案      %s\nベース    %s"
+
+msgid "Target  %s\nParent  %s\nNode    %s \"%s\"\nResult  %s nodes"
+msgstr "対象        %s\n親          %s\nノード      %s「%s」\n結果        %s 個のノード"
+
+msgid "Target    %s\nNode      %s\nProperty  %s\nPrevious  %s\nProposed  %s"
+msgstr "対象          %s\nノード        %s\nプロパティ    %s\n変更前        %s\n提案          %s"
+
+msgid "Target    %s\nPrevious  %s\nProposed  %s"
+msgstr "対象      %s\n変更前    %s\n提案      %s"
+
+msgid "Target  %s\nRemove  %s \"%s\"\nResult  %s nodes"
+msgstr "対象    %s\n削除    %s「%s」\n結果    %s 個のノード"
+
+msgid "Target    %s\nNode      %s\nPrevious  %s\nProposed  %s"
+msgstr "対象      %s\nノード    %s\n変更前    %s\n提案      %s"
+
+msgid "Target  %s\nParent  %s\nScene   %s\nNode    %s"
+msgstr "対象      %s\n親        %s\nシーン    %s\nノード    %s"
+
+msgid "Target  %s\nSignal  %s.%s\nMethod  %s.%s\nFlags   %s"
+msgstr "対象        %s\nシグナル    %s.%s\nメソッド    %s.%s\nフラグ      %s"
+
+msgid "Target  %s\nRoot    %s \"%s\""
+msgstr "対象      %s\nルート    %s「%s」"
+
+msgid "ADD"
+msgstr "追加"
+
+msgid "REMOVE"
+msgstr "削除"
+
+msgid "UPDATE"
+msgstr "更新"
+
+msgid "  Previous: %s\n"
+msgstr "  変更前：%s\n"
+
+msgid "  Proposed: %s\n"
+msgstr "  提案：%s\n"
+
+msgid "Current model: gpt-4o\nClick to configure"
+msgstr "現在のモデル：gpt-4o\nクリックして設定"
+
+msgid "complete"
+msgstr "完全"
+
+msgid "partial or unavailable"
+msgstr "一部のみ、または取得不可"
+
+msgid "estimated from public model pricing"
+msgstr "公開モデル料金からの推定"
+
+msgid "reported by the provider"
+msgstr "プロバイダーからの報告"
+
+msgid "prepared"
+msgstr "準備済み"
+
+msgid "blocked"
+msgstr "保留"
+
+msgid "active"
+msgstr "実行中"
+
+msgid "\n\nLocal request estimate: %d tokens (%s).\nSafe input budget: %d of %d tokens.\nReserved output: %d; future tool result: %d.\nIncludes request instructions, tool schemas/results, image reserves and private continuation when applicable. This estimate is separate from provider-reported usage and billing reservations."
+msgstr "\n\nローカルのリクエスト推定：%d トークン（%s）。\n安全な入力予算：%d / %d トークン。\n出力の予約：%d、後続のツール結果：%d。\nリクエストの指示、ツールのスキーマと結果、画像用の予約、該当する場合は非公開の継続情報を含みます。この推定は、プロバイダー報告の使用量や課金用の予約とは別です。"
+
+msgid "Sign in to use Orca-hosted models."
+msgstr "Orca のホストモデルを利用するにはログインしてください。"
+
+msgid "Secure credential storage is unavailable. Enable your OS credential vault."
+msgstr "安全な資格情報ストレージを利用できません。OS の資格情報ストアを有効にしてください。"
+
+msgid "Orca Cloud could not start sign-in. Check your connection and try again."
+msgstr "Orca Cloud へのログインを開始できませんでした。接続を確認して再試行してください。"
+
+msgid "Sign in or sign up in your browser, then approve this editor."
+msgstr "ブラウザーでログインまたは新規登録し、このエディターを承認してください。"
+
+msgid "The account service returned invalid credentials. Start sign-in again."
+msgstr "アカウントサービスが無効な資格情報を返しました。ログインをやり直してください。"
+
+msgid "The OS credential vault could not be opened. Unlock it and sign in again."
+msgstr "OS の資格情報ストアを開けませんでした。ロックを解除して再度ログインしてください。"
+
+msgid "Your connection could not be saved securely. Unlock the OS vault and try again."
+msgstr "接続情報を安全に保存できませんでした。OS の資格情報ストアのロックを解除して再試行してください。"
+
+msgid "Sign-in was declined or interrupted. Start a new connection."
+msgstr "ログインが拒否または中断されました。接続をやり直してください。"
+
+msgid "The pairing code expired. Sign in again to get a new code."
+msgstr "ペアリングコードの有効期限が切れました。再度ログインして新しいコードを取得してください。"
+
+msgid "Sign-in cancelled."
+msgstr "ログインをキャンセルしました。"
+
+msgid "Refresh your account connection before the next request."
+msgstr "次のリクエストの前にアカウントの接続を更新してください。"
+
+msgid "Account information could not be refreshed. Reconnect if your session was revoked."
+msgstr "アカウント情報を更新できませんでした。セッションが取り消されている場合は再接続してください。"
+
+msgid "The account service returned invalid account information."
+msgstr "アカウントサービスが無効なアカウント情報を返しました。"
+
+msgid "Your account is connected. Hosted models are ready to use."
+msgstr "アカウントは接続済みです。ホストモデルを利用できます。"
+
+msgid "Signing out…"
+msgstr "ログアウト中…"
+
+msgid "Signed out locally. Check Orca Console to revoke the editor session if the backend or OS vault was unavailable."
+msgstr "ローカルでログアウトしました。バックエンドや OS の資格情報ストアを利用できなかった場合は、Orca Console でエディターのセッションを取り消してください。"
+
+msgid "The backend is offline. Your saved connection is retained; use Refresh account when it is available."
+msgstr "バックエンドはオフラインです。保存済みの接続情報は保持されます。利用可能になったらアカウントを更新してください。"
+
+msgid "Your saved connection could not be restored. Check the backend and OS vault, then sign in again if needed."
+msgstr "保存済みの接続を復元できませんでした。バックエンドと OS の資格情報ストアを確認し、必要に応じて再度ログインしてください。"
+
+msgid "Updates come from official Orca GitHub Releases."
+msgstr "更新は Orca の公式 GitHub Releases から取得します。"
+
+msgid "Orca %s is available."
+msgstr "Orca %s が利用可能です。"
+
+msgid "Downloading Orca %s…"
+msgstr "Orca %s をダウンロード中…"
+
+msgid "Update installed. Your previous addon is retained for rollback."
+msgstr "更新をインストールしました。前のアドオンは復元用に保持されています。"
+
+msgid "The previous addon was restored."
+msgstr "前のアドオンを復元しました。"
+
+msgid "The previous update stopped."
+msgstr "前の更新は停止しました。"
+
+msgid "Checking GitHub Releases…"
+msgstr "GitHub Releases を確認中…"
+
+msgid "Could not check for updates."
+msgstr "更新を確認できませんでした。"
+
+msgid "Unsupported release metadata."
+msgstr "未対応のリリースメタデータです。"
+
+msgid "Checking installed addon files…"
+msgstr "インストール済みアドオンのファイルを確認中…"
+
+msgid "Verifying and staging the release…"
+msgstr "リリースを検証して準備中…"
+
+msgid "Verified. Preparing the editor restart…"
+msgstr "検証済み。エディターの再起動を準備中…"
+
+msgid "Closing Godot; the verified updater will reopen this project."
+msgstr "Godot を終了します。検証済みの更新ツールがこのプロジェクトを再度開きます。"
+
+msgid "GDScript is valid."
+msgstr "GDScript は有効です。"
+
+msgid "No GDScript validation required."
+msgstr "GDScript の検証は不要です。"
+
+msgid "Parsed and verified project.godot Input Map state."
+msgstr "project.godot の入力マップを解析・検証しました。"
+
+msgid "Loaded the saved target as a PackedScene and verified project.godot."
+msgstr "保存済みの対象を PackedScene として読み込み、project.godot を検証しました。"
+
+msgid "Validated allowlisted typed settings and parsed the candidate project.godot."
+msgstr "許可された型付き設定を検証し、候補の project.godot を解析しました。"
+
+msgid "Packed, saved, and reloaded the complete proposed scene as a PackedScene."
+msgstr "提案されたシーン全体を PackedScene としてパック・保存し、再読み込みしました。"
+
+msgid "Trusted script loaded; packed, saved, and reloaded the complete proposed scene."
+msgstr "信頼済みのスクリプトを読み込み、提案されたシーン全体をパック・保存・再読み込みしました。"
+
+msgid "Hash-bound intent validated without loading the scene or compiling the script. Approval may execute script initialization while constructing and revalidating the candidate."
+msgstr "シーンの読み込みやスクリプトのコンパイルを行わず、ハッシュに結び付いた意図を検証しました。承認後、候補の構築と再検証時にスクリプトの初期化が実行される場合があります。"
+
+msgid "Viewport width"
+msgstr "ビューポートの幅"
+
+msgid "Viewport height"
+msgstr "ビューポートの高さ"
+
+msgid "Window width override"
+msgstr "ウィンドウ幅の上書き"
+
+msgid "Window height override"
+msgstr "ウィンドウ高さの上書き"
+
+msgid "Stretch mode"
+msgstr "ストレッチモード"
+
+msgid "Stretch aspect"
+msgstr "ストレッチのアスペクト比"
+
+msgid "API Key (optional)"
+msgstr "API キー（任意）"
+
+msgid "OpenAI API Key"
+msgstr "OpenAI API キー"
+
+msgid "Gemini API Key"
+msgstr "Gemini API キー"
+
+msgid "OpenRouter API Key"
+msgstr "OpenRouter API キー"
+
+msgid "DeepSeek API Key"
+msgstr "DeepSeek API キー"
+
+msgid "Azure API Key"
+msgstr "Azure API キー"
+
+msgid "xAI API Key"
+msgstr "xAI API キー"
+
+msgid "OpenAI-compatible"
+msgstr "OpenAI 互換"
+
+msgid "Local OpenAI-compatible"
+msgstr "ローカル OpenAI 互換"

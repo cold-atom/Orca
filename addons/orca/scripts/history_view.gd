@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 signal done_requested
 signal session_requested(session_id: String)
@@ -13,6 +14,10 @@ var _list: VBoxContainer
 var _empty_label: Label
 var _delete_dialog: ConfirmationDialog
 var _delete_session_id := ""
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -46,7 +51,7 @@ func _build_ui() -> void:
 	content.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
 	margin.add_child(content)
 
-	var header := HBoxContainer.new()
+	var header := HFlowContainer.new()
 	header.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(header)
 	var title := Label.new()
@@ -73,6 +78,7 @@ func _build_ui() -> void:
 	content.add_child(toolbar)
 	var count_hint := Label.new()
 	count_hint.text = "Up to 50 recent sessions"
+	count_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	count_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	count_hint.add_theme_color_override("font_color", Color(0.48, 0.51, 0.56))
 	toolbar.add_child(count_hint)
@@ -123,6 +129,7 @@ func _add_session_row(summary: Dictionary, current_session_id: String) -> void:
 	var heading := HBoxContainer.new()
 	content.add_child(heading)
 	var title := Label.new()
+	title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	title.text = str(summary.get("title", "Conversation"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -135,6 +142,7 @@ func _add_session_row(summary: Dictionary, current_session_id: String) -> void:
 	heading.add_child(time_label)
 
 	var preview := Label.new()
+	preview.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	preview.text = str(summary.get("last_prompt", "No prompt preview"))
 	preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	preview.max_lines_visible = 2
@@ -147,13 +155,14 @@ func _add_session_row(summary: Dictionary, current_session_id: String) -> void:
 	content.add_child(footer)
 	var mode_name := "Work" if int(summary.get("mode", 1)) == 1 else "Plan"
 	var detail := Label.new()
-	detail.text = "%s · %s" % [mode_name, str(summary.get("model", "Unknown model"))]
+	var parts: Array = [["%s · %s", [Localization.source(mode_name), str(summary.get("model", "Unknown model"))]]]
 	if int(summary.get("changed_file_count", 0)) > 0:
-		detail.text += " · %d changed" % int(summary["changed_file_count"])
+		parts.append([" · %d changed", [int(summary["changed_file_count"])]])
 	if bool(summary.get("cost_available", false)):
-		detail.text += " · $%.4f" % float(summary.get("cost_usd", 0.0))
+		parts.append([" · $%.4f", [float(summary.get("cost_usd", 0.0))]])
 	if not bool(summary.get("clean", true)) or not bool(summary.get("resumable", true)):
-		detail.text += " · View only"
+		parts.append([" · View only", []])
+	Localization.bind_parts(detail, &"text", parts)
 	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail.clip_text = true
 	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -175,7 +184,7 @@ func _add_session_row(summary: Dictionary, current_session_id: String) -> void:
 func _confirm_delete(session_id: String, title: String) -> void:
 	_delete_session_id = session_id
 	_delete_dialog.title = "Delete Conversation"
-	_delete_dialog.dialog_text = "Delete \"%s\"? This cannot be undone." % title
+	Localization.bind(_delete_dialog, &"dialog_text", "Delete \"%s\"? This cannot be undone.", [title])
 	_delete_dialog.ok_button_text = "Delete"
 	_delete_dialog.popup_centered()
 

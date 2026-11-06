@@ -3,12 +3,17 @@ extends PanelContainer
 
 const MAX_VISIBLE_HEIGHT := 160.0
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 var _header_button: Button
 var _scroll: ScrollContainer
 var _list: VBoxContainer
 var _tasks: Array = []
 var _expanded := true
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -92,6 +97,7 @@ func _rebuild() -> void:
 		marker.add_theme_color_override("font_color", _status_color(status))
 		row.add_child(marker)
 		var text := Label.new()
+		text.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		text.text = str(task.get("content", ""))
 		text.tooltip_text = text.text
 		text.custom_minimum_size.x = 0
@@ -118,11 +124,11 @@ func _update_header() -> void:
 			completed += 1
 		elif task.get("status") == "in_progress":
 			active = str(task.get("content", ""))
-	var title := "Tasks %d/%d" % [completed, _tasks.size()]
+	var parts: Array = [["%s  ", ["v" if _expanded else ">"]], ["Tasks %d/%d", [completed, _tasks.size()]]]
 	if not active.is_empty():
-		title += "  " + active
-	_header_button.text = ("v" if _expanded else ">") + "  " + title
-	_header_button.tooltip_text = title
+		parts.append(["  %s", [active]])
+	Localization.bind_parts(_header_button, &"text", parts)
+	Localization.bind_parts(_header_button, &"tooltip_text", parts.slice(1))
 
 
 func _status_marker(status: String) -> String:

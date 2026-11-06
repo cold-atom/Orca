@@ -2,6 +2,7 @@
 extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
 
 signal decision_requested(call_id: String, origin_turn_id: int, approved: bool)
 
@@ -12,6 +13,10 @@ var _reason: Label
 var _status: Label
 var _stay_button: Button
 var _switch_button: Button
+
+
+func _enter_tree() -> void:
+	Localization.attach(self)
 
 
 func _ready() -> void:
@@ -74,7 +79,7 @@ func _ready() -> void:
 func configure(request: Dictionary, origin_turn_id: int) -> void:
 	_call_id = str(request.get("call_id", ""))
 	_origin_turn_id = origin_turn_id
-	_reason.text = "Reason: " + str(request.get("reason", ""))
+	Localization.bind(_reason, &"text", "Reason: %s", [str(request.get("reason", ""))])
 
 
 func complete(execution: Dictionary, _duration_ms: int) -> void:

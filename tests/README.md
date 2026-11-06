@@ -6,7 +6,7 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
-`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `editor_ui_scale_test.gd`
+`auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `editor_ui_scale_test.gd`, `localization_editor_test.gd`
 and `update_editor_test.gd` extend the tool Node in
 `editor_test_case.gd`. Run them through `run_editor_test.py`, which enables a
 test-only EditorPlugin in a disposable project and uses the editor's existing
@@ -27,6 +27,8 @@ python3 tests/run_editor_test.py editor_ui_scale_test.gd
 python3 tests/run_editor_test.py editor_ui_scale_test.gd --graphical
 python3 tests/run_editor_test.py update_editor_test.gd
 python3 tests/run_editor_test.py update_editor_test.gd --graphical
+python3 tests/run_editor_test.py localization_editor_test.gd
+python3 tests/run_editor_test.py localization_editor_test.gd --graphical
 ```
 
 Set `GODOT_BIN` to Godot 4.7.2; `--godot` and `--temp-parent` are optional.
@@ -35,7 +37,29 @@ isolation; it does not claim Windows/macOS fixture acceptance. Do not launch
 these Node cases with `--editor --script`. Other legacy editor cases below
 retain their existing entry points until separately migrated.
 
-## Session Auto apply and recovery (1.6.0 candidate)
+## Interface localization (unreleased)
+
+```bash
+python3 -m unittest discover -s tests -p translation_catalog_test.py -v
+python3 tests/run_editor_test.py localization_editor_test.gd
+python3 tests/run_editor_test.py localization_editor_test.gd --graphical
+```
+
+Catalog tests enforce matching Chinese/Spanish/Japanese/Korean keys, nonempty translations,
+ordered formatting/markup placeholders, duplicate rejection and fixed authored
+UI coverage. The editor case runs three clean processes sharing isolated settings
+to verify live English/Chinese/Spanish/Japanese/Korean switching, saved Japanese
+restoration and then saved Korean restoration.
+It covers 300-unit normal/1.5×/2× System/Provider/About and review/activity/History
+layouts, original messages/model/code/evidence, drafts/selection/images/scripts,
+an open expanded diff, execution-trust presentation, unchanged authorization,
+actual Work review/apply/Revert, turn-fixed language across reentry/Plan-to-Work/
+tool follow-ups (including Japanese and Korean), matching original receipts and cancellation cleanup.
+Headless and Linux/X11/OpenGL acceptance pass with clean exits and no diagnostics.
+Independent native-speaker review, other platforms/themes and live-model language
+adherence remain manual. Details: [`docs/LOCALIZATION.md`](../docs/LOCALIZATION.md).
+
+## Session Auto apply and recovery (1.6.0)
 
 ```bash
 export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
@@ -324,24 +348,24 @@ real user browser registration/verification, live hosted models, OS-vault unlock
 other platforms, session expiry and deployed HTTPS pairing/inference. Public HTTPS
 health responses establish reachability only, not authenticated or metered acceptance.
 
-## 1.6.0 release-candidate verification
+## 1.6.0 release regression verification
 
 The About/support-report expectations follow plugin version 1.6.0. Synthetic
 1.3.0 → 1.4.0 installation/rollback fixtures intentionally retain both versions.
 Historical 1.4.1 update/catalog fixtures remain explicit. Current update metadata
 checks retain 1.5.0 coverage and verify 1.6.0 upgrades from
 1.3.0/1.4.0/1.4.1/1.5.0, exact official asset naming,
-same-version suppression and no downgrade from the candidate. Actual-source
+same-version suppression and no downgrade from 1.6.0. Actual-source
 packaging reads the current version from `plugin.cfg`.
 For this release preparation, run the version-sensitive settings/support checks, updater
 component/editor/package tests, native helper acceptance and clean initialization
 with all three startup suppressions and isolated editor configuration/data/cache.
 Run the updater editor case through `python3 tests/run_editor_test.py update_editor_test.gd`,
-as both Tests and Prepare Orca release now do. The complete pre-bump
-[Tests run at `1851544`](https://github.com/cold-atom/Orca/actions/runs/41862895217)
-passed, including all four native-helper platforms and binary-free packaging;
-1.5.0 remains published. The 1.6.0 candidate requires its own complete final-version
-CI and same-revision four-platform helper/package run. Include the Auto apply and
+as both Tests and Prepare Orca release now do. The final-commit
+[Tests run at `0d53255`](https://github.com/cold-atom/Orca/actions/runs/41872899730)
+and release preparation passed, including all four native-helper platforms and
+binary-free packaging; 1.6.0 is published. Unreleased localization requires a new
+complete CI and same-revision helper/package run before release. Include the Auto apply and
 five-process remembered-default editor cases above. Real-model acceptance should
 exercise a small automatic script task, its inline diff, active-turn revocation,
 remembered startup and History/Revert with and without an independent edit.
@@ -523,7 +547,7 @@ Run the narrow History layout check:
 "$GODOT_BIN" --headless --path . --script res://tests/history_view_test.gd
 ```
 
-Run icon-based Provider/System/About switching, English-only language presentation, release metadata, and narrow settings-layout checks:
+Run icon-based Provider/System/About switching, the five-language selector, release metadata, and narrow settings-layout checks:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/settings_view_test.gd
