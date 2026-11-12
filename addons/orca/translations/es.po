@@ -15,6 +15,15 @@ msgstr "Continuar tareas pendientes"
 msgid "Apply in editor"
 msgstr "Aplicar en el editor"
 
+msgid "Validated the live native transform and saved instance provenance without loading scenes or scripts."
+msgstr "Transformación nativa actual y procedencia guardada de la instancia validadas sin cargar escenas ni scripts."
+
+msgid "\nBaseline  Current editor state, including unsaved edits. Earlier edits are preserved; consecutive transforms do not require saving."
+msgstr "\nBase  Estado actual del editor, incluidos los cambios sin guardar. Se conservan los cambios anteriores; no hace falta guardar entre transformaciones."
+
+msgid "Revert rechecks the reviewed editor state and Undo history."
+msgstr "Revertir vuelve a comprobar el estado revisado del editor y el historial de Deshacer."
+
 msgid "Revert in editor"
 msgstr "Revertir en el editor"
 

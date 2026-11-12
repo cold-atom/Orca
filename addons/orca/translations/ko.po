@@ -18,6 +18,15 @@ msgstr "남은 작업 계속하기"
 msgid "Apply in editor"
 msgstr "편집기에 적용"
 
+msgid "Validated the live native transform and saved instance provenance without loading scenes or scripts."
+msgstr "씬이나 스크립트를 로드하지 않고 현재 네이티브 변환과 저장된 인스턴스의 원본 정보를 검증했습니다."
+
+msgid "\nBaseline  Current editor state, including unsaved edits. Earlier edits are preserved; consecutive transforms do not require saving."
+msgstr "\n기준  저장하지 않은 편집을 포함한 현재 에디터 상태입니다. 기존 편집은 유지되며 연속 변환 사이에 저장할 필요가 없습니다."
+
+msgid "Revert rechecks the reviewed editor state and Undo history."
+msgstr "되돌리기 전에 검토한 에디터 상태와 실행 취소 기록을 다시 확인합니다."
+
 msgid "Revert in editor"
 msgstr "편집기에서 되돌리기"
 

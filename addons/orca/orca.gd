@@ -53,8 +53,8 @@ func _enter_tree():
 	
 	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, toolbar)
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, chat_window)
-	if not scene_saved.is_connected(_on_scene_state_changed):
-		scene_saved.connect(_on_scene_state_changed)
+	if not scene_saved.is_connected(_on_scene_saved):
+		scene_saved.connect(_on_scene_saved)
 		scene_changed.connect(_on_scene_state_changed)
 		scene_closed.connect(_on_scene_state_changed)
 	if not EditorInterface.get_editor_undo_redo().version_changed.is_connected(_on_scene_history_changed):
@@ -65,6 +65,12 @@ func _enter_tree():
 	var button = toolbar.get_node("TextureButton")
 	if button:
 		button.pressed.connect(_toggle_chat_window)
+
+
+func _on_scene_saved(path: String) -> void:
+	if is_instance_valid(chat_window) and is_instance_valid(chat_window.agent_controller):
+		chat_window.agent_controller.record_editor_scene_save(path)
+	call_deferred("_on_scene_history_changed")
 
 
 func _on_scene_state_changed(_scene) -> void:

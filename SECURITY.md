@@ -2,12 +2,12 @@
 
 ## Supported Version
 
-Security work covers published Orca 1.7.0 and the current development checkout.
-The 1.7.0 release adds
-Orca-only interface localization, bounded read-only scene/animation exploration
-and a local usage-gated community invitation to the existing code navigation,
-session-authorized script editing and recovery. Packaging remains binary-free.
-Unreleased source changes require fresh CI/package acceptance before publication;
+Security work covers published Orca 1.7.0 and the **1.8.0 release candidate**.
+The candidate adds reviewed current-scene native edits, unsaved Node2D live baselines,
+bounded save evidence and Undo-preserving script attachment, plus workflow/card
+improvements. Plan/Work, original-proposal approval, conflict checks and execution
+trust remain enforced. Packaging remains binary-free.
+The 1.8.0 candidate requires fresh final-revision CI/package acceptance before publication;
 Asset Store moderation and broader graphical/platform acceptance remain separate.
 
 ## Reporting A Vulnerability
@@ -62,6 +62,6 @@ Orca is designed to reduce accidental project changes, not to sandbox arbitrary 
 - Development current-scene script attachment/detachment requires a saved clean current scene, non-`@tool` script, explicit execution trust and exact Apply approval. Hashes, scene/node/history identities, semantic parity and authorization are rechecked after trusted validation. The native Undo action does not save/reload/close the scene. Its explicit inverse is conflict-checked against the exact editor state, including legitimate save-pending state, and never rewinds newer user actions. Live transaction references are memory-only; historical receipts cannot authorize application or recovery. Raw `.tscn` patches containing script assignments or serialized resource/object references are conservatively denied at preparation and Apply rather than bypassing structured trust with alternative property spellings. Observation does not load scenes/scripts and never authorizes an inverse.
 - Development current-scene Control layout requires exact Apply even under script Auto apply. It accepts bounded anchors/offsets in saved clean scriptless, resource-free, connection-free core-native local scenes, excluding Containers. Executable/dependency syntax and ambiguous type headers fail before loading; live packing rejects unreviewed scripts and unowned nodes without project getter callbacks. Full scene semantics, exact derived anchor-preset review and original approval are rechecked. Pending review invalidates on intervening Undo revisions; inverse actions cannot discard newer redo branches. Serialized collection scans are work-bounded. Native actions never save/reload the scene or persist edit authority.
 - Loading or validating Godot scenes and scripts is not a security sandbox. Script preparation has an explicit trust step, but Godot may execute project code during candidate construction.
-- Native Node2D transforms use a separate bounded text-only source/instance reader and native current-state binding. Saved local/instance-root targets can retain non-tool GDScript/resources/signals; validation never packs/loads project scenes/resources/scripts. Live @tool/unsupported-language nodes are excluded. Exact review, source/cache hashes, native topology/transforms and Undo revisions are rechecked. Inverse actions check unrelated saved text records and never edit shared prefab bytes or overwrite newer actions. Control-layout/script-attachment contracts retain their separate restrictions.
+- Native Node2D transforms use a separate bounded text-only source/instance reader and live native baseline, including earlier unsaved edits. Existing saved-provenance local/instance-root targets can retain non-tool GDScript/resources/signals; validation never packs/loads project scenes/resources/scripts. Review/no-op/Undo use the live value; retained disk projections bind provenance only. Live @tool/unsupported-language nodes and targets without saved provenance are excluded. Exact approval, source/cache hashes, target identity, native topology/transforms and Undo revisions are rechecked. Inverse actions restore only the pre-Orca property and check unrelated saved records or an exact public-native-save receipt for earlier edits subsequently saved by the user. The controller keeps at most eight hash/root/history receipts, validates them against applied state and current bytes, and clears them on session reset/restoration. Receipts are private memory-only evidence, never permission or whole-scene/resource verification. Later disk drift and newer Undo actions still block inverse changes; shared prefab bytes are never written. Control-layout/script-attachment contracts retain clean-scene requirements.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for the full documented threat model and limitations.

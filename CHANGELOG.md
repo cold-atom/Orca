@@ -2,28 +2,36 @@
 
 All notable changes to Orca are documented in this file.
 
-## Unreleased
+## 1.8.0 - 2026-11-13
 
-### Fixed
-
-- Change and activity cards use compact title-case outcome badges across all five interface languages. Complete badges move below the title at narrow widths; visible qualification lines retain save/verification/recovery information. Activity timings live in expanded details/tooltips, file cards separate filenames/full paths and retain diff counts, and shared footers align navigation/actions responsively.
-- Safe finalization retains the actual stopping reason and round/call counts even when the provider supplies a summary. Remaining-budget guidance refreshes each round, runtime polling uses consistent loop identity, and BYOK Responses budgeting avoids counting retained assistant text/calls twice.
-- Open-scene restrictions are attributed to Orca's workflow rather than incorrectly described as Godot limitations.
+**In-Editor Changes & Workflow Reliability** — release candidate for Godot 4.7.2.
+Prepared for final-revision CI and packaging; not yet published. The latest
+published release is 1.7.0.
 
 ### Added
 
-- Native current-scene Node2D transforms now accept saved scripted local nodes and scene-instance roots in resource/signal-bearing game scenes. Text-only provenance and native state validation preserve explicit Apply, Undo/Redo and inverse Revert without scene/script/resource loading. Other instances/shared files stay intact. A disk proposal whose scene opens requests a fresh editor-bound review.
-- **Apply in editor** now supports reviewed Node2D position/rotation/scale/skew and Control anchor/offset changes in a saved current native scene. Native Undo/Redo and conflict-checked inverse Revert preserve the open scene; saving remains explicit. Anchor reviews include Godot's derived preset transition. Property edits always require Apply, including under script Auto apply.
-- Isolated current-scene property regressions cover all twelve properties, five-language review, Stop/rejection/Plan permissions, derived preset validation, native Undo/Redo/save, conflicts, custom-getter isolation and teardown. Pending native property reviews invalidate on intervening Undo revisions, including replaced redo branches; serialized collection validation has an independent work bound.
-- Productive turns can use up to 24 rounds with a separate 192-call ceiling; repetition/context limits and one bounded finalization remain. An over-budget batch is denied in full.
+- **Apply in editor** for reviewed Node2D position/rotation/scale/skew changes on existing local nodes and scene-instance roots, including non-`@tool` GDScript, resources and saved signals. Text-only provenance and native state validation preserve the open scene, normal Undo/Redo and conflict-checked inverse Revert. Other instances/shared files stay intact.
+- Reviewed Control anchor/offset changes in clean native scenes, including the exact derived anchor-preset transition. Native property edits always require Apply, including under script Auto apply; saving remains user-controlled.
+- **Apply in editor** for reviewed non-`@tool` script attachment/detachment in the saved current scene. Trust then Apply preserves native Undo/Redo; cards distinguish save pending, saved and unverified state.
 - **Resume remaining work** submits a user-click follow-up in the same conversation from the expanded checklist, preserving drafts, mode and normal permissions.
-- **Apply in editor** for reviewed non-`@tool` script attachment/detachment in the saved current scene. Main stays open, native Undo/Redo is retained, and explicit Revert adds a conflict-checked inverse action. Saving remains a user action; cards distinguish save pending, saved and unverified state.
-- Isolated editor regressions for multilingual status layout, task resume, native Undo/Redo, scene/script conflicts and teardown. Raw `.tscn` patches with script assignments are rejected at preparation and Apply to retain structured script trust.
 
-### Limits
+### Changed
 
-- Current-scene attachment retains bounded/dependency-free restrictions. Node2D transforms support saved local/instance-root targets with non-tool GDScript/resources/signals; @tool scenes and internal non-editable instance nodes need separate support. Control layout requires scriptless/resource-free/connection-free scenes and excludes Containers. Background targets require a tab switch; other operations retain their closed-tab workflow.
-- Longer turns can cost more and still stop at context or repetition boundaries. Live-model usefulness and Windows/macOS editor acceptance remain follow-ups. These changes are not in the published 1.7.0 assets.
+- Productive turns can use up to 24 tool rounds with a separate 192-call ceiling and 16 calls per response. Repetition/context limits and one bounded finalization remain; an over-budget batch is denied in full.
+- Plugin/About/support-report metadata identify 1.8.0. Updater coverage includes direct upgrades from 1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0, exact official ZIP naming, same-version suppression and downgrade prevention.
+
+### Fixed
+
+- Current-editor Node2D transforms use the live value, including unsaved edits, for review, no-op detection, Undo and Revert. Consecutive reviewed transforms work without saving between them. Earlier edits stay intact; bounded native-save receipts support inverse Revert after the user saves those edits. Model guidance and localized reviews describe the live baseline.
+- Change and activity cards use compact title-case outcome badges across all five interface languages. Complete badges move below the title at narrow widths; visible qualification lines retain save/verification/recovery information. Activity timings live in expanded details/tooltips, file cards separate filenames/full paths and retain diff counts, and shared footers align navigation/actions responsively.
+- Safe finalization retains the actual stopping reason and round/call counts even when the provider supplies a summary. Remaining-budget guidance refreshes each round, runtime polling uses consistent loop identity, and BYOK Responses budgeting avoids counting retained assistant text/calls twice.
+- Opening a disk proposal's scene requires a fresh editor-bound review rather than changing its application strategy. Open-scene restrictions are correctly attributed to Orca's workflow. Raw `.tscn` patches containing scripts/resource references retain the structured trust guard.
+
+### Verification And Known Limits
+
+- Current-scene attachment retains clean/bounded/dependency-free restrictions. Node2D transforms support existing saved-provenance local/instance-root targets with non-tool GDScript/resources/signals and earlier unsaved edits; new unsaved targets, @tool scenes and internal non-editable instance nodes need separate support. Control layout requires clean scriptless/resource-free/connection-free scenes and excludes Containers. Background targets require a tab switch; other operations retain their closed-tab workflow.
+- Isolated editor regressions cover native Apply/Undo/Redo/Save/Revert, unsaved-edit preservation, stale reviews, Stop/rejection/Plan permissions, task Resume, multilingual narrow layouts and teardown. The owner confirmed the Platformer Node2D move workflow works after the unsaved-baseline fix.
+- Longer turns can cost more and still stop at context or repetition boundaries. Final-version CI/package acceptance, broader real-model tasks and Windows/macOS editor acceptance remain follow-ups. These changes are not in the published 1.7.0 assets.
 
 ## 1.7.0 - 2026-11-06
 

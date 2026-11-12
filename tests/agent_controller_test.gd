@@ -1095,7 +1095,8 @@ func _test_scene_inspection_permission() -> void:
 			_expect(result.get("outcome") == "completed", tool_name + " should use the generic read-only execution path")
 		_expect(tools.execute_calls == 3 and proposals[0] == 0, "scene/animation reads must execute once each without approval or mutation")
 		var prompt: String = controller._get_system_prompt()
-		_expect(prompt.contains("inspect_editor_scene") and prompt.contains("not runtime evidence or a patch base"), "both prompts must distinguish live context from mutation and runtime evidence")
+		_expect(prompt.contains("inspect_editor_scene") and prompt.contains("not runtime evidence or a disk patch base"), "both prompts must distinguish live context from disk mutation and runtime evidence")
+		_expect(prompt.contains("Disk edits require saved state") and prompt.contains("live-baseline workflow"), "both prompts must distinguish disk edits from reviewed native editor transforms")
 		await _free_controller(controller)
 
 

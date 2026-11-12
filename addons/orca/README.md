@@ -2,24 +2,26 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-The published baseline is **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
-for Godot 4.7.2. It adds English/Simplified Chinese/Spanish/Japanese/Korean
-interface localization, focused scene/animation exploration and a quiet community
-invitation to 1.6.0's session-authorized script edits and durable recovery.
-This checkout additionally contains unreleased card readability, longer-task and
-Undo-preserving current-scene script attachment improvements. **Apply in editor**
-keeps the scene open and leaves saving to the user; both trust and change approval
-remain required. The expanded checklist offers same-conversation task Resume.
+This checkout prepares **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
+for Godot 4.7.2. Publication is pending; **1.7.0 remains the latest published release**.
+The candidate adds clearer cards, longer bounded tasks, same-conversation Resume,
+and reviewed current-scene script attachment/native property editing. Node2D
+transforms preserve earlier unsaved edits and support consecutive moves without
+saving between them. **Apply in editor** keeps the scene open with native Undo;
+saving remains user-controlled and script attachment requires Trust then Apply.
+The owner confirmed the Platformer Node2D move workflow works.
 Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
 platform's credential helper from the matching official GitHub Release if missing.
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
-usable. Release-commit Tests/native packaging and publication passed for 1.7.0;
-the new source changes require their own CI/package run. Native-speaker review, real-model
-language/inspection acceptance, broader platforms and Asset Store moderation
+usable. The pre-candidate Tests/native/package run at `91610f0` passed; the later
+unsaved-baseline fix and final 1.8.0 metadata require fresh CI/package acceptance.
+Native-speaker review, broader real-model tasks, platforms and Asset Store moderation
 remain separate. See the
+[1.8.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#180---2026-11-13)
+for the candidate, the
 [1.7.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#170---2026-11-06)
-for the published release, the
+for the latest published release, the
 [1.6.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#160---2026-11-05)
 for the published baseline, the
 [1.5.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#150---2026-11-02)
@@ -126,17 +128,21 @@ Stop keeps completed edits; Revert is a separate idle-Work action.
 
 Ask about the selected nodes or current scene to inspect native UI layout, 2D/3D transforms, visibility/processing, parent Control/Container context, and script/resource identities. `inspect_editor_scene` works with unsaved changes in Plan and Work; specify scene or subtree scope for hierarchy reads. Detailed snapshots are bounded and requested on demand. Saved-state checks and reviewed project changes still apply; live snapshots never provide a patch hash. Restored tool activity is a historical summary rather than current editor state.
 
-### Current-scene property editing (unreleased)
+### Current-scene property editing (1.8.0 candidate)
 
-In Work, ask Orca to change a Node2D position/rotation/scale/skew or a Control
-anchor/offset in the saved current scene. Review the typed previous/proposed
+In Work, ask Orca to change a Node2D position/rotation/scale/skew in the current
+scene, including existing unsaved edits, or Control anchors/offsets in a clean
+saved scene. Review the typed previous/proposed
 values and any derived anchor-preset transition, then choose **Apply in editor**.
 The scene stays open with native Undo/Redo; save it before running. **Revert in
 editor** adds a conflict-checked inverse action. Script Auto apply does not approve
-native properties. Node2D transforms accept local nodes and instance roots with
-non-@tool GDScript, resources and signals using text-only saved provenance. Control
-layout retains scriptless/resource-free/connection-free and non-Container limits.
-Save first; @tool scenes and internal non-editable instance nodes need separate support.
+native properties. Node2D transforms accept existing saved-provenance local nodes
+and instance roots with non-@tool GDScript, resources and signals. Their live baseline
+preserves earlier edits and allows consecutive moves without saving between them.
+Revert restores the value immediately before Orca's move, including after a matching
+user save. Control layout retains clean scriptless/resource-free/connection-free and
+non-Container limits. New unsaved targets, @tool scenes and internal non-editable
+instance nodes need separate support.
 
 ## Response Attribution
 

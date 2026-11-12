@@ -18,6 +18,15 @@ msgstr "继续未完成的任务"
 msgid "Apply in editor"
 msgstr "在编辑器中应用"
 
+msgid "Validated the live native transform and saved instance provenance without loading scenes or scripts."
+msgstr "已验证当前原生变换及已保存的实例来源，未加载场景或脚本。"
+
+msgid "\nBaseline  Current editor state, including unsaved edits. Earlier edits are preserved; consecutive transforms do not require saving."
+msgstr "\n基准  当前编辑器状态，包括未保存的修改。保留已有修改；连续变换无需先保存。"
+
+msgid "Revert rechecks the reviewed editor state and Undo history."
+msgstr "还原前会重新检查已审阅的编辑器状态和撤销历史。"
+
 msgid "Revert in editor"
 msgstr "在编辑器中还原"
 

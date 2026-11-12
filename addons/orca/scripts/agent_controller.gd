@@ -5,6 +5,7 @@ const ImageCapability = preload("res://addons/orca/scripts/image_capability.gd")
 const ResponseAttribution = preload("res://addons/orca/scripts/response_attribution.gd")
 const ScriptReferences = preload("res://addons/orca/scripts/script_references.gd")
 const ScriptChangeJournal = preload("res://addons/orca/scripts/script_change_journal.gd")
+const EditorTransformTransaction = preload("res://addons/orca/scripts/editor_transform_transaction.gd")
 
 signal message_received(turn_id: int, role: String, content: String, attribution: Dictionary)
 signal error_occurred(turn_id: int, message: String)
@@ -84,7 +85,8 @@ const TASK_CONTEXT_HEADING := "CURRENT ORCA TASK CHECKLIST:"
 const MAX_TOOL_BATCH_REGENERATION_ATTEMPTS := 1
 const TOOL_BATCH_CORRECTION_NOTICE := "ORCA TOOL CALL CORRECTION: The previous assistant response contained an invalid tool-call batch. No tool from that batch was executed. Regenerate the complete batch with each function.arguments value as one valid JSON object. Multiple calls are allowed only when every call is an independent read-only tool. Request Work mode, task updates, reviewed mutations, run/stop operations, observations, and verifications must each be the only call in their batch. Do not refer to the rejected batch as completed."
 const ROUND_BUDGET_WARNING_THRESHOLD := 8
-const EDITOR_SCENE_GUIDANCE := " Saved current Node2D local/instance-root transforms support non-@tool GDScript/resources/signals: exact Apply in editor even under Auto apply, keep open. Control layout requires scriptless/resource-free/connection-free, non-Container scenes. Attach/detach needs Trust then Apply. Use float radians/0-1 anchors. Report editor-only/save-pending separately from saved/verified; save before run. Other operations use closed tabs; never bypass with raw .tscn patches."
+const EDITOR_SCENE_GUIDANCE := " Node2D transforms: saved local/instance-root provenance, non-@tool GDScript/resources/signals, live unsaved baseline. Do not ask to save before or between these transforms. Read saved base_hash; exact Apply in editor (also under Auto apply), native Undo, keep open. Control layout: clean, scriptless/resource-free/connection-free, non-Container. Attachment: clean scene, Trust then Apply. Save before run; distinguish editor-only/save-pending from saved/verified. Other operations need closed tabs; never bypass with raw .tscn."
+const MAX_EDITOR_SAVE_RECEIPTS := 8
 const REQUEST_CONTEXT_INDEX_FIELDS := ["_context_message_index", "_task_context_message_index", "_runtime_context_message_index", "_loop_notice_message_index", "_tool_batch_correction_message_index", "_round_budget_message_index", "_loop_cleanup_message_index"]
 
 enum AgentMode {
@@ -176,6 +178,7 @@ var _committing_edit := false
 var _edit_permission_prompt_dirty := false
 var _editor_refresh_ids: Array = []
 var _editor_refresh_queued := false
+var _editor_save_receipts: Dictionary = {}
 
 
 func auto_apply_enabled() -> bool:
@@ -272,6 +275,7 @@ func restore_script_changes(records: Array) -> bool:
 	set_auto_apply_enabled(false)
 	_script_change_records.clear()
 	_proposals.clear()
+	_editor_save_receipts.clear()
 	for record in records:
 		_script_change_records[record["id"]] = record.duplicate(true)
 		var proposal := ScriptChangeJournal.proposal_for_recovery(record)
@@ -560,6 +564,7 @@ func start_new_session() -> bool:
 	_script_change_records.clear()
 	_init_system_prompt()
 	_proposals.clear()
+	_editor_save_receipts.clear()
 	_pending_change_id = ""
 	_context_message_index = -1
 	_task_context_message_index = -1
@@ -626,6 +631,7 @@ func restore_session_state(mode: int, continuation: Array, usage: Dictionary, ta
 	for message in continuation:
 		message_history.append(message.duplicate(true))
 	_proposals.clear()
+	_editor_save_receipts.clear()
 	_pending_change_id = ""
 	_context_message_index = -1
 	_task_context_message_index = -1
@@ -815,6 +821,19 @@ func _apply_status(result: String) -> String:
 func _automatic_write_authorized(turn_id: int, revision: int, record: Dictionary) -> bool:
 	return _owns_turn(turn_id) and not _cancel_requested and _mode == AgentMode.BUILD and auto_apply_enabled() and revision == _edit_permission_revision and _turn_allows_tools() and not EditorContext.has_unsaved_file(record["filepath"]) and ScriptChangeJournal.inspect_current(record).get("state") == "original"
 
+func record_editor_scene_save(path: String) -> void:
+	# Capture synchronously at the public save signal, including during a provider
+	# continuation. Validation/UI refresh remains one retained transaction per frame.
+	if _committing_edit or _proposals.is_empty(): return
+	var receipt := EditorTransformTransaction.capture_save_receipt(path)
+	if receipt.is_empty(): return
+	_editor_save_receipts.erase(path)
+	if _editor_save_receipts.size() >= MAX_EDITOR_SAVE_RECEIPTS:
+		_editor_save_receipts.erase(_editor_save_receipts.keys()[0])
+	_editor_save_receipts[path] = receipt
+	queue_editor_scene_refresh()
+
+
 func queue_editor_scene_refresh() -> void:
 	if not Engine.is_editor_hint() or _editor_refresh_queued or _committing_edit or _is_running:
 		return
@@ -832,6 +851,8 @@ func _refresh_one_editor_scene() -> void:
 	var proposal: Dictionary = _proposals.get(change_id, {})
 	var transaction = proposal.get("_editor_transaction")
 	if transaction != null and proposal.get("status") != "apply_recovery_required":
+		if transaction is EditorTransformTransaction:
+			transaction.record_saved_state(_editor_save_receipts.get(proposal.get("filepath", ""), {}))
 		var observed: Dictionary = transaction.observe()
 		if not observed.is_empty() and observed["status"] != proposal.get("status"):
 			proposal["status"] = observed["status"]
@@ -880,6 +901,8 @@ func revert_edit(change_id: String) -> void:
 			return
 	proposal["_editor_authorization"] = _editor_revert_authorized.bind(change_id, proposal.get("_editor_transaction"))
 	_committing_edit = true
+	if proposal.get("_editor_transaction") is EditorTransformTransaction:
+		proposal["_editor_transaction"].record_saved_state(_editor_save_receipts.get(proposal.get("filepath", ""), {}))
 	var result: String = tools_script.revert_reviewed_change(proposal)
 	_committing_edit = false
 	proposal.erase("_editor_authorization")
@@ -1916,7 +1939,7 @@ func _turn_allows_tools() -> bool:
 	return true
 
 func _get_system_prompt() -> String:
-	var shared := "You are Orca, an AI game-development assistant integrated into the Godot editor. Use project tools proactively to understand the user's Godot project. Prefer inspect_editor_scene for the user's current scene or selection, especially unsaved layout and transform changes; selection reads selected nodes only, scene/subtree read bounded descendants. Pass the expected scene_path from current context when available. Treat its native values as a live editor snapshot, not runtime evidence or a patch base; never ask users to save merely for this read. Project edits still require saved state, a fresh read_file hash, and runtime user authorization. Prefer inspect_scene over raw file reads when understanding saved .tscn structure; it reports saved serialized state, does not include unsaved or runtime-generated nodes, and does not recursively expand scene instances. Prefer inspect_project_settings over reading project.godot when understanding project configuration; omit setting_path for the bounded overview or provide one exact non-sensitive path. Be concise, explain important decisions, and never claim a tool action succeeded unless its result confirms success. For genuinely multi-step work, maintain the session checklist with update_tasks; provide the complete desired list, keep at most one item in_progress, and do not use it for trivial one-step requests."
+	var shared := "You are Orca, an AI game-development assistant in Godot. Use project tools proactively. Prefer inspect_editor_scene for the current scene/selection and unsaved layout/transforms: selection reads selected nodes only; scene/subtree read bounded descendants. Pass scene_path from context. Native values are a live editor snapshot, not runtime evidence or a disk patch base; never request saving merely to inspect. Disk edits require saved state, a fresh read_file hash and runtime authorization. Reviewed Node2D edits use a live-baseline workflow that preserves unsaved changes. Prefer inspect_scene for saved .tscn hierarchy (no unsaved/runtime nodes or recursive instances), and inspect_project_settings for configuration (omit setting_path for overview, or pass one non-sensitive path). Be concise, explain decisions and claim success only from tool evidence. For genuinely multi-step work use update_tasks with the complete list and at most one in_progress; skip it for trivial tasks."
 	shared += " Prefer find_project_symbols to locate saved GDScript declarations and find_symbol_references for whole-identifier use candidates, then read_gdscript_function or read_file for focused source. These are bounded lexical scans, not semantic ownership or rename analysis; comments/strings, dynamic calls and scene connections are excluded, locals/shadowing can match, and dirty scripts are omitted. Narrow path after truncation and never claim a partial scan is exhaustive. Save a dirty script before saved code navigation, or use exact active-unsaved function reads for editor source. Navigation results supply no patch hash."
 	if _turn_allows_focused_inspection():
 		shared += " For focused saved scene evidence use inspect_scene scope node/subtree and exact node_path; property_filter narrows stored names. Use inspect_animation for saved animation libraries, tracks and bounded keyframes; start with its overview, then an exact animation_name/player_path. It never plays or loads scenes/scripts and cannot prove runtime animation behavior or property validity. Directory listings fold companion sidecars; incomplete listings are not exhaustive. Inspector target context identifies what the user is viewing, even when different from selection; detailed resource reads still require appropriate tools and fresh saved state."

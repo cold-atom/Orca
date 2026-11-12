@@ -6,7 +6,7 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
-The unreleased workflow regressions also use this runner:
+The 1.8.0 candidate workflow regressions also use this runner:
 
 ```bash
 python3 tests/run_editor_test.py card_status_editor_test.gd
@@ -34,7 +34,7 @@ changing external scene bytes; production editor application never reloads.
 The property case covers all twelve allowlisted Node2D/Control properties, exact
 derived anchor-preset review/revalidation, native Undo/Redo/save/inverse actions,
 Plan and script-Auto-apply review, Reject/Stop/stale decisions, Stop after commit,
-dirty/background/reopened targets, saved/live/summary/history/redo-branch conflicts,
+dirty-Control/background/reopened targets, saved/live/summary/history/redo-branch conflicts,
 Container/type/range denial, unowned live nodes and custom-getter isolation,
 five-language review and native-action survival after session/dock teardown.
 Ordinary decimal rotation/scale/anchor/offset cases check explicit requested versus
@@ -44,8 +44,16 @@ derived-preset disclosures are exercised at normal/1.5x/2x fonts in all five loc
 The transform case uses a resource-bearing scripted coin prefab with signals and
 two instances. It exercises real current-scene review/Apply/Undo/Redo/Save/inverse
 actions, other-instance/shared-file isolation, native getter/setter-method overrides,
-Plan/Auto apply, dirty/stale Undo denial, @tool and internal-instance rejection,
+Plan/Auto apply, stale Undo denial, @tool and internal-instance rejection,
 and fresh editor routing when a disk proposal's scene opens before Apply.
+Its live-baseline regression starts with a manually moved Coin2, another moved
+instance and a changed scene colour. It checks live-vs-disk no-op detection, exact
+typed review, Reject/Stop/tampering, two unsaved moves in one tool loop, Stop after
+commit, native Undo/Redo/inverse, a follow-up turn without saving, preservation of
+earlier edits/shared files, real public-save evidence during active continuation,
+Save/Revert, independent disk drift, save-during-review conflict and session/dock
+teardown. Five-language baseline disclosures fit normal/1.5x/2x narrow layouts.
+New unsaved target and dirty structural/layout operations retain their denials.
 Run its `--graphical` variant for Linux/X11/OpenGL acceptance. No live provider
 requests are made; all project/provider/XDG state is disposable.
 
@@ -452,30 +460,29 @@ real user browser registration/verification, live hosted models, OS-vault unlock
 other platforms, session expiry and deployed HTTPS pairing/inference. Public HTTPS
 health responses establish reachability only, not authenticated or metered acceptance.
 
-## 1.7.0 release regression verification
+## 1.8.0 release regression verification
 
-The About/support-report expectations follow plugin version 1.7.0. Synthetic
+The About/support-report expectations follow plugin version 1.8.0. Synthetic
 1.3.0 → 1.4.0 installation/rollback fixtures intentionally retain both versions.
 Historical 1.4.1 update/catalog fixtures remain explicit. Current update metadata
-checks retain 1.5.0/1.6.0 coverage and verify 1.7.0 upgrades from
-1.3.0/1.4.0/1.4.1/1.5.0/1.6.0, exact official asset naming,
-same-version suppression and no downgrade from 1.7.0. Actual-source
+checks retain 1.5.0/1.6.0/1.7.0 coverage and verify 1.8.0 upgrades from
+1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0, exact official asset naming,
+same-version suppression and no downgrade from 1.8.0. Actual-source
 packaging reads the current version from `plugin.cfg`.
 For this release preparation, run the version-sensitive settings/support checks, updater
 component/editor/package tests, native helper acceptance and clean initialization
 with all three startup suppressions and isolated editor configuration/data/cache.
 Run the updater editor case through `python3 tests/run_editor_test.py update_editor_test.gd`,
-as both Tests and Prepare Orca release now do. The pre-bump full
-[Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023)
-passed, including the reminder font-width correction, editor/transport cases,
-all four native-helper platforms and binary-free packaging. The 1.7.0 revision
-requires a new complete CI and same-revision helper/package run before release;
-1.6.0 remains published. Include the localization, focused-inspection and
-two-process reminder editor cases, plus Auto apply and the five-process
-remembered-default cases above. Real-model acceptance should exercise language
-selection, focused scene/animation queries, a small automatic script task, its
-inline diff, active-turn revocation, remembered startup and History/Revert with
-and without an independent edit.
+as both Tests and Prepare Orca release now do. The pre-candidate full
+[Tests run at `91610f0`](https://github.com/cold-atom/Orca/actions/runs/43270415554)
+passed, including editor/transport cases, all four native-helper platforms and
+binary-free packaging. The later unsaved-baseline fix and final 1.8.0 metadata
+require fresh complete CI and same-revision helper/package acceptance before
+release; 1.7.0 remains published. The owner confirmed the Platformer Node2D move
+workflow works. Relevant feature regressions include current-scene transforms,
+native properties/script attachment, card layout, task Resume, localization,
+Auto apply and remembered defaults. Broader live acceptance should exercise
+consecutive edits, Undo/Redo/Save/Revert, task Resume and actual provider continuation.
 Real browser/downloaded-helper/graphical platform
 acceptance is not established by metadata, CI or release notes.
 

@@ -8,7 +8,62 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Unreleased: Current-Scene Native Properties
+## Orca 1.8.0 Release Candidate
+
+**Orca 1.8.0 — In-Editor Changes & Workflow Reliability** is prepared for
+**Godot 4.7.2**. Metadata, version-sensitive expectations and the dated changelog
+identify 1.8.0; publication is pending and **1.7.0 remains the latest release**.
+This candidate includes reviewed current-scene properties/script attachment,
+live Node2D baselines preserving unsaved edits, clearer cards, longer bounded
+tasks and same-conversation Resume. The owner confirmed the Platformer Node2D
+move workflow works after the unsaved-baseline fix.
+
+The pushed pre-candidate `91610f0` passed complete
+[Tests/native/package CI](https://github.com/cold-atom/Orca/actions/runs/43270415554).
+The later unsaved-baseline fix and final 1.8.0 metadata require a fresh complete
+build after the candidate is pushed. Accept that exact binary-free ZIP and four
+matching helpers before tagging/publishing. Current scene tools reuse the existing
+Cloud vocabulary; no new backend contract is needed for this release. Broader
+real-model tasks, Windows/macOS editor behavior and Store moderation remain separate.
+
+## 1.8.0: Current-Scene Native Properties
+
+### Live editor baselines, including unsaved edits
+
+Current-scene Node2D transforms now review and restore the **live native value**,
+including earlier unsaved changes. Existing local nodes/instance roots with saved
+provenance can receive consecutive reviewed moves without saving between them.
+`scene_proposal.gd` routes only these supported transforms past its dirty-scene
+gate. Work and exact Apply remain required; Control layout, script attachment,
+disk patches and structural operations retain their existing saved-state gates.
+
+`editor_transform_transaction.gd` captures bounded native topology, script identity
+and transforms as the before snapshot, with one property changed in its after
+snapshot. `editor_baseline: live`, typed before/after values and original proposal
+semantics remain immutable. No-op detection uses the live value. Existing scene
+bytes, hashes and the text-only single-property candidate remain **saved provenance
+projections**, never a complete serialization of dirty editor state or disk-write
+authority. The target's saved name/type/script/instance identity must still match;
+new unsaved targets require saved provenance. Saving changed bytes during review,
+intervening Undo revisions, reopened nodes/scenes or source/cache drift invalidate
+the original review. Native setters preserve earlier edits without saving/reloading.
+
+A public `EditorPlugin.scene_saved` callback captures at most one bounded 2 MiB
+file hash plus weak root/history identity, Undo version/index/count/action. The
+controller retains the latest receipt for at most eight scene paths, including
+saves during provider continuations. Its existing one-transaction-per-frame idle
+observer validates receipts against the exact applied live snapshot and saved
+target/source identities; explicit Work Revert also performs this validation.
+A matching receipt can bind the actual saved file containing earlier unsaved edits,
+so inverse Revert restores only the immediate pre-Orca property. Later independent
+disk changes fail. Without a receipt, the existing unchanged-unrelated-records
+check remains. Save evidence grants no permission and proves neither arbitrary
+scene/resource semantics nor startup correctness. Receipts/live bindings remain
+memory-only and clear on New Session/restoration; native Undo actions survive.
+
+Tool arguments/Cloud vocabulary are unchanged. Model guidance explicitly permits
+unsaved Node2D transforms and still requires `read_file` for saved `base_hash`
+provenance. Review cards identify the live baseline in all five interface languages.
 
 ### Scripted and instanced Node2D transforms
 
@@ -34,12 +89,13 @@ and protected-path guards remain. Unknown transform aliases and malformed/duplic
 identity syntax fail closed. Numeric literals use only exact native scalar/Vector2
 decoding, never general object construction.
 
-Apply requires a clean saved current scene and exact original approval, even under
-Auto apply. Revert accepts the baseline or a matching saved native override only
-when unrelated saved text records, source bindings, live native state and Undo
-state remain exact. Its signature ignores only UID/load-count serialization metadata
-and the one reviewed property; unsupported save reserialization stays conflict-checked
-with native Undo available. It never rewrites disk or mutates shared instance sources.
+Apply requires an existing saved scene path, a matching live baseline and exact
+original approval, even under Auto apply; earlier unsaved edits are preserved.
+Revert accepts unchanged baseline bytes or a matching saved native override when
+source bindings, live native state and Undo state remain exact. Its unrelated-text
+signature ignores only UID/load-count serialization metadata and the one reviewed
+property. Earlier unsaved edits included in a native save instead require the
+bounded exact save receipt described above. It never rewrites disk or mutates shared instance sources.
 If a disk proposal's scene opens after preparation, Apply requests a fresh current-
 scene review rather than changing strategy or forcing closure. Structural operations,
 Control layout and script-attachment constraints retain their dedicated contracts.
@@ -47,8 +103,9 @@ Control layout and script-attachment constraints retain their dedicated contract
 `editor_transform_test.gd` is registered in the isolated runner/CI with a platformer-
 like scripted coin prefab, two instances, textures, collision shapes and signals.
 It checks real editor review/Apply/Undo/Redo/Save/Revert, instance isolation, original
-source bytes, native getter/setter-override isolation, Plan/Auto apply, dirty and stale
-Undo denial, tool-script refusal, internal-node denial and stale disk-proposal routing.
+source bytes, native getter/setter-override isolation, Plan/Auto apply, earlier dirty
+state preservation, stale Undo denial, tool-script refusal, internal-node denial
+and stale disk-proposal routing.
 
 ### Initial native-property workflow
 
@@ -103,10 +160,11 @@ Undo/Redo/save/inverse actions, Plan/Auto apply/rejection/cancellation, Stop aft
 commit, dirty/background/reopened targets, saved/live/summary/Undo/redo conflicts,
 Container/type/range denial, unowned-node and custom-getter isolation, five-language
 review and teardown. Headless and Linux/X11/OpenGL acceptance pass locally.
-Real-model/project usefulness, broader themes and Windows/macOS remain acceptance
-follow-ups. The changes are unreleased; metadata stays 1.7.0.
+The owner confirmed the Platformer Node2D move workflow. Broader real-model tasks,
+themes and Windows/macOS remain acceptance follow-ups. These changes are in the
+1.8.0 candidate and are not yet published.
 
-## Unreleased: Card Readability, Longer Tasks, And Editor Script Attachment
+## 1.8.0: Card Readability, Longer Tasks, And Editor Script Attachment
 
 - `card_header.gd` shares title-case, subtly tinted outcome badges across all seven
   change/activity surfaces. Shaped/native font measurement includes badge padding
@@ -197,8 +255,8 @@ was published on November 6 at `29fc480`. Its
 [release-commit Tests](https://github.com/cold-atom/Orca/actions/runs/42226616493)
 and [release preparation](https://github.com/cold-atom/Orca/actions/runs/42230762190)
 passed, including all four native-helper platforms and binary-free packaging.
-The ZIP/checksum and four helpers are published. Metadata remains 1.7.0 while
-the separate changes above are unreleased; those changes need their own CI/build.
+The ZIP/checksum and four helpers are published. The 1.8.0 candidate above has
+its own metadata and needs final-revision CI/build acceptance before publication.
 Extended Cloud inspection still requires the matching backend API rollout and
 authenticated catalog refresh. Native-speaker review, real-model usefulness,
 broader themes/platforms and Store moderation remain separate acceptance.
@@ -643,7 +701,7 @@ Plain Tab toggles Plan/Work only in the focused, visible prompt box and uses the
 | `propose_input_map_changes` | Work only | Prepares bounded typed Input Map action changes for structured approval. |
 | `propose_main_scene_change` | Work only | Proposes a validated saved scene as the project launch scene through structured review. |
 | `propose_project_settings_changes` | Work only | Proposes an atomic batch of six allowlisted display settings through typed review. |
-| `propose_scene_changes` | Work only | Proposes bounded typed scene creation, node, property, script, child-instance, and bindless signal operations. Script changes use preliminary execution trust followed by candidate approval. |
+| `propose_scene_changes` | Work only | Proposes bounded typed scene creation, node, property, script, child-instance, and bindless signal operations. Current Node2D transforms review live values including unsaved edits; script changes use preliminary execution trust followed by candidate approval. |
 | `run_current_scene` | Work only | Starts the saved current scene in one bounded nonblocking Orca-owned process. |
 | `run_main_scene` | Work only | Starts the configured saved main scene in one bounded nonblocking Orca-owned process. |
 | `stop_game` | Work only | Stops only the currently retained direct process started by Orca. |
@@ -1270,7 +1328,7 @@ Other structured operations still require closed existing scene tabs.
 Input:
 
 - `scene_path`: Canonical `res://` path ending in `.tscn`. A new scene's parent directory must already exist.
-- `base_hash`: Empty for `create_scene`; exact `read_file` SHA-256 for every existing-scene operation.
+- `base_hash`: Empty for `create_scene`; exact saved `read_file` SHA-256 for every existing-scene operation. Current Node2D transforms use this for provenance, while review and Undo use the live editor baseline.
 - `operations`: Exactly one supported structured operation.
 
 Supported operations:
@@ -1289,11 +1347,13 @@ Supported operations:
 
 Names are bounded to 128 characters and reject control characters, reserved path names, surrounding whitespace, and characters Godot would silently replace. Structural operations reject scenes with saved connections or NodePath properties rather than guessing how references should be remapped. Signal operations are limited to local built-in endpoints with compatible signatures. Property collections, resources, NodePaths, callables, and arbitrary object values are excluded.
 
-Preparation constructs native nodes through `ClassDB`, packs with `PackedScene.pack()`, serializes to bounded short-lived `user://orca/tmp/*.tscn` scratch storage, reloads with deep cache bypass, and verifies the complete result through `SceneState`. Existing-scene operations are restricted to at most 60 local nodes, 240 serialized properties, and 100 connections. Before loading, the parent scene rejects all external dependencies and built-in subresources; after loading, it also rejects inheritance, unreviewed child instances or scripts, non-core node types, serialized object values, open editor scenes, and any candidate that changes unrelated semantic records. `instantiate_child_scene` permits exactly its reviewed child dependency after separately validating and hash-binding a dependency-free child scene. Script operations initially permit exactly one reviewed attachment, no other scripts or scene dependencies, and a dependency-free `.gd` with a compatible native Node base. Scratch names include process, time, and random components, normal cleanup is synchronous, and stale known scratch files are scavenged during plugin startup and later scene operations.
+The current-editor strategies described above use native Undo rather than disk replacement. Node2D transforms use bounded text-only saved provenance and live snapshots, preserving earlier unsaved edits without packing/loading. Control layout and script attachment retain their separate clean-scene/validation contracts.
+
+Saved-scene preparation constructs native nodes through `ClassDB`, packs with `PackedScene.pack()`, serializes to bounded short-lived `user://orca/tmp/*.tscn` scratch storage, reloads with deep cache bypass, and verifies the complete result through `SceneState`. Existing-scene disk operations are restricted to at most 60 local nodes, 240 serialized properties, and 100 connections. Before loading, the parent scene rejects all external dependencies and built-in subresources; after loading, it also rejects inheritance, unreviewed child instances or scripts, non-core node types, serialized object values, open editor scenes, and any candidate that changes unrelated semantic records. `instantiate_child_scene` permits exactly its reviewed child dependency after separately validating and hash-binding a dependency-free child scene. Script operations initially permit exactly one reviewed attachment, no other scripts or scene dependencies, and a dependency-free `.gd` with a compatible native Node base. Scratch names include process, time, and random components, normal cleanup is synchronous, and stale known scratch files are scavenged during plugin startup and later scene operations.
 
 Script attach/detach uses two decisions inside one protocol tool call. The first card validates only canonical paths, saved bytes, unsaved/open state, and exact scene/script hashes without loading the scene or compiling the script. Its explicit Trust and Prepare action authorizes compilation, loading, initialization, candidate construction, and later revalidation after immediate hash checks; it does not write the scene. Orca then validates GDScript and dependencies, checks native-base compatibility, constructs an immutable candidate, and reuses the card for normal Apply/Reject. Rejection or cancellation at either stage completes the original tool call exactly once and releases retained private state.
 
-Apply repeats path, dependency, existence, open/unsaved state, operation, hash, pack/save/load, and complete candidate validation before verified replacement. Failed final validation restores the original bytes only while the target still matches the reviewed candidate. Revert rejects open, unsaved, or independently changed parent scenes; it removes a newly created file or restores exact retained bytes for an existing scene. Child dependency drift blocks Apply but does not block restoring exact pre-instance parent bytes. The dedicated structured card receives only bounded operation-specific summaries; candidate/script bytes, trust bindings, dependency hashes, authoritative operations, pending approval, and revert checkpoints are not persisted.
+Disk Apply repeats path, dependency, existence, open/unsaved state, operation, hash, pack/save/load, and complete candidate validation before verified replacement. Failed final validation restores the original bytes only while the target still matches the reviewed candidate. Disk Revert rejects open, unsaved, or independently changed parent scenes; it removes a newly created file or restores exact retained bytes for an existing scene. Child dependency drift blocks Apply but does not block restoring exact pre-instance parent bytes. The dedicated structured card receives only bounded operation-specific summaries; candidate/script bytes, trust bindings, dependency hashes, authoritative operations, pending approval, and revert checkpoints are not persisted.
 
 Godot has no public way to construct and pack script candidates without potentially executing `_init`, member/static initialization, or `@tool` behavior. The preliminary trust review makes that execution explicit and binds it to exact scene/script hashes, but it is informed consent rather than sandboxing. Candidate construction remains synchronous on the editor thread and cannot be interrupted until Godot returns control.
 
@@ -1527,7 +1587,7 @@ entry points pending a separate migration.
 - Patches are line-range operations, not a full unified-diff parser.
 - Raw file patches receive semantic validation only for GDScript; structured scene and configuration tools provide their own typed semantic validation.
 - Structured scene operations use deliberately narrow first contracts: structural changes are leaf-only, values exclude references/resources/collections, scripts and child scenes must be dependency-free, script operations permit exactly one reviewed attachment, and signals are bindless and built-in.
-- Current-scene Node2D transforms accept saved local/instance-root nodes with non-tool GDScript/resources/signals. Control layout retains scriptless/resource-free/connection-free limits. Container-managed layouts, script exports, internal non-editable instance nodes and other open-scene operations remain outside these contracts.
+- Current-scene Node2D transforms accept existing saved-provenance local/instance-root nodes with non-tool GDScript/resources/signals and earlier unsaved edits. New unsaved targets still require saved provenance. Control layout retains clean scriptless/resource-free/connection-free limits. Container-managed layouts, script exports, internal non-editable instance nodes and other open-scene operations remain outside these contracts.
 - Automatic bounded-script checkpoints survive restart for explicit conflict-checked recovery. Manual/structured revert checkpoints and pending approvals remain in memory.
 - Public Godot APIs expose no Project Settings dirty flag; Input Map proposals enforce affected-action live/disk equality but cannot identify unrelated pending Project Settings UI edits as dirty.
 - Multi-file changes are approved one file at a time rather than as a transaction.
@@ -1674,6 +1734,60 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-13: Orca 1.8.0 release preparation
+
+- Owner confirmed the Platformer Node2D move workflow works after the unsaved-live-
+  baseline fix and approved preparation for the next release. Metadata and dated
+  changelog now identify **1.8.0 — In-Editor Changes & Workflow Reliability** for
+  Godot 4.7.2. Current product/security/update/localization/testing docs distinguish
+  this candidate from published 1.7.0 and correct stale 1.7.0 candidate references.
+- Updated About/support-report version expectations, the release-workflow example
+  and updater coverage for exact 1.8.0 ZIP selection, upgrades from
+  1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0, same-version suppression and downgrade denial.
+  Historical install/rollback/catalog fixtures retain their original versions.
+- Verification passes: settings/About, support-report, updater and helper-catalog
+  components; seven updater/package tests (actual-source 1.8.0 validation plus
+  historical install/rollback/relaunch), eight native-packaging, three translation
+  and five runner checks, without skips. The updater normal-editor case and actual
+  workspace Godot initialization exit cleanly. Tests suppress all owner startup
+  and use disposable project/XDG config/data/cache. Feature/graphical suites were
+  verified in the preceding fix; they were not repeated for metadata-only work.
+- Read-only GitHub checks confirm v1.7.0 remains latest and `91610f0` passed complete
+  Tests/native/package CI. Final 1.8.0 CI and exact version-matched release assets
+  remain required after the owner commits/pushes this candidate. No source manifest/
+  catalog, commit, push, tag, deployment or publication was performed. Windows/macOS
+  editor acceptance and broader real-model tasks remain separate follow-ups.
+
+### 2026-11-13: Unsaved native transform baselines and save-bound recovery
+
+- Replaced the current Node2D transform's saved-value baseline with immutable live
+  native before/after snapshots. Existing local/instance-root targets now preserve
+  earlier unsaved edits and accept consecutive reviewed transforms. Live values
+  drive review/no-op/Undo/Revert, including a changed live value with zero disk diff.
+  Source hashes/projections still bind provenance; dirty disk edits, clean Control
+  layout/attachment requirements and all original runtime approvals remain guarded.
+- Added bounded public-native-save hash/root/Undo receipts, retained for eight scene
+  paths per controller and independently checked against applied live/saved evidence.
+  They permit property-only inverse Revert after a user save includes pre-existing
+  edits. Later disk drift/newer actions still conflict; receipts never authorize or
+  persist. Updated model guidance, localized baseline/revert presentation and docs.
+- Extended the permanent Coin2 editor regression with earlier target/other-instance/
+  colour edits, live-vs-disk no-ops, exact approvals, two unsaved tool rounds,
+  follow-up turns, Reject/Stop/Stop-after-commit receipts, actual Undo/Redo,
+  Save/Revert during continuation, disk drift, save-during-review and teardown.
+  Its second test dock explicitly confirms New Session after restoring the first
+  dock's fixture history, so a modal dialog cannot intercept native Undo shortcuts.
+- Verification: transform and property cases pass headlessly and Linux/X11/OpenGL;
+  script attachment, card layout and three-process localization pass headlessly.
+  Nine focused tools/scene/controller/chat/session/context/hosted/Responses/Auto-apply
+  components, three catalog and five runner checks pass. Prompt wording was reduced
+  to retain the existing 32k no-tools finalization and 64k continuation budgets,
+  without reducing reserves or weakening checks. Workspace Godot 4.7.2 initialization
+  is clean; ordinary editor cases exit without errors/warnings. Deliberate invalid
+  script controls remain in the three applicable components. All test project/XDG
+  state is isolated with owner startup suppressed. Real-model Platformer acceptance,
+  fresh full CI/package and Windows/macOS remain follow-ups; metadata stays 1.7.0.
 
 ### 2026-11-13: Scripted/instanced current-scene transform workflow
 

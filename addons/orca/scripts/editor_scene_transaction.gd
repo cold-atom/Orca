@@ -261,7 +261,7 @@ func _history_matches() -> bool:
 
 
 func _same_proposal(proposal: Dictionary) -> bool:
-	for key in ["id", "kind", "tool_name", "approval_stage", "existed", "filepath", "old_content", "new_content", "old_hash", "new_hash", "operations", "scene_summary", "requested_value", "trust_binding", "candidate_binding", "application_strategy", "editor_validation"]:
+	for key in ["id", "kind", "tool_name", "approval_stage", "existed", "filepath", "old_content", "new_content", "old_hash", "new_hash", "operations", "scene_summary", "requested_value", "trust_binding", "candidate_binding", "application_strategy", "editor_validation", "editor_baseline"]:
 		if proposal.get(key) != _proposal.get(key): return false
 	return true
 

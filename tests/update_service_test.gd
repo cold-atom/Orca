@@ -58,6 +58,12 @@ func _run() -> void:
 	check(Service.normalize_release(release("1.7.0"), "1.7.0").get("release", {"bad": true}).is_empty(), "installed multilingual inspection release gives no same-version update")
 	for older in ["1.3.0", "1.4.0", "1.4.1", "1.5.0", "1.6.0"]:
 		check(Service.normalize_release(release(older), "1.7.0").get("release", {"bad": true}).is_empty(), "older release " + older + " must not downgrade installed 1.7.0")
+	for installed in ["1.3.0", "1.4.0", "1.4.1", "1.5.0", "1.6.0", "1.7.0"]:
+		var editor_changes := Service.normalize_release(release("1.8.0"), installed)
+		check(editor_changes.get("success", false) and editor_changes.get("release", {}).get("version") == "1.8.0", "in-editor changes release is newer than installed " + installed)
+		check(editor_changes.get("release", {}).get("url") == Service.DOWNLOAD_ROOT + "v1.8.0/orca-v1.8.0.zip", "in-editor changes update must select its exact version-bound official ZIP")
+		check(Service.normalize_release(release(installed), "1.8.0").get("release", {"bad": true}).is_empty(), "older release " + installed + " must not downgrade installed 1.8.0")
+	check(Service.normalize_release(release("1.8.0"), "1.8.0").get("release", {"bad": true}).is_empty(), "installed in-editor changes release gives no same-version update")
 	check(Service.normalize_release(release("1.3.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "same version gives no update")
 	check(Service.normalize_release(release("1.2.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "older release never downgrades")
 	for field in ["draft", "prerelease"]:

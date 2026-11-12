@@ -82,22 +82,28 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
-## Upcoming Workflow Improvements (Unreleased)
+## 1.8.0 Release Candidate: In-Editor Changes & Workflow Reliability
 
-The development checkout adds complete, wrapping change/activity statuses,
+This checkout prepares **1.8.0** for Godot 4.7.2. Publication is pending;
+**1.7.0 remains the latest published release**. See the
+[1.8.0 changelog](CHANGELOG.md#180---2026-11-13).
+
+The candidate adds complete, wrapping change/activity statuses,
 24-round bounded tasks with clear stop reasons, and **Resume remaining work** in
 the expanded checklist. Reviewed non-`@tool` script attachment/detachment can keep
 the saved current scene open and preserve normal Godot Undo. **Apply in editor**
 leaves the scene **save pending**; save it before running. Existing structured
 scene restrictions and both trust/change approvals still apply.
 
-The saved current scene also supports reviewed **Node2D transforms** on local nodes
-and scene-instance roots with non-`@tool` GDScript, textures/resources and signals.
-**Control anchors/offsets** retain scriptless/resource-free/connection-free scenes
+The current scene also supports reviewed **Node2D transforms** on existing saved
+local nodes and scene-instance roots with non-`@tool` GDScript, textures/resources
+and signals. Review/Undo use the live value, including unsaved edits, so consecutive
+moves work without saving between them and preserve earlier work.
+**Control anchors/offsets** retain clean scriptless/resource-free/connection-free scenes
 and exclude Container-managed Controls. Each change requires **Apply in editor**,
 even with script Auto apply enabled, preserves native Undo/Redo and remains save
-pending until you save the scene. Save-first still applies; @tool and internal
-non-editable instance nodes need separate support.
+pending until you save the scene. New unsaved targets, @tool and internal
+non-editable instance nodes need separate support. Save before running the scene.
 
 ## What's New In 1.7.0: Multilingual UI & Focused Godot Inspection
 
@@ -388,8 +394,8 @@ See [SECURITY.md](SECURITY.md) for the complete security and operational model.
 
 ## Current Limits
 
-- Orca 1.7.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
-- The pre-bump [Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023) passed, including the community font-width correction, editor/transport checks and four-platform native packaging. The 1.7.0 revision requires its own CI/package run; native-speaker review, real-model language/inspection acceptance and broader platforms remain separate from automated checks.
+- Orca 1.8.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
+- The pre-candidate [Tests run at `91610f0`](https://github.com/cold-atom/Orca/actions/runs/43270415554) passed, including editor/transport checks and four-platform native packaging. The later unsaved-baseline fix and final 1.8.0 metadata require fresh CI/package acceptance. The owner confirmed the Platformer Node2D move workflow; broader real-model tasks, native-speaker review and other platforms remain separate.
 - Native attachment drops were verified on Linux/X11/Vulkan; other platforms/renderers and detached editor windows need acceptance testing.
 - Runtime verification uses bounded process output and predeclared startup or exit criteria. It cannot prove visual or gameplay correctness.
 - Pending approvals and manual/structured revert checkpoints do not survive restart. Bounded automatic-script checkpoints support explicit historical review/recovery.
@@ -402,8 +408,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the full architecture, tool contracts, 
 
 ## Project Status
 
-This checkout prepares **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
-for **Godot 4.7.2**. It is not yet published; **Orca 1.6.0** remains the latest release.
+This checkout prepares **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
+for **Godot 4.7.2**. It is not yet published; **Orca 1.7.0** remains the latest release.
 Godot Asset Store moderation remains an owner check.
 Orca is a functional development-stage agent
 with permanent automated tests and CI, but it is still evolving. Review proposals

@@ -5,19 +5,22 @@ precede Asset Store moderation. Updating and native-helper installation are
 user-owned maintenance, never agent tools, and their public downloads require no
 Orca account or GitHub token.
 
-This checkout prepares **1.7.0 — Multilingual UI & Focused Godot Inspection**
-for Godot 4.7.2. It adds five interface languages, focused saved-scene/animation
-exploration and a quiet community invitation. The candidate is not yet published;
-**1.6.0 — Auto Apply & Script Recovery** remains the latest published release.
-The pre-bump full Tests/native packaging run at `5cee382` passed; the 1.7.0
-revision requires its own CI and version-matched ZIP/helper assets. Updater checks
-cover direct upgrades from 1.3.0/1.4.0/1.4.1/1.5.0/1.6.0, same-version suppression
-and downgrade prevention. See [1.7.0](../CHANGELOG.md#170---2026-11-06) for the candidate.
-See [1.6.0](../CHANGELOG.md#160---2026-11-05) for the latest published release.
+This checkout prepares **1.8.0 — In-Editor Changes & Workflow Reliability**
+for Godot 4.7.2. It adds reviewed current-scene edits, live Node2D baselines
+preserving unsaved work, clearer cards, longer tasks and Resume. Publication is
+pending; **1.7.0 — Multilingual UI & Focused Godot Inspection** remains the latest
+published release. The pre-candidate full Tests/native/package run at `91610f0`
+passed. The later unsaved-baseline fix and final 1.8.0 metadata require fresh CI
+and version-matched ZIP/helper assets. Updater checks cover direct upgrades from
+1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0, same-version suppression and downgrade
+prevention. See [1.8.0](../CHANGELOG.md#180---2026-11-13) for the candidate.
+See [1.7.0](../CHANGELOG.md#170---2026-11-06) for the latest published release
+and [1.6.0](../CHANGELOG.md#160---2026-11-05) for Auto apply/recovery.
 See [1.5.0](../CHANGELOG.md#150---2026-11-02) for code navigation and
 [1.4.1](../CHANGELOG.md#141---2026-10-30) for the earlier packaging fixes.
-Store moderation remains separate; Cloud navigation and extended inspection require
-matching backend API deployment/catalog refresh. Prior Store downloads and the thumbnail
+Store moderation remains separate. The 1.8.0 scene changes reuse the current Cloud
+vocabulary; existing navigation/extended inspection require their matching backend
+API deployment/catalog refresh. Prior Store downloads and the thumbnail
 correction remain separate reviewer work.
 
 ## User workflow
@@ -103,7 +106,7 @@ visibly and are separate from a missing helper.
 3. Package the binary-free addon and separate helpers together:
 
    ```bash
-   python3 scripts/package_release.py --version 1.7.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.7.0.zip
+   python3 scripts/package_release.py --version 1.8.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.8.0.zip
    ```
 
    Substitute the actual new version. The script refuses version mismatches,

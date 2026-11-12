@@ -1,10 +1,11 @@
 # Orca interface languages
 
-The Orca **1.7.0 release candidate** adds **English**, **简体中文 (Simplified Chinese)**,
+Published Orca **1.7.0** added **English**, **简体中文 (Simplified Chinese)**,
 **Español (Spanish)**, **日本語 (Japanese)** and **한국어 (Korean)** under
-**Settings → System → Language**. The candidate is not yet published; the
-published 1.6.0 ZIP predates this feature. See the
-[1.7.0 changelog](../CHANGELOG.md#170---2026-11-06).
+**Settings → System → Language**. The **1.8.0 candidate** extends localized
+card layouts, task Resume, current-scene reviews and live-baseline disclosures.
+See the [1.7.0 changelog](../CHANGELOG.md#170---2026-11-06) for the published
+language feature and [1.8.0](../CHANGELOG.md#180---2026-11-13) for the candidate.
 
 ## User behavior
 

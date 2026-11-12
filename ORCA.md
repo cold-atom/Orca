@@ -11,23 +11,26 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-**Orca 1.7.0 — Multilingual UI & Focused Godot Inspection** is published for
-**Godot 4.7.2**, with English/Simplified Chinese/Spanish/Japanese/Korean UI,
-focused scene/animation exploration and a quiet community invitation.
-The checkout also contains unreleased full-status card layouts, 24-round/192-call
-bounded turns, same-conversation task Resume, and reviewed current-scene non-tool
-script attachment and allowlisted native property editing with native Undo and
-explicit save-pending receipts.
-See [localization](docs/LOCALIZATION.md),
-[1.7.0](CHANGELOG.md#170---2026-11-06) for the published release,
-[1.6.0](CHANGELOG.md#160---2026-11-05) for the published release,
+This checkout prepares **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
+for **Godot 4.7.2**. The candidate adds readable card layouts, 24-round/192-call
+bounded turns, same-conversation task Resume, reviewed current-scene non-tool
+script attachment and native property editing. Node2D transforms use live values,
+preserve earlier unsaved edits and support consecutive moves without saving;
+native Undo and explicit save-pending receipts remain central to the workflow.
+The owner confirmed the Platformer Node2D move workflow works.
+Publication is pending; **1.7.0 remains the latest published release**, with five
+interface languages, focused scene/animation exploration and a community invitation.
+See [1.8.0](CHANGELOG.md#180---2026-11-13) for the candidate,
+[localization](docs/LOCALIZATION.md),
+[1.7.0](CHANGELOG.md#170---2026-11-06) for the latest published release,
+[1.6.0](CHANGELOG.md#160---2026-11-05) for Auto apply/recovery,
 [1.5.0](CHANGELOG.md#150---2026-11-02) for saved project code navigation and
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
-The [release-commit Tests run](https://github.com/cold-atom/Orca/actions/runs/42226616493)
-passed, including four-platform native packaging. Unreleased changes require their
-own CI/package acceptance. Independent language
-review, real-model usefulness and broader platform/Store acceptance remain separate.
+The [pre-candidate Tests run at `91610f0`](https://github.com/cold-atom/Orca/actions/runs/43270415554)
+passed, including four-platform native packaging. The later unsaved-baseline fix
+and final 1.8.0 metadata require fresh CI/package acceptance. Independent language
+review, broader real-model tasks and platform/Store acceptance remain separate.
 
 ### Key Features & Components
 
@@ -72,7 +75,7 @@ Orca's read-only context and reviewed-edit architecture. See `DEVELOPMENT.md`.
       - `propose_main_scene_change`: Proposes a validated saved scene as the project launch scene with path/UID normalization and guarded revert.
       - `propose_project_settings_changes`: Proposes an atomic typed batch of allowlisted viewport and stretch settings.
        - `propose_scene_changes`: Proposes reviewed typed-root creation, node/property/structure changes, two-stage dependency-free script attach/detach, dependency-free child instances, and bindless signal changes.
-         - In the saved current scene, native Node2D transforms support local/instance-root nodes with non-tool GDScript/resources/signals using text-only provenance. Control layout retains scriptless/resource-free/connection-free and non-Container limits. Both use explicit Apply in editor, native Undo and a user save; Auto apply does not approve them.
+          - In the current scene, native Node2D transforms support existing saved-provenance local/instance-root nodes with non-tool GDScript/resources/signals and earlier unsaved edits. Review/Undo/Revert use the live value; consecutive transforms do not require saving. Control layout retains clean scriptless/resource-free/connection-free and non-Container limits. Both use explicit Apply in editor, native Undo and user-controlled saving; Auto apply does not approve them.
       - `run_current_scene` / `run_main_scene`: Start one saved scene in a bounded nonblocking process owned by Orca.
       - `stop_game`: Stops only the active direct process started by Orca.
       - `observe_game_run`: Reads bounded evidence for an exact Orca run without waiting or changing process state.

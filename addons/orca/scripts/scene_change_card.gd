@@ -116,6 +116,8 @@ func configure(proposal: Dictionary) -> void:
 					var bindings: Dictionary = details.get_meta(Localization.BINDINGS, {})
 					var parts: Array = bindings.get(&"text", {}).get("parts", []).duplicate(true)
 					parts.append(["\nSource    %s (%s)", [str(summary.get("origin_scene", "")), str(summary.get("origin_node", ""))]])
+					if proposal.get("editor_baseline") == "live":
+						parts.append(["\nBaseline  Current editor state, including unsaved edits. Earlier edits are preserved; consecutive transforms do not require saving.", []])
 					Localization.bind_parts(details, &"text", parts)
 				if proposal.has("requested_value"):
 					var bindings: Dictionary = details.get_meta(Localization.BINDINGS, {})
@@ -178,7 +180,7 @@ func set_status(status: String, message: String) -> void:
 
 func set_revert_available(available: bool) -> void:
 	_revert_button.disabled = not available
-	_revert_button.tooltip_text = "Revert rechecks current file state." if available else "Revert is available in idle Work mode."
+	_revert_button.tooltip_text = ("Revert rechecks the reviewed editor state and Undo history." if _proposal.get("application_strategy") == "editor_current" else "Revert rechecks current file state.") if available else "Revert is available in idle Work mode."
 
 
 func _request_decision(action: String) -> void:

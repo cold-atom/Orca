@@ -26,14 +26,16 @@ static func prepare(change_id: String, base_hash: String, scene_path: String, op
 	var target_error := validate_target(canonical_path, not creating)
 	if not target_error.is_empty():
 		return _failure(target_error)
-	if EditorContext.has_unsaved_file(canonical_path):
-		return _failure("The target scene has unsaved editor state. Save the changes you want to keep before proposing changes.")
 	var editor_current := not creating and EditorContext.is_scene_open(canonical_path) and str(operation.get("operation", "")) in ["attach_script", "detach_script", "set_property"]
+	var native_transform := false
 	if editor_current:
 		var current := EditorInterface.get_edited_scene_root()
 		if current == null or str(ClassDB.class_get_property(current, "scene_file_path")) != canonical_path:
 			return _failure("Orca's Undo-preserving scene changes require the target scene to be the active tab. Switch to it and retry; keep it open.")
-	elif not creating and EditorContext.is_scene_open(canonical_path):
+		native_transform = operation["operation"] == "set_property" and operation["property_name"] in ["position", "rotation", "scale", "skew"] and current.get_node_or_null(NodePath(operation["node_path"])) is Node2D
+	if not native_transform and EditorContext.has_unsaved_file(canonical_path):
+		return _failure("The target scene has unsaved editor state. Save the changes you want to keep before proposing changes.")
+	if not editor_current and not creating and EditorContext.is_scene_open(canonical_path):
 		return _failure("Orca's saved-scene replacement workflow requires the target scene tab to be closed, even if saved, so its in-memory copy cannot overwrite the reviewed result. This is an Orca restriction, not a Godot limitation.")
 
 	var old_content := ""
@@ -102,11 +104,20 @@ static func _prepare_editor_transform(change_id: String, path: String, content: 
 	var saved := SavedTransform.inspect(path, operation["node_path"], content)
 	if not saved.get("success", false): return saved
 	var value = _decode_typed_value(operation["value"])["value"]
+	var target := EditorInterface.get_edited_scene_root().get_node_or_null(NodePath(operation["node_path"])) as Node2D
+	var before = ClassDB.class_get_property(target, operation["property_name"])
+	if typeof(before) != typeof(value) or not _finite_native_transform(before): return _failure("The live transform must be a finite native value.")
+	# These bytes are a saved-source projection for provenance validation only.
+	# The reviewed/undo baseline is the native editor value, including unsaved edits.
 	var candidate := SavedTransform.candidate(saved["source"], operation["node_path"], operation["property_name"], value)
 	if not candidate.get("success", false): return candidate
-	var proposal := {"success": true, "id": change_id, "kind": "scene", "tool_name": "propose_scene_changes", "existed": true, "application_strategy": "editor_current", "editor_validation": "native_transform", "_editor_root": weakref(EditorInterface.get_edited_scene_root()), "filepath": path, "old_content": content, "new_content": candidate["content"], "old_hash": content.sha256_text(), "new_hash": str(candidate["content"]).sha256_text(), "operations": [operation], "scene_summary": {"operation": "set_property", "node_path": operation["node_path"], "node_type": saved["node_type"], "property_name": operation["property_name"], "before": _encode_typed_value(saved["values"][operation["property_name"]]), "after": operation["value"], "origin_scene": saved["origin_scene"], "origin_node": saved["origin_node"]}, "validation": {"valid": true, "message": "Validated the saved native transform and instance provenance without loading scenes or scripts."}, "status": "pending", "no_changes": saved["values"][operation["property_name"]] == value}
+	var proposal := {"success": true, "id": change_id, "kind": "scene", "tool_name": "propose_scene_changes", "existed": true, "application_strategy": "editor_current", "editor_validation": "native_transform", "editor_baseline": "live", "_editor_root": weakref(EditorInterface.get_edited_scene_root()), "filepath": path, "old_content": content, "new_content": candidate["content"], "old_hash": content.sha256_text(), "new_hash": str(candidate["content"]).sha256_text(), "operations": [operation], "scene_summary": {"operation": "set_property", "node_path": operation["node_path"], "node_type": saved["node_type"], "property_name": operation["property_name"], "before": _encode_typed_value(before), "after": operation["value"], "origin_scene": saved["origin_scene"], "origin_node": saved["origin_node"]}, "validation": {"valid": true, "message": "Validated the live native transform and saved instance provenance without loading scenes or scripts."}, "status": "pending", "no_changes": before == value}
 	if not requested_value.is_empty(): proposal["requested_value"] = requested_value
 	return proposal
+
+
+static func _finite_native_transform(value) -> bool:
+	return value.is_finite() if value is Vector2 else typeof(value) == TYPE_FLOAT and is_finite(value)
 
 
 static func native_editor_property_value(wire: Dictionary) -> Dictionary:
@@ -329,13 +340,16 @@ static func validate_candidate(proposal: Dictionary) -> String:
 			error = validate_editor_property_operation(requested_operation)
 			if not error.is_empty(): return error
 		if proposal.get("editor_validation") == "native_transform":
-			if proposal.get("existed") != true or normalized["operation"]["property_name"] not in ["position", "rotation", "scale", "skew"]: return "Native transform review requires an existing scene and one supported Node2D property."
+			if proposal.get("existed") != true or proposal.get("editor_baseline") != "live" or normalized["operation"]["property_name"] not in ["position", "rotation", "scale", "skew"]: return "Native transform review requires an existing scene, live baseline and one supported Node2D property."
 			var before := SavedTransform.inspect(proposal["filepath"], normalized["operation"]["node_path"], old_content)
 			if not before.get("success", false): return str(before.get("error", "Saved transform validation failed."))
 			var value = _decode_typed_value(normalized["operation"]["value"])["value"]
+			if typeof(proposal.get("scene_summary")) != TYPE_DICTIONARY: return "The reviewed live transform summary is invalid."
+			var live_before := _decode_typed_value(proposal.get("scene_summary", {}).get("before"))
+			if not live_before.get("success", false) or typeof(live_before["value"]) != typeof(value) or not _finite_native_transform(live_before["value"]): return "The reviewed live transform baseline is invalid."
 			var rebuilt := SavedTransform.candidate(before["source"], normalized["operation"]["node_path"], normalized["operation"]["property_name"], value)
 			if not rebuilt.get("success", false) or rebuilt["content"] != new_content: return "The retained native transform candidate differs from the reviewed single-property override."
-			var expected := {"operation": "set_property", "node_path": normalized["operation"]["node_path"], "node_type": before["node_type"], "property_name": normalized["operation"]["property_name"], "before": _encode_typed_value(before["values"][normalized["operation"]["property_name"]]), "after": normalized["operation"]["value"], "origin_scene": before["origin_scene"], "origin_node": before["origin_node"]}
+			var expected := {"operation": "set_property", "node_path": normalized["operation"]["node_path"], "node_type": before["node_type"], "property_name": normalized["operation"]["property_name"], "before": _encode_typed_value(live_before["value"]), "after": normalized["operation"]["value"], "origin_scene": before["origin_scene"], "origin_node": before["origin_node"]}
 			if proposal.get("scene_summary") != expected: return "The native transform review summary changed."
 			return ""
 		for content in [old_content, new_content]:
