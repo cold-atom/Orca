@@ -26,6 +26,9 @@ class FakeAgent:
 	func is_busy() -> bool:
 		return busy
 
+	func queue_editor_scene_refresh() -> void:
+		pass
+
 	func cancel_current_request() -> void:
 		cancellations += 1
 
@@ -963,7 +966,7 @@ func _test_expanded_diff_content() -> void:
 	var automatic := card._proposal.duplicate(true)
 	automatic["_auto_apply"] = true
 	card.configure(automatic)
-	_expect(card._diff_label.visible and card._diff_label.text == reviewed_diff and card._status_label.text == "APPLYING", "automatic application must keep the exact manual inline review while applying")
+	_expect(card._diff_label.visible and card._diff_label.text == reviewed_diff and card._status_label.text == "Applying", "automatic application must keep the exact manual inline review while applying")
 	card._show_expanded_diff()
 	await process_frame
 	dialogs = _collect_type(card, Window)
@@ -972,7 +975,7 @@ func _test_expanded_diff_content() -> void:
 	if not dialogs.is_empty(): card._dismiss_expanded_diff(dialogs[0])
 	await process_frame
 	card.set_status("applied", "Applied automatically.")
-	_expect(card._diff_label.visible and card._revert_button.visible and card._status_label.text == "APPLIED", "completed automatic review retains the same diff and guarded Revert")
+	_expect(card._diff_label.visible and card._revert_button.visible and card._status_label.text == "Applied", "completed automatic review retains the same diff and guarded Revert")
 	card.set_status("applied_recovery", "Cleanup required: applied with a retained backup.")
 	_expect(card._revert_button.visible, "a committed file patch with cleanup required should retain its guarded Revert action")
 	card.set_status("apply_recovery_required", "Recovery required: destination state is uncertain.")

@@ -7,9 +7,11 @@ signal help_requested(topic: String)
 const ToolActivityCard = preload("res://addons/orca/scripts/tool_activity_card.gd")
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const Localization = preload("res://addons/orca/scripts/localization.gd")
+const CardHeader = preload("res://addons/orca/scripts/card_header.gd")
 
 var _header_button: Button
 var _status_label: Label
+var _duration_label: Label
 var _body: VBoxContainer
 var _expanded := false
 var _accepting := true
@@ -40,7 +42,7 @@ func _ready() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
 	add_child(content)
-	var header := HBoxContainer.new()
+	var header := CardHeader.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(header)
@@ -61,10 +63,7 @@ func _ready() -> void:
 	_header_button.add_theme_font_size_override("font_size", label_font_size)
 	_header_button.pressed.connect(_toggle)
 	header.add_child(_header_button)
-	_status_label = Label.new()
-	_status_label.add_theme_font_size_override("font_size", meta_font_size)
-	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	header.add_child(_status_label)
+	_status_label = header.create_status_badge()
 
 	_body = VBoxContainer.new()
 	_body.set_meta("orca_tool_group_body", true)
@@ -72,6 +71,11 @@ func _ready() -> void:
 	_body.add_theme_constant_override("separation", UiMetrics.scaled_int(5))
 	_body.visible = false
 	content.add_child(_body)
+	_duration_label = Label.new()
+	_duration_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_duration_label.add_theme_font_size_override("font_size", meta_font_size)
+	_duration_label.add_theme_color_override("font_color", Color(0.55, 0.62, 0.68))
+	_body.add_child(_duration_label)
 	_update_header()
 
 
@@ -161,20 +165,17 @@ func _update_header() -> void:
 			if not target.is_empty():
 				parts.append(["  %s", [Localization.source(target) if _target_captions.get(first, false) else target]])
 		parts.append([" · %d", [count]])
-	Localization.bind_parts(_header_button, &"tooltip_text", parts)
-	Localization.bind_parts(_header_button, &"text", [["%s  ", ["v" if _expanded else ">"]]] + parts)
+	CardHeader.set_disclosure(_header_button, _expanded)
+	Localization.bind_parts(_header_button, &"text", parts)
 	var outcome := aggregate_outcome()
 	var duration := total_duration_ms()
-	Localization.bind_parts(_status_label, &"text", [["%s", [Localization.source(outcome.to_upper())]]] + ([[" · %s", [_format_duration(duration)]]] if outcome != "running" else []))
-	var color := Color(0.55, 0.72, 0.95)
-	if outcome == "completed":
-		color = Color(0.45, 0.82, 0.55)
-	elif outcome == "failed":
-		color = Color(0.95, 0.4, 0.4)
-	elif outcome == "interrupted":
-		color = Color(0.78, 0.64, 0.36)
-	_status_label.add_theme_color_override("font_color", color)
-	Localization.bind(_status_label, &"tooltip_text", "%d call · %s" if count == 1 else "%d calls · %s", [count, _format_duration(duration)])
+	CardHeader.set_status(_status_label, outcome)
+	var status_parts: Array = _status_label.get_meta(Localization.BINDINGS)[&"tooltip_text"]["parts"].duplicate(true)
+	Localization.bind(_duration_label, &"text", "Total tool time: %s", [_format_duration(duration)])
+	_duration_label.visible = _expanded and outcome != "running"
+	var timing_parts: Array = [["\n", []], ["Total tool time: %s", [_format_duration(duration)]]] if outcome != "running" else []
+	Localization.bind_parts(_header_button, &"tooltip_text", parts + timing_parts)
+	Localization.bind_parts(_status_label, &"tooltip_text", status_parts + timing_parts)
 
 
 func _group_title() -> String:

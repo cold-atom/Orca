@@ -7,11 +7,12 @@ const MESSAGE_OVERHEAD_TOKENS := 8
 const TOOL_OVERHEAD_TOKENS := 24
 const ImageAttachments = preload("res://addons/orca/scripts/image_attachments.gd")
 const ScriptReferences = preload("res://addons/orca/scripts/script_references.gd")
+const ResponsesProtocol = preload("res://addons/orca/scripts/responses_protocol.gd")
 
 
-static func prepare(messages: Array, tools: Array, context_window: int, include_history_images: bool = true, hosted_output_tokens: int = 0, context_policy: Dictionary = {}) -> Dictionary:
+static func prepare(messages: Array, tools: Array, context_window: int, include_history_images: bool = true, hosted_output_tokens: int = 0, context_policy: Dictionary = {}, request_config: Dictionary = {}) -> Dictionary:
 	var hosted := hosted_output_tokens > 0
-	var original_estimate := estimate_tokens(messages, tools, include_history_images, hosted, context_policy)
+	var original_estimate := estimate_tokens(messages, tools, include_history_images, hosted, context_policy, request_config)
 	if context_window <= 0:
 		return _result(true, messages, false, 0, original_estimate, 0, 0, 0)
 	var final_reserve := hosted_output_tokens if hosted else clampi(context_window / 8, 512, 16384)
@@ -37,7 +38,7 @@ static func prepare(messages: Array, tools: Array, context_window: int, include_
 			candidate.remove_at(index)
 		if not marker_present:
 			candidate.insert(1, {"role": "system", "content": COMPACTION_NOTICE})
-		var estimate := estimate_tokens(candidate, tools, include_history_images, hosted, context_policy)
+		var estimate := estimate_tokens(candidate, tools, include_history_images, hosted, context_policy, request_config)
 		if estimate <= input_budget:
 			var inserted_count := 0 if marker_present else 1
 			var result := _result(true, candidate, true, dropped_turns, estimate, input_budget, final_reserve, tool_reserve)
@@ -49,7 +50,7 @@ static func prepare(messages: Array, tools: Array, context_window: int, include_
 	return _result(false, messages, false, 0, original_estimate, input_budget, final_reserve, tool_reserve, "The system prompt, tools, and current turn exceed the selected model's safe input budget. Shorten the prompt or choose a model with a larger context window.")
 
 
-static func estimate_tokens(messages: Array, tools: Array, include_history_images: bool = true, hosted: bool = false, context_policy: Dictionary = {}) -> int:
+static func estimate_tokens(messages: Array, tools: Array, include_history_images: bool = true, hosted: bool = false, context_policy: Dictionary = {}, request_config: Dictionary = {}) -> int:
 	var text_messages := ImageAttachments.project_messages(ScriptReferences.request_messages(messages), include_history_images)
 	var image_tokens := 0
 	var opaque_tokens := 0
@@ -64,6 +65,13 @@ static func estimate_tokens(messages: Array, tools: Array, include_history_image
 			opaque_tokens += packet.to_utf8_buffer().size() + packet.count(":") + packet.count(",")
 			message.erase("reasoning_content")
 	var serialized := JSON.stringify({"messages": text_messages, "tools": tools})
+	if not hosted and request_config.get("api_mode") == "responses":
+		# Estimate exactly the validated representation the adapter will send. The
+		# canonical assistant contains both visible calls/text and retained items;
+		# the wire uses the latter once. Compaction still operates on full history.
+		var projected := ResponsesProtocol.request_body(text_messages, tools, request_config)
+		if projected.get("success", false):
+			serialized = JSON.stringify(projected["body"])
 	var byte_count := serialized.to_utf8_buffer().size()
 	if hosted:
 		# Match the gateway's contextual estimate, not its separate byte-upper-bound

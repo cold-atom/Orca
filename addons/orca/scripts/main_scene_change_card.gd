@@ -3,6 +3,8 @@ extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const Localization = preload("res://addons/orca/scripts/localization.gd")
+const CardHeader = preload("res://addons/orca/scripts/card_header.gd")
+const CardFooter = preload("res://addons/orca/scripts/card_footer.gd")
 
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
@@ -33,7 +35,7 @@ func _ready() -> void:
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", UiMetrics.scaled_int(7))
 	add_child(content)
-	var header := HBoxContainer.new()
+	var header := CardHeader.new()
 	content.add_child(header)
 	var title := Label.new()
 	title.clip_text = true
@@ -41,21 +43,17 @@ func _ready() -> void:
 	title.text = "Project Main Scene"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	_status_label = Label.new()
-	_status_label.clip_text = true
-	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
-	_status_label.text = "REVIEW"
-	header.add_child(_status_label)
+	_status_label = header.create_status_badge()
+	CardHeader.set_status(_status_label, "review")
 	_validation_label = Label.new()
 	_validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_validation_label.add_theme_color_override("font_color", Color(0.48, 0.78, 0.58))
 	content.add_child(_validation_label)
 	_paths = VBoxContainer.new()
 	content.add_child(_paths)
-	var navigation := HBoxContainer.new()
-	navigation.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
-	content.add_child(navigation)
+	var footer := CardFooter.new()
+	content.add_child(footer)
+	var navigation := footer.navigation
 	var open_project := Button.new()
 	open_project.text = "Project File"
 	open_project.flat = true
@@ -66,13 +64,7 @@ func _ready() -> void:
 	open_scene.flat = true
 	open_scene.pressed.connect(func(): open_requested.emit(str(_proposal.get("new_scene_path", "")), 1, 1))
 	navigation.add_child(open_scene)
-	var actions := HFlowContainer.new()
-	actions.alignment = FlowContainer.ALIGNMENT_END
-	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
-	content.add_child(actions)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_child(spacer)
+	var actions := footer.actions
 	_reject_button = Button.new()
 	_reject_button.text = "Reject"
 	_reject_button.pressed.connect(func(): action_requested.emit(str(_proposal.get("id", "")), "reject"))
@@ -97,14 +89,12 @@ func configure(proposal: Dictionary) -> void:
 
 func set_status(status: String, message: String) -> void:
 	_proposal["status"] = status
-	_status_label.text = status.replace("_", " ").to_upper()
-	_status_label.tooltip_text = message
+	CardHeader.set_status(_status_label, status, message)
 	_apply_button.visible = false
 	_reject_button.visible = false
 	_revert_button.visible = status in ["applied", "applied_recovery", "revert_failed"]
 	if status in ["applied_recovery", "reverted_recovery", "apply_recovery_required", "revert_recovery_required"]:
 		_validation_label.text = message
-	_status_label.add_theme_color_override("font_color", Color(0.45, 0.82, 0.55) if status == "applied" else Color(0.62, 0.65, 0.7) if status in ["rejected", "reverted"] else Color(0.95, 0.4, 0.4))
 
 
 func _add_path(label: String, path: String, proposed: bool) -> void:

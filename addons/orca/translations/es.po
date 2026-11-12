@@ -9,6 +9,39 @@ msgstr ""
 msgid "If Orca has been useful to you, a GitHub star or an honest Godot Asset Library review would help other Godot developers discover the project. Thanks for supporting Orca!"
 msgstr "Si Orca te ha resultado útil, una estrella en GitHub o una reseña sincera en Godot Asset Library ayudaría a otros desarrolladores de Godot a descubrir el proyecto. ¡Gracias por apoyar a Orca!"
 
+msgid "Resume remaining work"
+msgstr "Continuar tareas pendientes"
+
+msgid "Apply in editor"
+msgstr "Aplicar en el editor"
+
+msgid "Revert in editor"
+msgstr "Revertir en el editor"
+
+msgid "APPLIED IN EDITOR · SAVE PENDING"
+msgstr "APLICADO EN EL EDITOR · SIN GUARDAR"
+
+msgid "SAVED · NOT VERIFIED"
+msgstr "GUARDADO · SIN VERIFICAR"
+
+msgid "SAVE OBSERVED · NOT VERIFIED"
+msgstr "GUARDADO OBSERVADO · SIN VERIFICAR"
+
+msgid "UNDONE IN EDITOR"
+msgstr "DESHECHO EN EL EDITOR"
+
+msgid "REVERTED IN EDITOR · SAVE PENDING"
+msgstr "REVERTIDO EN EL EDITOR · SIN GUARDAR"
+
+msgid "EDITOR STATE CHANGED"
+msgstr "ESTADO DEL EDITOR MODIFICADO"
+
+msgid "\n\nKeeps the scene open and preserves normal Godot Undo. Applies in the editor only; save the scene before running it. Script trust also covers live attachment, property restoration and revalidation."
+msgstr "\n\nMantiene la escena abierta y conserva el historial de Deshacer de Godot. Se aplica solo en el editor; guarda la escena antes de ejecutarla. La autorización de scripts también abarca la asociación en el editor, la restauración de propiedades y la revalidación."
+
+msgid "Continue the unfinished tasks in the current checklist. Re-inspect the current project state before acting. Do not repeat completed actions. Reassess blocked tasks and use the current mode and normal edit permissions."
+msgstr "Continúa las tareas pendientes de la lista actual. Vuelve a inspeccionar el estado del proyecto antes de actuar. No repitas acciones completadas. Reevalúa las tareas bloqueadas y utiliza el modo actual y los permisos de edición habituales."
+
 msgid "Finding Orca useful?"
 msgstr "¿Te resulta útil Orca?"
 
@@ -830,6 +863,102 @@ msgstr "Documentación"
 
 msgid "RUNNING"
 msgstr "EN CURSO"
+
+msgid "Running"
+msgstr "En curso"
+
+msgid "Failed"
+msgstr "Falló"
+
+msgid "Applying"
+msgstr "Aplicando"
+
+msgid "Applied"
+msgstr "Aplicado"
+
+msgid "Rejected"
+msgstr "Rechazado"
+
+msgid "Reverted"
+msgstr "Revertido"
+
+msgid "Interrupted"
+msgstr "Interrumpido"
+
+msgid "Stopped"
+msgstr "Detenido"
+
+msgid "Review"
+msgstr "Revisión"
+
+msgid "Conflict"
+msgstr "Conflicto"
+
+msgid "Recovery"
+msgstr "Recuperación"
+
+msgid "Save pending"
+msgstr "Sin guardar"
+
+msgid "Unsaved"
+msgstr "Sin guardar"
+
+msgid "Save observed; not verified."
+msgstr "Se detectó un guardado; no verificado."
+
+msgid "Saved"
+msgstr "Guardado"
+
+msgid "Save observed"
+msgstr "Guardado visto"
+
+msgid "Undone"
+msgstr "Deshecho"
+
+msgid "Changed"
+msgstr "Modificado"
+
+msgid "Script trust review."
+msgstr "Revisión de confianza del script."
+
+msgid "Check recovery before further changes."
+msgstr "Revisa la recuperación antes de hacer más cambios."
+
+msgid "Revert failed."
+msgstr "Falló la reversión."
+
+msgid "Recovery conflict; check recovery."
+msgstr "Conflicto de recuperación; revisa la recuperación."
+
+msgid "Check recovery after applying."
+msgstr "Revisa la recuperación tras aplicar."
+
+msgid "Check recovery after reverting."
+msgstr "Revisa la recuperación tras revertir."
+
+msgid "Applied in editor; save the scene before running."
+msgstr "Aplicado en el editor; guarda la escena antes de ejecutarla."
+
+msgid "Not verified."
+msgstr "No verificado."
+
+msgid "Undone in editor."
+msgstr "Deshecho en el editor."
+
+msgid "Reverted in editor; save the scene before running."
+msgstr "Revertido en el editor; guarda la escena antes de ejecutarla."
+
+msgid "Editor state changed."
+msgstr "El estado del editor ha cambiado."
+
+msgid "Modified · %s"
+msgstr "Modificado · %s"
+
+msgid "Duration: %s"
+msgstr "Duración: %s"
+
+msgid "Total tool time: %s"
+msgstr "Tiempo total de herramientas: %s"
 
 msgid "DONE"
 msgstr "LISTO"

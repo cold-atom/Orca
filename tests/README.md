@@ -6,6 +6,39 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
+The unreleased workflow regressions also use this runner:
+
+```bash
+python3 tests/run_editor_test.py card_status_editor_test.gd
+python3 tests/run_editor_test.py task_resume_editor_test.gd
+python3 tests/run_editor_test.py editor_scene_script_test.gd
+```
+
+Use `--graphical` for Linux/X11/OpenGL acceptance. Card tests require intact
+single-line ordinary badges and full visible save/verification/recovery notes
+across all seven card types, five languages, normal/1.5×/2× title/status/action
+fonts and narrow→wide→narrow layout. They also check collapsed/expanded timings,
+localized tooltips, original evidence/paths, persistent diff counts and responsive
+footer/Revert dispatch. Optionally set `ORCA_CARD_PREVIEW_DIR` to an existing
+external directory to capture graphical normal/narrow-2× synthetic card renders.
+Resume tests exercise actual
+ordinary submissions, current tasks, draft/view-only/Plan guards, double clicks
+and new-turn budgets. Scene tests exercise both approvals, native Undo/Redo,
+save-pending and observed persistence, earlier history, dirty/current/background
+state, hash/live/candidate conflicts, non-tool restrictions, inverse Revert,
+New Session and dock teardown. Only fixture cleanup reloads after deliberately
+changing external scene bytes; production editor application never reloads.
+
+Focused component checks: `agent_controller_test.gd`, `context_budget_test.gd`,
+`responses_protocol_test.gd`, `tools_test.gd`, `scene_proposal_test.gd`,
+`chat_window_test.gd`, `session_store_test.gd`, `task_list_panel_test.gd`,
+`tool_activity_group_test.gd`, `auto_apply_test.gd` and `hosted_defaults_test.gd`.
+The controller suite covers productive work beyond twelve rounds, independent
+round/call exhaustion, all-or-none batch admission, matched denied results, actual
+runtime normalization, refreshed notices and stop reasons. Raw scene guards are
+checked both at preparation and runtime Apply. Keep the existing deliberate
+invalid-source diagnostic controls distinct from clean editor-runner acceptance.
+
 `auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `editor_ui_scale_test.gd`, `localization_editor_test.gd`, `project_inspection_editor_test.gd`, `support_reminder_editor_test.gd`
 and `update_editor_test.gd` extend the tool Node in
 `editor_test_case.gd`. Run them through `run_editor_test.py`, which enables a

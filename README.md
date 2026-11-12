@@ -82,10 +82,18 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
+## Upcoming Workflow Improvements (Unreleased)
+
+The development checkout adds complete, wrapping change/activity statuses,
+24-round bounded tasks with clear stop reasons, and **Resume remaining work** in
+the expanded checklist. Reviewed non-`@tool` script attachment/detachment can keep
+the saved current scene open and preserve normal Godot Undo. **Apply in editor**
+leaves the scene **save pending**; save it before running. Existing structured
+scene restrictions and both trust/change approvals still apply.
+
 ## What's New In 1.7.0: Multilingual UI & Focused Godot Inspection
 
-This checkout prepares **Orca 1.7.0** for **Godot 4.7.2**. It is a release
-candidate; **1.6.0 remains the latest published release**. See the
+**Orca 1.7.0** for **Godot 4.7.2** is the latest published release. See the
 [1.7.0 changelog entry](CHANGELOG.md#170---2026-11-06).
 
 ### Focused Godot inspection
@@ -95,7 +103,7 @@ read-only animation library/track/keyframe inspection, bounded compact directory
 listings, awareness of the Inspector's current target, and clickable text-search
 matches. Animations are read without scene/script loading or playback. Extended
 Cloud tools require the matching backend rollout and a model-catalog refresh.
-These additions are part of the 1.7.0 candidate, not the published 1.6.0 ZIP.
+These additions shipped in 1.7.0.
 
 ### Interface languages
 

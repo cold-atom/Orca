@@ -3,6 +3,8 @@ extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const Localization = preload("res://addons/orca/scripts/localization.gd")
+const CardHeader = preload("res://addons/orca/scripts/card_header.gd")
+const CardFooter = preload("res://addons/orca/scripts/card_footer.gd")
 
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
@@ -10,6 +12,8 @@ signal open_requested(filepath: String, line: int, column: int)
 var _proposal: Dictionary
 var _title_label: Label
 var _status_label: Label
+var _path_label: Label
+var _diff_stats_label: Label
 var _validation_label: Label
 var _diff_label: RichTextLabel
 var _apply_button: Button
@@ -45,7 +49,7 @@ func _ready() -> void:
 		meta_font_size = maxi(label_font_size - 1, 11)
 		_diff_font_size = maxi(editor_theme.get_font_size("font_size", "TextEdit"), 12)
 
-	var header := HBoxContainer.new()
+	var header := CardHeader.new()
 	content.add_child(header)
 	_title_label = Label.new()
 	_title_label.clip_text = true
@@ -53,18 +57,27 @@ func _ready() -> void:
 	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(_title_label)
-	_status_label = Label.new()
-	_status_label.clip_text = true
-	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
-	_status_label.add_theme_font_size_override("font_size", meta_font_size)
-	header.add_child(_status_label)
+	_status_label = header.create_status_badge()
+	_path_label = Label.new()
+	_path_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_path_label.clip_text = true
+	_path_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_path_label.add_theme_font_size_override("font_size", meta_font_size)
+	_path_label.add_theme_color_override("font_color", Color(0.55, 0.62, 0.68))
+	content.add_child(_path_label)
+	_diff_stats_label = Label.new()
+	_diff_stats_label.add_theme_font_size_override("font_size", meta_font_size)
+	_diff_stats_label.add_theme_color_override("font_color", Color(0.62, 0.78, 0.68))
+	var validation_row := CardHeader.new()
+	content.add_child(validation_row)
 	_validation_label = Label.new()
-	_validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_validation_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_validation_label.add_theme_font_size_override("font_size", meta_font_size)
 	_validation_label.add_theme_color_override("font_color", Color(0.48, 0.78, 0.58))
 	_validation_label.visible = false
-	content.add_child(_validation_label)
+	validation_row.add_child(_validation_label)
+	validation_row.add_child(_diff_stats_label)
 
 	_diff_label = RichTextLabel.new()
 	_diff_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -75,9 +88,9 @@ func _ready() -> void:
 	_diff_label.custom_minimum_size = Vector2(0, UiMetrics.scaled(70))
 	content.add_child(_diff_label)
 
-	var navigation := HFlowContainer.new()
-	navigation.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
-	content.add_child(navigation)
+	var footer := CardFooter.new()
+	content.add_child(footer)
+	var navigation := footer.navigation
 
 	var expand_button := Button.new()
 	expand_button.text = "Expand Diff"
@@ -92,10 +105,7 @@ func _ready() -> void:
 	_open_button.pressed.connect(_open_changed_file)
 	navigation.add_child(_open_button)
 
-	var actions := HFlowContainer.new()
-	actions.alignment = FlowContainer.ALIGNMENT_END
-	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
-	content.add_child(actions)
+	var actions := footer.actions
 
 	_reject_button = Button.new()
 	_reject_button.text = "Reject"
@@ -120,9 +130,13 @@ func _ready() -> void:
 func configure(proposal: Dictionary) -> void:
 	_proposal = proposal
 	var diff: Dictionary = proposal.get("diff", {})
-	Localization.bind(_title_label, &"text", "Modified  %s", [str(proposal.get("filepath", ""))])
-	_status_label.text = "+%d  -%d" % [diff.get("additions", 0), diff.get("deletions", 0)]
-	_status_label.add_theme_color_override("font_color", Color(0.62, 0.78, 0.68))
+	var filepath := str(proposal.get("filepath", ""))
+	Localization.bind(_title_label, &"text", "Modified · %s", [filepath.get_file()])
+	_title_label.tooltip_text = filepath
+	_path_label.text = filepath
+	_path_label.tooltip_text = filepath
+	_diff_stats_label.text = "+%d  −%d" % [diff.get("additions", 0), diff.get("deletions", 0)]
+	CardHeader.set_status(_status_label, "review")
 	var validation: Dictionary = proposal.get("validation", {})
 	_open_button.disabled = not proposal.get("existed", false)
 	if not validation.is_empty():
@@ -133,28 +147,18 @@ func configure(proposal: Dictionary) -> void:
 	_apply_button.visible = not proposal.get("_auto_apply", false)
 	_reject_button.visible = not proposal.get("_auto_apply", false)
 	if proposal.get("_auto_apply", false):
-		_status_label.text = "APPLYING"
+		CardHeader.set_status(_status_label, "applying")
 
 
 func set_status(status: String, message: String) -> void:
 	_proposal["status"] = status
-	_status_label.text = status.replace("_", " ").to_upper()
-	_status_label.tooltip_text = message
+	CardHeader.set_status(_status_label, status, message)
 	_apply_button.visible = false
 	_reject_button.visible = false
 	var can_check := _proposal.has("_checkpoint_id") and status in ["interrupted", "recovery_conflict", "apply_recovery_required", "revert_recovery_required"]
 	_revert_button.visible = status in ["applied", "applied_recovery", "revert_failed"] or can_check
 	_revert_button.text = "Check recovery" if can_check else "Revert"
 	_open_button.disabled = not _proposal.get("existed", false) and status not in ["applied", "applied_recovery", "revert_failed"]
-	match status:
-		"applied":
-			_status_label.add_theme_color_override("font_color", Color(0.45, 0.82, 0.55))
-		"applied_recovery":
-			_status_label.add_theme_color_override("font_color", Color(0.95, 0.68, 0.28))
-		"rejected", "reverted":
-			_status_label.add_theme_color_override("font_color", Color(0.62, 0.65, 0.7))
-		_:
-			_status_label.add_theme_color_override("font_color", Color(0.95, 0.4, 0.4))
 
 
 func set_revert_available(available: bool) -> void:

@@ -48,6 +48,7 @@ func _run() -> void:
 	_test_patch_lifecycle()
 	_test_safe_replacement_faults()
 	_test_gdscript_patch_lifecycle()
+	_test_raw_scene_script_guard()
 	_expect(not _has_replacement_artifacts(fixture_absolute), "tool tests should leave no temporary or backup artifacts")
 	_remove_tree(fixture_absolute)
 	Tools._clear_replacement_test_faults()
@@ -297,6 +298,22 @@ func _test_patch_lifecycle() -> void:
 	_expect(_read(new_path) == "created", "new-file application should write reviewed content")
 	_expect(Tools.revert_file_edit(new_proposal).begins_with("Reverted"), "new-file proposal should revert")
 	_expect(not FileAccess.file_exists(new_path), "reverting a created file should remove it")
+
+
+func _test_raw_scene_script_guard() -> void:
+	var path := _fixture_path.path_join("raw_scene.tscn")
+	var original := "[gd_scene format=3]\n\n[node name=\"Main\" type=\"Node\"]\n"
+	var changed := original + "script = ExtResource(\"1\")"
+	_write(path, original)
+	var denied := Tools.prepare_file_patch("raw_script", path, original.sha256_text(), [{"start_line": 4, "end_line": 3, "replacement": "script = ExtResource(\"1\")"}])
+	_expect(not denied.get("success", true) and str(denied.get("error", "")).contains("execution-trust"), "raw scene script changes must be denied during preparation")
+	var text_path := _fixture_path.path_join("raw_scene.txt")
+	_write(text_path, original)
+	var retained := Tools.prepare_file_patch("raw_script", text_path, original.sha256_text(), [{"start_line": 4, "end_line": 3, "replacement": "script = ExtResource(\"1\")"}])
+	_expect(retained.get("success", false) and retained.get("new_content") == changed, "plain-text control should prepare the complete ordinary diff")
+	retained["filepath"] = path
+	_expect(Tools.apply_file_edit(retained).contains("execution-trust"), "runtime Apply must independently deny script-bearing scene patches")
+	_expect(_read(path) == original, "raw script denial must leave scene bytes intact")
 
 
 func _test_gdscript_patch_lifecycle() -> void:

@@ -3,6 +3,7 @@ extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const Localization = preload("res://addons/orca/scripts/localization.gd")
+const CardHeader = preload("res://addons/orca/scripts/card_header.gd")
 const Tools = preload("res://addons/orca/scripts/tools.gd")
 
 signal open_requested(filepath: String, line: int, column: int)
@@ -13,6 +14,8 @@ const HELP_TOPIC_PREFIXES := ["class_name", "class_method", "class_property", "c
 
 var _header_button: Button
 var _status_label: Label
+var _duration_label: Label
+var _duration_ms := -1
 var _details: TextEdit
 var _open_button: Button
 var _help_button: Button
@@ -48,7 +51,7 @@ func _ready() -> void:
 	content.add_theme_constant_override("separation", UiMetrics.scaled_int(4))
 	add_child(content)
 
-	var header := HBoxContainer.new()
+	var header := CardHeader.new()
 	header.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
 	content.add_child(header)
 
@@ -69,14 +72,14 @@ func _ready() -> void:
 	_header_button.pressed.connect(_toggle_details)
 	header.add_child(_header_button)
 
-	_status_label = Label.new()
-	_status_label.clip_text = true
-	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
-	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_status_label.text = "RUNNING"
-	_status_label.add_theme_color_override("font_color", Color(0.55, 0.72, 0.95))
-	_status_label.add_theme_font_size_override("font_size", meta_font_size)
-	header.add_child(_status_label)
+	_status_label = header.create_status_badge()
+	CardHeader.set_status(_status_label, "running")
+	_duration_label = Label.new()
+	_duration_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_duration_label.add_theme_font_size_override("font_size", meta_font_size)
+	_duration_label.add_theme_color_override("font_color", Color(0.55, 0.62, 0.68))
+	_duration_label.hide()
+	content.add_child(_duration_label)
 
 	var navigation := HFlowContainer.new()
 	content.add_child(navigation)
@@ -159,35 +162,34 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 	if is_safe_help_topic(help_topic):
 		_help_topic = help_topic
 		_help_button.visible = true
-	Localization.bind(_status_label, &"text", "%s · %s", [Localization.source(outcome.to_upper()), _format_duration(duration_ms)])
-	Localization.bind(_status_label, &"tooltip_text", "%s · %s", [Localization.source(outcome.to_upper()), _format_duration(duration_ms)])
-	if _tool_name in ["find_project_symbols", "find_symbol_references"]:
-		# The group retains aggregate timing; keep per-call status readable in
-		# narrow docks at large fonts and retain timing in the full tooltip.
-		_status_label.text = "DONE" if outcome == "completed" else outcome.to_upper()
-	_status_label.add_theme_color_override(
-		"font_color",
-		Color(0.45, 0.82, 0.55) if outcome == "completed" or outcome == "applied" else Color(0.95, 0.4, 0.4)
-	)
+	_duration_ms = maxi(0, duration_ms)
+	CardHeader.set_status(_status_label, outcome)
+	Localization.bind(_duration_label, &"text", "Duration: %s", [_format_duration(_duration_ms)])
+	var tooltip_parts: Array = _status_label.get_meta(Localization.BINDINGS)[&"tooltip_text"]["parts"].duplicate(true)
+	tooltip_parts.append(["\n", []])
+	tooltip_parts.append(["Duration: %s", [_format_duration(_duration_ms)]])
+	Localization.bind_parts(_status_label, &"tooltip_text", tooltip_parts)
+	_duration_label.visible = _expanded
 	_update_header()
 
 
 func _toggle_details() -> void:
 	_expanded = not _expanded
 	_details.visible = _expanded
+	_duration_label.visible = _expanded and _duration_ms >= 0
 	_match_scroll.visible = _expanded and _match_list.get_child_count() > 0
 	_match_summary.visible = _expanded and _has_match_results
 	_update_header()
 
 
 func _update_header() -> void:
-	var arrow := "v" if _expanded else ">"
+	CardHeader.set_disclosure(_header_button, _expanded)
 	var label := _display_name(_tool_name)
 	var parts: Array = [["%s", [Localization.source(label)]]]
 	if not _target.is_empty():
 		parts.append(["  %s", [Localization.source(_target) if _target_is_caption else _target]])
-	Localization.bind_parts(_header_button, &"tooltip_text", parts)
-	Localization.bind_parts(_header_button, &"text", [["%s  ", [arrow]]] + parts)
+	Localization.bind_parts(_header_button, &"text", parts)
+	Localization.bind_parts(_header_button, &"tooltip_text", parts + ([["\n", []], ["Duration: %s", [_format_duration(_duration_ms)]]] if _duration_ms >= 0 else []))
 
 
 func _display_name(tool_name: String) -> String:

@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-11-06
+Last updated: 2026-11-10
 
 ## Purpose
 
@@ -8,19 +8,99 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Orca 1.7.0 Release Candidate
+## Unreleased: Card Readability, Longer Tasks, And Editor Script Attachment
 
-This checkout prepares **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
-for **Godot 4.7.2**. It adds five interface languages, focused saved-scene and
-animation inspection, navigable compact exploration and a quiet community
-invitation to 1.6.0. `addons/orca/plugin.cfg` and About/support expectations
-identify 1.7.0; the dated [changelog](CHANGELOG.md#170---2026-11-06) records the candidate.
-**1.6.0 remains the latest published release**; 1.7.0 is not yet published.
+- `card_header.gd` shares title-case, subtly tinted outcome badges across all seven
+  change/activity surfaces. Shaped/native font measurement includes badge padding
+  and fallback fonts. A complete badge moves below the title before the title's
+  readable font-aware width is exhausted; words never split into fragments. Very
+  narrow larger-font layouts first reduce horizontal padding, with `Unsaved`,
+  `Saved` and `Stopped` compact equivalents for longer save/interruption captions. Visible translated
+  qualification lines retain editor-only/save-pending, observed/not-verified and
+  recovery distinctions. The full caption and original receipt remain in tooltips;
+  presentation metadata never changes canonical status, permissions or history.
+- Activities use native themed disclosure icons and show timing only in expanded
+  metadata and header/badge tooltips. Per-call **Duration** and summed **Total tool
+  time** are distinct; the group sum is not wall-clock elapsed time. Original tool
+  evidence remains untranslated. File review separates basename/full project path,
+  retains diff counts beside validation after status changes, and all five change
+  cards use `card_footer.gd` to place navigation/actions side by side when they fit
+  or stack the complete groups with native flow at narrower widths. Godot 4.7's
+  public Button word wrapping retains full oversized translated action captions;
+  validation/count metadata also stacks before validation words fragment.
+- Productive turns can now use 24 tool rounds, with a separate 192 admitted-call
+  ceiling (the previous theoretical 12 × 16 call maximum). Failed/rejected calls
+  consume slots. A batch that exceeds remaining slots is denied in full with
+  matching results and one no-tools finalization. Repetition, context, three-run
+  and per-request transport limits remain independent. More rounds can cost more;
+  this is not a monetary cap or an unlimited task-completion promise.
+- Runtime loop detection now uses the same normalized observation/verification
+  representation as progress accounting. Budget guidance refreshes every round
+  from round eight. Successful provider summaries also retain a local stop reason
+  with actual round/call counts; checkpoints preserve it. The working indicator's
+  tooltip carries the explanation. BYOK Responses estimates use its validated
+  wire projection, counting retained assistant content/calls once while retaining
+  private reasoning. Cloud keeps its gateway-aligned estimate and reserves.
+- The expanded checklist offers **Resume remaining work** when idle, resumable,
+  and the composer/attachments are empty. A click submits a visible ordinary user
+  message through the existing Send/preflight path in the same conversation.
+  Current tasks and editor context are refreshed by the new turn. It never
+  automatically retries accepted requests, replays actions, changes mode, revives
+  view-only history, overwrites a draft, or reauthorizes paused/revoked editing.
+- Saved **current** scenes support reviewed non-`@tool` script attach/detach while
+  remaining open. `editor_scene_script_transaction.gd` retains the immutable disk
+  baseline/candidate and a private root/node/history binding. After Trust and
+  Prepare, **Apply in editor** verifies live/saved semantic parity, hashes and
+  current runtime approval, then commits one native `EditorUndoRedoManager` action.
+  Initial preparation is non-executing. Trusted construction/revalidation can
+  execute code and is not a sandbox. Dirty initial targets, background tabs,
+  unreviewed scripts/resources, unsupported exported state and stale identities
+  are rejected. Existing 60-node/240-property scene restrictions remain.
+- Application never saves, closes, reloads or replaces the scene. It reports
+  `applied_editor` / **SAVE PENDING**; the user saves before a run. Public scene
+  save/change/close and Undo-version notifications request deferred observation,
+  at most one retained transaction per frame. Observed saved, undone and changed
+  states are separate from startup verification. Observation never loads saved
+  scenes or scripts: it compares bounded saved bytes and the non-tool live state.
+  An exact candidate hash can be confirmed; differing editor serialization is
+  labelled **SAVE OBSERVED · NOT VERIFIED**, not independent semantic proof.
+  A later explicit Work-mode inverse revalidates saved semantic equality under
+  the retained execution trust. The approved candidate is never rewritten to fit
+  the saved file, and observed state never grants edit authority.
+- **Revert in editor** is a new inverse native action only against the matching
+  live state/history and baseline or verified saved state. It never rewinds newer
+  user history or restores a whole old scene file. Native Undo/Redo survives New
+  Session/dock teardown; Orca transaction authority does not. Saving followed by
+  Undo leaves the disk unchanged and the editor dirty, as in normal Godot editing.
+  Pending/manual scene recovery remains memory-only. History persists bounded
+  status/receipt text, never live objects or executable actions.
+- Raw `.tscn` patches containing script assignments or serialized resource/object
+  references are conservatively rejected at preparation and Apply. This includes
+  references used with escaped property names. They must use the structured trust
+  workflow; the lexical gate is not a general semantic scene/resource validator.
 
-The pre-bump [complete Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023)
-passed, including the reminder font-width correction, editor/transport checks,
-all four native-helper platforms and binary-free packaging. Final-version CI
-and matching ZIP/checksum/helpers are built from the new revision after push.
+The permanent `card_status_editor_test.gd`, `task_resume_editor_test.gd` and
+`editor_scene_script_test.gd` use the isolated normal-editor runner and are in CI.
+They cover intact ordinary badges and full visible qualification lines in five
+locales at normal/1.5×/2× title/status/action fonts, timing expansion/tooltips,
+original evidence/path preservation, responsive footer and Revert dispatch,
+same-session submission/draft/Plan/view-only guards, actual native Undo/Redo,
+save-pending/persisted state, conflicts and lifecycle cleanup. The scene fixture
+uses public `save_scene_as(path, false)` to avoid the headless renderer's thumbnail
+error. Its deliberate external-byte conflict is restored/reloaded only after
+Undo assertions, so Godot's graphical reload dialog cannot consume later shortcuts.
+Production application does not reload. Headless and Linux/X11/OpenGL checks pass;
+live-model acceptance and Windows/macOS editor behavior remain to be exercised.
+
+## Published Orca 1.7.0
+
+**Orca 1.7.0 — Multilingual UI & Focused Godot Inspection** for **Godot 4.7.2**
+was published on November 6 at `29fc480`. Its
+[release-commit Tests](https://github.com/cold-atom/Orca/actions/runs/42226616493)
+and [release preparation](https://github.com/cold-atom/Orca/actions/runs/42230762190)
+passed, including all four native-helper platforms and binary-free packaging.
+The ZIP/checksum and four helpers are published. Metadata remains 1.7.0 while
+the separate changes above are unreleased; those changes need their own CI/build.
 Extended Cloud inspection still requires the matching backend API rollout and
 authenticated catalog refresh. Native-speaker review, real-model usefulness,
 broader themes/platforms and Store moderation remain separate acceptance.
@@ -72,7 +152,7 @@ normal/1.5×/2× fonts, full overlay/scrollbar and wrapped-caption containment,
 Spanish/Korean 2× font layout with system fallback disabled on private font copies,
 actual pointer clicks through caption labels, and opt-out through a
 second clean process. Headless and Linux/X11/OpenGL pass locally. External browser and real
-star/review submission and other themes/platforms remain manual; 1.7.0 is a candidate.
+star/review submission and other themes/platforms remain manual; 1.7.0 is published.
 
 The first pushed reminder implementation at `5b43329` failed
 [Tests run #62](https://github.com/cold-atom/Orca/actions/runs/42220289337) on Korean
@@ -102,7 +182,7 @@ arguments are withheld/denied, preserving older servers. Legacy Cloud listing
 keeps companions visible through an execution-only default copy so it never
 recommends an unavailable option or alters canonical call arguments. The separately
 authorized backend extends only exact validation fields/types and catalog advertisement;
-rollout/refresh is required for hosted use. These additions are in the 1.7.0 candidate.
+rollout/refresh is required for hosted use. These additions shipped in 1.7.0.
 
 ### Saved-scene and animation evidence
 
@@ -172,8 +252,7 @@ fallback. Original conversation/source/evidence and runtime permissions remain
 canonical. Response-language guidance is captured once per turn before callbacks,
 retained through continuations/finalization and removed from persisted history.
 See [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md) for the contract, contribution
-workflow, verification and limits. This work is in the 1.7.0 candidate, not the
-published 1.6.0 ZIP.
+workflow, verification and limits. This work shipped in 1.7.0.
 
 ## Published Orca 1.6.0 / 1.5.0
 
@@ -253,7 +332,7 @@ The plugin has public GitHub releases and remains a functional development-stage
 - A Plan turn can show one inline, turn-bound Work-mode request with explicit `Stay in Plan` and `Switch to Work` actions. Approval continues the same task automatically; rejection stays in Plan and suppresses another request for that turn.
 - Two-row compact header that keeps session context usage and cost visible at narrow dock widths.
 - During active or locally blocked requests, the header shows `Request ~… / …` from the conservative preflight estimate. Its tooltip separates the latest completed provider usage from the outgoing input budget and output/tool reserves. Idle completed requests retain `Context …`; estimates are memory-only and do not replace billing/session usage. Narrow labels keep their existing clipping and complete tooltips.
-- In-dock settings page with icon-based Provider, System, and About navigation, neutral charcoal selected surfaces and bright active icons, keyboard focus, and section tooltips. System offers English, Simplified Chinese, Spanish, Japanese and Korean in the 1.7.0 candidate, with editor-wide local persistence and live Orca-only refresh. Provider settings include API key configuration, searchable model discovery, provider-reported or conservative known-model reasoning effort, model metadata, release information sourced from `plugin.cfg`, and a Done action.
+- In-dock settings page with icon-based Provider, System, and About navigation, neutral charcoal selected surfaces and bright active icons, keyboard focus, and section tooltips. System offers English, Simplified Chinese, Spanish, Japanese and Korean since 1.7.0, with editor-wide local persistence and live Orca-only refresh. Provider settings include API key configuration, searchable model discovery, provider-reported or conservative known-model reasoning effort, model metadata, release information sourced from `plugin.cfg`, and a Done action.
 - The About page can copy a memory-only strict-allowlist support report containing Orca/Godot versions and coarse provider/request lifecycle metadata without endpoint addresses, credentials, project or conversation content, model output, logs, process output, proposal data, or hashes.
 - About includes compact Resources and Community & Development link rows for documentation, `aiorca.dev`, the GitHub repository, issue reporting, and discussions/feature requests. PanelContainer-driven minimum sizes keep titles, wrapped descriptions, padding, and browser arrows inside each clickable row at actual editor font sizes. Neutral hover surfaces, keyboard focus, and accessible names follow the dock's visual style. URLs are static user-provided destinations opened in the default browser only on explicit click; Orca appends no project, conversation, or diagnostic data. Editor-layout regressions verify text containment, no row/heading overlap, and narrow width with normal, 1.5×, and 2× font sizes after deferred container layout.
 - First-class managed Orca Cloud, OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Microsoft Foundry / Azure, Ollama, LM Studio, and Local OpenAI-compatible profiles plus an advanced custom OpenAI-compatible profile.
@@ -716,7 +795,7 @@ Tool UI metadata is intentionally kept separate from model-facing content.
 
 Editor context and saved/live scene inspections return readable `content` for activity details plus optional compact `model_content` produced directly from the same typed snapshot/report. The controller sends only that string as the matching tool result, preserving readable UI content, every inspected value, explicit truncation/provenance and the exact call ID. It neither re-parses JSON (which could lose integer precision), drops scene facts nor changes file-read/approval evidence. Other tools retain their existing content. Scene descriptions encourage hierarchy-first `include_properties=false` discovery followed by a focused subtree/property or script read. Failed read activity is summarized as an incomplete tool action; only explicit uncertain apply/revert outcomes claim that a change recovery record exists.
 
-After each completed tool batch, `tool_loop_guard.gd` fingerprints normalized calls, arguments, outcomes, and results independently from the controller's semantic progress epoch. Runtime observation identity ignores elapsed time and observation cursors while retaining run ID, evidence sequence, state, verdict, exit code, output/diagnostic identity, and truncation state; verification identity uses verdict and check-status transitions rather than changing timers. The guard triggers after three identical call/results, an `ABABAB` call cycle, three identical complete rounds, or four rounds without semantic progress. At round eight the controller adds one temporary remaining-budget notice. Reaching the 12-round boundary uses the same finalization path instead of failing an otherwise successful turn. Any tool calls in the final response receive matching denied results. The independent 16-call limit per provider response remains authoritative.
+After each completed tool batch, `tool_loop_guard.gd` fingerprints normalized calls, arguments, outcomes, and results independently from the controller's progress epoch. Runtime observation identity ignores elapsed time and observation cursors while retaining run ID, evidence sequence, state, verdict, exit code, output/diagnostic identity, and truncation state; verification identity uses verdict and check-status transitions rather than changing timers. Progress is evidence novelty, not proof of useful work. The guard triggers after three identical call/results, an `ABABAB` call cycle, three identical complete rounds, or four rounds without progress. From round eight the controller refreshes one temporary remaining-budget notice. The 24-round or 192-call boundary uses safe finalization; no partial over-budget batch executes. Any tool calls in the final response receive matching denied results. The independent 16-call limit per provider response remains authoritative.
 
 Before loop, round-cap, or context-pressure finalization disables tools, the controller reserves one cleanup operation for an exact active run ID launched in the same user turn. It invokes the process service directly rather than exposing a general post-cap model tool, adds only a fixed coarse cleanup outcome to finalization context and visible fallback text, and never forwards automatic cleanup output or targets an editor-started process, arbitrary PID, newer replacement run, or retained run from an earlier turn.
 
@@ -774,7 +853,7 @@ Run/stop operations are external-state mutations, so their schemas are omitted i
 
 After a successful singleton run call, the controller appends its matching result and then enters a cancellable observation checkpoint before the next provider request. It waits on editor frames for a terminal transition, meaningful evidence after a 1.5-second settle period, an evaluable criterion, or a five-second ceiling. The resulting request-scoped snapshot identifies this as the first automatic observation, includes one bounded recommended next action, and tells the model not to immediately poll again. Cancelling this pause cancels the model turn but does not stop the independently owned game process.
 
-Each user turn allows at most three successful run attempts, in addition to the existing 12 tool-round limit and the 16-tool-call-per-response transport/controller limit. The first run fixes the turn's verification criteria, including the absence of criteria; later runs cannot introduce or change them. Orca never automatically applies a fix or launches a rerun.
+Each user turn allows at most three successful run attempts, in addition to 24 tool rounds, 192 total calls and 16 calls per response. The first run fixes the turn's verification criteria, including the absence of criteria; later runs cannot introduce or change them. Orca never automatically applies a fix or launches a rerun.
 
 ## Tool Contracts
 
@@ -1084,6 +1163,11 @@ Only requested `[display]` assignments are materialized, preserving unrelated va
 
 ### `propose_scene_changes`
 
+The unreleased current-scene script strategy described above is an explicit
+exception to the closed-tab disk-replacement contract below. It applies only
+attach/detach in the editor, retains two approvals, and requires a user save.
+Other structured operations still require closed existing scene tabs.
+
 Input:
 
 - `scene_path`: Canonical `res://` path ending in `.tscn`. A new scene's parent directory must already exist.
@@ -1373,7 +1457,7 @@ entry points pending a separate migration.
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
 - BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata identifies the 1.7.0 Multilingual UI & Focused Godot Inspection candidate; 1.6.0 remains published. The pre-bump full Tests/native/package run at `5cee382` passed, and final-version CI/package acceptance is required. Native-speaker translation review, real-model response-language/inspection/editing acceptance, broader platform/theme checks, Store moderation and third-party asset attribution records remain separate. Historical milestones retain their original verification state.
+- Plugin metadata remains 1.7.0, the latest published baseline with passing release CI. Current workflow improvements are unreleased and require fresh CI/package acceptance. Native-speaker translation review, real-model response-language/inspection/editing acceptance, broader platform/theme checks, Store moderation and third-party asset attribution records remain separate. Historical milestones retain their original verification state.
 
 ## Roadmap
 
@@ -1400,7 +1484,7 @@ entry points pending a separate migration.
 
 - Add multi-file change batches and transactional approval.
 - Broaden durable revert checkpoints beyond the implemented automatic-script journal to manual, structured and future multi-file changes.
-- Per-match text-search navigation is implemented in the 1.7.0 focused-inspection candidate; richer grouped result presentation can follow real editor feedback.
+- Per-match text-search navigation shipped in 1.7.0; richer grouped result presentation can follow real editor feedback.
 - Add richer changed-file summaries and context-budget warnings.
 - Implement prompt enhancement and expand image context toward bounded screenshot observation; user image attachments are implemented in 1.3.0.
 - Future release: investigate a public cancellable native-drop routing API for seamless desktop image drops directly onto the composer. If unavailable, design/propose a Godot engine enhancement allowing editor controls to consume native drops before project import. Retain Orca's separate native attachment window until direct routing is supported and verified with zero project-file changes, rejected/cancelled intake, and platform/lifecycle coverage.
@@ -1459,7 +1543,7 @@ Decision: use bounded `ResourceLoader.get_dependencies()` traversal for saved re
 
 ### Tool-Loop Finalization
 
-Decision: detect stable repeated or no-progress activity before the existing hard caps and permit one no-tools request so the model can report partial findings and a safe next step. Further tool calls from that request are denied with protocol-valid results. Keep the 12-round and 16-calls-per-response limits as independent hard failures.
+Decision: detect stable repeated or no-progress activity before independent hard budgets and permit one no-tools request to report partial findings and a safe next step. Further tool calls are denied with protocol-valid results. The current budgets are 24 rounds, 192 admitted calls and 16 calls per response; a user-click same-conversation follow-up is a new turn, never automatic replay.
 
 ### Progressive Schema Disclosure
 
@@ -1490,6 +1574,39 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-10: Professional outcome badges and responsive card metadata
+
+- Replaced uppercase status/timing strings with shared tinted title-case badges,
+  complete compact/stacked layout and visible save/verification/recovery notes.
+  Timings appear only in expanded details and header/badge tooltips; grouped
+  values explicitly describe summed tool time. Native disclosure icons, separate
+  basename/path, persistent diff counts and shared navigation/action footers make
+  the feed more consistent. All five locales retain original evidence and
+  canonical status/action values.
+- Strengthened the permanent card case to require intact ordinary badges and
+  complete qualifiers, title/status/action font scaling, actual button containment,
+  timing expansion/tooltips, original paths/evidence and Revert dispatch. Narrow
+  validation/count rows stack without fragmenting words, and oversized native
+  Button captions word-wrap instead of widening the dock. Linux 2× editor scale
+  exposed a Spanish interruption-caption edge absent in headless 1× scale;
+  bounded compact captions preserve the full outcome tooltip and qualifications.
+- Verification: Godot 4.7.2 workspace headless editor/plugin initialization;
+  `card_status_editor_test.gd` headlessly and Linux/X11/OpenGL, with normal/narrow-2×
+  graphical renders inspected; headless normal-editor localization (three clean
+  processes), Auto apply, editor-scale and scene-script native Undo/save cases;
+  activity/chat components and three translation-catalog checks all pass. Editor
+  runners exit cleanly without errors/warnings and isolate project/XDG state with
+  startup suppressions. Broader themes/platforms, native-speaker review and owner
+  live-project appearance remain manual acceptance.
+
+### 2026-11-10: Readable statuses, bounded longer turns and native scene-script Undo
+
+- Fixed shared card status allocation, replacing clipped fixed-width slots with measured full captions and bounded vertical reflow across file/structured/activity/group cards. Added five-language font/layout regressions.
+- Added 24-round/192-call admission limits, refreshed budget notices, production-path runtime normalization, visible stop reasons, BYOK Responses wire-projection estimates, and a user-click same-conversation task Resume action.
+- Added the current saved-scene non-tool script strategy with two approvals, immutable semantic review, fresh identity/hash/permission checks, native Undo/Redo, editor-only/save-pending receipts and explicit conflict-checked inverse actions. Observation is non-loading; differing saved serialization remains explicitly unverified until a separately authorized operation validates it. Raw resource/script-bearing scene patches cannot bypass the structured path.
+- Verification: three new normal-editor cases pass headlessly and Linux/X11/OpenGL; existing localization (three processes), editor-scale and Auto apply cases pass headlessly. Relevant controller, tools, scene, context, Responses, hosted-budget, image-switch, DeepSeek, API, chat, session, task/activity and automatic-script components pass. Invalid-source suites retain their deliberate parser controls; ordinary editor/plugin initialization and isolated editor exits are clean. Three catalog checks and five runner checks pass. Tests use disposable projects/XDG state and suppress account restore, updates and helper downloads.
+- Updated current product, safety, test and development docs; reconciled published 1.7.0 against GitHub. Metadata stays 1.7.0. New full CI/package acceptance, real-model/project acceptance and Windows/macOS editor behavior remain follow-ups; release actions remain owner-controlled.
 
 ### 2026-11-06: Orca 1.7.0 release-candidate preparation
 

@@ -53,6 +53,12 @@ func _enter_tree():
 	
 	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, toolbar)
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, chat_window)
+	if not scene_saved.is_connected(_on_scene_state_changed):
+		scene_saved.connect(_on_scene_state_changed)
+		scene_changed.connect(_on_scene_state_changed)
+		scene_closed.connect(_on_scene_state_changed)
+	if not EditorInterface.get_editor_undo_redo().version_changed.is_connected(_on_scene_history_changed):
+		EditorInterface.get_editor_undo_redo().version_changed.connect(_on_scene_history_changed)
 	
 	call_deferred("_set_chat_window_open", false)
 	
@@ -61,7 +67,18 @@ func _enter_tree():
 		button.pressed.connect(_toggle_chat_window)
 
 
+func _on_scene_state_changed(_scene) -> void:
+	call_deferred("_on_scene_history_changed")
+
+
+func _on_scene_history_changed() -> void:
+	if is_instance_valid(chat_window) and is_instance_valid(chat_window.agent_controller):
+		chat_window.agent_controller.queue_editor_scene_refresh()
+
+
 func _exit_tree():
+	if EditorInterface.get_editor_undo_redo().version_changed.is_connected(_on_scene_history_changed):
+		EditorInterface.get_editor_undo_redo().version_changed.disconnect(_on_scene_history_changed)
 	# Clean-up of the plugin goes here.
 	if chat_window:
 		remove_control_from_docks(chat_window)

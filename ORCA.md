@@ -11,26 +11,26 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-This checkout prepares **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
-for **Godot 4.7.2**. The candidate adds English/Simplified Chinese/Spanish/Japanese/
-Korean interface localization, turn-bound response-language guidance, focused
-scene/animation exploration and a quiet community invitation. **1.6.0 remains
-the latest published release**, with session-authorized automatic script edits,
-an optional remembered project preference and durable recovery.
+**Orca 1.7.0 — Multilingual UI & Focused Godot Inspection** is published for
+**Godot 4.7.2**, with English/Simplified Chinese/Spanish/Japanese/Korean UI,
+focused scene/animation exploration and a quiet community invitation.
+The checkout also contains unreleased full-status card layouts, 24-round/192-call
+bounded turns, same-conversation task Resume, and reviewed current-scene non-tool
+script attachment with native Undo and explicit save-pending receipts.
 See [localization](docs/LOCALIZATION.md),
-[1.7.0](CHANGELOG.md#170---2026-11-06) for the candidate,
+[1.7.0](CHANGELOG.md#170---2026-11-06) for the published release,
 [1.6.0](CHANGELOG.md#160---2026-11-05) for the published release,
 [1.5.0](CHANGELOG.md#150---2026-11-02) for saved project code navigation and
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
-The pre-bump [full Tests run at `5cee382`](https://github.com/cold-atom/Orca/actions/runs/42223647023)
-passed, including the reminder font-width correction and four-platform native
-packaging. The 1.7.0 revision requires its own CI/package run. Independent language
+The [release-commit Tests run](https://github.com/cold-atom/Orca/actions/runs/42226616493)
+passed, including four-platform native packaging. Unreleased changes require their
+own CI/package acceptance. Independent language
 review, real-model usefulness and broader platform/Store acceptance remain separate.
 
 ### Key Features & Components
 
-The 1.7.0 candidate adds focused saved-scene node/subtree inspection,
+The published 1.7.0 release adds focused saved-scene node/subtree inspection,
 read-only animation overview/track/keyframe reads, compact bounded directory
 listing, Inspector-target identity and per-match text-search navigation. New Cloud
 inspection vocabulary requires matching backend rollout and catalog refresh;
@@ -87,7 +87,7 @@ Orca's read-only context and reviewed-edit architecture. See `DEVELOPMENT.md`.
     - Native minimaps and synchronized scrolling in expanded reviews use the Godot code palette; narrow windows stack the panes. Plain Tab in the focused composer toggles Plan/Work when idle while preserving the draft and attachments.
    - A mode-colored five-square working indicator shows initial thinking, post-tool response preparation, and runtime observation without creating empty assistant messages during first-token delays.
    - Active turns automatically follow late-sizing response, tool, and review cards so the newest activity and sequential approvals remain visible.
-    - Repeated identical calls/results, alternating cycles, repeated rounds, sustained no-progress rounds, or the 12-round boundary trigger one visibly identified safe-finalization request with tools disabled. A provider that still requests tools is denied and the user receives explicit non-replay continuation guidance.
+    - Repeated calls/results, cycles, no-progress rounds, context pressure, or the 24-round/192-call boundary trigger one no-tools finalization. Its actual reason is retained in the summary. **Resume remaining work** starts a user-click ordinary turn in the same conversation; it never replays completed actions automatically.
 6. **Sessions and Usage**
    - Conversations are automatically saved in bounded, project-scoped local history and the most recent session is restored when the editor reopens.
    - The History page can open, continue, or delete prior sessions. Provider failures after complete tool rounds use sanitized, non-replayable recovery checkpoints; unsafe, cancelled, dirty, or truncated sessions remain view-only.
@@ -105,7 +105,7 @@ Orca's read-only context and reviewed-edit architecture. See `DEVELOPMENT.md`.
    - Uses Ollama `/api/tags` and LM Studio `/api/v1/models` metadata to hide known embedding models, with a conservative name fallback and unrestricted manual Model ID override.
    - Integrates with Godot's Editor Settings for persistence. Editor Settings is not an encrypted OS credential store.
     - The About page copies a memory-only strict-allowlist support report with Orca/Godot versions and coarse provider/request state while excluding endpoint addresses, credentials, model IDs, project and conversation data, model output, logs, file changes, and hashes.
-      - Provider, System, Account, and About use icon navigation. System offers English, Simplified Chinese, Spanish, Japanese and Korean in the 1.7.0 candidate, with remembered live Orca-only switching; About links to docs, website, source, issues and discussions. Managed account credentials use the OS vault rather than EditorSettings.
+      - Provider, System, Account, and About use icon navigation. System offers English, Simplified Chinese, Spanish, Japanese and Korean since 1.7.0, with remembered live Orca-only switching; About links to docs, website, source, issues and discussions. Managed account credentials use the OS vault rather than EditorSettings.
 8. **Image References (1.3.0)**
     - Attach up to four bounded PNG/JPEG/WebP still images with floating previews, removal, and larger preview actions. Vision capability is model/endpoint-specific and independent of Agent-tool support.
     - Paste screenshot pixels into the composer or drag existing project images from Godot's FileSystem dock. Desktop files use the image button's separate native drop/Browse window; dropping them onto the main editor still invokes Godot import.

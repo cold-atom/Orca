@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1] / "addons" / "orca"
 UI_FILES = (
     "settings_view", "chat_window", "history_view", "change_card",
     "input_map_change_card", "main_scene_change_card", "project_settings_change_card",
-    "scene_change_card", "tool_activity_card", "tool_activity_group", "task_list_panel",
+    "scene_change_card", "tool_activity_card", "tool_activity_group", "card_header", "task_list_panel",
     "mode_switch_card", "image_attachment_window", "image_attachment_tray",
     "script_reference_tray", "connection_setup_panel", "update_panel", "support_card",
 )

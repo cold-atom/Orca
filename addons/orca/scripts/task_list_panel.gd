@@ -4,12 +4,15 @@ extends PanelContainer
 const MAX_VISIBLE_HEIGHT := 160.0
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const Localization = preload("res://addons/orca/scripts/localization.gd")
+signal resume_requested
 
 var _header_button: Button
 var _scroll: ScrollContainer
 var _list: VBoxContainer
 var _tasks: Array = []
 var _expanded := true
+var _resume_button: Button
+var _resume_allowed := false
 
 
 func _enter_tree() -> void:
@@ -53,6 +56,26 @@ func _ready() -> void:
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", UiMetrics.scaled_int(3))
 	_scroll.add_child(_list)
+	_resume_button = Button.new()
+	_resume_button.tooltip_text = "Resume remaining work"
+	_resume_button.accessibility_name = "Resume remaining work"
+	_resume_button.pressed.connect(func(): resume_requested.emit())
+	content.add_child(_resume_button)
+	var caption_margin := MarginContainer.new()
+	caption_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_resume_button.add_child(caption_margin)
+	caption_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		caption_margin.add_theme_constant_override("margin_" + side, UiMetrics.scaled_int(6))
+	var caption := Label.new()
+	caption.text = "Resume remaining work"
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.add_theme_font_size_override("font_size", font_size)
+	caption_margin.add_child(caption)
+	caption_margin.minimum_size_changed.connect(func(): _resume_button.custom_minimum_size.y = caption_margin.get_combined_minimum_size().y)
+	_resume_button.custom_minimum_size.y = caption_margin.get_combined_minimum_size().y
 	_update_header()
 
 
@@ -64,6 +87,15 @@ func set_tasks(tasks: Array) -> void:
 
 func get_tasks() -> Array:
 	return _tasks.duplicate(true)
+
+
+func has_unfinished_tasks() -> bool:
+	return _tasks.any(func(task): return task.get("status") in ["pending", "in_progress", "blocked"])
+
+
+func set_resume_allowed(allowed: bool) -> void:
+	_resume_allowed = allowed
+	_update_header()
 
 
 func clear() -> void:
@@ -117,6 +149,8 @@ func _rebuild() -> void:
 func _update_header() -> void:
 	if _header_button == null:
 		return
+	if _resume_button != null:
+		_resume_button.visible = _expanded and _resume_allowed and has_unfinished_tasks()
 	var completed := 0
 	var active := ""
 	for task in _tasks:

@@ -228,6 +228,7 @@ func _ready() -> void:
 		column.move_child(update_notice, chat_scroll.get_index())
 	_setup_image_attachments()
 	task_list_panel = TaskListPanel.new()
+	task_list_panel.resume_requested.connect(_on_resume_remaining_work)
 	var main_column := chat_scroll.get_parent()
 	main_column.add_child(task_list_panel)
 	main_column.move_child(task_list_panel, composer.get_index())
@@ -948,6 +949,8 @@ func _add_message_script_references(label: RichTextLabel, references: Array) -> 
 
 
 func _sync_send_availability() -> void:
+	if task_list_panel != null:
+		task_list_panel.set_resume_allowed(not _request_active and _session_resumable and prompt_input.text.is_empty() and _draft_images.is_empty() and _draft_script_paths.is_empty())
 	_pause_support_reminder()
 	send_button.disabled = not _request_active and (not _session_resumable or (prompt_input.text.strip_edges().is_empty() and _draft_images.is_empty() and _draft_script_paths.is_empty()))
 	_sync_image_button(_selected_image_capability())
@@ -1019,6 +1022,17 @@ func _on_prompt_gui_input(event: InputEvent) -> void:
 			return
 		get_viewport().set_input_as_handled()
 		_on_send_button_pressed()
+
+
+func _on_resume_remaining_work() -> void:
+	# A user click is an ordinary new submission in this session, never a replay
+	# or a way to resume view-only/cancelled history or reacquire edit permission.
+	if _request_active or not _session_resumable or agent_controller == null or agent_controller.is_busy() or task_list_panel == null or not task_list_panel.has_unfinished_tasks():
+		return
+	if not prompt_input.text.is_empty() or not _draft_images.is_empty() or not _draft_script_paths.is_empty():
+		return
+	prompt_input.text = Localization.message("Continue the unfinished tasks in the current checklist. Re-inspect the current project state before acting. Do not repeat completed actions. Reassess blocked tasks and use the current mode and normal edit permissions.")
+	_on_send_button_pressed()
 
 
 func _on_send_button_pressed() -> void:
@@ -1109,6 +1123,8 @@ func _on_turn_request_state_changed(turn_id: int, active: bool) -> void:
 	elif turn_id != _active_turn_id:
 		return
 	_set_request_active(active)
+	if not active and agent_controller != null:
+		agent_controller.queue_editor_scene_refresh()
 
 
 func _on_turn_message_received(turn_id: int, role: String, content: String, attribution: Dictionary = {}) -> void:
@@ -1287,6 +1303,7 @@ func _on_workflow_state_changed(state: String, details: Dictionary) -> void:
 			_show_working_indicator("Preparing response" if bool(details.get("follow_up", false)) else "Thinking")
 		"finalizing":
 			_show_working_indicator("Finalizing safely")
+			_working_status_label.tooltip_text = str(details.get("explanation", ""))
 		"observing":
 			_show_working_indicator("Observing game")
 		"assessment_ready":
@@ -1415,7 +1432,8 @@ func _on_edit_resolved(change_id: String, status: String, message: String) -> vo
 	_recount_changed_files()
 	_save_current_session()
 	_sync_edit_permission_ui()
-	_scroll_to_bottom()
+	if status not in ["applied_editor", "saved_editor", "save_observed_editor", "undone_editor", "editor_changed"]:
+		_scroll_to_bottom()
 
 
 func _on_change_action_requested(change_id: String, action: String, origin_turn_id: int = -1) -> void:
@@ -2333,6 +2351,8 @@ func _update_tool_event(call_id: String, execution: Dictionary, duration_ms: int
 			event["summary"] = "Tool was cancelled."
 		elif outcome in ["applied_recovery", "reverted_recovery"]:
 			event["summary"] = "Completed with cleanup required."
+		elif outcome == "applied_editor":
+			event["summary"] = "Applied in the editor only; saving and startup verification are separate."
 		else:
 			event["summary"] = "Completed successfully."
 	if data.has("open_path"):
@@ -2352,7 +2372,7 @@ func _update_change_event(change_id: String, status: String, message: String = "
 		var event = events[index]
 		if typeof(event) == TYPE_DICTIONARY and event.get("type") == "change" and (str(event.get("id", "")) == change_id or str(event.get("checkpoint_id", "")) == change_id):
 			event["status"] = status
-			if status in ["apply_recovery_required", "revert_recovery_required"]:
+			if status in ["apply_recovery_required", "revert_recovery_required", "applied_editor", "saved_editor", "save_observed_editor", "undone_editor", "reverted_editor", "editor_changed"]:
 				event["resolution_message"] = _persisted_recovery_message(message)
 			else:
 				event.erase("resolution_message")

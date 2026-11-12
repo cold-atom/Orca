@@ -26,8 +26,9 @@ signal workflow_state_changed(turn_id: int, state: String, details: Dictionary)
 signal work_mode_requested(turn_id: int, request: Dictionary)
 signal work_mode_decision_received(resolution: Dictionary)
 
-const MAX_TOOL_ROUNDS := 12
+const MAX_TOOL_ROUNDS := 24
 const MAX_TOOL_CALLS_PER_RESPONSE := 16
+const MAX_TOOL_CALLS_PER_TURN := 192
 const MAX_RUN_ATTEMPTS_PER_TURN := 3
 const OBSERVATION_SETTLE_MS := 1500
 const OBSERVATION_MAX_WAIT_MS := 5000
@@ -72,9 +73,10 @@ const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const ToolLoopGuardScript = preload("res://addons/orca/scripts/tool_loop_guard.gd")
 const LOOP_FINAL_NOTICE := "ORCA TOOL LOOP NOTICE: Stop using tools for this turn. Give the user a concise final response that summarizes completed work, unresolved items, and the safest next step. Do not request or describe additional tool calls."
 const RECOVERY_CHECKPOINT_HEADING := "ORCA RECOVERY CHECKPOINT"
-const MAX_RECOVERY_RECEIPTS := MAX_TOOL_ROUNDS * MAX_TOOL_CALLS_PER_RESPONSE
+const MAX_RECOVERY_RECEIPTS := MAX_TOOL_CALLS_PER_TURN
 const MAX_GUIDANCE_WARNING_CHARS := 240
 const LOOP_TRIGGER_ROUND_CAP := "round_cap"
+const LOOP_TRIGGER_CALL_CAP := "call_cap"
 const LOOP_TRIGGER_CONTEXT_PRESSURE := "context_pressure"
 const MAX_FINAL_PROVIDER_TEXT_CHARS := 1200
 const WORK_MODE_REQUEST_TOOL := "request_work_mode"
@@ -82,6 +84,7 @@ const TASK_CONTEXT_HEADING := "CURRENT ORCA TASK CHECKLIST:"
 const MAX_TOOL_BATCH_REGENERATION_ATTEMPTS := 1
 const TOOL_BATCH_CORRECTION_NOTICE := "ORCA TOOL CALL CORRECTION: The previous assistant response contained an invalid tool-call batch. No tool from that batch was executed. Regenerate the complete batch with each function.arguments value as one valid JSON object. Multiple calls are allowed only when every call is an independent read-only tool. Request Work mode, task updates, reviewed mutations, run/stop operations, observations, and verifications must each be the only call in their batch. Do not refer to the rejected batch as completed."
 const ROUND_BUDGET_WARNING_THRESHOLD := 8
+const EDITOR_SCENE_GUIDANCE := " Orca can attach/detach supported non-@tool scripts in a saved current open scene through native Undo after two approvals. Report applied-in-editor separately from saved or verified. Ask the user to save before running; never claim Godot prohibits attaching to an open scene. Other scene operations retain Orca's closed-tab workflow. Never bypass a failed structured attachment with a raw .tscn patch."
 const REQUEST_CONTEXT_INDEX_FIELDS := ["_context_message_index", "_task_context_message_index", "_runtime_context_message_index", "_loop_notice_message_index", "_tool_batch_correction_message_index", "_round_budget_message_index", "_loop_cleanup_message_index"]
 
 enum AgentMode {
@@ -100,6 +103,7 @@ var _cancel_requested := false
 var _pending_change_id := ""
 var _proposals: Dictionary = {}
 var _tool_rounds := 0
+var _tool_calls_admitted := 0
 var _mode: AgentMode = AgentMode.BUILD
 var _context_message_index := -1
 var _task_context_message_index := -1
@@ -170,6 +174,8 @@ var _session_allows_auto_apply := true
 var _script_change_records: Dictionary = {}
 var _committing_edit := false
 var _edit_permission_prompt_dirty := false
+var _editor_refresh_ids: Array = []
+var _editor_refresh_queued := false
 
 
 func auto_apply_enabled() -> bool:
@@ -706,6 +712,8 @@ func resolve_work_mode_request(call_id: String, origin_turn_id: int, approved: b
 	work_mode_decision_received.emit(resolution.duplicate(true))
 
 func resolve_edit(change_id: String, origin_turn_id: int, approved: bool) -> void:
+	if _committing_edit:
+		return
 	if change_id != _pending_change_id or not _proposals.has(change_id):
 		return
 	var proposal: Dictionary = _proposals[change_id]
@@ -719,7 +727,12 @@ func resolve_edit(change_id: String, origin_turn_id: int, approved: bool) -> voi
 			result = "Error: File changes cannot be applied while Orca is in Plan mode."
 			status = "failed"
 		elif str(proposal.get("approval_stage", "")) == "script_trust":
+			_committing_edit = true
 			var promoted: Dictionary = tools_script.promote_script_trust(proposal)
+			_committing_edit = false
+			if _cancel_requested or not _is_running or _active_turn_id != origin_turn_id or _pending_change_id != change_id:
+				_cancel_pending_edit()
+				return
 			if not promoted.get("success", false):
 				result = "Error: " + str(promoted.get("error", "Could not construct the trusted script candidate."))
 				for diagnostic in promoted.get("diagnostics", []):
@@ -731,17 +744,21 @@ func resolve_edit(change_id: String, origin_turn_id: int, approved: bool) -> voi
 				edit_proposed.emit(origin_turn_id, _proposal_for_review(promoted))
 				return
 		else:
+			proposal["_editor_authorization"] = _editor_apply_authorized.bind(change_id, origin_turn_id)
 			_committing_edit = true
 			result = tools_script.apply_reviewed_change(proposal)
 			_committing_edit = false
+			proposal.erase("_editor_authorization")
 			status = _apply_status(result)
-			success = status in ["applied", "applied_recovery"]
+			if status == "applied" and proposal.get("application_strategy") == "editor_current":
+				status = "applied_editor"
+			success = status in ["applied", "applied_recovery", "applied_editor"]
 	_complete_edit_resolution(change_id, proposal, status, result, success)
 
 
 func _complete_edit_resolution(change_id: String, proposal: Dictionary, status: String, result: String, success: bool) -> void:
 	proposal["status"] = status
-	if status in ["applied", "applied_recovery", "apply_recovery_required"]:
+	if status in ["applied", "applied_recovery", "apply_recovery_required", "applied_editor"]:
 		_proposals[change_id] = proposal
 	else:
 		_proposals.erase(change_id)
@@ -798,19 +815,53 @@ func _apply_status(result: String) -> String:
 func _automatic_write_authorized(turn_id: int, revision: int, record: Dictionary) -> bool:
 	return _owns_turn(turn_id) and not _cancel_requested and _mode == AgentMode.BUILD and auto_apply_enabled() and revision == _edit_permission_revision and _turn_allows_tools() and not EditorContext.has_unsaved_file(record["filepath"]) and ScriptChangeJournal.inspect_current(record).get("state") == "original"
 
+func queue_editor_scene_refresh() -> void:
+	if not Engine.is_editor_hint() or _editor_refresh_queued or _committing_edit or _is_running:
+		return
+	_editor_refresh_ids = _proposals.keys()
+	_editor_refresh_queued = true
+	get_tree().process_frame.connect(_refresh_one_editor_scene, CONNECT_ONE_SHOT)
+
+
+func _refresh_one_editor_scene() -> void:
+	if _is_running or _committing_edit or _editor_refresh_ids.is_empty():
+		_editor_refresh_ids.clear()
+		_editor_refresh_queued = false
+		return
+	var change_id: String = str(_editor_refresh_ids.pop_back())
+	var proposal: Dictionary = _proposals.get(change_id, {})
+	var transaction = proposal.get("_editor_transaction")
+	if transaction != null and proposal.get("status") != "apply_recovery_required":
+		var observed: Dictionary = transaction.observe()
+		if not observed.is_empty() and observed["status"] != proposal.get("status"):
+			proposal["status"] = observed["status"]
+			edit_resolved.emit(change_id, observed["status"], observed["message"])
+	get_tree().process_frame.connect(_refresh_one_editor_scene, CONNECT_ONE_SHOT)
+
+
+func _editor_apply_authorized(change_id: String, turn_id: int) -> bool:
+	return _owns_turn(turn_id) and not _cancel_requested and _mode == AgentMode.BUILD and _pending_change_id == change_id and _proposals.has(change_id) and _awaiting_edit_resolution
+
+
+func _editor_revert_authorized(change_id: String, transaction) -> bool:
+	return not _is_running and _mode == AgentMode.BUILD and _proposals.get(change_id, {}).get("_editor_transaction") == transaction
+
+
 func revert_edit(change_id: String) -> void:
+	if _committing_edit:
+		return
 	if _is_running:
 		edit_resolved.emit(change_id, "revert_failed", "Error: Stop the active request before reverting a change.")
 		return
 	if not _proposals.has(change_id):
 		return
 	var proposal: Dictionary = _proposals[change_id]
-	if proposal.get("status") not in ["applied", "applied_recovery", "revert_failed"]:
+	if proposal.get("status") not in ["applied", "applied_recovery", "revert_failed", "applied_editor", "saved_editor", "save_observed_editor"]:
 		return
 	if _mode != AgentMode.BUILD:
 		edit_resolved.emit(change_id, "revert_failed", "Error: Project changes cannot be reverted while Orca is in Plan mode.")
 		return
-	if not proposal.get("exact_applied_state", false):
+	if not proposal.get("exact_applied_state", false) and proposal.get("application_strategy") != "editor_current":
 		edit_resolved.emit(change_id, "revert_failed", "Error: Revert is unavailable because the exact applied candidate state has not been proven.")
 		return
 	var checkpoint_id := str(proposal.get("_checkpoint_id", ""))
@@ -827,17 +878,20 @@ func revert_edit(change_id: String) -> void:
 		if _is_running or _mode != AgentMode.BUILD or not _proposals.has(change_id):
 			edit_resolved.emit(change_id, "revert_failed", "Error: Work-mode recovery authorization changed before writing.")
 			return
+	proposal["_editor_authorization"] = _editor_revert_authorized.bind(change_id, proposal.get("_editor_transaction"))
 	_committing_edit = true
 	var result: String = tools_script.revert_reviewed_change(proposal)
 	_committing_edit = false
+	proposal.erase("_editor_authorization")
 	var status := "conflict" if result.begins_with("Conflict:") else "revert_failed" if result.begins_with("Error:") else "revert_recovery_required" if result.begins_with("Recovery required:") else "reverted_recovery" if result.begins_with("Cleanup required:") else "reverted"
+	if status == "reverted" and proposal.get("application_strategy") == "editor_current": status = "reverted_editor"
 	if not checkpoint.is_empty():
 		checkpoint["status"] = "revert_failed" if status == "conflict" else status
 		if not _write_script_checkpoint(checkpoint):
 			result += "\nThe final recovery status could not be saved. Check recovery in History against current disk state."
 			if status == "reverted":
 				status = "reverted_recovery"
-	if status in ["reverted", "reverted_recovery"]:
+	if status in ["reverted", "reverted_recovery", "reverted_editor"]:
 		proposal["status"] = status
 		_proposals.erase(change_id)
 	else:
@@ -897,6 +951,18 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 				_record_request_usage(response)
 				_handle_invalid_tool_batch(batch_validation, turn_id)
 				return
+			if _tool_calls_admitted + message.tool_calls.size() > MAX_TOOL_CALLS_PER_TURN:
+				# Reject the complete batch; never partially execute it or replay it.
+				_record_request_usage(response)
+				if not _owns_turn(turn_id):
+					return
+				assistant_message["tool_calls"] = message.tool_calls
+				message_history.append(assistant_message)
+				for call in message.tool_calls:
+					message_history.append({"role": "tool", "tool_call_id": str(call.get("id", "")), "content": "The entire batch was denied because it exceeds the remaining per-turn tool-call budget. No call in this batch executed."})
+				_begin_loop_finalization(LOOP_TRIGGER_CALL_CAP)
+				return
+			_tool_calls_admitted += message.tool_calls.size()
 			_tool_rounds += 1
 			if _tool_rounds > MAX_TOOL_ROUNDS:
 				_loop_final_trigger_reason = LOOP_TRIGGER_ROUND_CAP
@@ -943,13 +1009,14 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 				if not observed or not _owns_turn(turn_id) or _cancel_requested:
 					return
 			if _tool_loop_guard == null:
-				_reset_turn_loop_state()
-			_record_tool_progress(round_results)
-			var loop_result: Dictionary = _tool_loop_guard.record_round(round_results, _tool_progress_epoch)
+				_tool_loop_guard = ToolLoopGuardScript.new()
+			var loop_result := _record_tool_round(round_results)
 			if bool(loop_result.get("triggered", false)):
 				_begin_loop_finalization(str(loop_result.get("reason", "no_progress")))
 			elif _tool_rounds >= MAX_TOOL_ROUNDS:
 				_begin_loop_finalization(LOOP_TRIGGER_ROUND_CAP)
+			elif _tool_calls_admitted >= MAX_TOOL_CALLS_PER_TURN:
+				_begin_loop_finalization(LOOP_TRIGGER_CALL_CAP)
 			else:
 				if _owns_turn(turn_id):
 					_ensure_round_budget_notice()
@@ -963,6 +1030,7 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 					attribution.clear()
 				else:
 					assistant_message["content"] = str(assistant_message.get("content", "")).strip_edges()
+					assistant_message["content"] += "\n\n" + _finalization_notice()
 					if not _loop_cleanup_summary.is_empty():
 						assistant_message["content"] += "\n\nCleanup: " + _loop_cleanup_summary
 					assistant_message["content"] += "\n\n" + _continuation_guidance()
@@ -1180,9 +1248,9 @@ func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1, permi
 			tasks_changed.emit(_tasks.duplicate(true))
 
 	if execution.is_empty():
-		execution = {"success": outcome in ["completed", "applied", "applied_recovery"], "content": result, "outcome": outcome, "data": {}}
+		execution = {"success": outcome in ["completed", "applied", "applied_recovery", "applied_editor"], "content": result, "outcome": outcome, "data": {}}
 	else:
-		execution["success"] = outcome in ["completed", "applied", "applied_recovery"]
+		execution["success"] = outcome in ["completed", "applied", "applied_recovery", "applied_editor"]
 		if not execution.has("content"):
 			execution["content"] = result
 		execution["outcome"] = outcome
@@ -1266,7 +1334,7 @@ func _recommended_run_action(snapshot: Dictionary, changed_since: bool) -> Strin
 
 func _proposal_for_review(proposal: Dictionary) -> Dictionary:
 	var review_copy := proposal.duplicate(true)
-	for field in ["_origin_turn_id", "_write_authorization", "old_values", "new_values", "old_value", "new_value", "old_hash", "new_hash", "changes", "edits", "operations", "script_content", "trust_binding", "candidate_binding"]:
+	for field in ["_origin_turn_id", "_write_authorization", "_editor_authorization", "_editor_root", "_editor_transaction", "old_values", "new_values", "old_value", "new_value", "old_hash", "new_hash", "changes", "edits", "operations", "script_content", "trust_binding", "candidate_binding"]:
 		review_copy.erase(field)
 	if proposal.get("kind", "file_patch") != "file_patch":
 		review_copy.erase("old_content")
@@ -1274,6 +1342,7 @@ func _proposal_for_review(proposal: Dictionary) -> Dictionary:
 	return review_copy
 
 func _reset_turn_loop_state() -> void:
+	_tool_calls_admitted = 0
 	_tool_loop_guard = ToolLoopGuardScript.new()
 	_tool_progress_epoch = 0
 	_tool_progress_fingerprints.clear()
@@ -1391,12 +1460,14 @@ func _format_recovery_checkpoint() -> String:
 		"Orca stopped locally after these actions completed. This is historical state; do not replay these actions automatically.",
 		"Completed action receipts:",
 	])
+	if not _loop_final_trigger_reason.is_empty():
+		lines.append(_finalization_notice())
 	for receipt in _turn_tool_receipts:
 		var name := str(receipt.get("name", "unknown_tool"))
 		if not name.is_valid_identifier():
 			name = "unknown_tool"
 		var outcome := str(receipt.get("outcome", "unknown"))
-		if outcome not in ["completed", "failed", "cancelled", "applied", "applied_recovery", "apply_recovery_required", "rejected", "no_changes"]:
+		if outcome not in ["completed", "failed", "cancelled", "applied", "applied_recovery", "applied_editor", "apply_recovery_required", "rejected", "no_changes"]:
 			outcome = "unknown"
 		lines.append("- %s: %s" % [name, outcome])
 	if not _loop_cleanup_outcome.is_empty():
@@ -1408,6 +1479,14 @@ func _format_recovery_checkpoint() -> String:
 			lines.append("- [%s] %s" % [str(task.get("status", "pending")), JSON.stringify(str(task.get("content", "")))])
 	lines.append(_continuation_guidance() + " Obtain normal approval before any new mutation or external operation.")
 	return "\n".join(lines)
+
+
+func _record_tool_round(round_results: Array) -> Dictionary:
+	_record_tool_progress(round_results)
+	var normalized: Array = []
+	for result in round_results:
+		normalized.append(_tool_loop_view(result))
+	return _tool_loop_guard.record_round(normalized, _tool_progress_epoch)
 
 
 func _record_tool_progress(round_results: Array) -> void:
@@ -1454,11 +1533,15 @@ func _tool_loop_view(result: Dictionary) -> Dictionary:
 
 
 func _ensure_round_budget_notice() -> void:
-	if _tool_rounds < ROUND_BUDGET_WARNING_THRESHOLD or _round_budget_message_index >= 0:
+	if _tool_rounds < ROUND_BUDGET_WARNING_THRESHOLD:
 		return
 	var active_run: bool = game_process_service != null and game_process_service.has_method("is_running") and game_process_service.is_running()
-	_round_budget_message_index = message_history.size()
-	message_history.append({"role": "system", "content": "ORCA ACTION BUDGET: %d normal tool rounds remain. Consolidate only independent reads, do not repeat unchanged observations, and finish the highest-priority unresolved work. Orca-owned game active: %s. Reserve cleanup and finalization capacity." % [MAX_TOOL_ROUNDS - _tool_rounds, "yes" if active_run else "no"]})
+	var notice := {"role": "system", "content": "ORCA ACTION BUDGET: %d normal tool rounds and %d tool calls remain. Consolidate only independent reads, do not repeat unchanged observations, and finish the highest-priority unresolved work. Orca-owned game active: %s. Reserve cleanup and finalization capacity." % [MAX_TOOL_ROUNDS - _tool_rounds, MAX_TOOL_CALLS_PER_TURN - _tool_calls_admitted, "yes" if active_run else "no"]}
+	if _round_budget_message_index < 0:
+		_round_budget_message_index = message_history.size()
+		message_history.append(notice)
+	else:
+		message_history[_round_budget_message_index] = notice
 
 
 func _begin_loop_finalization(trigger_reason: String) -> void:
@@ -1523,7 +1606,14 @@ func _empty_finalization_fallback() -> String:
 
 
 func _continuation_guidance() -> String:
-	return "A new request is needed for unfinished work. `continue` is not special: describe the unfinished work so Orca can re-inspect the current state. Completed actions will not be replayed automatically."
+	return "To continue unfinished work, use Resume remaining work in the checklist or send a follow-up in this conversation. Orca will re-inspect the current state; completed actions will not be replayed automatically."
+
+
+func _finalization_notice() -> String:
+	var notice := "Stopped this turn: %s (%d/%d tool rounds, %d/%d tool calls)." % [_loop_trigger_description(), _tool_rounds, MAX_TOOL_ROUNDS, _tool_calls_admitted, MAX_TOOL_CALLS_PER_TURN]
+	if _loop_final_trigger_reason == LOOP_TRIGGER_CONTEXT_PRESSURE:
+		notice += " The active turn must remain complete; older completed turns alone could not free enough context."
+	return notice
 
 
 func _loop_trigger_description() -> String:
@@ -1538,6 +1628,8 @@ func _loop_trigger_description() -> String:
 			return "no tool progress"
 		LOOP_TRIGGER_ROUND_CAP:
 			return "%d-round tool limit" % MAX_TOOL_ROUNDS
+		LOOP_TRIGGER_CALL_CAP:
+			return "%d-call tool limit" % MAX_TOOL_CALLS_PER_TURN
 		LOOP_TRIGGER_CONTEXT_PRESSURE:
 			return "context-window pressure"
 	return "tool-loop safety trigger"
@@ -1653,12 +1745,12 @@ func _send_current_request() -> bool:
 		context_window = int(_turn_provider_config.get("hosted_context_window", 0))
 		hosted_output = int(_turn_provider_config.get("hosted_output_tokens", 8192))
 	var policy: Dictionary = _turn_provider_config.get("hosted_context_policy", {})
-	var prepared := ContextBudget.prepare(message_history, definitions, context_window, _turn_include_history_images, hosted_output, policy)
+	var prepared := ContextBudget.prepare(message_history, definitions, context_window, _turn_include_history_images, hosted_output, policy, _turn_provider_config)
 	if not prepared.get("success", false) and _can_finalize_for_context_pressure(definitions):
 		if _enter_loop_finalization(LOOP_TRIGGER_CONTEXT_PRESSURE):
 			definitions = []
 			_begin_support_request_snapshot(false)
-			prepared = ContextBudget.prepare(message_history, definitions, context_window, _turn_include_history_images, hosted_output, policy)
+			prepared = ContextBudget.prepare(message_history, definitions, context_window, _turn_include_history_images, hosted_output, policy, _turn_provider_config)
 	var budget_turn_id := _active_turn_id
 	_last_request_budget = {
 		"estimated_tokens": int(prepared.get("estimated_tokens", 0)),
@@ -1684,7 +1776,7 @@ func _send_current_request() -> bool:
 	var request_id := _expected_provider_request_id
 	_request_attribution = ResponseAttribution.sanitize({"model": _turn_provider_config.get("model", ""), "mode": _mode})
 	if _loop_final_request:
-		workflow_state_changed.emit(turn_id, "finalizing", {"trigger_reason": _loop_final_trigger_reason, "attribution": _request_attribution.duplicate(true)})
+		workflow_state_changed.emit(turn_id, "finalizing", {"trigger_reason": _loop_final_trigger_reason, "explanation": _finalization_notice(), "attribution": _request_attribution.duplicate(true)})
 	else:
 		workflow_state_changed.emit(turn_id, "thinking", {"follow_up": _tool_rounds > 0, "attribution": _request_attribution.duplicate(true)})
 	if not _owns_turn(turn_id) or _expected_provider_request_id != request_id:
@@ -1830,7 +1922,7 @@ func _get_system_prompt() -> String:
 		shared += " For focused saved scene evidence use inspect_scene scope node/subtree and exact node_path; property_filter narrows stored names. Use inspect_animation for saved animation libraries, tracks and bounded keyframes; start with its overview, then an exact animation_name/player_path. It never plays or loads scenes/scripts and cannot prove runtime animation behavior or property validity. Directory listings fold companion sidecars; incomplete listings are not exhaustive. Inspector target context identifies what the user is viewing, even when different from selection; detailed resource reads still require appropriate tools and fresh saved state."
 	if _mode == AgentMode.PLAN:
 		return shared + " You are in Plan mode. Explore and analyze the project using read-only tools, identify relevant files, ask focused questions when needed, and produce a concrete implementation plan. You may update Orca's session checklist, but you must not create, edit, delete, apply changes, or start/stop game processes. If and only if the user asked you to implement, modify, run, or otherwise perform work that requires Work mode, use request_work_mode once with a concise reason. Wait for the user's decision. If they decline, remain in Plan mode and finish with a useful plan; do not ask again in that turn. Do not request Work mode for analysis-only or planning requests."
-	return shared + " You are in Work mode. You may search and read project files, inspect current editor context and diagnostics, propose authorized changes, and run or stop only Orca-owned game processes. Read relevant line ranges first and use the SHA-256 returned by read_file as base_hash. Use propose_scene_changes for structured scene creation, nodes, typed properties, dependency-free scripts and child instances, and bindless signals instead of writing .tscn text. Script attach/detach requires a script_hash from read_file and two user decisions: trust to execute the exact script while constructing a candidate, then approval to apply it. Use propose_input_map_changes for typed Input Map changes, propose_main_scene_change to configure the launch scene, propose_project_settings_changes for allowlisted display settings, and apply_patch for minimal non-overlapping source edits. Use run_current_scene or run_main_scene only when execution advances the task. Declare clean_startup or expected_exit verification before launch when those narrow criteria match the task, preserve the same criteria across reruns, and use observe_game_run or get_diagnostics for later evidence. Orca automatically waits briefly for one bounded observation after launch. Only claim verified when verify_game_run returns passed; launch, a zero exit code, or absence of retained errors does not establish gameplay correctness. Visual behavior, input feel, animation, and rendering remain unverified without visual evidence. Use stop_game only for the current Orca-owned run." + _edit_authorization_prompt()
+	return shared + " You are in Work mode. You may search and read project files, inspect current editor context and diagnostics, propose authorized changes, and run or stop only Orca-owned game processes. Read relevant line ranges first and use the SHA-256 returned by read_file as base_hash. Use propose_scene_changes for structured scene creation, nodes, typed properties, dependency-free scripts and child instances, and bindless signals instead of writing .tscn text. Script attach/detach requires a script_hash from read_file and two user decisions: trust to execute the exact script while constructing a candidate, then approval to apply it. Use propose_input_map_changes for typed Input Map changes, propose_main_scene_change to configure the launch scene, propose_project_settings_changes for allowlisted display settings, and apply_patch for minimal non-overlapping source edits. Use run_current_scene or run_main_scene only when execution advances the task. Declare clean_startup or expected_exit verification before launch when those narrow criteria match the task, preserve the same criteria across reruns, and use observe_game_run or get_diagnostics for later evidence. Orca automatically waits briefly for one bounded observation after launch. Only claim verified when verify_game_run returns passed; launch, a zero exit code, or absence of retained errors does not establish gameplay correctness. Visual behavior, input feel, animation, and rendering remain unverified without visual evidence. Use stop_game only for the current Orca-owned run." + EDITOR_SCENE_GUIDANCE + _edit_authorization_prompt()
 
 
 func _edit_authorization_prompt() -> String:

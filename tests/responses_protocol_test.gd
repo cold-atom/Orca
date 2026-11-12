@@ -11,6 +11,7 @@ var _config := {"provider": "azure", "base_url": "http://127.0.0.1:18473/foundry
 
 func _init() -> void:
 	_test_round_trip()
+	_test_projected_budget()
 	_test_invalid_output()
 	_test_streaming()
 	_test_binding_and_deepseek()
@@ -56,6 +57,21 @@ func _test_round_trip() -> void:
 	message = converted["response"]["choices"][0]["message"].duplicate(true)
 	message[Protocol.PRIVATE_FIELD]["items"][0]["encrypted_content"] = "a".repeat(4096)
 	_expect(Budget.estimate_tokens([message], []) > 1000, "opaque continuation bytes must count toward context pressure")
+
+
+func _test_projected_budget() -> void:
+	var reply := _reply()
+	reply["output"][1]["content"][0]["text"] = "useful evidence ".repeat(1000)
+	var message: Dictionary = Protocol.completion(reply, _config)["response"]["choices"][0]["message"]
+	var before := message.duplicate(true)
+	var canonical := Budget.estimate_tokens([message], [])
+	var projected := Budget.estimate_tokens([message], [], true, false, {}, _config)
+	_expect(projected < canonical - 3000, "Responses budget must count visible text once, not once per canonical representation")
+	_expect(message == before, "wire budgeting must not compact or mutate canonical history")
+	message[Protocol.PRIVATE_FIELD]["items"][0]["encrypted_content"] = "z".repeat(12000)
+	_expect(Budget.estimate_tokens([message], [], true, false, {}, _config) > projected + 3500, "projected budgeting must retain private reasoning cost")
+	message[Protocol.PRIVATE_FIELD]["items"][1]["content"][0]["text"] = "corrupt"
+	_expect(Budget.estimate_tokens([message], [], true, false, {}, _config) == Budget.estimate_tokens([message], []), "invalid retained state must keep the conservative estimate, never authorize a smaller request")
 
 
 func _test_invalid_output() -> void:

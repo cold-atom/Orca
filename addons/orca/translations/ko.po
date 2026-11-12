@@ -12,6 +12,39 @@ msgstr "Orca가 도움이 되었다면 GitHub에 별을 남기거나 Godot 에�
 msgid "Star on GitHub"
 msgstr "GitHub에 별 남기기"
 
+msgid "Resume remaining work"
+msgstr "남은 작업 계속하기"
+
+msgid "Apply in editor"
+msgstr "편집기에 적용"
+
+msgid "Revert in editor"
+msgstr "편집기에서 되돌리기"
+
+msgid "APPLIED IN EDITOR · SAVE PENDING"
+msgstr "편집기에 적용됨 · 저장 대기"
+
+msgid "SAVED · NOT VERIFIED"
+msgstr "저장됨 · 미검증"
+
+msgid "SAVE OBSERVED · NOT VERIFIED"
+msgstr "저장 관찰됨 · 미검증"
+
+msgid "UNDONE IN EDITOR"
+msgstr "편집기에서 실행 취소됨"
+
+msgid "REVERTED IN EDITOR · SAVE PENDING"
+msgstr "편집기에서 되돌림 · 저장 대기"
+
+msgid "EDITOR STATE CHANGED"
+msgstr "편집기 상태 변경됨"
+
+msgid "\n\nKeeps the scene open and preserves normal Godot Undo. Applies in the editor only; save the scene before running it. Script trust also covers live attachment, property restoration and revalidation."
+msgstr "\n\n씬을 열린 상태로 유지하며 Godot의 일반 실행 취소 기록을 보존합니다. 편집기에만 적용되므로 실행하기 전에 씬을 저장하세요. 스크립트 신뢰 승인에는 편집기 내 연결, 속성 복원 및 재검증도 포함됩니다."
+
+msgid "Continue the unfinished tasks in the current checklist. Re-inspect the current project state before acting. Do not repeat completed actions. Reassess blocked tasks and use the current mode and normal edit permissions."
+msgstr "현재 체크리스트의 미완료 작업을 계속하세요. 작업 전에 프로젝트의 현재 상태를 다시 확인하고 완료된 작업은 반복하지 마세요. 막힌 작업을 다시 평가하고 현재 모드와 일반 편집 권한을 따르세요."
+
 msgid "Finding Orca useful?"
 msgstr "Orca가 도움이 되었나요?"
 
@@ -830,6 +863,102 @@ msgstr "문서 열기"
 
 msgid "RUNNING"
 msgstr "실행 중"
+
+msgid "Running"
+msgstr "실행 중"
+
+msgid "Failed"
+msgstr "실패"
+
+msgid "Applying"
+msgstr "적용 중"
+
+msgid "Applied"
+msgstr "적용됨"
+
+msgid "Rejected"
+msgstr "거부됨"
+
+msgid "Reverted"
+msgstr "되돌림"
+
+msgid "Interrupted"
+msgstr "중단됨"
+
+msgid "Stopped"
+msgstr "중지됨"
+
+msgid "Review"
+msgstr "검토"
+
+msgid "Conflict"
+msgstr "충돌"
+
+msgid "Recovery"
+msgstr "복구 확인"
+
+msgid "Save pending"
+msgstr "저장 필요"
+
+msgid "Unsaved"
+msgstr "저장 안 됨"
+
+msgid "Save observed; not verified."
+msgstr "저장이 감지되었지만 검증되지 않았습니다."
+
+msgid "Saved"
+msgstr "저장됨"
+
+msgid "Save observed"
+msgstr "저장 감지"
+
+msgid "Undone"
+msgstr "실행 취소됨"
+
+msgid "Changed"
+msgstr "변경됨"
+
+msgid "Script trust review."
+msgstr "스크립트 실행 신뢰를 검토하세요."
+
+msgid "Check recovery before further changes."
+msgstr "추가 변경 전에 복구 상태를 확인하세요."
+
+msgid "Revert failed."
+msgstr "되돌리기에 실패했습니다."
+
+msgid "Recovery conflict; check recovery."
+msgstr "복구 충돌이 있습니다. 복구 상태를 확인하세요."
+
+msgid "Check recovery after applying."
+msgstr "적용 후 복구 상태를 확인하세요."
+
+msgid "Check recovery after reverting."
+msgstr "되돌린 후 복구 상태를 확인하세요."
+
+msgid "Applied in editor; save the scene before running."
+msgstr "에디터에서 적용되었습니다. 실행 전에 씬을 저장하세요."
+
+msgid "Not verified."
+msgstr "검증되지 않았습니다."
+
+msgid "Undone in editor."
+msgstr "에디터에서 실행 취소되었습니다."
+
+msgid "Reverted in editor; save the scene before running."
+msgstr "에디터에서 되돌렸습니다. 실행 전에 씬을 저장하세요."
+
+msgid "Editor state changed."
+msgstr "에디터 상태가 변경되었습니다."
+
+msgid "Modified · %s"
+msgstr "수정됨 · %s"
+
+msgid "Duration: %s"
+msgstr "소요 시간: %s"
+
+msgid "Total tool time: %s"
+msgstr "총 도구 시간: %s"
 
 msgid "DONE"
 msgstr "완료"

@@ -2,21 +2,24 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This directory prepares **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
+The published baseline is **Orca 1.7.0 — Multilingual UI & Focused Godot Inspection**
 for Godot 4.7.2. It adds English/Simplified Chinese/Spanish/Japanese/Korean
 interface localization, focused scene/animation exploration and a quiet community
 invitation to 1.6.0's session-authorized script edits and durable recovery.
-The candidate is not yet published; **1.6.0 remains the latest published release**.
+This checkout additionally contains unreleased card readability, longer-task and
+Undo-preserving current-scene script attachment improvements. **Apply in editor**
+keeps the scene open and leaves saving to the user; both trust and change approval
+remain required. The expanded checklist offers same-conversation task Resume.
 Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
 platform's credential helper from the matching official GitHub Release if missing.
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
-usable. The pre-bump full Tests/native packaging run at `5cee382` passed; the
-1.7.0 revision requires its own CI/package run. Native-speaker review, real-model
+usable. Release-commit Tests/native packaging and publication passed for 1.7.0;
+the new source changes require their own CI/package run. Native-speaker review, real-model
 language/inspection acceptance, broader platforms and Asset Store moderation
 remain separate. See the
 [1.7.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#170---2026-11-06)
-for the candidate, the
+for the published release, the
 [1.6.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#160---2026-11-05)
 for the published baseline, the
 [1.5.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#150---2026-11-02)
@@ -51,7 +54,7 @@ Inspector-target context and individually clickable text-search results. Origina
 evidence stays unchanged across language selection. Extended Cloud tools require
 matching backend API rollout and a model-catalog refresh; older catalogs retain
 the original schemas. Animation reads never load scenes/scripts or play animations.
-These additions are part of the 1.7.0 candidate, not the published 1.6.0 ZIP.
+These additions shipped in 1.7.0.
 
 ## Interface languages (1.7.0)
 

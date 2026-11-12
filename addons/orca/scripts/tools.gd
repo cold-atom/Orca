@@ -13,6 +13,7 @@ const InputMapProposal = preload("res://addons/orca/scripts/input_map_proposal.g
 const MainSceneProposal = preload("res://addons/orca/scripts/main_scene_proposal.gd")
 const ProjectSettingsProposal = preload("res://addons/orca/scripts/project_settings_proposal.gd")
 const SceneProposal = preload("res://addons/orca/scripts/scene_proposal.gd")
+const EditorSceneScriptTransaction = preload("res://addons/orca/scripts/editor_scene_script_transaction.gd")
 const ProjectSkills = preload("res://addons/orca/scripts/project_skills.gd")
 const GodotApiInspector = preload("res://addons/orca/scripts/godot_api_inspector.gd")
 const GDScriptFunctionReader = preload("res://addons/orca/scripts/gdscript_function_reader.gd")
@@ -383,7 +384,7 @@ static func get_tool_definitions(include_edit_tools: bool = true, include_work_m
 			"type": "function",
 			"function": {
 				"name": "propose_scene_changes",
-				"description": "Proposes one structured Godot scene operation for explicit review: create, add, set a typed property, rename, remove, reparent, attach/detach a dependency-free GDScript, instantiate a dependency-free child scene, or connect/disconnect a bindless signal. Script operations first require explicit trust to load the reviewed script path after an immediate hash recheck while constructing the final candidate, followed by normal Apply approval.",
+				"description": "Proposes one structured Godot scene operation for explicit review: create, add, set a typed property, rename, remove, reparent, attach/detach a dependency-free GDScript, instantiate a dependency-free child scene, or connect/disconnect a bindless signal. Script operations require Trust and Prepare, then Apply. A saved current open scene supports non-@tool script attachment through native Undo; Apply in editor leaves it unsaved, so the user must save before running. Background targets must be made current. Other existing-scene operations use Orca's closed-tab disk workflow. These are Orca constraints, not Godot limitations; never bypass them with raw scene patches.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -1005,6 +1006,8 @@ static func prepare_file_patch(change_id: String, filepath: String, base_hash: S
 	var new_content: String = patch_result["content"]
 	if new_content.length() > MAX_READ_FILE_BYTES or new_content.to_utf8_buffer().size() > MAX_READ_FILE_BYTES:
 		return {"success": false, "error": "Proposed file content exceeds the 2 MB safety limit."}
+	var scene_patch_error := _scene_script_patch_error(filepath, old_content, new_content)
+	if not scene_patch_error.is_empty(): return {"success": false, "error": scene_patch_error}
 	var validation := DiagnosticsService.validate_source(filepath, new_content)
 	if not validation.get("valid", false):
 		return {
@@ -1030,6 +1033,18 @@ static func prepare_file_patch(change_id: String, filepath: String, base_hash: S
 		"validation": validation,
 		"status": "pending"
 	}
+
+
+static func _scene_script_patch_error(filepath: String, old_content: String, new_content: String) -> String:
+	if filepath.get_extension().to_lower() != "tscn": return ""
+	var script_assignment := RegEx.new()
+	# Conservatively refuse resource/object references too: quoted/escaped scene
+	# property names must not provide a raw-patch route around script trust. This
+	# is a lexical gate, not a loader or general scene parser.
+	script_assignment.compile("(?m)^\\s*(?:script|\"script\")\\s*=|\\b(?:ExtResource|SubResource|Resource|Object|GDScript|CSharpScript)\\s*\\(")
+	if script_assignment.search(old_content) != null or script_assignment.search(new_content) != null:
+		return "Scene files containing script assignments or serialized resource/object references require structured propose_scene_changes and its execution-trust review. Raw patches cannot bypass the scene attachment workflow."
+	return ""
 
 
 static func prepare_reviewed_change(tool_name: String, change_id: String, arguments: Dictionary) -> Dictionary:
@@ -1108,7 +1123,13 @@ static func promote_script_trust(proposal: Dictionary) -> Dictionary:
 	var script_error := _validate_path(str(operation.get("script_path", "")), false)
 	if not script_error.is_empty():
 		return {"success": false, "error": script_error}
-	return SceneProposal.promote_script_trust(proposal)
+	var promoted := SceneProposal.promote_script_trust(proposal)
+	if promoted.get("success", false) and promoted.get("application_strategy") == "editor_current":
+		var transaction := EditorSceneScriptTransaction.new()
+		var error := transaction.prepare(promoted)
+		if not error.is_empty(): return {"success": false, "error": error}
+		promoted["_editor_transaction"] = transaction
+	return promoted
 
 
 static func apply_reviewed_change(proposal: Dictionary) -> String:
@@ -1142,6 +1163,10 @@ static func revert_reviewed_change(proposal: Dictionary) -> String:
 
 
 static func _apply_scene_change(proposal: Dictionary) -> String:
+	if proposal.get("application_strategy") == "editor_current":
+		if not proposal.get("_editor_transaction") is EditorSceneScriptTransaction:
+			return "Error: The editor attachment transaction is unavailable. Prepare a fresh proposal."
+		return proposal["_editor_transaction"].apply(proposal, proposal.get("_editor_authorization", Callable()))
 	var filepath := str(proposal.get("filepath", ""))
 	var path_error := _validate_path(filepath, true)
 	if not path_error.is_empty():
@@ -1210,6 +1235,10 @@ static func _apply_scene_change(proposal: Dictionary) -> String:
 
 
 static func _revert_scene_change(proposal: Dictionary) -> String:
+	if proposal.get("application_strategy") == "editor_current":
+		if not proposal.get("_editor_transaction") is EditorSceneScriptTransaction:
+			return "Error: The editor attachment transaction is unavailable. Use Godot's Undo history."
+		return proposal["_editor_transaction"].revert(proposal.get("_editor_authorization", Callable()))
 	var filepath := str(proposal.get("filepath", ""))
 	var path_error := _validate_path(filepath, true)
 	if not path_error.is_empty():
@@ -1602,6 +1631,8 @@ static func _apply_file_edit(proposal: Dictionary) -> String:
 		return "Error: The retained file patch content, hashes, or existence state are invalid. Review a fresh proposal before applying it."
 	var old_content: String = proposal["old_content"]
 	var new_content: String = proposal["new_content"]
+	var scene_patch_error := _scene_script_patch_error(filepath, old_content, new_content)
+	if not scene_patch_error.is_empty(): return "Error: " + scene_patch_error
 	var old_hash: String = proposal["old_hash"]
 	var new_hash: String = proposal["new_hash"]
 	if old_content.sha256_text() != old_hash or new_content.sha256_text() != new_hash:

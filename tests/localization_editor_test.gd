@@ -133,7 +133,7 @@ func _run() -> void:
 		check(notice.get_parsed_text().contains(Localization.message("Response stopped.")), "Orca-owned notices refresh without rewriting history")
 		check(long_notice.custom_minimum_size.y >= ceilf(long_notice.get_content_height()), "translated multi-line notices refit their height without clipping")
 		check(card._proposal == proposal and card._apply_button.visible and expanded.visible, "open review and proposal identity survive switching without authorization")
-		check(card._title_label.text.contains(path) and card._validation_label.text.contains(Localization.message("Passed")), "formatted review labels refresh and preserve paths")
+		check(card._title_label.text.contains(path.get_file()) and card._path_label.text == path and card._title_label.tooltip_text == path and card._validation_label.text.contains(Localization.message("Passed")), "formatted review labels refresh and preserve basename/full path")
 		check(not view.agent_controller.auto_apply_enabled() and Config.project_script_edit_preference() == permission, "language selection cannot grant or remember edit permission")
 		for multiplier in [1.0, 1.5, 2.0]:
 			_fonts(view.settings_view, multiplier)

@@ -3,6 +3,8 @@ extends PanelContainer
 
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const Localization = preload("res://addons/orca/scripts/localization.gd")
+const CardHeader = preload("res://addons/orca/scripts/card_header.gd")
+const CardFooter = preload("res://addons/orca/scripts/card_footer.gd")
 
 signal action_requested(change_id: String, action: String)
 signal open_requested(filepath: String, line: int, column: int)
@@ -34,7 +36,7 @@ func _ready() -> void:
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", UiMetrics.scaled_int(7))
 	add_child(content)
-	var header := HBoxContainer.new()
+	var header := CardHeader.new()
 	content.add_child(header)
 	_title_label = Label.new()
 	_title_label.clip_text = true
@@ -42,12 +44,8 @@ func _ready() -> void:
 	_title_label.text = "Scene Change"
 	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_title_label)
-	_status_label = Label.new()
-	_status_label.clip_text = true
-	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_status_label.custom_minimum_size.x = UiMetrics.scaled(60)
-	_status_label.text = "REVIEW"
-	header.add_child(_status_label)
+	_status_label = header.create_status_badge()
+	CardHeader.set_status(_status_label, "review")
 	_validation_label = Label.new()
 	_validation_label.add_theme_color_override("font_color", Color(0.48, 0.78, 0.58))
 	_validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -57,19 +55,15 @@ func _ready() -> void:
 	details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_child(details)
+	var footer := CardFooter.new()
+	content.add_child(footer)
 	_open_button = Button.new()
 	_open_button.text = "Open Scene"
 	_open_button.flat = true
 	_open_button.disabled = true
 	_open_button.pressed.connect(func(): open_requested.emit(str(_proposal.get("filepath", "")), 1, 1))
-	content.add_child(_open_button)
-	var actions := HFlowContainer.new()
-	actions.alignment = FlowContainer.ALIGNMENT_END
-	actions.add_theme_constant_override("separation", UiMetrics.scaled_int(6))
-	content.add_child(actions)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_child(spacer)
+	footer.navigation.add_child(_open_button)
+	var actions := footer.actions
 	_reject_button = Button.new()
 	_reject_button.text = "Reject"
 	_reject_button.pressed.connect(func(): _request_decision("reject"))
@@ -89,12 +83,11 @@ func configure(proposal: Dictionary) -> void:
 	_proposal = proposal
 	var summary: Dictionary = proposal.get("scene_summary", {})
 	var trust_review := str(proposal.get("approval_stage", "")) == "script_trust"
-	_status_label.text = "TRUST REVIEW" if trust_review else "REVIEW"
-	_status_label.tooltip_text = _status_label.text
-	_status_label.remove_theme_color_override("font_color")
+	var editor_current: bool = proposal.get("application_strategy") == "editor_current"
+	CardHeader.set_status(_status_label, "trust_review" if trust_review else "review")
 	Localization.bind(_validation_label, &"text", "Warning: %s" if trust_review else "Validated: %s", [Localization.source(str(proposal.get("validation", {}).get("message", "Passed")))])
 	_validation_label.add_theme_color_override("font_color", Color(0.95, 0.68, 0.28) if trust_review else Color(0.48, 0.78, 0.58))
-	_apply_button.text = "Trust and Prepare" if trust_review else "Apply"
+	_apply_button.text = "Trust and Prepare" if trust_review else "Apply in editor" if editor_current else "Apply"
 	_apply_button.visible = true
 	_apply_button.disabled = false
 	_reject_button.visible = true
@@ -141,19 +134,32 @@ func configure(proposal: Dictionary) -> void:
 				_title_label.text = "Create Scene"
 				Localization.bind(details, &"text", "Target  %s\nRoot    %s \"%s\"", [target, str(summary.get("root_type", "")), str(summary.get("root_name", ""))])
 		details.tooltip_text = str(proposal.get("filepath", ""))
+		if editor_current:
+			# Add a translated disclosure without replacing the existing bound review.
+			var bindings: Dictionary = details.get_meta(Localization.BINDINGS, {})
+			var parts: Array = bindings.get(&"text", {}).get("parts", []).duplicate(true)
+			parts.append(["\n\nKeeps the scene open and preserves normal Godot Undo. Applies in the editor only; save the scene before running it. Script trust also covers live attachment, property restoration and revalidation.", []])
+			Localization.bind_parts(details, &"text", parts)
 
 
 func set_status(status: String, message: String) -> void:
 	_proposal["status"] = status
-	_status_label.text = status.replace("_", " ").to_upper()
-	_status_label.tooltip_text = message
+	CardHeader.set_status(_status_label, status, message)
+	var editor_statuses := ["applied_editor", "saved_editor", "save_observed_editor", "undone_editor", "reverted_editor", "editor_changed"]
 	_apply_button.visible = false
 	_reject_button.visible = false
-	_revert_button.visible = status in ["applied", "applied_recovery", "revert_failed"]
-	_open_button.disabled = status not in ["applied", "applied_recovery", "revert_failed"]
+	_revert_button.visible = status in ["applied", "applied_recovery", "revert_failed", "applied_editor", "saved_editor", "save_observed_editor"]
+	_revert_button.text = "Revert in editor" if _proposal.get("application_strategy") == "editor_current" else "Revert"
+	_open_button.disabled = status not in ["applied", "applied_recovery", "revert_failed", "applied_editor", "saved_editor", "save_observed_editor", "undone_editor", "reverted_editor", "editor_changed"]
+	if editor_statuses.has(status):
+		_validation_label.text = message
 	if status in ["applied_recovery", "reverted_recovery", "apply_recovery_required", "revert_recovery_required"]:
 		_validation_label.text = message
-	_status_label.add_theme_color_override("font_color", Color(0.45, 0.82, 0.55) if status == "applied" else Color(0.62, 0.65, 0.7) if status in ["rejected", "reverted"] else Color(0.95, 0.4, 0.4))
+
+
+func set_revert_available(available: bool) -> void:
+	_revert_button.disabled = not available
+	_revert_button.tooltip_text = "Revert rechecks current file state." if available else "Revert is available in idle Work mode."
 
 
 func _request_decision(action: String) -> void:

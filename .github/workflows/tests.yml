@@ -102,6 +102,9 @@ jobs:
         shell: bash
         run: |
           python3 -m unittest discover -s tests -p editor_test_runner_test.py -v
+          python3 tests/run_editor_test.py card_status_editor_test.gd
+          python3 tests/run_editor_test.py task_resume_editor_test.gd
+          python3 tests/run_editor_test.py editor_scene_script_test.gd
           python3 tests/run_editor_test.py editor_ui_scale_test.gd
           python3 tests/run_editor_test.py auto_apply_editor_test.gd
           python3 tests/run_editor_test.py remembered_edit_editor_test.gd

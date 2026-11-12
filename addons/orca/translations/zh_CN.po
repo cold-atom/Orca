@@ -12,6 +12,39 @@ msgstr "如果 Orca 对你有所帮助，在 GitHub 上点个 Star，或在 Godo
 msgid "Star on GitHub"
 msgstr "GitHub 点 Star"
 
+msgid "Resume remaining work"
+msgstr "继续未完成的任务"
+
+msgid "Apply in editor"
+msgstr "在编辑器中应用"
+
+msgid "Revert in editor"
+msgstr "在编辑器中还原"
+
+msgid "APPLIED IN EDITOR · SAVE PENDING"
+msgstr "已在编辑器中应用 · 待保存"
+
+msgid "SAVED · NOT VERIFIED"
+msgstr "已保存 · 未验证"
+
+msgid "SAVE OBSERVED · NOT VERIFIED"
+msgstr "已观察到保存 · 未验证"
+
+msgid "UNDONE IN EDITOR"
+msgstr "已在编辑器中撤销"
+
+msgid "REVERTED IN EDITOR · SAVE PENDING"
+msgstr "已在编辑器中还原 · 待保存"
+
+msgid "EDITOR STATE CHANGED"
+msgstr "编辑器状态已变化"
+
+msgid "\n\nKeeps the scene open and preserves normal Godot Undo. Applies in the editor only; save the scene before running it. Script trust also covers live attachment, property restoration and revalidation."
+msgstr "\n\n保持场景打开，并保留 Godot 的正常撤销历史。仅在编辑器中应用；运行前请保存场景。脚本信任授权还涵盖编辑器中的脚本挂载、属性恢复和重新验证。"
+
+msgid "Continue the unfinished tasks in the current checklist. Re-inspect the current project state before acting. Do not repeat completed actions. Reassess blocked tasks and use the current mode and normal edit permissions."
+msgstr "继续当前任务清单中未完成的任务。操作前重新检查项目的当前状态，不要重复已完成的操作。重新评估受阻的任务，并遵循当前模式和正常的编辑权限。"
+
 msgid "Finding Orca useful?"
 msgstr "Orca 对你有帮助吗？"
 
@@ -830,6 +863,102 @@ msgstr "打开文档"
 
 msgid "RUNNING"
 msgstr "运行中"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Failed"
+msgstr "失败"
+
+msgid "Applying"
+msgstr "应用中"
+
+msgid "Applied"
+msgstr "已应用"
+
+msgid "Rejected"
+msgstr "已拒绝"
+
+msgid "Reverted"
+msgstr "已还原"
+
+msgid "Interrupted"
+msgstr "已中断"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Review"
+msgstr "待审核"
+
+msgid "Conflict"
+msgstr "冲突"
+
+msgid "Recovery"
+msgstr "待恢复"
+
+msgid "Save pending"
+msgstr "待保存"
+
+msgid "Unsaved"
+msgstr "未保存"
+
+msgid "Save observed; not verified."
+msgstr "已检测到保存；尚未验证。"
+
+msgid "Saved"
+msgstr "已保存"
+
+msgid "Save observed"
+msgstr "已检测到保存"
+
+msgid "Undone"
+msgstr "已撤销"
+
+msgid "Changed"
+msgstr "已更改"
+
+msgid "Script trust review."
+msgstr "脚本执行信任审核。"
+
+msgid "Check recovery before further changes."
+msgstr "请先检查恢复状态，再进行更改。"
+
+msgid "Revert failed."
+msgstr "还原失败。"
+
+msgid "Recovery conflict; check recovery."
+msgstr "恢复冲突；请检查恢复状态。"
+
+msgid "Check recovery after applying."
+msgstr "请在应用后检查恢复状态。"
+
+msgid "Check recovery after reverting."
+msgstr "请在还原后检查恢复状态。"
+
+msgid "Applied in editor; save the scene before running."
+msgstr "已在编辑器中应用；运行前请保存场景。"
+
+msgid "Not verified."
+msgstr "尚未验证。"
+
+msgid "Undone in editor."
+msgstr "已在编辑器中撤销。"
+
+msgid "Reverted in editor; save the scene before running."
+msgstr "已在编辑器中还原；运行前请保存场景。"
+
+msgid "Editor state changed."
+msgstr "编辑器状态已更改。"
+
+msgid "Modified · %s"
+msgstr "已修改 · %s"
+
+msgid "Duration: %s"
+msgstr "耗时：%s"
+
+msgid "Total tool time: %s"
+msgstr "工具总耗时：%s"
 
 msgid "DONE"
 msgstr "完成"

@@ -2,11 +2,30 @@
 
 All notable changes to Orca are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- Change and activity cards use compact title-case outcome badges across all five interface languages. Complete badges move below the title at narrow widths; visible qualification lines retain save/verification/recovery information. Activity timings live in expanded details/tooltips, file cards separate filenames/full paths and retain diff counts, and shared footers align navigation/actions responsively.
+- Safe finalization retains the actual stopping reason and round/call counts even when the provider supplies a summary. Remaining-budget guidance refreshes each round, runtime polling uses consistent loop identity, and BYOK Responses budgeting avoids counting retained assistant text/calls twice.
+- Open-scene restrictions are attributed to Orca's workflow rather than incorrectly described as Godot limitations.
+
+### Added
+
+- Productive turns can use up to 24 rounds with a separate 192-call ceiling; repetition/context limits and one bounded finalization remain. An over-budget batch is denied in full.
+- **Resume remaining work** submits a user-click follow-up in the same conversation from the expanded checklist, preserving drafts, mode and normal permissions.
+- **Apply in editor** for reviewed non-`@tool` script attachment/detachment in the saved current scene. Main stays open, native Undo/Redo is retained, and explicit Revert adds a conflict-checked inverse action. Saving remains a user action; cards distinguish save pending, saved and unverified state.
+- Isolated editor regressions for multilingual status layout, task resume, native Undo/Redo, scene/script conflicts and teardown. Raw `.tscn` patches with script assignments are rejected at preparation and Apply to retain structured script trust.
+
+### Limits
+
+- Current-scene attachment retains existing bounded/dependency-free scene restrictions and rejects unsupported exported-state changes. Background targets require switching tabs; other scene operations retain their closed-tab workflow.
+- Longer turns can cost more and still stop at context or repetition boundaries. Live-model usefulness and Windows/macOS editor acceptance remain follow-ups. These changes are not in the published 1.7.0 assets.
+
 ## 1.7.0 - 2026-11-06
 
-**Multilingual UI & Focused Godot Inspection** — release candidate for Godot
-4.7.2, prepared for the next GitHub build. Not yet published; 1.6.0 remains the
-latest published release. Adds interface languages, focused scene/animation
+**Multilingual UI & Focused Godot Inspection** — published for Godot 4.7.2 at
+`29fc480`, with passing release-commit CI and release preparation. Adds interface languages, focused scene/animation
 exploration and a quiet community invitation to the 1.6.0 baseline.
 
 ### Added
@@ -35,7 +54,7 @@ exploration and a quiet community invitation to the 1.6.0 baseline.
 
 - Extended Cloud inspection tools require the matching backend API deployment and an authenticated model-catalog refresh; older catalogs retain the original tools.
 - Animation inspection describes bounded saved text scene/native animation resources, not playback, gameplay correctness or unsaved external resource Inspector edits. Code/reference navigation remains lexical and saved-source-only.
-- Independent native-speaker review, real-model language adherence/inspection usefulness, broader themes/platforms and Asset Store moderation remain separate acceptance. Final-version CI and matching binary-free ZIP/native-helper assets are required before publication.
+- Independent native-speaker review, real-model language adherence/inspection usefulness, broader themes/platforms and Asset Store moderation remain separate acceptance. The version-matched binary-free ZIP/checksum and four native helpers are published.
 
 ## 1.6.0 - 2026-11-05
 

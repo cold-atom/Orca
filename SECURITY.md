@@ -2,12 +2,12 @@
 
 ## Supported Version
 
-Security work covers published Orca 1.6.0 Auto Apply & Script Recovery and the
-1.7.0 Multilingual UI & Focused Godot Inspection candidate. The candidate adds
+Security work covers published Orca 1.7.0 and the current development checkout.
+The 1.7.0 release adds
 Orca-only interface localization, bounded read-only scene/animation exploration
 and a local usage-gated community invitation to the existing code navigation,
 session-authorized script editing and recovery. Packaging remains binary-free.
-The 1.7.0 revision requires its own CI/package acceptance before publication;
+Unreleased source changes require fresh CI/package acceptance before publication;
 Asset Store moderation and broader graphical/platform acceptance remain separate.
 
 ## Reporting A Vulnerability
@@ -58,7 +58,8 @@ Orca is designed to reduce accidental project changes, not to sandbox arbitrary 
 - `inspect_godot_api` reflects public `ClassDB` metadata and creates validated editor Help topics without constructing reflected objects or scraping documentation prose.
 - Unsaved source returned by `read_gdscript_function` is read-only editor context and never supplies a disk hash for patching. Serialized dependency discovery does not load or instantiate resources and does not claim dynamic or runtime references.
 - `inspect_editor_scene` reads only bounded existing current-scene native state, including unsaved changes, through fixed core getter paths without script-defined getter callbacks. Scene/instance/script/resource identities retain project, symlink, and protected-addon boundaries. It never saves or instantiates nodes, supplies a patch hash, or persists raw node snapshots as activity data.
-- Repetitive tool activity and the 12-round execution boundary receive one no-tools finalization request; attempts to call tools again are denied without execution. The independent limit of 16 calls per provider response remains authoritative.
+- Development turns have independent 24-round, 192-admitted-call and 16-calls-per-response limits. Repetition/context pressure and exhausted budgets receive at most one no-tools finalization. Over-budget batches are denied in full; accepted metered requests/actions are never automatically replayed. User-click task Resume starts an ordinary new turn with current permissions, not extra authority or a monetary spending cap.
+- Development current-scene script attachment/detachment requires a saved clean current scene, non-`@tool` script, explicit execution trust and exact Apply approval. Hashes, scene/node/history identities, semantic parity and authorization are rechecked after trusted validation. The native Undo action does not save/reload/close the scene. Its explicit inverse is conflict-checked against the exact editor state, including legitimate save-pending state, and never rewinds newer user actions. Live transaction references are memory-only; historical receipts cannot authorize application or recovery. Raw `.tscn` patches containing script assignments or serialized resource/object references are conservatively denied at preparation and Apply rather than bypassing structured trust with alternative property spellings. Observation does not load scenes/scripts and never authorizes an inverse.
 - Loading or validating Godot scenes and scripts is not a security sandbox. Script preparation has an explicit trust step, but Godot may execute project code during candidate construction.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for the full documented threat model and limitations.

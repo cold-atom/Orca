@@ -15,6 +15,9 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    "card_status_editor_test.gd": [],
+    "task_resume_editor_test.gd": ["auto_apply_test.gd"],
+    "editor_scene_script_test.gd": ["auto_apply_test.gd", "fixtures/editor_attach_scene.tscn", "fixtures/editor_attach_other.tscn", "fixtures/editor_attach_script.gd", "fixtures/editor_attach_tool.gd"],
     "auto_apply_editor_test.gd": ["auto_apply_test.gd"],
     "editor_ui_scale_test.gd": ["fixtures/gdscript_function_reader_fixture.gd"],
     "remembered_edit_editor_test.gd": ["auto_apply_test.gd"],
@@ -165,6 +168,9 @@ def main() -> int:
         if args.ui_only:
             command += ["--", "--ui-only"]
         marker = {
+            "card_status_editor_test.gd": "card_status_editor_test: PASS",
+            "task_resume_editor_test.gd": "task_resume_editor_test: PASS",
+            "editor_scene_script_test.gd": "editor_scene_script_test: PASS",
             "auto_apply_editor_test.gd": "auto_apply_editor_test: 0 failures",
             "editor_ui_scale_test.gd": "editor_ui_scale_test: PASS",
             "update_editor_test.gd": "Update editor: PASS",

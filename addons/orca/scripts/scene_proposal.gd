@@ -25,9 +25,14 @@ static func prepare(change_id: String, base_hash: String, scene_path: String, op
 	if not target_error.is_empty():
 		return _failure(target_error)
 	if EditorContext.has_unsaved_file(canonical_path):
-		return _failure("The target scene has unsaved editor state. Save or close it before proposing changes.")
-	if not creating and EditorContext.is_scene_open(canonical_path):
-		return _failure("The target scene is open in the editor. Close it before proposing structured changes so an in-memory copy cannot overwrite the approved result.")
+		return _failure("The target scene has unsaved editor state. Save the changes you want to keep before proposing changes.")
+	var editor_current := not creating and EditorContext.is_scene_open(canonical_path) and str(operation.get("operation", "")) in ["attach_script", "detach_script"]
+	if editor_current:
+		var current := EditorInterface.get_edited_scene_root()
+		if current == null or str(ClassDB.class_get_property(current, "scene_file_path")) != canonical_path:
+			return _failure("Orca's Undo-preserving script attachment requires the target scene to be the active tab. Switch to it and retry; keep it open.")
+	elif not creating and EditorContext.is_scene_open(canonical_path):
+		return _failure("Orca's saved-scene replacement workflow requires the target scene tab to be closed, even if saved, so its in-memory copy cannot overwrite the reviewed result. This is an Orca restriction, not a Godot limitation.")
 
 	var old_content := ""
 	var candidate_result: Dictionary
@@ -43,7 +48,11 @@ static func prepare(change_id: String, base_hash: String, scene_path: String, op
 		if base_hash != old_content.sha256_text():
 			return _failure("base_hash does not match the saved scene. Read it again before proposing changes.")
 		if str(operation.get("operation", "")) in ["attach_script", "detach_script"]:
-			return _prepare_script_trust(change_id, canonical_path, old_content, operation)
+			var trust := _prepare_script_trust(change_id, canonical_path, old_content, operation)
+			if editor_current and trust.get("success", false):
+				trust["application_strategy"] = "editor_current"
+				trust["_editor_root"] = weakref(EditorInterface.get_edited_scene_root())
+			return trust
 		if str(operation.get("operation", "")) == "instantiate_child_scene" and str(operation.get("child_scene_path", "")) == canonical_path:
 			return _failure("A scene cannot instantiate itself as a child.")
 		candidate_result = _build_existing_candidate(old_content, operation)
@@ -82,8 +91,11 @@ static func promote_script_trust(proposal: Dictionary) -> Dictionary:
 	var target_error := validate_target(scene_path, true)
 	if not target_error.is_empty():
 		return _failure(target_error)
-	if EditorContext.has_unsaved_file(scene_path) or EditorContext.is_scene_open(scene_path):
-		return _failure("The target scene became open or unsaved before trusted candidate construction.")
+	var editor_current: bool = proposal.get("application_strategy") == "editor_current"
+	if EditorContext.has_unsaved_file(scene_path) or (EditorContext.is_scene_open(scene_path) and not editor_current):
+		return _failure("Orca cannot prepare this candidate because the target scene became open or unsaved.")
+	if editor_current and (not Engine.is_editor_hint() or not proposal.get("_editor_root") is WeakRef or proposal["_editor_root"].get_ref() == null or proposal["_editor_root"].get_ref() != EditorInterface.get_edited_scene_root()):
+		return _failure("The reviewed editor scene identity changed. Prepare a fresh attachment from its active tab.")
 	var current_scene := _read_scene_file(scene_path)
 	if not current_scene.get("success", false) or str(current_scene.get("content", "")).sha256_text() != str(proposal.get("old_hash", "")):
 		return _failure("The scene changed after script execution trust was requested.")
@@ -100,7 +112,7 @@ static func promote_script_trust(proposal: Dictionary) -> Dictionary:
 		return candidate_result
 	var new_content := str(candidate_result.get("content", ""))
 	var new_hash := new_content.sha256_text()
-	return {
+	var promoted := {
 		"success": true,
 		"id": str(proposal.get("id", "")),
 		"kind": "scene",
@@ -121,6 +133,10 @@ static func promote_script_trust(proposal: Dictionary) -> Dictionary:
 		"status": "pending",
 		"no_changes": bool(candidate_result.get("no_changes", false))
 	}
+	if editor_current:
+		promoted["application_strategy"] = "editor_current"
+		promoted["_editor_root"] = proposal["_editor_root"]
+	return promoted
 
 
 static func _prepare_script_trust(change_id: String, scene_path: String, old_content: String, operation: Dictionary) -> Dictionary:

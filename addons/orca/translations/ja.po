@@ -12,6 +12,39 @@ msgstr "Orca がお役に立ちましたら、GitHub のスターや Godot ア�
 msgid "Star on GitHub"
 msgstr "GitHub でスター"
 
+msgid "Resume remaining work"
+msgstr "残りの作業を再開"
+
+msgid "Apply in editor"
+msgstr "エディターで適用"
+
+msgid "Revert in editor"
+msgstr "エディターで元に戻す"
+
+msgid "APPLIED IN EDITOR · SAVE PENDING"
+msgstr "エディターで適用済み · 未保存"
+
+msgid "SAVED · NOT VERIFIED"
+msgstr "保存済み · 未検証"
+
+msgid "SAVE OBSERVED · NOT VERIFIED"
+msgstr "保存を確認 · 未検証"
+
+msgid "UNDONE IN EDITOR"
+msgstr "エディターで取り消し済み"
+
+msgid "REVERTED IN EDITOR · SAVE PENDING"
+msgstr "エディターで復元済み · 未保存"
+
+msgid "EDITOR STATE CHANGED"
+msgstr "エディターの状態が変更されました"
+
+msgid "\n\nKeeps the scene open and preserves normal Godot Undo. Applies in the editor only; save the scene before running it. Script trust also covers live attachment, property restoration and revalidation."
+msgstr "\n\nシーンを開いたまま、Godot の通常の取り消し履歴を保持します。変更はエディター内にのみ適用されるため、実行前にシーンを保存してください。スクリプトの信頼承認には、エディターでのアタッチ、プロパティの復元、再検証も含まれます。"
+
+msgid "Continue the unfinished tasks in the current checklist. Re-inspect the current project state before acting. Do not repeat completed actions. Reassess blocked tasks and use the current mode and normal edit permissions."
+msgstr "現在のチェックリストの未完了タスクを続けてください。操作前にプロジェクトの現在の状態を再確認し、完了済みの操作は繰り返さないでください。保留中のタスクを再評価し、現在のモードと通常の編集権限に従ってください。"
+
 msgid "Finding Orca useful?"
 msgstr "Orca はお役に立っていますか？"
 
@@ -712,7 +745,7 @@ msgid "Blocked"
 msgstr "保留"
 
 msgid "Cancelled"
-msgstr "キャンセル済み"
+msgstr "キャンセル"
 
 msgid "Project activity"
 msgstr "プロジェクトの操作"
@@ -830,6 +863,102 @@ msgstr "ドキュメント"
 
 msgid "RUNNING"
 msgstr "実行中"
+
+msgid "Running"
+msgstr "実行中"
+
+msgid "Failed"
+msgstr "失敗"
+
+msgid "Applying"
+msgstr "適用中"
+
+msgid "Applied"
+msgstr "適用済み"
+
+msgid "Rejected"
+msgstr "却下"
+
+msgid "Reverted"
+msgstr "復元済み"
+
+msgid "Interrupted"
+msgstr "中断"
+
+msgid "Stopped"
+msgstr "停止"
+
+msgid "Review"
+msgstr "レビュー"
+
+msgid "Conflict"
+msgstr "競合"
+
+msgid "Recovery"
+msgstr "復旧確認"
+
+msgid "Save pending"
+msgstr "未保存"
+
+msgid "Unsaved"
+msgstr "未保存"
+
+msgid "Save observed; not verified."
+msgstr "保存を検出しましたが、未検証です。"
+
+msgid "Saved"
+msgstr "保存済み"
+
+msgid "Save observed"
+msgstr "保存を検出"
+
+msgid "Undone"
+msgstr "取り消し済み"
+
+msgid "Changed"
+msgstr "変更あり"
+
+msgid "Script trust review."
+msgstr "スクリプトの実行信頼をレビューしてください。"
+
+msgid "Check recovery before further changes."
+msgstr "次の変更を行う前に復旧状態を確認してください。"
+
+msgid "Revert failed."
+msgstr "復元に失敗しました。"
+
+msgid "Recovery conflict; check recovery."
+msgstr "復旧が競合しています。復旧状態を確認してください。"
+
+msgid "Check recovery after applying."
+msgstr "適用後の復旧状態を確認してください。"
+
+msgid "Check recovery after reverting."
+msgstr "復元後の復旧状態を確認してください。"
+
+msgid "Applied in editor; save the scene before running."
+msgstr "エディター内で適用済みです。実行前にシーンを保存してください。"
+
+msgid "Not verified."
+msgstr "未検証です。"
+
+msgid "Undone in editor."
+msgstr "エディター内で取り消しました。"
+
+msgid "Reverted in editor; save the scene before running."
+msgstr "エディター内で復元済みです。実行前にシーンを保存してください。"
+
+msgid "Editor state changed."
+msgstr "エディターの状態が変更されました。"
+
+msgid "Modified · %s"
+msgstr "変更 · %s"
+
+msgid "Duration: %s"
+msgstr "所要時間：%s"
+
+msgid "Total tool time: %s"
+msgstr "ツールの合計時間：%s"
 
 msgid "DONE"
 msgstr "完了"
