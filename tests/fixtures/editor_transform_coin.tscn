@@ -1,0 +1,25 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://tests/fixtures/editor_transform_coin.gd" id="1_script"]
+
+[sub_resource type="Gradient" id="Gradient_coin"]
+colors = PackedColorArray(1, 0.8, 0, 1, 1, 1, 0.5, 1)
+
+[sub_resource type="GradientTexture2D" id="Texture_coin"]
+gradient = SubResource("Gradient_coin")
+width = 16
+height = 16
+
+[sub_resource type="CircleShape2D" id="Shape_coin"]
+radius = 8.0
+
+[node name="Coin" type="Area2D"]
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = SubResource("Texture_coin")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Shape_coin")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

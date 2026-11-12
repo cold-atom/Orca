@@ -55,6 +55,7 @@ func _run() -> void:
 	var compact_final_budget := Budget.prepare(followup, [], 32768, false, 8192)
 	var current_budget := Budget.prepare(followup, tools, 65536, false, 8192)
 	print("Hosted scene follow-up: readable=%d compact=%d tokens; input_budget=%d" % [pretty_budget["estimated_tokens"], compact_budget["estimated_tokens"], compact_budget["input_budget"]])
+	print("Hosted scene finalization: compact=%d/%d; 64k continuation=%d/%d" % [compact_final_budget["estimated_tokens"], compact_final_budget["input_budget"], current_budget["estimated_tokens"], current_budget["input_budget"]])
 	scene.free()
 	if pretty_final_budget.get("success", false) or not compact_final_budget.get("success", false) or not current_budget.get("success", false) or JSON.parse_string(pretty) != JSON.parse_string(compact):
 		push_error("Compact complete scene results must permit old 32k safe finalization and full 64k continuation without dropping properties, tool protocol or response reserves")

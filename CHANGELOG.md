@@ -12,6 +12,9 @@ All notable changes to Orca are documented in this file.
 
 ### Added
 
+- Native current-scene Node2D transforms now accept saved scripted local nodes and scene-instance roots in resource/signal-bearing game scenes. Text-only provenance and native state validation preserve explicit Apply, Undo/Redo and inverse Revert without scene/script/resource loading. Other instances/shared files stay intact. A disk proposal whose scene opens requests a fresh editor-bound review.
+- **Apply in editor** now supports reviewed Node2D position/rotation/scale/skew and Control anchor/offset changes in a saved current native scene. Native Undo/Redo and conflict-checked inverse Revert preserve the open scene; saving remains explicit. Anchor reviews include Godot's derived preset transition. Property edits always require Apply, including under script Auto apply.
+- Isolated current-scene property regressions cover all twelve properties, five-language review, Stop/rejection/Plan permissions, derived preset validation, native Undo/Redo/save, conflicts, custom-getter isolation and teardown. Pending native property reviews invalidate on intervening Undo revisions, including replaced redo branches; serialized collection validation has an independent work bound.
 - Productive turns can use up to 24 rounds with a separate 192-call ceiling; repetition/context limits and one bounded finalization remain. An over-budget batch is denied in full.
 - **Resume remaining work** submits a user-click follow-up in the same conversation from the expanded checklist, preserving drafts, mode and normal permissions.
 - **Apply in editor** for reviewed non-`@tool` script attachment/detachment in the saved current scene. Main stays open, native Undo/Redo is retained, and explicit Revert adds a conflict-checked inverse action. Saving remains a user action; cards distinguish save pending, saved and unverified state.
@@ -19,7 +22,7 @@ All notable changes to Orca are documented in this file.
 
 ### Limits
 
-- Current-scene attachment retains existing bounded/dependency-free scene restrictions and rejects unsupported exported-state changes. Background targets require switching tabs; other scene operations retain their closed-tab workflow.
+- Current-scene attachment retains bounded/dependency-free restrictions. Node2D transforms support saved local/instance-root targets with non-tool GDScript/resources/signals; @tool scenes and internal non-editable instance nodes need separate support. Control layout requires scriptless/resource-free/connection-free scenes and excludes Containers. Background targets require a tab switch; other operations retain their closed-tab workflow.
 - Longer turns can cost more and still stop at context or repetition boundaries. Live-model usefulness and Windows/macOS editor acceptance remain follow-ups. These changes are not in the published 1.7.0 assets.
 
 ## 1.7.0 - 2026-11-06

@@ -15,6 +15,8 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    "editor_transform_test.gd": ["auto_apply_test.gd", "fixtures/editor_transform_game.tscn", "fixtures/editor_transform_coin.tscn", "fixtures/editor_transform_coin.gd", "fixtures/editor_attach_script.gd"],
+    "editor_scene_property_test.gd": ["auto_apply_test.gd", "fixtures/editor_property_scene.tscn", "fixtures/editor_attach_other.tscn"],
     "card_status_editor_test.gd": [],
     "task_resume_editor_test.gd": ["auto_apply_test.gd"],
     "editor_scene_script_test.gd": ["auto_apply_test.gd", "fixtures/editor_attach_scene.tscn", "fixtures/editor_attach_other.tscn", "fixtures/editor_attach_script.gd", "fixtures/editor_attach_tool.gd"],
@@ -168,6 +170,8 @@ def main() -> int:
         if args.ui_only:
             command += ["--", "--ui-only"]
         marker = {
+            "editor_transform_test.gd": "editor_transform_test: PASS",
+            "editor_scene_property_test.gd": "editor_scene_property_test: PASS",
             "card_status_editor_test.gd": "card_status_editor_test: PASS",
             "task_resume_editor_test.gd": "task_resume_editor_test: PASS",
             "editor_scene_script_test.gd": "editor_scene_script_test: PASS",

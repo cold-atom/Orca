@@ -12,6 +12,8 @@ The unreleased workflow regressions also use this runner:
 python3 tests/run_editor_test.py card_status_editor_test.gd
 python3 tests/run_editor_test.py task_resume_editor_test.gd
 python3 tests/run_editor_test.py editor_scene_script_test.gd
+python3 tests/run_editor_test.py editor_scene_property_test.gd
+python3 tests/run_editor_test.py editor_transform_test.gd
 ```
 
 Use `--graphical` for Linux/X11/OpenGL acceptance. Card tests require intact
@@ -28,6 +30,24 @@ save-pending and observed persistence, earlier history, dirty/current/background
 state, hash/live/candidate conflicts, non-tool restrictions, inverse Revert,
 New Session and dock teardown. Only fixture cleanup reloads after deliberately
 changing external scene bytes; production editor application never reloads.
+
+The property case covers all twelve allowlisted Node2D/Control properties, exact
+derived anchor-preset review/revalidation, native Undo/Redo/save/inverse actions,
+Plan and script-Auto-apply review, Reject/Stop/stale decisions, Stop after commit,
+dirty/background/reopened targets, saved/live/summary/history/redo-branch conflicts,
+Container/type/range denial, unowned live nodes and custom-getter isolation,
+five-language review and native-action survival after session/dock teardown.
+Ordinary decimal rotation/scale/anchor/offset cases check explicit requested versus
+native-precision proposed values and exact live/saved parity; both precision and
+derived-preset disclosures are exercised at normal/1.5x/2x fonts in all five locales.
+
+The transform case uses a resource-bearing scripted coin prefab with signals and
+two instances. It exercises real current-scene review/Apply/Undo/Redo/Save/inverse
+actions, other-instance/shared-file isolation, native getter/setter-method overrides,
+Plan/Auto apply, dirty/stale Undo denial, @tool and internal-instance rejection,
+and fresh editor routing when a disk proposal's scene opens before Apply.
+Run its `--graphical` variant for Linux/X11/OpenGL acceptance. No live provider
+requests are made; all project/provider/XDG state is disposable.
 
 Focused component checks: `agent_controller_test.gd`, `context_budget_test.gd`,
 `responses_protocol_test.gd`, `tools_test.gd`, `scene_proposal_test.gd`,

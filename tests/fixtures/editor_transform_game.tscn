@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://tests/fixtures/editor_transform_coin.tscn" id="1_coin"]
+[ext_resource type="Script" path="res://tests/fixtures/editor_attach_script.gd" id="2_script"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("2_script")
+
+[node name="Coins" type="Node2D" parent="."]
+
+[node name="Coin" parent="Coins" instance=ExtResource("1_coin")]
+position = Vector2(51, 103)
+
+[node name="Coin2" parent="Coins" instance=ExtResource("1_coin")]
+position = Vector2(91, 108)
+
+[node name="LocalActor" type="Node2D" parent="."]
+position = Vector2(10, 20)
+script = ExtResource("2_script")

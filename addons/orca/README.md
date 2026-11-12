@@ -126,6 +126,18 @@ Stop keeps completed edits; Revert is a separate idle-Work action.
 
 Ask about the selected nodes or current scene to inspect native UI layout, 2D/3D transforms, visibility/processing, parent Control/Container context, and script/resource identities. `inspect_editor_scene` works with unsaved changes in Plan and Work; specify scene or subtree scope for hierarchy reads. Detailed snapshots are bounded and requested on demand. Saved-state checks and reviewed project changes still apply; live snapshots never provide a patch hash. Restored tool activity is a historical summary rather than current editor state.
 
+### Current-scene property editing (unreleased)
+
+In Work, ask Orca to change a Node2D position/rotation/scale/skew or a Control
+anchor/offset in the saved current scene. Review the typed previous/proposed
+values and any derived anchor-preset transition, then choose **Apply in editor**.
+The scene stays open with native Undo/Redo; save it before running. **Revert in
+editor** adds a conflict-checked inverse action. Script Auto apply does not approve
+native properties. Node2D transforms accept local nodes and instance roots with
+non-@tool GDScript, resources and signals using text-only saved provenance. Control
+layout retains scriptless/resource-free/connection-free and non-Container limits.
+Save first; @tool scenes and internal non-editable instance nodes need separate support.
+
 ## Response Attribution
 
 Assistant cards show the full configured model ID on the left and the generating request's Plan/Work mode on the right. Footers use Orca's metadata styling, wrap long identifiers with complete tooltips, and restore from per-answer history. Settings changes do not relabel earlier answers; unknown legacy and locally generated reports have no fabricated model attribution.

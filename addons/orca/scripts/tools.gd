@@ -13,7 +13,8 @@ const InputMapProposal = preload("res://addons/orca/scripts/input_map_proposal.g
 const MainSceneProposal = preload("res://addons/orca/scripts/main_scene_proposal.gd")
 const ProjectSettingsProposal = preload("res://addons/orca/scripts/project_settings_proposal.gd")
 const SceneProposal = preload("res://addons/orca/scripts/scene_proposal.gd")
-const EditorSceneScriptTransaction = preload("res://addons/orca/scripts/editor_scene_script_transaction.gd")
+const EditorSceneTransaction = preload("res://addons/orca/scripts/editor_scene_transaction.gd")
+const EditorTransformTransaction = preload("res://addons/orca/scripts/editor_transform_transaction.gd")
 const ProjectSkills = preload("res://addons/orca/scripts/project_skills.gd")
 const GodotApiInspector = preload("res://addons/orca/scripts/godot_api_inspector.gd")
 const GDScriptFunctionReader = preload("res://addons/orca/scripts/gdscript_function_reader.gd")
@@ -384,7 +385,7 @@ static func get_tool_definitions(include_edit_tools: bool = true, include_work_m
 			"type": "function",
 			"function": {
 				"name": "propose_scene_changes",
-				"description": "Proposes one structured Godot scene operation for explicit review: create, add, set a typed property, rename, remove, reparent, attach/detach a dependency-free GDScript, instantiate a dependency-free child scene, or connect/disconnect a bindless signal. Script operations require Trust and Prepare, then Apply. A saved current open scene supports non-@tool script attachment through native Undo; Apply in editor leaves it unsaved, so the user must save before running. Background targets must be made current. Other existing-scene operations use Orca's closed-tab disk workflow. These are Orca constraints, not Godot limitations; never bypass them with raw scene patches.",
+				"description": "Proposes one reviewed scene operation: create/add/set_property/rename/remove/reparent, script attach/detach, child instance or bindless signal. In a saved current open scene, native Node2D position/rotation/scale/skew supports local and instance-root nodes with non-@tool GDScript, resources and signals; keep the scene open and use Apply in editor. Position is Vector2, rotation/skew float radians, scale Vector2 components 0.001-1000. Control anchor_left/top/right/bottom (float 0-1) and offset_left/top/right/bottom (float) retain scriptless/resource-free/connection-free scenes and exclude Container-managed Controls. Other components must be finite within +/-1000000. @tool scenes and internal non-editable instance nodes need separate support. Property edits require exact Apply even under script Auto apply; script attach/detach requires Trust then Apply. Editor Apply preserves Undo and leaves save pending; save before running. Background targets must become current. Other operations use Orca's closed-tab disk workflow. Reprepare a disk proposal if its scene opened after review; never bypass constraints with raw scene patches.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -1071,7 +1072,13 @@ static func prepare_reviewed_change(tool_name: String, change_id: String, argume
 					var script_error := _validate_path(str(operation["script_path"]), false)
 					if not script_error.is_empty():
 						return {"success": false, "error": script_error}
-			return SceneProposal.prepare(change_id, arguments["base_hash"], arguments["scene_path"], arguments["operations"])
+			var proposal := SceneProposal.prepare(change_id, arguments["base_hash"], arguments["scene_path"], arguments["operations"])
+			if proposal.get("success", false) and proposal.get("application_strategy") == "editor_current" and proposal.get("approval_stage") != "script_trust":
+				var transaction = EditorTransformTransaction.new() if proposal.get("editor_validation") == "native_transform" else EditorSceneTransaction.new()
+				var error := transaction.prepare(proposal)
+				if not error.is_empty(): return {"success": false, "error": error}
+				proposal["_editor_transaction"] = transaction
+			return proposal
 		"apply_patch":
 			if typeof(arguments.get("filepath")) != TYPE_STRING or typeof(arguments.get("base_hash")) != TYPE_STRING or typeof(arguments.get("edits")) != TYPE_ARRAY:
 				return {"success": false, "error": "apply_patch requires string filepath/base_hash and an edits array."}
@@ -1125,7 +1132,7 @@ static func promote_script_trust(proposal: Dictionary) -> Dictionary:
 		return {"success": false, "error": script_error}
 	var promoted := SceneProposal.promote_script_trust(proposal)
 	if promoted.get("success", false) and promoted.get("application_strategy") == "editor_current":
-		var transaction := EditorSceneScriptTransaction.new()
+		var transaction := EditorSceneTransaction.new()
 		var error := transaction.prepare(promoted)
 		if not error.is_empty(): return {"success": false, "error": error}
 		promoted["_editor_transaction"] = transaction
@@ -1164,8 +1171,8 @@ static func revert_reviewed_change(proposal: Dictionary) -> String:
 
 static func _apply_scene_change(proposal: Dictionary) -> String:
 	if proposal.get("application_strategy") == "editor_current":
-		if not proposal.get("_editor_transaction") is EditorSceneScriptTransaction:
-			return "Error: The editor attachment transaction is unavailable. Prepare a fresh proposal."
+		if not proposal.get("_editor_transaction") is EditorSceneTransaction:
+			return "Error: The editor scene transaction is unavailable. Prepare a fresh proposal."
 		return proposal["_editor_transaction"].apply(proposal, proposal.get("_editor_authorization", Callable()))
 	var filepath := str(proposal.get("filepath", ""))
 	var path_error := _validate_path(filepath, true)
@@ -1174,7 +1181,7 @@ static func _apply_scene_change(proposal: Dictionary) -> String:
 	if EditorContext.has_unsaved_file(filepath):
 		return "Error: The target scene has unsaved editor changes. Save or close it before applying this proposal."
 	if bool(proposal.get("existed", false)) and EditorContext.is_scene_open(filepath):
-		return "Error: The target scene is open in the editor. Close it before applying this proposal."
+		return "Error: This disk proposal was prepared before the scene opened. Keep the scene open and request a fresh current-scene proposal for supported native transforms; the original review cannot change application strategy. Other scene operations use Orca's closed-tab workflow."
 	var operations: Array = proposal.get("operations", [])
 	if operations.size() == 1 and str(operations[0].get("operation", "")) in ["attach_script", "detach_script"]:
 		var script_path := str(operations[0].get("script_path", ""))
@@ -1236,8 +1243,8 @@ static func _apply_scene_change(proposal: Dictionary) -> String:
 
 static func _revert_scene_change(proposal: Dictionary) -> String:
 	if proposal.get("application_strategy") == "editor_current":
-		if not proposal.get("_editor_transaction") is EditorSceneScriptTransaction:
-			return "Error: The editor attachment transaction is unavailable. Use Godot's Undo history."
+		if not proposal.get("_editor_transaction") is EditorSceneTransaction:
+			return "Error: The editor scene transaction is unavailable. Use Godot's Undo history."
 		return proposal["_editor_transaction"].revert(proposal.get("_editor_authorization", Callable()))
 	var filepath := str(proposal.get("filepath", ""))
 	var path_error := _validate_path(filepath, true)

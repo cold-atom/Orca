@@ -1745,3 +1745,18 @@ msgstr "OpenAI 호환"
 
 msgid "Local OpenAI-compatible"
 msgstr "로컬 OpenAI 호환"
+
+msgid "\n\nKeeps the scene open and preserves normal Godot Undo. Applies the reviewed native property in the editor only; save the scene before running it."
+msgstr "\n\n씬을 열어 둔 채 Godot의 일반 실행 취소를 유지합니다. 검토한 네이티브 속성은 에디터에서만 적용됩니다. 실행 전에 씬을 저장하세요."
+
+msgid "\nDerived   %s: %s → %s"
+msgstr "\n파생 값   %s: %s → %s"
+
+msgid "\nRequested %s\nThe proposed value uses Godot's native numeric precision."
+msgstr "\n요청 값   %s\n제안 값에는 Godot의 네이티브 숫자 정밀도가 사용됩니다."
+
+msgid "\nSource    %s (%s)"
+msgstr "\n출처      %s (%s)"
+
+msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
+msgstr "씬이나 스크립트를 로드하지 않고 저장된 네이티브 변환과 인스턴스 출처를 검증했습니다."

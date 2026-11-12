@@ -3,12 +3,14 @@ extends RefCounted
 
 const EditorContext = preload("res://addons/orca/scripts/editor_context.gd")
 const DiagnosticsService = preload("res://addons/orca/scripts/diagnostics_service.gd")
+const SavedTransform = preload("res://addons/orca/scripts/saved_scene_transform.gd")
 
 const MAX_SCENE_FILE_BYTES := 2 * 1024 * 1024
 const MAX_ROOT_NAME_CHARS := 128
 const MAX_MUTATION_NODES := 60
 const MAX_MUTATION_PROPERTIES := 240
 const MAX_MUTATION_CONNECTIONS := 100
+const MAX_VARIANT_WORK_ITEMS := 8192
 const ALLOWED_ROOT_TYPES := ["Node", "Node2D", "Node3D", "Control"]
 const SCRATCH_DIRECTORY := "user://orca/tmp"
 const SCRATCH_MAX_AGE_SECONDS := 3600
@@ -26,15 +28,16 @@ static func prepare(change_id: String, base_hash: String, scene_path: String, op
 		return _failure(target_error)
 	if EditorContext.has_unsaved_file(canonical_path):
 		return _failure("The target scene has unsaved editor state. Save the changes you want to keep before proposing changes.")
-	var editor_current := not creating and EditorContext.is_scene_open(canonical_path) and str(operation.get("operation", "")) in ["attach_script", "detach_script"]
+	var editor_current := not creating and EditorContext.is_scene_open(canonical_path) and str(operation.get("operation", "")) in ["attach_script", "detach_script", "set_property"]
 	if editor_current:
 		var current := EditorInterface.get_edited_scene_root()
 		if current == null or str(ClassDB.class_get_property(current, "scene_file_path")) != canonical_path:
-			return _failure("Orca's Undo-preserving script attachment requires the target scene to be the active tab. Switch to it and retry; keep it open.")
+			return _failure("Orca's Undo-preserving scene changes require the target scene to be the active tab. Switch to it and retry; keep it open.")
 	elif not creating and EditorContext.is_scene_open(canonical_path):
 		return _failure("Orca's saved-scene replacement workflow requires the target scene tab to be closed, even if saved, so its in-memory copy cannot overwrite the reviewed result. This is an Orca restriction, not a Godot limitation.")
 
 	var old_content := ""
+	var requested_value: Dictionary = {}
 	var candidate_result: Dictionary
 	if creating:
 		if not base_hash.is_empty():
@@ -47,6 +50,18 @@ static func prepare(change_id: String, base_hash: String, scene_path: String, op
 		old_content = read_result["content"]
 		if base_hash != old_content.sha256_text():
 			return _failure("base_hash does not match the saved scene. Read it again before proposing changes.")
+		if editor_current and operation["operation"] == "set_property":
+			var property_error := validate_editor_property_operation(operation)
+			if not property_error.is_empty(): return _failure(property_error)
+			var native_value := native_editor_property_value(operation["value"])
+			if operation["value"] != native_value:
+				requested_value = operation["value"].duplicate(true)
+				operation["value"] = native_value
+			var target := EditorInterface.get_edited_scene_root().get_node_or_null(NodePath(operation["node_path"]))
+			if target is Node2D and operation["property_name"] in ["position", "rotation", "scale", "skew"]:
+				return _prepare_editor_transform(change_id, canonical_path, old_content, operation, requested_value)
+			property_error = preflight_editor_property_content(old_content)
+			if not property_error.is_empty(): return _failure("This scene supports native Node2D transform edits in the editor. Control layout editing still requires a scriptless/resource-free scene. " + property_error)
 		if str(operation.get("operation", "")) in ["attach_script", "detach_script"]:
 			var trust := _prepare_script_trust(change_id, canonical_path, old_content, operation)
 			if editor_current and trust.get("success", false):
@@ -55,11 +70,11 @@ static func prepare(change_id: String, base_hash: String, scene_path: String, op
 			return trust
 		if str(operation.get("operation", "")) == "instantiate_child_scene" and str(operation.get("child_scene_path", "")) == canonical_path:
 			return _failure("A scene cannot instantiate itself as a child.")
-		candidate_result = _build_existing_candidate(old_content, operation)
+		candidate_result = _build_existing_candidate(old_content, operation, editor_current and operation["operation"] == "set_property")
 	if not candidate_result.get("success", false):
 		return candidate_result
 	var new_content: String = candidate_result["content"]
-	return {
+	var proposal := {
 		"success": true,
 		"id": change_id,
 		"kind": "scene",
@@ -76,6 +91,77 @@ static func prepare(change_id: String, base_hash: String, scene_path: String, op
 		"status": "pending",
 		"no_changes": bool(candidate_result.get("no_changes", false))
 	}
+	if editor_current:
+		proposal["application_strategy"] = "editor_current"
+		proposal["_editor_root"] = weakref(EditorInterface.get_edited_scene_root())
+		if not requested_value.is_empty(): proposal["requested_value"] = requested_value
+	return proposal
+
+
+static func _prepare_editor_transform(change_id: String, path: String, content: String, operation: Dictionary, requested_value: Dictionary) -> Dictionary:
+	var saved := SavedTransform.inspect(path, operation["node_path"], content)
+	if not saved.get("success", false): return saved
+	var value = _decode_typed_value(operation["value"])["value"]
+	var candidate := SavedTransform.candidate(saved["source"], operation["node_path"], operation["property_name"], value)
+	if not candidate.get("success", false): return candidate
+	var proposal := {"success": true, "id": change_id, "kind": "scene", "tool_name": "propose_scene_changes", "existed": true, "application_strategy": "editor_current", "editor_validation": "native_transform", "_editor_root": weakref(EditorInterface.get_edited_scene_root()), "filepath": path, "old_content": content, "new_content": candidate["content"], "old_hash": content.sha256_text(), "new_hash": str(candidate["content"]).sha256_text(), "operations": [operation], "scene_summary": {"operation": "set_property", "node_path": operation["node_path"], "node_type": saved["node_type"], "property_name": operation["property_name"], "before": _encode_typed_value(saved["values"][operation["property_name"]]), "after": operation["value"], "origin_scene": saved["origin_scene"], "origin_node": saved["origin_node"]}, "validation": {"valid": true, "message": "Validated the saved native transform and instance provenance without loading scenes or scripts."}, "status": "pending", "no_changes": saved["values"][operation["property_name"]] == value}
+	if not requested_value.is_empty(): proposal["requested_value"] = requested_value
+	return proposal
+
+
+static func native_editor_property_value(wire: Dictionary) -> Dictionary:
+	var decoded := _decode_typed_value(wire)
+	if not decoded.get("success", false): return {}
+	var value = decoded["value"]
+	if typeof(value) == TYPE_FLOAT:
+		# These core transforms/layout fields use real_t (float32 in the pinned
+		# engine), while JSON/GDScript scalar floats are doubles. Quantize BEFORE
+		# review, preserve the request separately and still enforce exact retention.
+		value = PackedFloat32Array([value])[0]
+	return _encode_typed_value(value)
+
+
+static func validate_editor_property_operation(operation: Dictionary) -> String:
+	var name := str(operation.get("property_name", ""))
+	if name not in ["position", "rotation", "scale", "skew", "anchor_left", "anchor_top", "anchor_right", "anchor_bottom", "offset_left", "offset_top", "offset_right", "offset_bottom"]:
+		return "Current-scene property editing supports Node2D position/rotation/scale/skew and Control anchors/offsets only. Other properties require Orca's closed-tab workflow."
+	var decoded := _decode_typed_value(operation.get("value", {}))
+	if not decoded.get("success", false): return str(decoded.get("error", "Invalid property value."))
+	var value = decoded["value"]
+	if name in ["position", "scale"]:
+		if not value is Vector2 or not value.is_finite() or absf(value.x) > 1000000 or absf(value.y) > 1000000: return "Transform components must be Vector2, finite and within +/-1000000."
+		if name == "scale" and (value.x < 0.001 or value.y < 0.001 or value.x > 1000 or value.y > 1000): return "Scale components must be within 0.001-1000."
+	else:
+		if typeof(value) != TYPE_FLOAT or not is_finite(value) or absf(value) > 1000000: return "Property values must be floats, finite and within +/-1000000."
+		if name.begins_with("anchor_") and (value < 0 or value > 1): return "Anchors must be within 0-1."
+	return ""
+
+
+static func preflight_editor_property_content(content: String) -> String:
+	# Reject executable/dependency-bearing syntax BEFORE the loader is called.
+	# This intentionally conservative gate accepts only native, dependency-free
+	# scene headers and no object/resource constructors (including escaped names).
+	if content.to_utf8_buffer().size() > MAX_SCENE_FILE_BYTES: return "The retained scene exceeds the 2 MB limit."
+	var references := RegEx.new()
+	references.compile("\\b(?:ExtResource|SubResource|Resource|Object|GDScript|CSharpScript)\\s*\\(")
+	if references.search(content) != null: return "Current-scene properties require a scriptless scene without serialized resource/object references."
+	var node_type := RegEx.new()
+	node_type.compile('(?:^|\\s)type="([A-Za-z0-9_]+)"(?:\\s|\\])')
+	var type_field := RegEx.new()
+	type_field.compile('(?:^|\\s)type\\s*=')
+	var node_count := 0
+	for line in content.replace("\r\n", "\n").split("\n"):
+		var stripped := line.strip_edges()
+		if stripped.begins_with("[ext_resource") or stripped.begins_with("[sub_resource"): return "Current-scene properties require a scriptless, resource-free scene."
+		if stripped.begins_with("[connection"): return "Current-scene properties require a scene without saved signal connections."
+		if not stripped.begins_with("[node"): continue
+		node_count += 1
+		if node_count > MAX_MUTATION_NODES: return "The scene exceeds the current-scene node limit."
+		var matched := node_type.search(stripped)
+		if not stripped.ends_with("]") or matched == null or type_field.search_all(stripped).size() != 1: return "Current-scene properties require local native nodes with explicit types; inherited/instanced scenes are unsupported."
+		var type_name := matched.get_string(1)
+		if not ClassDB.class_exists(type_name) or ClassDB.class_get_api_type(type_name) != ClassDB.API_CORE or (type_name != "Node" and not ClassDB.is_parent_class(type_name, "Node")): return "Current-scene properties support native core Node types only."
+	return ""
 
 
 static func promote_script_trust(proposal: Dictionary) -> Dictionary:
@@ -225,12 +311,36 @@ static func validate_current(proposal: Dictionary, expect_new: bool) -> String:
 static func validate_candidate(proposal: Dictionary) -> String:
 	if str(proposal.get("kind", "")) != "scene" or str(proposal.get("tool_name", "")) != "propose_scene_changes":
 		return "The retained proposal is not a structured scene proposal."
+	var normalized := _normalize_operations(proposal.get("operations"))
+	if not normalized.get("success", false): return str(normalized.get("error", "The retained scene operation is invalid."))
 	var old_content := str(proposal.get("old_content", ""))
 	var new_content := str(proposal.get("new_content", ""))
 	if old_content.sha256_text() != str(proposal.get("old_hash", "")):
 		return "The retained original scene no longer matches the reviewed base hash."
 	if new_content.sha256_text() != str(proposal.get("new_hash", "")):
 		return "The retained scene candidate no longer matches the reviewed hash."
+	if proposal.get("application_strategy") == "editor_current" and normalized["operation"]["operation"] == "set_property":
+		var error := validate_editor_property_operation(proposal["operations"][0])
+		if not error.is_empty(): return error
+		if proposal.has("requested_value"):
+			if typeof(proposal["requested_value"]) != TYPE_DICTIONARY or native_editor_property_value(proposal["requested_value"]) != normalized["operation"]["value"]: return "The retained requested value no longer matches the native reviewed value."
+			var requested_operation: Dictionary = normalized["operation"].duplicate(true)
+			requested_operation["value"] = proposal["requested_value"]
+			error = validate_editor_property_operation(requested_operation)
+			if not error.is_empty(): return error
+		if proposal.get("editor_validation") == "native_transform":
+			if proposal.get("existed") != true or normalized["operation"]["property_name"] not in ["position", "rotation", "scale", "skew"]: return "Native transform review requires an existing scene and one supported Node2D property."
+			var before := SavedTransform.inspect(proposal["filepath"], normalized["operation"]["node_path"], old_content)
+			if not before.get("success", false): return str(before.get("error", "Saved transform validation failed."))
+			var value = _decode_typed_value(normalized["operation"]["value"])["value"]
+			var rebuilt := SavedTransform.candidate(before["source"], normalized["operation"]["node_path"], normalized["operation"]["property_name"], value)
+			if not rebuilt.get("success", false) or rebuilt["content"] != new_content: return "The retained native transform candidate differs from the reviewed single-property override."
+			var expected := {"operation": "set_property", "node_path": normalized["operation"]["node_path"], "node_type": before["node_type"], "property_name": normalized["operation"]["property_name"], "before": _encode_typed_value(before["values"][normalized["operation"]["property_name"]]), "after": normalized["operation"]["value"], "origin_scene": before["origin_scene"], "origin_node": before["origin_node"]}
+			if proposal.get("scene_summary") != expected: return "The native transform review summary changed."
+			return ""
+		for content in [old_content, new_content]:
+			error = preflight_editor_property_content(content)
+			if not error.is_empty(): return error
 	return _validate_proposal_contents(proposal, true)
 
 
@@ -324,11 +434,18 @@ static func _validate_proposal_contents(proposal: Dictionary, rebuild: bool) -> 
 			return "The reviewed property value could not be revalidated."
 		if new_effective.get("value") != decoded_value.get("value") or summary.get("before") != _encode_typed_value(old_effective.get("value")):
 			return "The retained scene does not contain the exact reviewed effective property value."
+		if summary.has("derived_anchors_preset"):
+			if proposal.get("application_strategy") != "editor_current" or not str(operation.get("property_name", "")).begins_with("anchor_"):
+				return "Derived anchor metadata is valid only for current-scene anchor operations."
+			var before_preset := _effective_property(old_content, str(operation["node_path"]), "anchors_preset")
+			var after_preset := _effective_property(new_content, str(operation["node_path"]), "anchors_preset")
+			if not before_preset.get("success", false) or not after_preset.get("success", false) or summary["derived_anchors_preset"] != {"before": _encode_typed_value(before_preset.get("value")), "after": _encode_typed_value(after_preset.get("value"))}:
+				return "The derived anchor preset no longer matches the complete reviewed layout."
 	var semantic_error := _validate_existing_snapshots(old_result["snapshot"], new_result["snapshot"], operation, summary)
 	if not semantic_error.is_empty():
 		return semantic_error
 	if rebuild:
-		var rebuilt_existing := _build_existing_candidate(old_content, operation)
+		var rebuilt_existing := _build_existing_candidate(old_content, operation, proposal.get("application_strategy") == "editor_current" and operation_name == "set_property")
 		if not rebuilt_existing.get("success", false) or rebuilt_existing.get("summary") != summary:
 			return "The reviewed structured scene operation could not be packed again."
 		var rebuilt_snapshot := _snapshot_content(str(rebuilt_existing.get("content", "")), new_dependencies)
@@ -533,7 +650,7 @@ static func _build_create_candidate(operation: Dictionary) -> Dictionary:
 	return serialized
 
 
-static func _build_existing_candidate(old_content: String, operation: Dictionary) -> Dictionary:
+static func _build_existing_candidate(old_content: String, operation: Dictionary, editor_property: bool = false) -> Dictionary:
 	if str(operation.get("operation", "")) == "add_node":
 		return _build_add_candidate(old_content, operation)
 	var child_result := _validate_child_scene_operation(operation)
@@ -556,7 +673,7 @@ static func _build_existing_candidate(old_content: String, operation: Dictionary
 	if not root is Node:
 		return _failure("Could not instantiate the saved scene for structured mutation.")
 	var mutation_resource = script_result.get("script") if str(operation.get("operation", "")) in ["attach_script", "detach_script"] else child_result.get("packed")
-	var mutation_result := _apply_simple_mutation(root, old_snapshot, operation, mutation_resource)
+	var mutation_result := _apply_simple_mutation(root, old_snapshot, operation, mutation_resource, editor_property)
 	if not mutation_result.get("success", false):
 		root.free()
 		return mutation_result
@@ -580,7 +697,7 @@ static func _build_existing_candidate(old_content: String, operation: Dictionary
 	return serialized
 
 
-static func _apply_simple_mutation(root: Node, old_snapshot: Dictionary, operation: Dictionary, validated_resource = null) -> Dictionary:
+static func _apply_simple_mutation(root: Node, old_snapshot: Dictionary, operation: Dictionary, validated_resource = null, editor_property: bool = false) -> Dictionary:
 	var operation_name := str(operation.get("operation", ""))
 	if operation_name == "instantiate_child_scene":
 		return _apply_child_instance(root, old_snapshot, operation, validated_resource)
@@ -608,11 +725,18 @@ static func _apply_simple_mutation(root: Node, old_snapshot: Dictionary, operati
 		if typeof(value) != int(property_info.get("type", TYPE_NIL)):
 			return _failure("The typed value does not match the Godot property Variant type " + type_string(int(property_info.get("type", TYPE_NIL))) + ".")
 		var before = node.get(property_name)
+		var before_preset = ClassDB.class_get_property(node, "anchors_preset") if editor_property and node is Control and property_name.begins_with("anchor_") else null
 		node.set(property_name, value)
 		var after = node.get(property_name)
 		if typeof(after) != typeof(value) or after != value:
 			return _failure("Godot did not retain the exact reviewed property value.")
-		return {"success": true, "no_changes": before == after, "summary": {"operation": operation_name, "node_path": node_path, "node_type": node.get_class(), "property_name": property_name, "before": _encode_typed_value(before), "after": operation.get("value", {}).duplicate(true), "node_count": int(old_snapshot.get("node_count", 0))}}
+		var summary := {"operation": operation_name, "node_path": node_path, "node_type": node.get_class(), "property_name": property_name, "before": _encode_typed_value(before), "after": operation.get("value", {}).duplicate(true), "node_count": int(old_snapshot.get("node_count", 0))}
+		if before_preset != null:
+			# Godot derives this editor preset from the four anchors. Review and
+			# revalidate that exact metadata transition; never ignore other offsets,
+			# grow modes, layout modes or unrelated serialized changes.
+			summary["derived_anchors_preset"] = {"before": _encode_typed_value(before_preset), "after": _encode_typed_value(ClassDB.class_get_property(node, "anchors_preset"))}
+		return {"success": true, "no_changes": before == after, "summary": summary}
 	if operation_name == "rename_node":
 		var new_name := str(operation.get("new_name", ""))
 		if node.get_parent() != null and node.get_parent().has_node(NodePath(new_name)):
@@ -886,6 +1010,7 @@ static func _preflight_state(state: SceneState, allowed_dependencies: Array = []
 	if state.get_connection_count() > MAX_MUTATION_CONNECTIONS:
 		return "The scene exceeds the %d-connection mutation limit." % MAX_MUTATION_CONNECTIONS
 	var property_total := 0
+	var variant_budget := [MAX_VARIANT_WORK_ITEMS]
 	for node_index in range(state.get_node_count()):
 		if state.is_node_instance_placeholder(node_index):
 			return "Scene instance placeholders are not supported by structured mutation."
@@ -907,10 +1032,10 @@ static func _preflight_state(state: SceneState, allowed_dependencies: Array = []
 				if not value is GDScript or _canonical_res_path(value.resource_path) not in allowed_dependencies:
 					return "The scene contains a script outside the operation's reviewed dependency set."
 				continue
-			if _variant_has_unsafe_object(value, 0):
+			if _variant_has_unsafe_object(value, 0, variant_budget):
 				return "Scenes with serialized Resource or executable object properties are not supported by the initial add_node operation."
 	for connection_index in range(state.get_connection_count()):
-		if _variant_has_unsafe_object(state.get_connection_binds(connection_index), 0):
+		if _variant_has_unsafe_object(state.get_connection_binds(connection_index), 0, variant_budget):
 			return "Signal binds containing Resource or executable object values are not supported."
 	return ""
 
@@ -1039,7 +1164,7 @@ static func _validate_property_snapshots(old_snapshot: Dictionary, new_snapshot:
 			return "The property target is missing from the retained scene."
 		var filtered: Array = []
 		for property in record.get("properties", []):
-			if str(property.get("name", "")) != property_name:
+			if str(property.get("name", "")) != property_name and not (summary.has("derived_anchors_preset") and str(property.get("name", "")) == "anchors_preset"):
 				filtered.append(property)
 		record["properties"] = filtered
 	if old_nodes != new_nodes:
@@ -1366,19 +1491,23 @@ static func _encode_typed_value(value) -> Dictionary:
 	return {"type": type_string(typeof(value)), "unsupported": true}
 
 
-static func _variant_has_unsafe_object(value, depth: int) -> bool:
-	if depth > 6:
+static func _variant_has_unsafe_object(value, depth: int, work_remaining: Array = []) -> bool:
+	if work_remaining.is_empty(): work_remaining.append(MAX_VARIANT_WORK_ITEMS)
+	work_remaining[0] -= 1
+	if depth > 6 or work_remaining[0] < 0:
 		return true
 	match typeof(value):
 		TYPE_OBJECT, TYPE_CALLABLE, TYPE_SIGNAL, TYPE_RID:
 			return value != null
 		TYPE_ARRAY:
+			if value.size() > work_remaining[0]: return true
 			for item in value:
-				if _variant_has_unsafe_object(item, depth + 1):
+				if _variant_has_unsafe_object(item, depth + 1, work_remaining):
 					return true
 		TYPE_DICTIONARY:
+			if value.size() > work_remaining[0] / 2: return true
 			for key in value:
-				if _variant_has_unsafe_object(key, depth + 1) or _variant_has_unsafe_object(value[key], depth + 1):
+				if _variant_has_unsafe_object(key, depth + 1, work_remaining) or _variant_has_unsafe_object(value[key], depth + 1, work_remaining):
 					return true
 	return false
 

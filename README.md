@@ -91,6 +91,14 @@ the saved current scene open and preserve normal Godot Undo. **Apply in editor**
 leaves the scene **save pending**; save it before running. Existing structured
 scene restrictions and both trust/change approvals still apply.
 
+The saved current scene also supports reviewed **Node2D transforms** on local nodes
+and scene-instance roots with non-`@tool` GDScript, textures/resources and signals.
+**Control anchors/offsets** retain scriptless/resource-free/connection-free scenes
+and exclude Container-managed Controls. Each change requires **Apply in editor**,
+even with script Auto apply enabled, preserves native Undo/Redo and remains save
+pending until you save the scene. Save-first still applies; @tool and internal
+non-editable instance nodes need separate support.
+
 ## What's New In 1.7.0: Multilingual UI & Focused Godot Inspection
 
 **Orca 1.7.0** for **Godot 4.7.2** is the latest published release. See the

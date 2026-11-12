@@ -1745,3 +1745,18 @@ msgstr "Compatible con OpenAI"
 
 msgid "Local OpenAI-compatible"
 msgstr "Local compatible con OpenAI"
+
+msgid "\n\nKeeps the scene open and preserves normal Godot Undo. Applies the reviewed native property in the editor only; save the scene before running it."
+msgstr "\n\nMantiene la escena abierta y conserva Deshacer de Godot. Aplica la propiedad nativa revisada solo en el editor; guarda la escena antes de ejecutarla."
+
+msgid "\nDerived   %s: %s → %s"
+msgstr "\nDerivado  %s: %s → %s"
+
+msgid "\nRequested %s\nThe proposed value uses Godot's native numeric precision."
+msgstr "\nSolicitado %s\nEl valor propuesto usa la precisión numérica nativa de Godot."
+
+msgid "\nSource    %s (%s)"
+msgstr "\nOrigen    %s (%s)"
+
+msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
+msgstr "Transformación nativa guardada y origen de la instancia validados sin cargar escenas ni scripts."

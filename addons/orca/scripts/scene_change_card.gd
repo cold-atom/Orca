@@ -112,6 +112,22 @@ func configure(proposal: Dictionary) -> void:
 			"set_property":
 				_title_label.text = "Set Scene Property"
 				Localization.bind(details, &"text", "Target    %s\nNode      %s\nProperty  %s\nPrevious  %s\nProposed  %s", [target, str(summary.get("node_path", "")), str(summary.get("property_name", "")), JSON.stringify(summary.get("before")), JSON.stringify(summary.get("after"))])
+				if proposal.get("editor_validation") == "native_transform":
+					var bindings: Dictionary = details.get_meta(Localization.BINDINGS, {})
+					var parts: Array = bindings.get(&"text", {}).get("parts", []).duplicate(true)
+					parts.append(["\nSource    %s (%s)", [str(summary.get("origin_scene", "")), str(summary.get("origin_node", ""))]])
+					Localization.bind_parts(details, &"text", parts)
+				if proposal.has("requested_value"):
+					var bindings: Dictionary = details.get_meta(Localization.BINDINGS, {})
+					var parts: Array = bindings.get(&"text", {}).get("parts", []).duplicate(true)
+					parts.append(["\nRequested %s\nThe proposed value uses Godot's native numeric precision.", [JSON.stringify(proposal["requested_value"])]])
+					Localization.bind_parts(details, &"text", parts)
+				if summary.has("derived_anchors_preset"):
+					var bindings: Dictionary = details.get_meta(Localization.BINDINGS, {})
+					var parts: Array = bindings.get(&"text", {}).get("parts", []).duplicate(true)
+					var preset: Dictionary = summary["derived_anchors_preset"]
+					parts.append(["\nDerived   %s: %s → %s", ["anchors_preset", JSON.stringify(preset.get("before")), JSON.stringify(preset.get("after"))]])
+					Localization.bind_parts(details, &"text", parts)
 			"rename_node":
 				_title_label.text = "Rename Scene Node"
 				Localization.bind(details, &"text", "Target    %s\nPrevious  %s\nProposed  %s", [target, str(summary.get("old_path", "")), str(summary.get("new_path", ""))])
@@ -138,7 +154,10 @@ func configure(proposal: Dictionary) -> void:
 			# Add a translated disclosure without replacing the existing bound review.
 			var bindings: Dictionary = details.get_meta(Localization.BINDINGS, {})
 			var parts: Array = bindings.get(&"text", {}).get("parts", []).duplicate(true)
-			parts.append(["\n\nKeeps the scene open and preserves normal Godot Undo. Applies in the editor only; save the scene before running it. Script trust also covers live attachment, property restoration and revalidation.", []])
+			if str(summary.get("operation")) == "set_property":
+				parts.append(["\n\nKeeps the scene open and preserves normal Godot Undo. Applies the reviewed native property in the editor only; save the scene before running it.", []])
+			else:
+				parts.append(["\n\nKeeps the scene open and preserves normal Godot Undo. Applies in the editor only; save the scene before running it. Script trust also covers live attachment, property restoration and revalidation.", []])
 			Localization.bind_parts(details, &"text", parts)
 
 

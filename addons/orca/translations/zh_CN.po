@@ -1745,3 +1745,18 @@ msgstr "兼容 OpenAI"
 
 msgid "Local OpenAI-compatible"
 msgstr "本地兼容 OpenAI"
+
+msgid "\n\nKeeps the scene open and preserves normal Godot Undo. Applies the reviewed native property in the editor only; save the scene before running it."
+msgstr "\n\n保持场景打开并保留 Godot 的正常撤销功能。仅在编辑器中应用已审阅的原生属性；运行前请保存场景。"
+
+msgid "\nDerived   %s: %s → %s"
+msgstr "\n派生属性  %s: %s → %s"
+
+msgid "\nRequested %s\nThe proposed value uses Godot's native numeric precision."
+msgstr "\n请求值    %s\n提议值使用 Godot 的原生数值精度。"
+
+msgid "\nSource    %s (%s)"
+msgstr "\n来源      %s (%s)"
+
+msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
+msgstr "已验证保存的原生变换及实例来源，未加载场景或脚本。"

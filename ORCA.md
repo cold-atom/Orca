@@ -16,7 +16,8 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 focused scene/animation exploration and a quiet community invitation.
 The checkout also contains unreleased full-status card layouts, 24-round/192-call
 bounded turns, same-conversation task Resume, and reviewed current-scene non-tool
-script attachment with native Undo and explicit save-pending receipts.
+script attachment and allowlisted native property editing with native Undo and
+explicit save-pending receipts.
 See [localization](docs/LOCALIZATION.md),
 [1.7.0](CHANGELOG.md#170---2026-11-06) for the published release,
 [1.6.0](CHANGELOG.md#160---2026-11-05) for the published release,
@@ -70,7 +71,8 @@ Orca's read-only context and reviewed-edit architecture. See `DEVELOPMENT.md`.
       - `propose_input_map_changes`: Proposes typed Input Map action and event changes through a dedicated structured review card.
       - `propose_main_scene_change`: Proposes a validated saved scene as the project launch scene with path/UID normalization and guarded revert.
       - `propose_project_settings_changes`: Proposes an atomic typed batch of allowlisted viewport and stretch settings.
-      - `propose_scene_changes`: Proposes reviewed typed-root creation, node/property/structure changes, two-stage dependency-free script attach/detach, dependency-free child instances, and bindless signal changes.
+       - `propose_scene_changes`: Proposes reviewed typed-root creation, node/property/structure changes, two-stage dependency-free script attach/detach, dependency-free child instances, and bindless signal changes.
+         - In the saved current scene, native Node2D transforms support local/instance-root nodes with non-tool GDScript/resources/signals using text-only provenance. Control layout retains scriptless/resource-free/connection-free and non-Container limits. Both use explicit Apply in editor, native Undo and a user save; Auto apply does not approve them.
       - `run_current_scene` / `run_main_scene`: Start one saved scene in a bounded nonblocking process owned by Orca.
       - `stop_game`: Stops only the active direct process started by Orca.
       - `observe_game_run`: Reads bounded evidence for an exact Orca run without waiting or changing process state.

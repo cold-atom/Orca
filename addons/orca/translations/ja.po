@@ -1745,3 +1745,18 @@ msgstr "OpenAI 互換"
 
 msgid "Local OpenAI-compatible"
 msgstr "ローカル OpenAI 互換"
+
+msgid "\n\nKeeps the scene open and preserves normal Godot Undo. Applies the reviewed native property in the editor only; save the scene before running it."
+msgstr "\n\nシーンを開いたまま、Godot の通常の元に戻す操作を保持します。確認済みのネイティブプロパティはエディター内にのみ適用されます。実行前にシーンを保存してください。"
+
+msgid "\nDerived   %s: %s → %s"
+msgstr "\n派生値    %s: %s → %s"
+
+msgid "\nRequested %s\nThe proposed value uses Godot's native numeric precision."
+msgstr "\n要求値    %s\n提案値には Godot のネイティブ数値精度が使用されます。"
+
+msgid "\nSource    %s (%s)"
+msgstr "\nソース    %s (%s)"
+
+msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
+msgstr "シーンやスクリプトを読み込まずに、保存済みのネイティブ変換とインスタンスの出所を検証しました。"
