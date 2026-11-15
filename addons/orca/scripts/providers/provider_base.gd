@@ -45,6 +45,12 @@ func apply_chat_options(body: Dictionary, effort: String) -> void:
 	pass
 
 
+func apply_serial_tool_options(body: Dictionary, config: Dictionary) -> void:
+	# Optional provider-specific generation control, never tool authorization.
+	# Unknown/custom/managed contracts do not inherit OpenAI-only wire fields.
+	pass
+
+
 func api_mode(config: Dictionary) -> String:
 	return "chat_completions"
 

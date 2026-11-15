@@ -10,7 +10,7 @@ func _enter_tree() -> void:
 	var case_name := OS.get_environment("ORCA_EDITOR_TEST_CASE")
 	if case_name.is_empty():
 		return # The runner's initial import must not execute a case.
-	if case_name not in CASES:
+	if case_name not in CASES and case_name not in ["mcp_editor_test.gd", "blender_workspace_editor_test.gd"]:
 		push_error("Unsupported isolated editor test case.")
 		get_tree().quit(2)
 		return

@@ -2,11 +2,69 @@
 
 All notable changes to Orca are documented in this file.
 
+## Unreleased
+
+### Added
+
+- Guided Blender Asset Studio with installation discovery/native browsing, a
+  shipped dependency-free connector using Blender's bundled Python, dedicated
+  immutable asset revisions, reviewed modeling/material/rig/animation/Geometry
+  Nodes/game-geometry operations, CPU previews and staged GLB export.
+- Reviewed hash-bound binary import/recovery, observed Godot reimport and native
+  clean/scriptless Node3D placement with Undo and save-pending reporting; matching
+  Cloud workspace vocabulary and isolated synthetic/native/editor coverage.
+- Separately confirmed **Blender workspace Auto apply**, optionally remembered for
+  this project. Modeling/inspection/preview/export continue with compact visible
+  results; import/scene placement retain their exact approvals. Existing script-only
+  grants require the new scope confirmation, and header revocation clears both.
+- Interactive static 3D preview cards with orbit/pan/zoom, Frame/Reset and an expanded
+  viewer. Bounded native-only GLB decoding avoids project import scripts/extensions;
+  unsupported snapshots and released older geometry retain rendered thumbnails.
+
+- Settings → Extensions with prominent Blender Asset Studio setup and optional MCP
+  Connectors below it. Guided detection proceeds to exact startup confirmation;
+  ready workspaces offer Back to chat with the draft preserved. Extra controls stay
+  under Manage workspace. MCP cards disclose inspection status and the official
+  Blender Lab form includes its add-on/server/listener installation checklist.
+- Configure-once computer-local MCP setup with automatic bounded migration and
+  deduplication of older saved descriptions. There are no project copies or reuse
+  pickers; each editor retains its own explicit, project-bound process ownership.
+- Bounded nonblocking local stdio MCP discovery and Work-only inspection of listed
+  text resources or supported Blender scene/status tools. External reads require
+  exact Allow read approval; Stop/disconnect revoke live requests without replay.
+- Coarse non-actionable history receipts and capability-gated Cloud inspection
+  vocabulary. Cloud needs the companion API rollout and catalog refresh.
+- Synthetic protocol and isolated editor regressions covering permissions,
+  continuation, cancellation, malformed output and five-language narrow layouts.
+- Explicit **Blender Lab — Official** profile for reviewed scene-object and
+  data-block/workspace/render-engine summaries. Live Linux acceptance passes with
+  official MCP v1.0.3 and Blender 5.2.2 LTS; existing community profiles retain
+  their tool vocabulary. Setup guidance distinguishes Blender from its MCP server.
+
+### Fixed
+
+- Blender workspace startup Cancel settles before reconnect, preserves the owned
+  process on failed stop and never lets cancelled completion replace a new connection.
+- Fixed repeated Blender/MCP tool-batch rejection by requesting standalone calls
+  in supported OpenAI/Foundry transports and refreshing initial/Resume permission
+  guidance. Corrections and final errors identify the exact batching/JSON reason;
+  checklist-only recovery no longer implies an asset operation completed.
+- Restored the mandatory native workspace Python connector/contract. Missing or
+  unreadable toolkit files now show an actionable setup error before launching
+  Blender; packaging and updater validation reject incomplete workspace packages.
+- Removed the confusing multi-section MCP setup workflow. Cards describe supported
+  inspections rather than implying that every discovered server tool is available.
+- Single-use launch actions, stale setup checks, startup cancellation and deferred
+  client retirement keep late completions from replacing/stopping newer connections.
+
+HTTP/OAuth, arbitrary tools and the full Skills library remain planned.
+See [Extensions](docs/EXTENSIONS.md).
+
 ## 1.8.0 - 2026-11-13
 
-**In-Editor Changes & Workflow Reliability** — release candidate for Godot 4.7.2.
-Prepared for final-revision CI and packaging; not yet published. The latest
-published release is 1.7.0.
+**In-Editor Changes & Workflow Reliability** — published for Godot 4.7.2 at
+`dc0e315`, with passing final-revision CI, four-platform native packaging and
+release preparation.
 
 ### Added
 
@@ -31,7 +89,7 @@ published release is 1.7.0.
 
 - Current-scene attachment retains clean/bounded/dependency-free restrictions. Node2D transforms support existing saved-provenance local/instance-root targets with non-tool GDScript/resources/signals and earlier unsaved edits; new unsaved targets, @tool scenes and internal non-editable instance nodes need separate support. Control layout requires clean scriptless/resource-free/connection-free scenes and excludes Containers. Background targets require a tab switch; other operations retain their closed-tab workflow.
 - Isolated editor regressions cover native Apply/Undo/Redo/Save/Revert, unsaved-edit preservation, stale reviews, Stop/rejection/Plan permissions, task Resume, multilingual narrow layouts and teardown. The owner confirmed the Platformer Node2D move workflow works after the unsaved-baseline fix.
-- Longer turns can cost more and still stop at context or repetition boundaries. Final-version CI/package acceptance, broader real-model tasks and Windows/macOS editor acceptance remain follow-ups. These changes are not in the published 1.7.0 assets.
+- Longer turns can cost more and still stop at context or repetition boundaries. Final-version CI and packaging passed; broader real-model tasks and Windows/macOS editor acceptance remain follow-ups.
 
 ## 1.7.0 - 2026-11-06
 

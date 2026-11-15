@@ -31,6 +31,10 @@ func apply_chat_options(body: Dictionary, effort: String) -> void:
 		body["reasoning_effort"] = effort
 
 
+func apply_serial_tool_options(body: Dictionary, config: Dictionary) -> void:
+	if body.has("tools"): body["parallel_tool_calls"] = false
+
+
 func normalize_models(response) -> Array[Dictionary]:
 	var models := super.normalize_models(response)
 	var chat_models: Array[Dictionary] = []

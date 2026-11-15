@@ -6,6 +6,282 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "BLENDER ASSET STUDIO"
+msgstr "ESTUDIO DE RECURSOS BLENDER"
+
+msgid "Include Blender workspace operations"
+msgstr "Incluir operaciones del espacio de Blender"
+
+msgid "Allow workspace help, inspection, modeling, previews and exports automatically. Project import and scene placement still require approval."
+msgstr "Permitir automáticamente ayuda, inspección, modelado, vistas previas y exportaciones. Importar al proyecto y colocar en la escena siguen requiriendo aprobación."
+
+msgid "Allow automatic Blender operations"
+msgstr "Permitir operaciones automáticas de Blender"
+
+msgid "Orca can inspect, model, preview and export assets automatically in your connected dedicated Blender workspace in Work mode. Edits are validated and saved as immutable recovery revisions.\n\nProject imports and scene placement still require their exact approval. This permission covers only Orca's fixed workspace commands. It does not start Blender or authorize arbitrary code or other MCP servers.\n\nRemember for this project enables this scope in future Work conversations and editor restarts. Plan stays read-only. Click the green edit icon beside ORCA to revoke automation and clear the remembered defaults."
+msgstr "Orca puede inspeccionar, modelar, previsualizar y exportar recursos automáticamente en el espacio dedicado de Blender conectado, en modo Trabajo. Los cambios se validan y guardan como revisiones de recuperación inmutables.\n\nLas importaciones al proyecto y la colocación en escenas requieren su aprobación exacta. Este permiso solo cubre los comandos fijos de Orca. No inicia Blender ni autoriza código arbitrario u otros servidores MCP.\n\nRecordar para este proyecto habilita este alcance en futuras conversaciones de Trabajo y reinicios del editor. Plan sigue siendo de solo lectura. Haz clic en el icono verde junto a ORCA para revocar la automatización y borrar los valores recordados."
+
+msgid "Automate dedicated workspace modeling, inspection, previews and exports after confirmation. Project import and scene placement still require review."
+msgstr "Automatiza modelado, inspección, vistas previas y exportaciones del espacio dedicado tras confirmar. La importación y colocación en escenas siguen requiriendo revisión."
+
+msgid "Review operations (default)"
+msgstr "Revisar operaciones (predeterminado)"
+
+msgid "Blender workspace operation"
+msgstr "Operación del espacio de Blender"
+
+msgid "Auto apply workspace…"
+msgstr "Aplicación automática del espacio…"
+
+msgid "Running automatically…"
+msgstr "Ejecutando automáticamente…"
+
+msgid "Auto applied"
+msgstr "Aplicado automáticamente"
+
+msgid "Blender operation completed"
+msgstr "Operación de Blender completada"
+
+msgid "Blender operation did not complete"
+msgstr "La operación de Blender no se completó"
+
+msgid "Frame"
+msgstr "Encuadrar"
+
+msgid "Reset"
+msgstr "Restablecer"
+
+msgid "Expand"
+msgstr "Ampliar"
+
+msgid "Blender 3D preview"
+msgstr "Vista previa 3D de Blender"
+
+msgid "Drag to orbit · Shift-drag or middle-drag to pan · Scroll to zoom"
+msgstr "Arrastra para orbitar · Mayús o botón central para desplazar · Rueda para acercar"
+
+msgid "3D preview unavailable. The rendered image remains available."
+msgstr "Vista 3D no disponible. La imagen renderizada sigue disponible."
+
+msgid "3D preview released to save memory. The rendered image remains available."
+msgstr "Vista 3D liberada para ahorrar memoria. La imagen renderizada sigue disponible."
+
+msgid " Blender workspace Auto apply is enabled."
+msgstr " La aplicación automática del espacio de Blender está activada."
+
+msgid " Blender workspace operations still require review."
+msgstr " Las operaciones del espacio de Blender siguen requiriendo revisión."
+
+msgid "Create game assets in a dedicated Blender workspace. Setup uses Blender's built-in Python; no commands, JSON or separate Python installation are needed."
+msgstr "Crea recursos de juego en un espacio dedicado de Blender. Se usa el Python incluido en Blender; no necesitas comandos, JSON ni instalar Python."
+
+msgid "Set up Blender"
+msgstr "Configurar Blender"
+
+msgid "Choose Blender…"
+msgstr "Elegir Blender…"
+
+msgid "Choose Blender"
+msgstr "Elegir Blender"
+
+msgid "Connect asset workspace"
+msgstr "Conectar espacio de recursos"
+
+msgid "Disconnect workspace"
+msgstr "Desconectar espacio"
+
+msgid "New asset workspace"
+msgstr "Nuevo espacio de recursos"
+
+msgid "Open asset in Blender"
+msgstr "Abrir recurso en Blender"
+
+msgid "Attach asset texture…"
+msgstr "Adjuntar textura…"
+
+msgid "Choose asset texture"
+msgstr "Elegir textura del recurso"
+
+msgid "Restore previous asset revision"
+msgstr "Restaurar revisión anterior"
+
+msgid "Revert last asset import"
+msgstr "Revertir última importación"
+
+msgid "Attach preview to chat"
+msgstr "Adjuntar vista previa al chat"
+
+msgid "Blender workspace"
+msgstr "Espacio de Blender"
+
+msgid "Start the selected Blender installation with Orca's shipped asset connector? It uses an isolated startup and writes only dedicated asset revisions. Your open Blender files are preserved."
+msgstr "¿Iniciar el Blender seleccionado con el conector de Orca? Usa un inicio independiente y solo guarda revisiones de recursos dedicados. Conserva los archivos abiertos de Blender."
+
+msgid "Restore the previous asset revision as a new workspace revision? Project imports are unchanged."
+msgstr "¿Restaurar la revisión anterior como una nueva revisión? Las importaciones del proyecto se conservan."
+
+msgid "Revert the last imported asset only if its project bytes and recovery checkpoint still match?"
+msgstr "¿Revertir el último recurso importado si el archivo y el punto de recuperación aún coinciden?"
+
+msgid "Advanced MCP connections"
+msgstr "Conexiones MCP avanzadas"
+
+msgid "Review Blender workspace operation"
+msgstr "Revisar operación de Blender"
+
+msgid "Approve this exact operation in the dedicated asset workspace. Project imports have their own reviewed destination and recovery checkpoint."
+msgstr "Aprueba esta operación exacta en el espacio de recursos. Las importaciones tienen un destino revisado y un punto de recuperación."
+
+msgid "Apply operation"
+msgstr "Aplicar operación"
+
+msgid "Allow operation"
+msgstr "Permitir operación"
+
+msgid "Applied in editor · Save pending"
+msgstr "Aplicado en el editor · Sin guardar"
+
+msgid "Start from saved Blender file…"
+msgstr "Empezar desde un archivo Blender…"
+
+msgid "Choose Blender template"
+msgstr "Elegir plantilla de Blender"
+
+msgid "Technical review details"
+msgstr "Detalles técnicos de la revisión"
+
+msgid "Use the selected saved Blender file as a trusted asset template? Blender loads a private copy with automatic scripts disabled. Linked libraries, embedded scripts and drivers are unsupported. The original file is preserved."
+msgstr "¿Usar el archivo seleccionado como plantilla de confianza? Blender carga una copia privada con scripts automáticos desactivados. No se admiten bibliotecas vinculadas, scripts incrustados ni controladores. El original se conserva."
+
+msgid "Blender asset workspace"
+msgstr "Espacio de recursos de Blender"
+
+msgid "Choose Blender to prepare the asset workspace."
+msgstr "Elige Blender para preparar el espacio de recursos."
+
+msgid "Connected to the Blender asset workspace."
+msgstr "Conectado al espacio de recursos de Blender."
+
+msgid "Asset workspace actions"
+msgstr "Acciones del espacio de recursos"
+
+msgid "Get Blender"
+msgstr "Obtener Blender"
+
+msgid "Extensions"
+msgstr "Extensiones"
+
+msgid "Available inspections"
+msgstr "Consultas disponibles"
+
+msgid "Connection needs attention"
+msgstr "La conexión requiere atención"
+
+msgid "Connect local MCP servers for reviewed external inspection."
+msgstr "Conecta servidores MCP locales para realizar consultas externas con revisión."
+
+msgid "EXTENSIONS"
+msgstr "EXTENSIONES"
+
+msgid "MCP Connections"
+msgstr "Conexiones MCP"
+
+msgid "Connect local tools to Orca. This first release supports listed text resources and Blender scene/status inspection. Modeling, rigging and asset import need the next Blender workflow."
+msgstr "Conecta herramientas locales a Orca. Esta primera versión permite consultar recursos de texto y la escena o el estado de Blender. El modelado, los esqueletos y la importación de recursos llegarán con el siguiente flujo de Blender."
+
+msgid "Connection name"
+msgstr "Nombre de conexión"
+
+msgid "Executable (absolute path)"
+msgstr "Ejecutable (ruta absoluta)"
+
+msgid "Arguments (JSON array)"
+msgstr "Argumentos (matriz JSON)"
+
+msgid "Inspection profile"
+msgstr "Perfil de consulta"
+
+msgid "Listed text resources"
+msgstr "Recursos de texto enumerados"
+
+msgid "Blender — Community"
+msgstr "Blender — Comunidad"
+
+msgid "Blender Lab — Official"
+msgstr "Blender Lab — Oficial"
+
+msgid "Discovered tools are metadata. Only the listed operations can be requested."
+msgstr "Las herramientas descubiertas son metadatos. Solo se pueden solicitar las operaciones enumeradas."
+
+msgid "For Blender Lab, install its official MCP add-on and standalone server. Open Blender, start the add-on listener, and choose Blender Lab — Official. The executable above is the MCP server, not Blender."
+msgstr "Para Blender Lab, instala el complemento MCP oficial y el servidor independiente. Abre Blender, inicia el servicio del complemento y elige Blender Lab — Oficial. El ejecutable de arriba es el servidor MCP, no Blender."
+
+msgid "Blender inspection"
+msgstr "Consulta de Blender"
+
+msgid "Use a trusted, installed MCP stdio server. The executable runs with your user account's access. Orca does not install packages or start saved connections automatically. Keep credentials out of arguments."
+msgstr "Usa un servidor MCP stdio instalado y de confianza. El ejecutable tendrá los permisos de tu cuenta. Orca no instala paquetes ni inicia conexiones guardadas automáticamente. No incluyas credenciales en los argumentos."
+
+msgid "Save connection"
+msgstr "Guardar conexión"
+
+msgid "Connect…"
+msgstr "Conectar…"
+
+msgid "Remove connection"
+msgstr "Eliminar conexión"
+
+msgid "Disconnected"
+msgstr "Desconectado"
+
+msgid "Blender setup"
+msgstr "Configuración de Blender"
+
+msgid "Install a compatible MCP bridge and its Blender add-on, then open Blender and enable the add-on connection. Choose the bridge executable and its arguments above. Only the supported inspection operations are offered to Orca."
+msgstr "Instala un puente MCP compatible y su complemento de Blender. Abre Blender y activa la conexión del complemento. Selecciona arriba el ejecutable y sus argumentos. Orca solo dispone de las consultas admitidas."
+
+msgid "Connections are saved for this exact project on this computer. External reads require Work mode and an Allow read decision. Returned content is shared with the selected model. Cloud requires a server catalog advertising MCP inspection."
+msgstr "Las conexiones se guardan para este proyecto exacto en este equipo. Las lecturas externas requieren el modo Trabajo y Permitir lectura. El contenido se comparte con el modelo seleccionado. Cloud necesita un catálogo que anuncie consultas MCP."
+
+msgid "Connect MCP server?"
+msgstr "¿Conectar servidor MCP?"
+
+msgid "Start this local program with your user account's access? It can access files and the network. Only connect a server you trust. This approval starts the connection; external reads have separate review."
+msgstr "¿Iniciar este programa local con los permisos de tu cuenta? Puede acceder a archivos y a la red. Conecta solo servidores de confianza. Esta aprobación inicia la conexión; las lecturas externas se revisan por separado."
+
+msgid "New connection"
+msgstr "Nueva conexión"
+
+msgid "Could not save. Check the name, absolute executable path and JSON argument array (up to four connections)."
+msgstr "No se pudo guardar. Comprueba el nombre, la ruta absoluta y la matriz JSON de argumentos (hasta cuatro conexiones)."
+
+msgid "Save the configuration before connecting."
+msgstr "Guarda la configuración antes de conectar."
+
+msgid "Connected · %d tools · %d resources"
+msgstr "Conectado · %d herramientas · %d recursos"
+
+msgid "Connecting…"
+msgstr "Conectando…"
+
+msgid "Allow external MCP read?"
+msgstr "¿Permitir lectura externa MCP?"
+
+msgid "Send this inspection request to the connected server and share its returned text with the selected model?"
+msgstr "¿Enviar esta consulta al servidor conectado y compartir el texto recibido con el modelo seleccionado?"
+
+msgid "Allow read"
+msgstr "Permitir lectura"
+
+msgid "MCP read finished"
+msgstr "Lectura MCP finalizada"
+
+msgid "MCP read did not complete"
+msgstr "Lectura MCP sin completar"
+
+msgid "Inspect MCP connection"
+msgstr "Consultar conexión MCP"
+
 msgid "If Orca has been useful to you, a GitHub star or an honest Godot Asset Library review would help other Godot developers discover the project. Thanks for supporting Orca!"
 msgstr "Si Orca te ha resultado útil, una estrella en GitHub o una reseña sincera en Godot Asset Library ayudaría a otros desarrolladores de Godot a descubrir el proyecto. ¡Gracias por apoyar a Orca!"
 
@@ -1767,5 +2043,296 @@ msgstr "\nSolicitado %s\nEl valor propuesto usa la precisión numérica nativa d
 msgid "\nSource    %s (%s)"
 msgstr "\nOrigen    %s (%s)"
 
+msgid "MCP CONNECTIONS"
+msgstr "CONEXIONES MCP"
+
+msgid "Connect local MCP tools, including your open Blender."
+msgstr "Conecta herramientas MCP locales, incluido el Blender que tienes abierto."
+
+msgid "New MCP connection…"
+msgstr "Nueva conexión MCP…"
+
+msgid "Reconnect local tools using setup saved on this computer. Each project has its own connection."
+msgstr "Vuelve a conectar herramientas locales con la configuración guardada en este equipo. Cada proyecto tiene su propia conexión."
+
+msgid "For your open Blender, connect its MCP server here. The asset workspace below starts a dedicated background Blender."
+msgstr "Para el Blender que tienes abierto, conecta aquí su servidor MCP. El espacio de trabajo de abajo inicia un Blender dedicado en segundo plano."
+
+msgid "This project"
+msgstr "Este proyecto"
+
+msgid "Saved on this computer"
+msgstr "Guardado en este equipo"
+
+msgid "Connect saved setup…"
+msgstr "Conectar configuración guardada…"
+
+msgid "Connect to open Blender…"
+msgstr "Conectar al Blender abierto…"
+
+msgid "Edit connection setup"
+msgstr "Editar configuración de conexión"
+
+msgid "Forget saved setup"
+msgstr "Olvidar configuración guardada"
+
+msgid "Reuse setup from another project…"
+msgstr "Reutilizar configuración de otro proyecto…"
+
+msgid "Use in this project…"
+msgstr "Usar en este proyecto…"
+
+msgid "Save setup for other projects"
+msgstr "Guardar configuración para otros proyectos"
+
+msgid "Reusable setup stores the executable, arguments and inspection profile locally. It does not start a server or approve external reads. Project copies remain independent."
+msgstr "La configuración reutilizable guarda localmente el ejecutable, los argumentos y el perfil de inspección. No inicia servidores ni autoriza lecturas externas. Las copias de cada proyecto son independientes."
+
+msgid "MCP connections support reviewed text resources and Blender scene/status inspection. Use the dedicated asset workspace for game-asset creation."
+msgstr "Las conexiones MCP permiten recursos de texto revisados e inspección de escena/estado de Blender. Usa el espacio de trabajo dedicado para crear recursos de juego."
+
+msgid "No connection saved in this project"
+msgstr "No hay conexiones guardadas en este proyecto"
+
+msgid "No reusable setup saved yet"
+msgstr "Aún no hay configuración reutilizable guardada"
+
+msgid "Save the project configuration first. Reusable setup supports up to sixteen connections; changed settings require reopening Extensions."
+msgstr "Guarda primero la configuración del proyecto. Se admiten hasta dieciséis conexiones reutilizables; si cambian los ajustes, vuelve a abrir Extensiones."
+
+msgid "Setup saved for other projects on this computer. Each project still needs Connect confirmation."
+msgstr "Configuración guardada para otros proyectos de este equipo. Cada proyecto sigue necesitando confirmación para conectar."
+
+msgid "Saved setup changed. Reopen Extensions and try again."
+msgstr "La configuración guardada cambió. Vuelve a abrir Extensiones e inténtalo de nuevo."
+
+msgid "No saved setup was found in other projects within the local discovery limit."
+msgstr "No se encontró configuración guardada en otros proyectos dentro del límite de búsqueda local."
+
+msgid "Could not reuse setup. It changed or this project already has four connections."
+msgstr "No se pudo reutilizar la configuración. Cambió o este proyecto ya tiene cuatro conexiones."
+
+msgid "Project"
+msgstr "Proyecto"
+
+msgid "Start dedicated asset workspace"
+msgstr "Iniciar espacio de trabajo dedicado"
+
+msgid "The Blender asset connector is missing or unreadable. Reinstall the complete Orca plugin, including addons/orca/blender/."
+msgstr "Falta el conector de recursos de Blender o no se puede leer. Reinstala el plugin completo de Orca, incluido addons/orca/blender/."
+
 msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
 msgstr "Transformación nativa guardada y origen de la instancia validados sin cargar escenas ni scripts."
+
+msgid "CONNECTORS"
+msgstr "CONECTORES"
+
+msgid "Connectors"
+msgstr "Conectores"
+
+msgid "Configure once. Enable the apps you want Orca to use."
+msgstr "Configura una vez. Activa las aplicaciones que quieras usar con Orca."
+
+msgid "Add your Blender MCP server or another local connector to get started."
+msgstr "Añade tu servidor MCP de Blender u otro conector local para empezar."
+
+msgid "Add connector…"
+msgstr "Añadir conector…"
+
+msgid "Asset tools…"
+msgstr "Herramientas de recursos…"
+
+msgid "Back to connectors"
+msgstr "Volver a conectores"
+
+msgid "Connector options"
+msgstr "Opciones del conector"
+
+msgid "Configure…"
+msgstr "Configurar…"
+
+msgid "Connection details"
+msgstr "Detalles de conexión"
+
+msgid "Remove connector"
+msgstr "Eliminar conector"
+
+msgid "Configure connector"
+msgstr "Configurar conector"
+
+msgid "Connector type"
+msgstr "Tipo de conector"
+
+msgid "Custom MCP"
+msgstr "MCP personalizado"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "MCP server program"
+msgstr "Programa del servidor MCP"
+
+msgid "Choose an installed MCP server"
+msgstr "Selecciona un servidor MCP instalado"
+
+msgid "Choose MCP server"
+msgstr "Seleccionar servidor MCP"
+
+msgid "This is the MCP server program, not the Blender executable."
+msgstr "Este es el programa del servidor MCP, no el ejecutable de Blender."
+
+msgid "Advanced"
+msgstr "Avanzado"
+
+msgid "Setup is saved on this computer. Enable starts this local program with your account's file and network access. External reads ask separately."
+msgstr "La configuración se guarda en este equipo. Activar inicia este programa local con acceso a archivos y red de tu cuenta. Las lecturas externas requieren aprobación aparte."
+
+msgid "Choose a name and an absolute MCP server path. Advanced arguments must be a JSON array."
+msgstr "Indica un nombre y la ruta absoluta del servidor MCP. Los argumentos avanzados deben ser un array JSON."
+
+msgid "Setup changed or could not be saved. Reopen Configure and check the connector limit."
+msgstr "La configuración cambió o no se pudo guardar. Abre Configurar de nuevo y comprueba el límite de conectores."
+
+msgid "Connector setup changed. Reopen its options."
+msgstr "La configuración del conector cambió. Abre sus opciones de nuevo."
+
+msgid "Could not enable connector."
+msgstr "No se pudo activar el conector."
+
+msgid "Disable the connector before removing it, or reopen Connectors if setup changed."
+msgstr "Desactiva el conector antes de eliminarlo, o abre Conectores de nuevo si cambió la configuración."
+
+msgid "Enable"
+msgstr "Activar"
+
+msgid "Disable"
+msgstr "Desactivar"
+
+msgid "Disabled"
+msgstr "Desactivado"
+
+msgid "Connected"
+msgstr "Conectado"
+
+msgid "Needs attention"
+msgstr "Requiere atención"
+
+msgid "Connection failed"
+msgstr "Conexión fallida"
+
+msgid "Scene and data-block inspection"
+msgstr "Inspección de escena y bloques de datos"
+
+msgid "Scene and add-on inspection"
+msgstr "Inspección de escena y complemento"
+
+msgid "Data-block inspection"
+msgstr "Inspección de bloques de datos"
+
+msgid "Add-on inspection"
+msgstr "Inspección del complemento"
+
+msgid "Scene inspection"
+msgstr "Inspección de escena"
+
+msgid "No supported inspections found. Check the connector type in Configure."
+msgstr "No hay inspecciones compatibles. Comprueba el tipo de conector en Configurar."
+
+msgid "Saved connector setup could not be loaded. Existing preferences were preserved."
+msgstr "No se pudo cargar la configuración del conector. Se conservaron las preferencias existentes."
+
+msgid "Disable another connector first. Up to four connections can run in this editor."
+msgstr "Desactiva otro conector primero. Este editor admite hasta cuatro conexiones activas."
+
+msgid "Blender"
+msgstr "Blender"
+
+msgid "Blender Lab"
+msgstr "Blender Lab"
+
+msgid "Optional connections for inspection and reference."
+msgstr "Conexiones opcionales para inspección y consulta."
+
+msgid "No connectors configured."
+msgstr "No hay conectores configurados."
+
+msgid "MCP connected — inspection"
+msgstr "MCP conectado — inspección"
+
+msgid "Inspect your open Blender session. Create assets with Blender Asset Studio above."
+msgstr "Inspecciona tu sesión abierta de Blender. Crea recursos con Blender Asset Studio arriba."
+
+msgid "Create 3D game assets with Blender 5.2+. Orca includes the workspace connector."
+msgstr "Crea recursos 3D de juego con Blender 5.2 o posterior. Orca incluye el conector del espacio de trabajo."
+
+msgid "No Blender Lab add-on or MCP server installation needed."
+msgstr "No necesitas instalar el complemento de Blender Lab ni un servidor MCP."
+
+msgid "Download Blender"
+msgstr "Descargar Blender"
+
+msgid "Manage workspace…"
+msgstr "Gestionar espacio de trabajo…"
+
+msgid "Check for Blender"
+msgstr "Buscar Blender"
+
+msgid "Start workspace"
+msgstr "Iniciar espacio de trabajo"
+
+msgid "Confirm"
+msgstr "Confirmar"
+
+msgid "Back to chat"
+msgstr "Volver al chat"
+
+msgid "Start asset workspace"
+msgstr "Iniciar espacio de recursos"
+
+msgid "Try disconnect again"
+msgstr "Reintentar desconexión"
+
+msgid "Blender workspace setup is unavailable."
+msgstr "La configuración del espacio de Blender no está disponible."
+
+msgid "Choose a Blender installation."
+msgstr "Selecciona una instalación de Blender."
+
+msgid "Blender was not found. Choose an installation or download Blender, then check again."
+msgstr "No se encontró Blender. Selecciona una instalación o descarga Blender y vuelve a buscar."
+
+msgid "Select the Blender installation to use."
+msgstr "Selecciona la instalación de Blender que deseas usar."
+
+msgid "Choose an installed Blender executable."
+msgstr "Selecciona un ejecutable de Blender instalado."
+
+msgid "Orca will start the selected Blender in the background with its shipped connector and a dedicated asset workspace. Your open Blender files are preserved."
+msgstr "Orca iniciará el Blender seleccionado en segundo plano con su conector incluido y un espacio de trabajo dedicado a recursos. Tus archivos abiertos de Blender se conservarán."
+
+msgid "Return to Work chat and describe your asset. Try: Create a low-poly gold coin and preview it."
+msgstr "Vuelve al chat en modo Trabajo y describe tu recurso. Prueba: Crea una moneda dorada de pocos polígonos y muéstrame una vista previa."
+
+msgid "Workspace ready"
+msgstr "Espacio de trabajo listo"
+
+msgid "Blender workspace startup was cancelled. Start again when ready."
+msgstr "Se canceló el inicio del espacio de Blender. Inícialo de nuevo cuando quieras."
+
+msgid "Choose a model with enabled Agent tools in Provider Settings to create Blender assets."
+msgstr "Para crear recursos de Blender, selecciona un modelo con herramientas de agente activadas en los ajustes del proveedor."
+
+msgid "This Orca Cloud model does not offer Blender asset tools. Choose another model or refresh Models."
+msgstr "Este modelo de Orca Cloud no ofrece herramientas de recursos de Blender. Selecciona otro modelo o actualiza Modelos."
+
+msgid "Switch to Work mode in chat to create Blender assets."
+msgstr "Cambia al modo Trabajo en el chat para crear recursos de Blender."
+
+msgid "Inspect your open Blender session. For asset creation, use Blender Asset Studio on Extensions."
+msgstr "Inspecciona tu sesión abierta de Blender. Para crear recursos, usa Blender Asset Studio en Extensiones."
+
+msgid "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Enable."
+msgstr "1. Instala y activa el complemento MCP oficial en Blender.\n2. Instala el servidor MCP oficial por separado.\n3. Abre Blender e inicia la escucha en Preferencias → Complementos → MCP.\n4. Selecciona el programa del servidor abajo, guarda y activa."
+
+msgid "Blender Lab installation guide"
+msgstr "Guía de instalación de Blender Lab"

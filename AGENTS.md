@@ -81,6 +81,8 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scripts/provider_model_service.gd` | Authenticated, bounded provider model discovery and caching. |
 | `addons/orca/scripts/providers/` | Provider-specific endpoints, headers, model normalization, reasoning options, and history sanitation. |
 | `addons/orca/scripts/settings_view.gd` | Responsive in-dock provider, credential, model, effort, and metadata settings page. |
+| `addons/orca/scripts/mcp_*.gd`, `extensions_view.gd` | User-started project-bound stdio MCP, Work-only reviewed text/Blender inspection; no arbitrary execution or asset writes. |
+| `addons/orca/scripts/blender_*.gd`, `blender/` | Guided workspaces/checkpoints, reviewed GLB import/Undo placement; bounded native-only previews/orbit/pan/zoom without importers, extensions or asset edits. |
 | `addons/orca/scripts/localization.gd` | Orca-only TranslationDomain, bundled English-fallback catalogs, saved locale selection and non-rebuilding formatted UI refresh. |
 | `addons/orca/scripts/connection_setup_panel.gd` | Dismissible conversation-area connection overlay card with first-open/Send setup choices and draft-preserving navigation. |
 | `addons/orca/scripts/support_reminder.gd`, `support_card.gd` | Local editor-wide, usage-gated community invitation with idle-only below-header overlay, preserved empty-state geometry, bounded reminders and permanent dismissal. |
@@ -110,7 +112,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 ## Non-Negotiable Invariants
 
 1. Plan mode is read-only for project and external state. Do not expose or execute project mutation tools in Plan mode; bounded session task metadata may be updated, and a model may request one explicit user-approved transition to Work without performing project or external mutation.
-2. Work changes require runtime user authorization: explicit approval of the original proposal, or a current-session Auto apply grant for bounded standalone project `.gd` patches, enabled by explicit session confirmation or a separately user-confirmed exact-project local EditorSettings default. New Session, restoration and plugin reload clear old grants; resumable Work sessions may receive fresh authorization from that strict project-bound preference. Plan and view-only restoration never activate it. Remembered grants recheck the exact enabled preference revision before every write; the chip revokes immediately and clears the saved default. Checkpoint failures pause the current session without automatically reacquiring permission. Automatic patches require a durable pre-write script-change checkpoint. Other proposals, including structured scene/configuration and script-execution trust, retain explicit approval. Revert is an explicit user action in Work, never an automatic model operation.
+2. Work mutations require runtime user approval of the original proposal or an explicitly confirmed current-session/exact-project-local Auto apply grant. Script grants cover only bounded standalone project `.gd` patches with durable pre-write checkpoints. Separately confirmed Blender grants cover only help/inspect/edit/preview/export in an already user-connected dedicated workspace; script grants never authorize them. New Session/restoration/reload clear old grants; only resumable Work may acquire fresh exact-project EditorSettings defaults. Plan/view-only never activate grants. Remembered grants recheck the exact enabled preference revision before each write/dispatch; header revocation clears both defaults immediately. Checkpoint/uncertain failures pause without reacquisition. Blender edits retain immutable revision receipts. Asset import, scene placement, scene/configuration proposals and script-execution trust require explicit approval. Revert is a user action in Work, never an automatic model operation.
 3. Keep runtime permission checks even when a tool is omitted from the model schema. Prompt instructions are not a security boundary.
 4. Project paths must remain inside `res://`, reject symbolic-link traversal, and protect `res://addons/orca/` and its `res://.orca-update/` staging/rollback workspace from agent tools.
 5. Never apply a disk patch to a script or scene with unsaved editor changes. Reviewed native Node2D editor actions follow the separate live-baseline contract in invariant 27.
@@ -155,7 +157,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 - May call `apply_patch` to create a reviewed proposal.
 - May call typed structured mutation tools such as `propose_input_map_changes`; every proposal still requires review.
 - May start a saved current/main scene in one bounded Orca-owned process and stop only that retained direct process.
-- Review edits is the default. Eligible script patches may apply under a current-session Auto apply grant from explicit confirmation or a separately confirmed exact-project remembered default; all other proposals wait for Apply or Reject.
+- Review edits is default. Script patches and separately granted Blender workspace operations may Auto apply; other proposals require Apply/Reject.
 - Uses green assistant headings in the UI.
 - Is the default mode.
 

@@ -110,6 +110,8 @@ var agent_controller
 var settings_view
 var diagnostics_service
 var account_service
+var mcp_service
+var blender_service
 var update_service
 var update_notice
 var game_process_service
@@ -177,6 +179,10 @@ var _connection_setup_first_open := false
 var _edit_permission_dialog: ConfirmationDialog
 var _edit_permission_dialog_body: RichTextLabel
 var _edit_permission_remember: CheckBox
+var _edit_permission_blender: CheckBox
+var _edit_permission_blender_only := false
+var _edit_permission_blender_call_id := ""
+var _edit_permission_blender_preference_revision := ""
 var _edit_permission_default_only := false
 var _edit_permission_dialog_project_root := ""
 var _edit_permission_dialog_preference_revision := ""
@@ -263,6 +269,15 @@ func _ready() -> void:
 		account_service = preload("res://addons/orca/scripts/account_service.gd").new()
 		add_child(account_service)
 	agent_controller.account_service = account_service
+	if mcp_service == null:
+		mcp_service = preload("res://addons/orca/scripts/mcp_service.gd").new()
+		add_child(mcp_service)
+	agent_controller.mcp_service = mcp_service
+	if blender_service == null:
+		blender_service = preload("res://addons/orca/scripts/blender_workspace_service.gd").new()
+		add_child(blender_service)
+	agent_controller.blender_service = blender_service
+	agent_controller.mcp_read_requested.connect(_on_mcp_read_requested)
 	agent_controller.api_client.account_service = account_service
 	account_service.changed.connect(_on_account_state_changed)
 	if diagnostics_service == null:
@@ -296,12 +311,23 @@ func _ready() -> void:
 
 	settings_view = SettingsView.new()
 	settings_view.account_service = account_service
+	settings_view.mcp_service = mcp_service
+	settings_view.blender_service = blender_service
+	settings_view.blender_work_allowed = func(): return agent_controller.get_mode() == 1 and not agent_controller.is_busy()
+	settings_view.blender_setup_message = agent_controller.blender_setup_message
 	settings_view.update_service = update_service
 	settings_view.hide()
 	add_child(settings_view)
+	settings_view.extensions_view.blender_panel.preview_attachment_requested.connect(_attach_blender_preview)
 	settings_view.done_requested.connect(_on_settings_done)
 	settings_view.settings_saved.connect(_on_settings_saved)
 	settings_view.script_edit_default_requested.connect(_on_script_edit_default_requested)
+	settings_view.blender_edit_default_requested.connect(func(enabled: bool):
+		if enabled: _show_blender_permission_confirmation()
+		else:
+			agent_controller.set_blender_auto_apply_enabled(false)
+			Config.set_project_blender_edit_default(false)
+			settings_view.sync_script_edit_default())
 	_setup_connection_overlay()
 	session_store = SessionStore.new()
 	agent_controller.script_change_writer = _checkpoint_script_change
@@ -341,12 +367,21 @@ func _process(_delta: float) -> void:
 
 
 func _exit_tree() -> void:
+	if agent_controller != null:
+		agent_controller.cancel_current_request()
+	if mcp_service != null:
+		mcp_service.shutdown()
+	if blender_service != null:
+		blender_service.shutdown()
 	_close_image_attachment_window()
 	if session_store != null and not _session.is_empty() and _has_session_content:
 		_save_current_session()
 
 
 func update_readiness() -> String:
+	if blender_service != null and blender_service.state != "disconnected": return "Disconnect the Blender workspace before updating."
+	if mcp_service != null and mcp_service.busy():
+		return "Finish or disconnect the active MCP operation before updating."
 	if agent_controller != null and (agent_controller.is_busy() or not agent_controller._pending_change_id.is_empty() or not agent_controller._pending_work_mode_call_id.is_empty()):
 		return "Finish or cancel the active Orca request and approvals before updating."
 	if not prompt_input.text.strip_edges().is_empty() or not _draft_images.is_empty() or not _draft_script_paths.is_empty():
@@ -1287,6 +1322,29 @@ func _on_work_mode_decision_requested(call_id: String, origin_turn_id: int, appr
 	agent_controller.resolve_work_mode_request(call_id, origin_turn_id, approved)
 
 
+func _on_mcp_read_requested(turn_id: int, request: Dictionary) -> void:
+	if turn_id != _active_turn_id:
+		return
+	var call_id: String = request["call_id"]
+	if _tool_cards.has(call_id) and is_instance_valid(_tool_cards[call_id]):
+		_tool_cards[call_id].queue_free()
+	var card = preload("res://addons/orca/scripts/blender_change_card.gd").new() if request.get("workspace_operation", false) else preload("res://addons/orca/scripts/mcp_read_card.gd").new()
+	chat_feed.add_child(card)
+	card.configure(request, turn_id)
+	card.decision_requested.connect(agent_controller.resolve_mcp_read)
+	if card.has_signal("preview_attachment_requested"):
+		card.preview_attachment_requested.connect(_attach_blender_preview)
+		card.auto_apply_requested.connect(_show_blender_permission_confirmation.bind(call_id, turn_id))
+	_tool_cards[call_id] = card
+	_scroll_to_bottom()
+
+
+func _attach_blender_preview(image: Dictionary) -> void:
+	if agent_controller.is_busy() or ImageCapability.resolve(agent_controller._capture_provider_config()) != "supported" or not ImageAttachments.valid_record(image) or _draft_images.size() >= ImageAttachments.MAX_IMAGES: return
+	_draft_images.append(ImageAttachments.sanitize_record(image))
+	_refresh_attachment_tray()
+
+
 func _on_tasks_changed(tasks: Array) -> void:
 	_ensure_session()
 	_session["tasks"] = tasks.duplicate(true)
@@ -1584,6 +1642,8 @@ func _on_agent_request_cancelled() -> void:
 
 
 func _set_request_active(active: bool) -> void:
+	if settings_view != null and settings_view.extensions_view != null:
+		settings_view.extensions_view.set_locked(active)
 	_pause_support_reminder()
 	_request_active = active
 	send_icon_view.texture = _stop_icon if active else _send_icon
@@ -1673,6 +1733,11 @@ func _setup_edit_permission_control() -> void:
 	content.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
 	_edit_permission_dialog.add_child(content)
 	content.add_child(_edit_permission_dialog_body)
+	_edit_permission_blender = CheckBox.new()
+	_edit_permission_blender.text = "Include Blender workspace operations"
+	_edit_permission_blender.clip_text = true
+	_edit_permission_blender.tooltip_text = "Allow workspace help, inspection, modeling, previews and exports automatically. Project import and scene placement still require approval."
+	content.add_child(_edit_permission_blender)
 	_edit_permission_remember = CheckBox.new()
 	_edit_permission_remember.name = "RememberProjectScriptEdits"
 	_edit_permission_remember.text = "Remember for this project"
@@ -1707,7 +1772,7 @@ func _position_edit_permission_button() -> void:
 func _on_edit_permission_pressed() -> void:
 	if agent_controller == null:
 		return
-	if agent_controller.auto_apply_enabled():
+	if agent_controller.auto_apply_enabled() or agent_controller.blender_auto_apply_enabled():
 		agent_controller.set_auto_apply_enabled(false)
 		_clear_project_edit_default()
 		return
@@ -1715,6 +1780,8 @@ func _on_edit_permission_pressed() -> void:
 
 
 func _clear_project_edit_default() -> void:
+	if not Config.set_project_blender_edit_default(false):
+		_add_message("Blender", "The Blender preference could not be saved. Automatic operations remain disabled.", Color.INDIAN_RED, "error")
 	if not Config.set_project_script_edit_default(false):
 		_add_message("Script edits", "Auto apply is off for this session, but its project default could not be saved.", Color.INDIAN_RED, "error")
 	if settings_view != null:
@@ -1746,12 +1813,42 @@ func _show_edit_permission_confirmation(remember: bool, default_only: bool) -> v
 	_edit_permission_dialog_session_id = str(_session.get("id", ""))
 	_edit_permission_dialog_project_root = ProjectSettings.globalize_path("res://").simplify_path()
 	_edit_permission_dialog_preference_revision = Config.project_script_edit_preference()["revision"]
+	_edit_permission_blender_preference_revision = Config.project_blender_edit_preference()["revision"]
+	_edit_permission_blender_only = false
+	_edit_permission_blender_call_id = ""
+	_edit_permission_blender.show()
+	_edit_permission_blender.set_pressed_no_signal(agent_controller.blender_auto_apply_enabled() or Config.project_blender_edit_preference()["enabled"])
+	_edit_permission_dialog.title = "Allow automatic script edits"
+	_edit_permission_dialog_body.text = "Orca can create and edit eligible project .gd scripts automatically in Work mode. Every edit is validated, shown in the feed, and checkpointed before writing.\n\nScene/configuration changes and script-execution trust still require approval. Unsaved files and conflicts remain protected.\n\nWithout remembering, permission is for this session only. Remembering enables Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only.\n\nClick the green edit icon beside ORCA in the header to revoke permission and clear any remembered default."
 	_edit_permission_default_only = default_only
 	_edit_permission_remember.set_pressed_no_signal(remember)
 	_edit_permission_remember.disabled = default_only
 	_edit_permission_dialog_revision = agent_controller._edit_permission_revision
 	_edit_permission_dialog_change_id = agent_controller._pending_change_id if pending else ""
 	_edit_permission_dialog_turn_id = agent_controller._active_turn_id if pending else 0
+	_edit_permission_dialog.popup_centered(_edit_permission_dialog_size())
+
+
+func _show_blender_permission_confirmation(call_id: String = "", turn_id: int = 0) -> void:
+	if agent_controller == null or not _session_resumable: return
+	var pending: bool = agent_controller.can_authorize_pending_blender_edits()
+	if not call_id.is_empty() and (not pending or call_id != agent_controller._pending_mcp_read.get("call_id") or turn_id != agent_controller._active_turn_id): return
+	if call_id.is_empty() and agent_controller.is_busy(): return
+	_ensure_session()
+	_edit_permission_dialog_session_id = str(_session.get("id", ""))
+	_edit_permission_dialog_project_root = ProjectSettings.globalize_path("res://").simplify_path()
+	_edit_permission_dialog_revision = agent_controller._edit_permission_revision
+	_edit_permission_dialog_preference_revision = Config.project_script_edit_preference()["revision"]
+	_edit_permission_blender_preference_revision = Config.project_blender_edit_preference()["revision"]
+	_edit_permission_blender_only = true
+	_edit_permission_default_only = agent_controller.get_mode() != AgentController.AgentMode.BUILD
+	_edit_permission_blender_call_id = call_id
+	_edit_permission_dialog_turn_id = turn_id
+	_edit_permission_blender.hide()
+	_edit_permission_remember.set_pressed_no_signal(true)
+	_edit_permission_remember.disabled = _edit_permission_default_only
+	_edit_permission_dialog.title = "Allow automatic Blender operations"
+	_edit_permission_dialog_body.text = "Orca can inspect, model, preview and export assets automatically in your connected dedicated Blender workspace in Work mode. Edits are validated and saved as immutable recovery revisions.\n\nProject imports and scene placement still require their exact approval. This permission covers only Orca's fixed workspace commands. It does not start Blender or authorize arbitrary code or other MCP servers.\n\nRemember for this project enables this scope in future Work conversations and editor restarts. Plan stays read-only. Click the green edit icon beside ORCA to revoke automation and clear the remembered defaults."
 	_edit_permission_dialog.popup_centered(_edit_permission_dialog_size())
 
 
@@ -1772,6 +1869,21 @@ func _edit_permission_dialog_size() -> Vector2i:
 func _enable_session_edits() -> void:
 	if agent_controller == null or _edit_permission_dialog_session_id != str(_session.get("id", "")) or _edit_permission_dialog_revision != agent_controller._edit_permission_revision or _edit_permission_dialog_project_root != ProjectSettings.globalize_path("res://").simplify_path() or _edit_permission_dialog_preference_revision != Config.project_script_edit_preference()["revision"]:
 		return
+	if _edit_permission_blender_preference_revision != Config.project_blender_edit_preference()["revision"]: return
+	if _edit_permission_blender_only:
+		if _edit_permission_blender_call_id.is_empty():
+			if agent_controller.is_busy(): return
+		elif not agent_controller.can_authorize_pending_blender_edits() or _edit_permission_blender_call_id != agent_controller._pending_mcp_read.get("call_id") or _edit_permission_dialog_turn_id != agent_controller._active_turn_id: return
+		var remembered := _edit_permission_remember.button_pressed
+		if remembered and not Config.set_project_blender_edit_default(true):
+			_add_message("Blender", "The Blender preference could not be saved. Automatic operations remain disabled.", Color.INDIAN_RED, "error")
+			return
+		if _edit_permission_dialog_revision != agent_controller._edit_permission_revision or _edit_permission_dialog_session_id != str(_session.get("id", "")): return
+		if not _edit_permission_default_only:
+			if _edit_permission_blender_call_id.is_empty(): agent_controller.set_blender_auto_apply_enabled(true, remembered)
+			else: agent_controller.authorize_pending_blender_edits(_edit_permission_blender_call_id, _edit_permission_dialog_turn_id, _edit_permission_dialog_revision, remembered)
+		settings_view.sync_script_edit_default()
+		return
 	if _edit_permission_default_only:
 		if agent_controller.is_busy() or not _edit_permission_remember.button_pressed:
 			return
@@ -1787,13 +1899,28 @@ func _enable_session_edits() -> void:
 	if remember and not Config.set_project_script_edit_default(true):
 		_add_message("Script edits", "The project preference could not be saved. No automatic edit permission was granted.", Color.INDIAN_RED, "error")
 		return
+	var include_blender := _edit_permission_blender.button_pressed
+	if remember and not Config.set_project_blender_edit_default(include_blender):
+		_add_message("Blender", "The Blender preference could not be saved. Automatic operations remain disabled.", Color.INDIAN_RED, "error")
+		return
+	if _edit_permission_dialog_revision != agent_controller._edit_permission_revision or _edit_permission_dialog_session_id != str(_session.get("id", "")): return
 	if _edit_permission_default_only:
 		agent_controller.apply_project_edit_default()
 		settings_view.sync_script_edit_default()
 		_sync_edit_permission_ui()
 		return
+	var expected_revision := _edit_permission_dialog_revision
+	if include_blender:
+		if not agent_controller.set_blender_auto_apply_enabled(true, remember): return
+		expected_revision += 1
+	elif agent_controller.blender_auto_apply_enabled():
+		agent_controller.set_blender_auto_apply_enabled(false)
+		expected_revision += 1
+	# Scope/UI callbacks can revoke permission. Never bind to a newer revision
+	# simply because this confirmation deliberately updated one scope itself.
+	if agent_controller._edit_permission_revision != expected_revision or _edit_permission_dialog_session_id != str(_session.get("id", "")): return
 	if not _edit_permission_dialog_change_id.is_empty():
-		agent_controller.authorize_pending_script_edits(_edit_permission_dialog_change_id, _edit_permission_dialog_turn_id, _edit_permission_dialog_revision, remember)
+		agent_controller.authorize_pending_script_edits(_edit_permission_dialog_change_id, _edit_permission_dialog_turn_id, expected_revision, remember)
 	elif not _request_active:
 		agent_controller.set_auto_apply_enabled(true, remember)
 
@@ -1801,7 +1928,7 @@ func _enable_session_edits() -> void:
 func _sync_edit_permission_ui(_enabled: bool = false) -> void:
 	if _edit_permission_button == null or _edit_permission_status == null or agent_controller == null or not agent_controller.has_method("auto_apply_enabled"):
 		return
-	var enabled: bool = agent_controller.auto_apply_enabled()
+	var enabled: bool = agent_controller.auto_apply_enabled() or agent_controller.blender_auto_apply_enabled()
 	var work: bool = agent_controller.get_mode() == AgentController.AgentMode.BUILD
 	var compact := enabled or _has_session_content or not empty_state.visible
 	_edit_permission_button.visible = not compact
@@ -1810,8 +1937,10 @@ func _sync_edit_permission_ui(_enabled: bool = false) -> void:
 	var disabled: bool = not enabled and ((_request_active and not agent_controller.can_authorize_pending_script_edits()) or not _session_resumable or not work)
 	var parts: Array
 	if enabled:
-		var scope := "Remembered for this project: new Work conversations and editor restarts use Auto apply." if agent_controller.auto_apply_uses_project_default() else "Auto apply is enabled for this session only."
+		var remembered: bool = agent_controller.auto_apply_uses_project_default() or (agent_controller.blender_auto_apply_enabled() and not agent_controller._blender_auto_apply_default_revision.is_empty())
+		var scope := "Remembered for this project: new Work conversations and editor restarts use Auto apply." if remembered else "Auto apply is enabled for this session only."
 		parts = [[scope, []], [" Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action.", []]]
+		parts.append([" Blender workspace Auto apply is enabled." if agent_controller.blender_auto_apply_enabled() else " Blender workspace operations still require review.", []])
 	else:
 		parts = [["Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval.", []]]
 		if Config.project_script_edit_preference()["enabled"]:
@@ -1923,6 +2052,8 @@ func _sync_mode_ui(mode: int) -> void:
 		else:
 			panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_sync_edit_permission_ui()
+	if settings_view != null and settings_view.extensions_view != null:
+		settings_view.extensions_view.refresh_blender_setup()
 	for card in _change_cards.values():
 		if is_instance_valid(card) and card.has_method("set_revert_available"):
 			card.set_revert_available(not _request_active and is_build)
@@ -1983,6 +2114,8 @@ func _on_new_session_pressed() -> void:
 
 
 func _start_new_session() -> void:
+	if blender_service != null:
+		blender_service.last_import.clear()
 	if _edit_permission_dialog != null:
 		_edit_permission_dialog.hide()
 	_close_image_attachment_window()
@@ -2241,6 +2374,8 @@ func _message_event(sender: String, text: String, kind: String, completion: Stri
 
 func _safe_tool_arguments(arguments: Dictionary, tool_name: String = "") -> Dictionary:
 	var result := {}
+	if tool_name in ["inspect_mcp", "blender_workspace"]:
+		return result # External identities/URIs are not historical navigation.
 	if tool_name == "inspect_animation":
 		return preload("res://addons/orca/scripts/animation_inspector.gd").history_arguments(arguments)
 	if tool_name in ["find_project_symbols", "find_symbol_references"]:
@@ -2328,7 +2463,9 @@ func _update_tool_event(call_id: String, execution: Dictionary, duration_ms: int
 	event["outcome"] = outcome
 	event["duration_ms"] = duration_ms
 	var data: Dictionary = execution.get("data", {})
-	if str(event.get("name", "")) == "inspect_editor_scene":
+	if str(event.get("name", "")) in ["inspect_mcp", "blender_workspace"]:
+		event["summary"] = "MCP inspection completed." if outcome == "completed" else "MCP inspection did not complete."
+	elif str(event.get("name", "")) == "inspect_editor_scene":
 		if outcome == "completed":
 			var node_count := clampi(int(data.get("returned_node_count", 0)), 0, 120)
 			var state_label := " with unsaved changes" if data.get("unsaved_changes", false) else ""

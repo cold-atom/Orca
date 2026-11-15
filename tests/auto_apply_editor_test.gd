@@ -74,8 +74,10 @@ func _run() -> void:
 	view._edit_permission_button.pressed.emit()
 	await _dialog_bounds("second open")
 	view._edit_permission_dialog.hide()
+	view._edit_permission_blender.set_pressed_no_signal(true)
 	view._edit_permission_dialog.confirmed.emit()
 	check(view.agent_controller.auto_apply_enabled() and view._edit_permission_status.is_visible_in_tree() and not view._edit_permission_button.visible, "confirmation replaces the floating chip with the active header indicator")
+	check(view.agent_controller.blender_auto_apply_enabled(), "shared explicit confirmation can include the separate Blender workspace scope")
 	await _layout()
 	await _overlay_interaction()
 	if ui_only:
@@ -133,6 +135,13 @@ func _run() -> void:
 	var pending_card = view._change_cards.get("pending-grant")
 	var reviewed_diff: String = pending_card._diff_label.text
 	check(pending_card._apply_button.visible and pending_card._reject_button.visible and pending_card._diff_label.visible, "manual script review retains its inline diff and decisions")
+	_permission_control().pressed.emit()
+	view._edit_permission_dialog.hide()
+	view._edit_permission_blender.set_pressed_no_signal(true)
+	view.agent_controller.edit_permission_changed.connect(func(_enabled: bool):
+		if view.agent_controller.blender_auto_apply_enabled(): view.agent_controller.set_auto_apply_enabled(false), CONNECT_ONE_SHOT)
+	view._edit_permission_dialog.confirmed.emit()
+	check(not view.agent_controller.auto_apply_enabled() and FileAccess.get_file_as_string(path) == Component.OLD, "revocation in a combined scope callback cannot reauthorize a pending script through a newer revision")
 	_permission_control().pressed.emit()
 	view._edit_permission_dialog.hide()
 	view._edit_permission_dialog.confirmed.emit()

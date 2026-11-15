@@ -10,6 +10,8 @@ permissions:
 jobs:
   native-helpers:
     uses: ./.github/workflows/native_helpers.yml
+  blender-workspaces:
+    uses: ./.github/workflows/blender_workspaces.yml
 
   godot-4-7-2:
     runs-on: ubuntu-latest
@@ -48,6 +50,8 @@ jobs:
         shell: bash
         run: |
           python3 -m unittest discover -s tests -p translation_catalog_test.py -v
+          "$GODOT_BIN" --headless --path . --script res://tests/blender_asset_validator_test.gd
+          "$GODOT_BIN" --headless --path . --script res://tests/mcp_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/api_client_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
           python3 -m unittest discover -s tests -p update_package_test.py
@@ -102,6 +106,8 @@ jobs:
         shell: bash
         run: |
           python3 -m unittest discover -s tests -p editor_test_runner_test.py -v
+          python3 tests/run_editor_test.py mcp_editor_test.gd
+          python3 tests/run_editor_test.py blender_workspace_editor_test.gd
           python3 tests/run_editor_test.py card_status_editor_test.gd
           python3 tests/run_editor_test.py task_resume_editor_test.gd
           python3 tests/run_editor_test.py editor_scene_script_test.gd

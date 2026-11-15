@@ -78,8 +78,10 @@ func _run() -> void:
 		var catalog := raw_navigation.duplicate(true)
 		if flag != null:
 			catalog["orca"]["project_code_navigation"] = flag
+			catalog["orca"]["mcp_inspection"] = flag
 		var records := CloudProvider.normalize_catalog({"data": [catalog]})
 		check(records.size() == 1 and records[0]["project_code_navigation"] == (typeof(flag) == TYPE_BOOL and flag == true), "only explicit boolean catalog support may enable Cloud code navigation")
+		check(records.size() == 1 and records[0]["mcp_inspection"] == (typeof(flag) == TYPE_BOOL and flag == true), "MCP advertisement requires an authenticated strict boolean")
 	var vault := MemoryVault.new()
 	vault.record = {"version": 1, "origin": CloudProvider.ORIGIN, "refresh_token": "saved-refresh", "session_id": "fixed-session"}
 	var service := FixtureService.new()
@@ -134,6 +136,34 @@ func _run() -> void:
 	var old_names: Array = controller._get_tool_definitions().map(func(tool): return tool["function"]["name"])
 	check(old_names.has("read_file") and not old_names.has("find_project_symbols") and not old_names.has("find_symbol_references"), "legacy Cloud catalogs must retain existing tools without sending unsupported new schemas")
 	check(not old_names.has("inspect_animation"), "legacy Cloud catalogs omit animation inspection")
+	controller._turn_mcp_snapshot = {"servers": {"fixture": {}}}
+	check(not controller._get_tool_definitions().any(func(tool): return tool["function"]["name"] == "inspect_mcp"), "legacy Cloud omits MCP despite connected metadata")
+	service.models[0]["mcp_inspection"] = true
+	controller._turn_provider_config = service.profile_config("model-fixture")
+	check(controller._get_tool_definitions().any(func(tool): return tool["function"]["name"] == "inspect_mcp"), "MCP joins exact normal Cloud readiness")
+	service.models[0]["mcp_inspection"] = false
+	check(controller._turn_allows_mcp() and not service.profile_config("model-fixture")["hosted_mcp_inspection"], "MCP advertisement stays turn-fixed")
+	controller._turn_provider_config["hosted_mcp_inspection"] = "true"
+	check(not controller._turn_allows_mcp(), "malformed MCP advertisement cannot grant tools")
+	controller._turn_mcp_snapshot.clear()
+	controller._turn_blender_snapshot = {"generation": 1, "workspace": "fixture"}
+	controller._turn_provider_config = profile.duplicate(true)
+	check(not controller._get_tool_definitions().any(func(tool): return tool["function"]["name"] == "blender_workspace"), "legacy Cloud cannot acquire workspace operations")
+	controller.profile = service.profile_config("model-fixture")
+	check(controller.blender_setup_message().contains("does not offer Blender asset tools"), "setup explains missing managed workspace capability")
+	service.models[0]["blender_workspaces"] = true
+	controller.profile = service.profile_config("model-fixture")
+	check(controller.blender_setup_message().is_empty(), "verified managed workspace capability clears only the presentation blocker")
+	controller._turn_provider_config = service.profile_config("model-fixture")
+	check(controller._get_tool_definitions().any(func(tool): return tool["function"]["name"] == "blender_workspace"), "authenticated workspace advertisement joins normal readiness")
+	service.models[0]["blender_workspaces"] = false
+	controller.profile = service.profile_config("model-fixture")
+	check(not controller.blender_setup_message().is_empty() and controller._turn_allows_blender(), "setup reflects current catalog without changing active-turn authority")
+	check(controller._turn_allows_blender() and not service.profile_config("model-fixture")["hosted_blender_workspaces"], "workspace advertisement remains turn-fixed")
+	controller._turn_provider_config["hosted_blender_workspaces"] = "true"
+	check(not controller._turn_allows_blender(), "malformed workspace advertisement is denied")
+	controller._turn_blender_snapshot.clear()
+	controller._turn_provider_config = profile.duplicate(true)
 	var legacy_listing: Dictionary = await controller._execute_tool_call({"id": "legacy_listing", "function": {"name": "list_directory", "arguments": '{"path":"res://tests/fixtures"}'}})
 	check(legacy_listing["outcome"] == "completed" and legacy_listing["execution"]["data"]["sidecars_omitted"] == 0 and not legacy_listing["arguments"].has("include_sidecars"), "legacy Cloud retains companion visibility without changing canonical call arguments")
 	for definition in controller._get_tool_definitions():

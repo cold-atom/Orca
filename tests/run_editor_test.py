@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 from pathlib import Path
 import re
@@ -11,10 +12,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    "blender_workspace_editor_test.gd": ["auto_apply_test.gd", "blender_workspace_fixture.py", "fixtures/blender_workspace_scene.tscn"],
+    "mcp_editor_test.gd": ["auto_apply_test.gd", "mcp_fixture.py"],
     "editor_transform_test.gd": ["auto_apply_test.gd", "fixtures/editor_transform_game.tscn", "fixtures/editor_transform_coin.tscn", "fixtures/editor_transform_coin.gd", "fixtures/editor_attach_script.gd"],
     "editor_scene_property_test.gd": ["auto_apply_test.gd", "fixtures/editor_property_scene.tscn", "fixtures/editor_attach_other.tscn"],
     "card_status_editor_test.gd": [],
@@ -65,10 +69,16 @@ def execute(command: list[str], env: dict[str, str], marker: str = "") -> bool:
     return True
 
 
-def prepare_project(project: Path, case: str) -> None:
+def prepare_project(project: Path, case: str, addon_archive: Path | None = None) -> None:
     # Release-like source scope: load the actual addon and the selected case's
     # dependencies, not every unrelated suite in Godot's script-doc generator.
-    shutil.copytree(ROOT / "addons" / "orca", project / "addons" / "orca")
+    if addon_archive is None:
+        shutil.copytree(ROOT / "addons" / "orca", project / "addons" / "orca")
+    else:
+        # This is a trusted archive freshly produced from the local source by
+        # the release packager, not an arbitrary ZIP supplied to this runner.
+        with zipfile.ZipFile(addon_archive) as archive:
+            archive.extractall(project)
     tests = project / "tests"
     tests.mkdir()
     for relative in [case, "editor_test_case.gd", *CASES[case]]:
@@ -86,12 +96,24 @@ def prepare_project(project: Path, case: str) -> None:
     )
     (project / "project.godot").write_text(
         'config_version=5\n[application]\nconfig/name="Orca isolated editor fixture"\n'
-        'config/features=PackedStringArray("4.7")\n[editor_plugins]\n'
-        'enabled=PackedStringArray("res://addons/orca/plugin.cfg", '
-        '"res://addons/editor_fixture/plugin.cfg")\n[rendering]\n'
+        'config/features=PackedStringArray("4.7")\n'
+        + (plugin_settings() if addon_archive is None else "")
+        + '[rendering]\n'
         'renderer/rendering_method="gl_compatibility"\n',
         encoding="utf-8",
     )
+
+
+def plugin_settings() -> str:
+    return ('[editor_plugins]\nenabled=PackedStringArray("res://addons/orca/plugin.cfg", '
+            '"res://addons/editor_fixture/plugin.cfg")\n')
+
+
+def enable_zip_plugins(project: Path) -> None:
+    # Match a fresh ZIP installation: import its assets first, then enable the
+    # editor plugins. Release ZIPs deliberately do not ship .import sidecars.
+    settings = project / "project.godot"
+    settings.write_text(settings.read_text(encoding="utf-8") + plugin_settings(), encoding="utf-8")
 
 
 def main() -> int:
@@ -101,6 +123,8 @@ def main() -> int:
     parser.add_argument("--graphical", action="store_true", help="Use Linux/X11/OpenGL")
     parser.add_argument("--temp-parent", type=Path, default=os.environ.get("ORCA_TEST_TMPDIR"))
     parser.add_argument("--ui-only", action="store_true", help="Auto-apply layout subset")
+    parser.add_argument("--blender-lab-executable", type=Path, help="Opt-in MCP acceptance against an installed official server and an already open default Blender scene")
+    parser.add_argument("--blender-workspace-executable", type=Path, help="Opt-in owned Blender workspace acceptance; starts only a disposable workspace")
     args = parser.parse_args()
     if not args.godot:
         parser.error("Set GODOT_BIN or pass --godot")
@@ -108,6 +132,14 @@ def main() -> int:
         parser.error("This runner currently isolates Linux XDG editor state only")
     if args.ui_only and args.case != "auto_apply_editor_test.gd":
         parser.error("--ui-only is supported only by auto_apply_editor_test.gd")
+    if args.blender_lab_executable is not None:
+        if args.case != "mcp_editor_test.gd":
+            parser.error("--blender-lab-executable is supported only by mcp_editor_test.gd")
+        if not args.blender_lab_executable.is_absolute() or not args.blender_lab_executable.is_file() or not os.access(args.blender_lab_executable, os.X_OK):
+            parser.error("The Blender Lab executable must be an installed executable at an absolute path")
+    if args.blender_workspace_executable is not None:
+        if args.case != "blender_workspace_editor_test.gd" or not args.blender_workspace_executable.is_absolute() or not args.blender_workspace_executable.is_file():
+            parser.error("--blender-workspace-executable requires the workspace case and an absolute installed Blender path")
     if args.temp_parent is not None and not args.temp_parent.is_dir():
         parser.error("--temp-parent must be an existing directory")
     binary = shutil.which(args.godot)
@@ -117,7 +149,14 @@ def main() -> int:
         state = Path(folder)
         project = state / "project"
         project.mkdir()
-        prepare_project(project, args.case)
+        addon_archive = None
+        if args.case == "mcp_editor_test.gd":
+            spec = importlib.util.spec_from_file_location("package_release", ROOT / "scripts/package_release.py")
+            packaging = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(packaging)
+            addon_archive = state / "orca-test.zip"
+            packaging.build(ROOT / "addons/orca", addon_archive)
+        prepare_project(project, args.case, addon_archive)
         env = dict(os.environ)
         env.update(
             ORCA_DISABLE_ACCOUNT_RESTORE="1",
@@ -128,11 +167,55 @@ def main() -> int:
             XDG_CACHE_HOME=str(state / "cache"),
         )
         env.pop("ORCA_EDITOR_TEST_CASE", None)
+        env.pop("ORCA_BLENDER_LAB_LIVE_EXECUTABLE", None)
+        env.pop("ORCA_BLENDER_WORKSPACE_LIVE_EXECUTABLE", None)
+        env.pop("ORCA_BLENDER_EDITOR_PHASE", None)
+        if args.blender_workspace_executable is not None:
+            env["ORCA_BLENDER_WORKSPACE_LIVE_EXECUTABLE"] = str(args.blender_workspace_executable)
+        if args.blender_lab_executable is not None:
+            env["ORCA_BLENDER_LAB_LIVE_EXECUTABLE"] = str(args.blender_lab_executable)
         common = [binary, "--editor", "--path", str(project), "--no-header", "--audio-driver", "Dummy"]
         if not execute([*common, "--headless", "--import", "--quiet"], env):
             return 1
+        if addon_archive is not None:
+            enable_zip_plugins(project)
         env["ORCA_EDITOR_TEST_CASE"] = args.case
         display = ["--display-driver", "x11", "--rendering-method", "gl_compatibility"] if args.graphical else ["--headless"]
+        if args.case == "blender_workspace_editor_test.gd":
+            other_project = state / "other-project"
+            other_project.mkdir()
+            prepare_project(other_project, args.case)
+            import_env = dict(env)
+            import_env.pop("ORCA_EDITOR_TEST_CASE", None)
+            other_common = [binary, "--editor", "--path", str(other_project), "--no-header", "--audio-driver", "Dummy"]
+            if not execute([*other_common, "--headless", "--import", "--quiet"], import_env):
+                return 1
+            env["ORCA_BLENDER_ORIGINAL_ROOT"] = str(project)
+            for phase in ["exercise", "restart", "other_project", "revoke", "verify_revoked"]:
+                env["ORCA_BLENDER_EDITOR_PHASE"] = phase
+                command = other_common if phase == "other_project" else common
+                if not execute([*command, *display], env, "blender_workspace_editor_test: PASS"):
+                    return 1
+            print(f"run_editor_test: PASS {args.case} (five clean editor processes, two projects; {'X11/OpenGL' if args.graphical else 'headless'})")
+            return 0
+        if args.case == "mcp_editor_test.gd":
+            other_project = state / "other-project"
+            other_project.mkdir()
+            prepare_project(other_project, args.case, addon_archive)
+            import_env = dict(env)
+            import_env.pop("ORCA_EDITOR_TEST_CASE", None)
+            other_common = [binary, "--editor", "--path", str(other_project), "--no-header", "--audio-driver", "Dummy"]
+            if not execute([*other_common, "--headless", "--import", "--quiet"], import_env):
+                return 1
+            enable_zip_plugins(other_project)
+            env["ORCA_MCP_ORIGINAL_ROOT"] = str(project)
+            for phase in ["migration", "exercise", "restart", "other_project", "other_restart", "original_verify", "after_remove"]:
+                env["ORCA_MCP_EDITOR_PHASE"] = phase
+                command = other_common if phase in {"other_project", "other_restart"} else common
+                if not execute([*command, *display], env, "mcp_editor_test: PASS"):
+                    return 1
+            print(f"run_editor_test: PASS {args.case} (seven clean editor processes, two ZIP-installed project roots; {'X11/OpenGL' if args.graphical else 'headless'})")
+            return 0
         if args.case == "remembered_edit_editor_test.gd":
             # Clean editor shutdown saves real EditorSettings; each later process
             # reopens the same configuration, including a distinct project root.
@@ -170,6 +253,8 @@ def main() -> int:
         if args.ui_only:
             command += ["--", "--ui-only"]
         marker = {
+            "blender_workspace_editor_test.gd": "blender_workspace_editor_test: PASS",
+            "mcp_editor_test.gd": "mcp_editor_test: PASS",
             "editor_transform_test.gd": "editor_transform_test: PASS",
             "editor_scene_property_test.gd": "editor_scene_property_test: PASS",
             "card_status_editor_test.gd": "card_status_editor_test: PASS",

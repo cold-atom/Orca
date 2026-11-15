@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-11-13
+Last updated: 2026-11-15
 
 ## Purpose
 
@@ -8,23 +8,217 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Orca 1.8.0 Release Candidate
+## Unreleased: Extensions and MCP inspection
 
-**Orca 1.8.0 — In-Editor Changes & Workflow Reliability** is prepared for
+### Blender Asset Studio
+
+The guided setup now uses a shipped, independently implemented native Blender
+workspace connector (`addons/orca/blender/`) through Blender's bundled Python.
+This supersedes the planned extra UV/runtime download for asset work: no separate
+Python/dependency install is needed. `blender_workspace_service.gd` owns bounded
+discovery, user-owned setup, immutable per-project external asset revisions,
+exact command-contract SHA binding, sealed approval records, source/export hashes,
+texture intake, GLB validation/import checkpoints and observed native reimport.
+`blender_setup_panel.gd` provides the prominent guided setup card directly on
+Settings → Extensions, above optional MCP Connectors. The first user-owned action
+uses bounded discovery, one installation proceeds to exact startup confirmation,
+multiple choices require selection, and missing installations expose Browse/Download.
+Ready workspaces offer a draft-preserving Back to chat; installation and recovery
+controls stay under Manage workspace. Blender Lab add-on/server setup is optional
+for asset creation. MCP connectors retain compact cards and a focused scrolling
+configuration dialog with official add-on/server/listener guidance.
+`blender_change_card.gd` reviews logical operations and previews with expandable
+technical evidence. `blender_asset_placement.gd` binds clean/scriptless Node3D root,
+source/asset hashes and intervening Undo revisions for one native addition, never
+automatic scene save/reload. Revert/import authority is memory-only/current-session.
+
+**Workspace Auto apply** is a distinct user-owned scope. Existing script-only
+grants require one explicit **Auto apply workspace…** confirmation, optionally
+remembered for the exact project in `orca/blender/auto_apply/projects/` local
+EditorSettings. The script confirmation also offers **Include Blender workspace
+operations**; General Settings has a separate workspace selector. Only
+help/inspect/edit/preview/export can automate in an already connected dedicated
+workspace. Import/place retain exact review, MCP reads retain their own approvals,
+and preferences never launch Blender. Runtime grants bind root/preference revision,
+clear on session/restoration/Plan/reload boundaries and recheck before dispatch and
+after awaiting external work. Resumable Work may obtain a fresh remembered grant;
+view-only/Plan cannot. Header revocation clears both remembered scopes. Failed or
+uncertain automatic operations pause Blender automation without reacquisition in
+the same session; completed operations keep their matching result. Cards collapse
+technical evidence and show **Auto applied** instead of repeating Apply actions.
+
+Preview now stages a rendered PNG and a separate static evaluated GLB from the
+same revision. The latter is display-only and never enters the import artifact
+ledger, model binary context or persisted history. `blender_preview_loader.gd`
+decodes only core triangle positions/normals/UVs, native transforms and basic PBR
+base-color/material data into native `ArrayMesh`/`StandardMaterial3D` records. It
+never invokes `GLTFDocument`, extension callbacks, project import scripts,
+ResourceLoader, animation or source-selected node types. Limits: 16 MiB GLB,
+100k unique/rendered vertices, 300k indices, 32 surfaces/mesh, 16 Mi-pixels decoded
+textures, 1024px texture downsampling and a 350 ms cooperative decode deadline.
+Unsupported/sparse/non-core data or exceeded budgets retain the PNG fallback.
+`blender_preview_view.gd` owns a separate native `SubViewport` world, orbit/pan/zoom,
+Frame/Reset/F and an expanded resizable Window. Rendering is one-shot/on-demand
+and disabled outside the visible scroll region; at most three render scenes
+including expanded views remain, with old geometry released to its thumbnail.
+Viewing never edits the asset/project, starts a process or rerenders in Blender.
+This is a static game-renderer preview, not animation playback or exact Cycles
+shader/lighting parity; normal/metallic-roughness texture maps and optional material
+extensions are not reproduced by this initial core viewer.
+
+Work-only `blender_workspace(operation, commands?, artifact_id?, destination?)`
+exposes help/inspect/edit/preview/export/import/place. Typed JSON commands are
+validated against the exact shipped schema digest and again inside the connector;
+no untrusted advertisement grants opcodes, scripts, arbitrary bpy/operator calls,
+executables, environment or paths. The OS-held workspace lease prevents concurrent
+writers, including after a wrapper's direct process is stopped. See
+[docs/BLENDER.md](docs/BLENDER.md) for supported commands, budgets, setup, trust,
+export conversions and remaining acceptance. Backend `blender_workspaces` is a
+strict authenticated turn-bound additive vocabulary gate, not local authorization.
+
+**Standalone external tool generation:** `blender_workspace` and `inspect_mcp`
+must each be the only tool call in a response, including workspace help/inspection,
+catalog reads and Auto apply. They cannot be grouped with project reads or task
+updates. The primary prompt is refreshed after capturing every new turn's fixed
+provider/connection snapshots, so initial requests and Resume receive current
+permission and batching guidance. Both external schemas explicitly state the
+standalone requirement. OpenAI Chat Completions and standard Azure Chat/Responses
+request `parallel_tool_calls=false` when these schemas are offered or during the
+one bounded batch-correction continuation. Ordinary project-only read generation
+is unchanged. Unknown/custom/local/managed and explicit DeepSeek contracts do not
+inherit the optional OpenAI field. The generation option never authorizes tools:
+runtime admission remains atomic and denies malformed/mixed batches before any
+activity, proposal or dispatch. One pre-execution correction names the exact known
+standalone tool or JSON-format reason, without replaying rejected calls or exposing
+their arguments/private reasoning. Terminal errors retain that reason. Recovery
+records tool **outcomes**, not assumed successful changes, and a checklist-only
+checkpoint explicitly says no project or Blender operation ran.
+
+The two `addons/orca/blender/workspace_{connector,contract}.py` files are mandatory
+shipped runtime source. They were restored byte-for-byte from the original local
+development snapshot after accidental deletion; the command-contract SHA remains
+unchanged. Startup checks readable/bounded/symlink-free toolkit files before
+workspace creation or process launch and reports every setup preflight failure in
+the panel. Packaging and updater manifest validation require both files whenever
+the workspace service is present, preserving historical non-workspace packages.
+
+The full game-asset workflow is implemented as constrained operations; unrestricted
+generated Python and arbitrary Blender add-ons remain deferred pending real
+execution isolation. A private working file/process is explicitly not a sandbox.
+
+### Configure-once connectors and inspection
+
+Settings has a fifth **Extensions** icon using the owner's `extension.svg`.
+`extensions_view.gd` contains guided Blender setup followed by the **Connectors** card list;
+`connector_card.gd` owns Enable/Disable/Cancel, supported-inspection descriptions and
+the options menu. `connector_dialog.gd` holds one focused configuration form with
+optional Advanced arguments and bounded installed-server path suggestions. Raw
+counts/catalog JSON live only in Connection details. The default page contains no
+project/reusable selectors or import/copy actions. MCP connection status explicitly
+says **MCP connected — inspection**, independent of workspace readiness. The
+controller shares the existing profile tool-readiness predicate with a presentation-only
+setup message; current account/model/mode blockers never modify the fixed turn snapshot,
+grant authority or start/replay an operation. Startup Cancel retains generation identity,
+waits for bounded transport settlement before reconnect and preserves failed-stop
+ownership. Confirmation is consumed once and invalidated by dismissal, lock or an
+installation change; translation refresh retains its original program identity.
+
+`mcp_config.gd` uses version-2 canonical descriptions at `orca/extensions/mcp_library`
+(16 entries / 128 KiB plus at most 512 bounded bookkeeping hashes). Each entry
+contains validated executable/arguments/profile/name/ID, never enabled state or
+authority. Automatic migration reads only bounded Orca EditorSettings records
+(4096 properties, 32 legacy project records, 128 KiB scan), preserves originals,
+deduplicates exact descriptions apart from IDs and keeps differing explicit profiles
+and collision-checked variants. Origin/removal hashes prevent deleted or superseded
+legacy entries from returning without accumulating history for new configurations.
+Malformed/future records fail closed without overwrite. Arguments remain literal.
+The quit-A/open-B workflow relies on normal clean EditorSettings persistence;
+live cross-editor preference synchronization is not provided. Reopening Extensions
+refreshes the current editor's settings and revokes affected stale live bindings.
+
+Save never starts a process. Explicit Enable consumes a sealed single-use launch
+action bound to root/service/generation and the complete unchanged registry/config.
+The disclosed local program is launched only from that current user action. Edited
+configuration stops its local bridge and requires re-enable; a no-op Save preserves
+it. Cancellation invalidates per-start ownership so late completion cannot stop a
+replacement; bounded settlement counters defer client retirement until coroutines
+return and retain failed-stop ownership. Up to four bridges run per editor.
+Read snapshots bind service identity as well as root/generation; startup/restoration
+never supplies launch/read approval, catalogs, PIDs or model authority. No tool/backend
+vocabulary change is needed. The open-Blender integration remains inspection-only;
+the owner chose setup simplification first, with editing in the existing asset workspace.
+`mcp_stdio_client.gd` provides
+bounded nonblocking 2025-protocol initialization, discovery and text reads.
+`mcp_service.gd` owns connection generations and an immutable turn snapshot.
+
+The single `inspect_mcp` schema exposes local catalog inspection, one listed text
+resource, and the Blender profile's exact empty-argument scene/status queries.
+Profiles are explicit: `blender` retains community `get_scene_info` /
+`get_addon_status`; `blender_lab` selects official Blender Lab
+`get_objects_summary` / `get_blendfile_summary_datablocks`. Both reuse
+`blender_scene` / `blender_status`, with the latter documented as a profile-specific
+summary rather than official add-on status. Catalog/turn context includes exact
+`inspection_tools`; read review discloses profile/tool identity and dispatch rechecks
+the fixed profile mapping. No name/annotation inference or cross-profile fallback.
+Existing saved descriptions retain their identity; the official profile requires
+selection, Save and explicit reconnect. MCP JSON-as-text keeps existing bounds;
+structured results do not add tool authority or replace checked text.
+It is Work-only, singleton-batch, and external calls require an exact live
+`mcp_read_card.gd` decision even under Auto apply. No arbitrary Python/tool call,
+asset write, package install or model-controlled executable is introduced.
+Connection trust is user-owned; local programs retain OS access and are not
+sandboxed. Server annotations cannot grant capabilities. Original server text is
+untrusted model context; history keeps only coarse non-actionable receipts.
+Cancellation settles matching tool results without replay, including terminal
+reentry; disconnect/reconnect/catalog changes revoke stale snapshots.
+
+Cloud adds strict authenticated `mcp_inspection` advertisement and the companion
+backend's exact bounded inspection vocabulary. API rollout/catalog refresh are
+required. Old catalogs remain gated. Protocol details, limits, setup and remaining
+Blender/Skills milestones are in [docs/EXTENSIONS.md](docs/EXTENSIONS.md).
+
+Official acceptance has an explicit opt-in normal-editor runner flag,
+`--blender-lab-executable /absolute/path/to/blender-mcp`, limited to the MCP case.
+It uses an installed server and already open default Blender scene, real launch/read
+cards, and a synthetic model in disposable Godot/XDG state. The ordinary runner
+clears inherited live-executable state; no automatic server install/Blender launch,
+scene write or paid model request. Required cases cover both profiles, mixed/wrong
+catalogs, exact schemas/mapping/review, JSON summaries, rejection/Stop/staleness,
+official persistence and all five narrow/large-font locales.
+
+Verification passes on Godot 4.7.2: clean headless editor initialization, synthetic
+stdio component cases (including actual timeout and retained failed-stop ownership),
+seven-process, two-ZIP-project normal-editor cases headlessly and on Linux/X11/OpenGL, and relevant
+controller/account/settings/chat/session/context/Responses/activity/Auto-apply
+components. Localization's three processes, Auto apply and editor-scale cases pass
+headlessly; three catalog/five runner checks pass. Fixtures isolate XDG/project
+state and suppress account/update/helper startup. The companion backend has eight
+new passing contract/API cases plus 23 passing selected regressions, full Ruff/format
+and mypy. Official Blender Lab v1.0.3 server/add-on acceptance now passes against
+Blender 5.2.2 LTS through the Linux graphical runner, including live scene and
+data-block reads with actual approval cards and matching synthetic-model receipts.
+Other bridge/Blender versions, live inference and Windows/macOS graphical
+acceptance remain untested. The constrained native Blender workflow above is
+implemented; remaining platform/model-quality acceptance and the Skills library follow.
+
+## Orca 1.8.0 Published Baseline
+
+**Orca 1.8.0 — In-Editor Changes & Workflow Reliability** was released for
 **Godot 4.7.2**. Metadata, version-sensitive expectations and the dated changelog
-identify 1.8.0; publication is pending and **1.7.0 remains the latest release**.
+identify 1.8.0. GitHub now confirms **v1.8.0 published at `dc0e315`**, with passing
+final Tests/native/package and release preparation. The earlier candidate notes
+below record pre-publication verification.
 This candidate includes reviewed current-scene properties/script attachment,
 live Node2D baselines preserving unsaved edits, clearer cards, longer bounded
 tasks and same-conversation Resume. The owner confirmed the Platformer Node2D
 move workflow works after the unsaved-baseline fix.
 
-The pushed pre-candidate `91610f0` passed complete
-[Tests/native/package CI](https://github.com/cold-atom/Orca/actions/runs/43270415554).
-The later unsaved-baseline fix and final 1.8.0 metadata require a fresh complete
-build after the candidate is pushed. Accept that exact binary-free ZIP and four
-matching helpers before tagging/publishing. Current scene tools reuse the existing
-Cloud vocabulary; no new backend contract is needed for this release. Broader
-real-model tasks, Windows/macOS editor behavior and Store moderation remain separate.
+The final `dc0e315` passed complete
+[Tests/native/package CI](https://github.com/cold-atom/Orca/actions/runs/43282971040)
+and release preparation; its binary-free ZIP/checksum and four helpers are published.
+That CI covers 1.8.0, not the new MCP additions. The 1.8 scene tools reuse the existing
+Cloud vocabulary. Broader real-model tasks, Windows/macOS editor behavior and Store
+moderation remain separate acceptance.
 
 ## 1.8.0: Current-Scene Native Properties
 
@@ -1617,9 +1811,20 @@ entry points pending a separate migration.
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
 - BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata remains 1.7.0, the latest published baseline with passing release CI. Current workflow improvements are unreleased and require fresh CI/package acceptance. Native-speaker translation review, real-model response-language/inspection/editing acceptance, broader platform/theme checks, Store moderation and third-party asset attribution records remain separate. Historical milestones retain their original verification state.
+- Plugin metadata remains 1.8.0, the latest published baseline with passing release CI. The new MCP foundation is unreleased and requires fresh CI/package acceptance. Native-speaker translation review, real-model inspection/editing acceptance, broader platform/theme checks, Store moderation and third-party asset attribution remain separate. Historical milestones retain their original verification state.
 
 ## Roadmap
+
+### Extensions: MCP → Blender workflow → Skills
+
+- The first MCP inspection foundation is implemented in this checkout. Complete
+  real-server/platform acceptance and the matching Cloud API rollout.
+- Constrained Blender asset operations, working copies/previews, staged GLB export,
+  reviewed binary acceptance/recovery, observed import and native placement are
+  implemented. Complete platform/clean-machine/model-quality acceptance and Cloud
+  rollout. Unrestricted generated-code execution requires real isolation first.
+- Then: first-class Skills library, explicit selection, bounded supporting files
+  and standards compatibility; remote Skills-over-MCP follows tested support.
 
 ### P0: Reliability And Persistence
 
@@ -1734,6 +1939,206 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-15 — Asset-first Extensions onboarding (unreleased)
+
+- Renamed the Settings surface to Extensions and placed Blender Asset Studio directly
+  above optional MCP Connectors. Asset creation uses the shipped connector with Blender
+  5.2+, independently of official Blender Lab add-on/server installation. Extra controls
+  are collapsed under Manage workspace; connected cards offer Back to chat and preserve
+  the composer draft. MCP status identifies inspection, and the official Configure form
+  includes a scoped installation checklist/link with bounded-height scrolling.
+- Guided zero/one/multiple-installation discovery retains user-owned exact startup
+  confirmation. Consumed/dismissed/stale/locked decisions cannot launch. Cancel waits
+  for transport settlement; old completion cannot disconnect a replacement or replace
+  cancellation status. Failed-stop ownership is retained with a visible retry action.
+  Current provider/account/mode guidance reuses the existing readiness predicate without
+  altering turn-bound capabilities, permissions, provider requests or edit grants.
+- Verification: clean Godot 4.7.2 headless editor initialization and isolated normal-editor cases headlessly and on Linux/X11/OpenGL,
+  including the five-process workspace case with actual native Blender 5.2.2 and the
+  seven-process/two-ZIP-project MCP case. Guided discovery, startup/failed-stop recovery,
+  exact confirmations, draft preservation, existing review/import/Undo/recovery and all
+  five locales with 1×/1.5×/2× narrow layouts pass. Controller/account/settings/chat/
+  MCP/hosted-budget components and three translation catalog checks pass. Hosted
+  compact finalization remains 24565/24576. Fixtures isolate project/XDG state and suppress
+  owner authentication, update checks and background downloads. Windows/macOS UI,
+  clean-machine installation and live-model quality remain separate acceptance.
+
+### 2026-11-15 — Standalone Blender/MCP request reliability (unreleased)
+
+- Fixed the mismatch between external singleton admission and parallel model
+  generation. Supported OpenAI/standard Foundry requests now suppress parallel
+  calls for external tools and the bounded correction; other contracts are kept.
+  Initial/Resume prompts refresh from the captured turn and external schemas name
+  the standalone rule, including help/inspection and Auto apply.
+- Added exact bounded rejection reasons and honest checklist-only recovery text.
+  Mixed/malformed batches remain all-or-none and side-effect-free, with one fresh
+  correction, matching valid tool receipts and no replay or permission changes.
+- Added production request-body capture tests for Chat/Responses (network-free),
+  negative custom/local/DeepSeek/no-tools cases and malformed-option denial.
+  The isolated workspace editor case reproduces two rejected mixed batches after
+  a checklist update, clicks actual Resume, reaches reviewed inspection, and then
+  corrects an automatic workspace/read batch into one admitted operation.
+- Verification covers Godot 4.7.2 API/Responses/controller/hosted-budget components
+  and the five-process workspace runner headlessly and on Linux/X11/OpenGL with
+  native Blender 5.2.2. Old 32k finalization remains 24565/24576. Model responses are
+  synthetic; live inference and other platforms remain separate acceptance.
+
+### 2026-11-15 — Blender workspace Auto apply and interactive previews (unreleased)
+
+- Added a separate explicitly confirmed Blender help/inspect/edit/preview/export
+  grant, optionally remembered for the exact project. Existing script decisions
+  remain script-only until scope confirmation. Import/place and other MCP reads
+  retain review; runtime/preference revisions, failure pause, Work-only defaults
+  and immediate header revocation are enforced. Combined-scope confirmation also
+  rejects revocation/reentry callbacks before pending script application.
+- Added static evaluated preview GLBs alongside PNGs, native-only bounded
+  geometry/material decoding and local orbit/pan/zoom, Frame/Reset/F and expanded
+  windows. No project importer/extensions, asset edits, animation or tool-image
+  injection. Display-world centering, local TRS scale order, independent expanded
+  clipping, one-shot rendering and three-scene retention preserve usable previews.
+- Expanded the permanent workspace runner to five clean processes/two roots,
+  covering remembered restart/revoke, old/malformed/stale scope decisions, exact
+  receipts, failure pause, import/place review, actual pointer input, visible native
+  rendering and five-language larger-font layouts. Fixed first-open confirmation
+  minimum expansion from the additional checkbox using bounded caption clipping.
+- Verification: clean Godot 4.7.2 initialization; eleven Python contract/native
+  Blender 5.2.2 cases without skips; five-process synthetic headless and native
+  Linux/X11/OpenGL workspace runs. GLB/preview, controller, context, Responses,
+  chat/settings/session/activity and automatic-script components pass, as do
+  Auto apply, five-process remembered-script and editor-scale cases. Catalog and
+  runner rejection checks pass. Old 32k complete-scene finalization remains within
+  24565/24576; no scene evidence, protocol messages or reserves were dropped.
+  Fixtures isolate project/XDG state and suppress auth/update/helper startup.
+  Live model quality, Windows/macOS UI, broader materials and animation playback
+  remain separate acceptance; this work does not change Cloud vocabulary.
+
+### 2026-11-15 — Configure-once Connectors UX (unreleased)
+
+- Owner rejected the long setup page and chose setup simplification first. Replaced
+  storage-oriented selectors/actions with compact Connectors cards, one Enable/Disable/
+  Cancel action and a focused Configure dialog; raw arguments/details stay optional.
+  Asset tools has its own page. Open-Blender cards disclose inspection capabilities
+  accurately; editing still uses the reviewed dedicated workspace.
+- Canonical version-2 EditorSettings descriptions replace independent project copies.
+  Automatic bounded migration preserves legacy sources/profile identities, deduplicates
+  descriptions and resolves ID collisions. Bounded origin/deletion fingerprints prevent
+  removed or superseded old setup from resurrecting without retaining new-edit history.
+  No enabled state, process or approval is persisted.
+- Enable uses exact single-use sealed root/service/generation/registry actions. Runtime
+  stale-save, four-live-bridge and failed-stop ownership checks remain. Startup Cancel
+  settles bounded transport coroutines; per-start/UI identities prevent old completion
+  from stopping a replacement or overwriting its status. Closed clients retire only
+  after settlement. Snapshot service identity prevents cross-instance read authority.
+- Verification: zero-failure MCP component suite including real timeout/replay/Stop
+  cases; seven-process/two-ZIP-project normal-editor case headlessly and graphically,
+  including actual official Blender Lab A→B enable/read approval with synthetic model
+  responses. Canonical migration, shared edits/removal, Cancel/double Enable, malformed/
+  stale settings, Plan/read approvals and five-language narrow/large-font cards/dialogs
+  pass. Synthetic workspace editor still passes. No owner settings edits, paid inference,
+  backend schema change, commit/push or release operation. Broader platform/clean-machine
+  acceptance and editing the already-open Blender scene remain separate work.
+- Nine focused controller/settings/chat/session/context/hosted/account/activity/GLB
+  component suites, nine package/updater tests and all five editor-runner checks pass.
+  Hosted 32k finalization remains 24572/24576; root AGENTS/prompt sizing was preserved.
+
+### 2026-11-15 — Cross-project MCP reconnect and complete Blender packages (unreleased)
+
+- Added explicit computer-local reusable launch setup for all supported MCP
+  profiles, visible reconnect/legacy-import controls and existing-description
+  selection. Exact-project independent copies, collision checks, literal arguments,
+  root/service-bound confirmation, no autostart and Work read approval remain.
+- Restored the original deleted workspace connector and contract from the local
+  development snapshot; Git blob hashes match `06fefe7eeb212baeed8ae337f73d2324f77b9c80`
+  and `b9f88affba4128831b2248a2827ed14729790999`. The pinned command SHA is unchanged.
+  Early setup failures now reach the visible panel before workspace/process creation.
+  Packager/updater checks reject missing runtime dependencies and preserve old packages.
+- Verification: clean Godot 4.7.2 initialization, zero-failure MCP component suite,
+  five-process/two-ZIP-project editor suite headless and Linux/X11/OpenGL, and the
+  same graphical A→B workflow with the installed official Blender Lab server and
+  open Blender 5.2.2 scene. Actual B launch/read cards and matched provider receipts
+  pass; cancellation, malformed library, independent edits/processes and localized
+  narrow/large-font layouts remain covered. Nine package/updater cases and ten
+  native Blender cases pass without skips; synthetic workspace editor passes
+  headlessly, and native workspace/import/placement passes graphically.
+- Controller, settings, chat, session, context budgeting, hosted defaults, account,
+  activity and GLB-validator components pass; catalog parity/coverage and all five
+  editor-runner rejection checks pass. Hosted 32k finalization remains 24572/24576.
+- Fixtures isolate project/XDG state and suppress owner auth/update/helper startup.
+  No paid inference, owner project/settings edits, commit/push/release or backend
+  contract change. Windows/macOS editor acceptance and live model quality remain
+  separate. Local test ZIPs should use the completeness-checked release packager.
+
+### 2026-11-15 — Guided native Blender Asset Studio (unreleased)
+
+- Implemented few-click discovery/browsing/setup and the shipped independent
+  connector using Blender's bundled Python. Native Windows/macOS/Linux, portable,
+  AppImage and fixed Snap/Flatpak adapters keep launch arguments user-owned and
+  hidden from normal setup. No extra Python/UV dependency installation; advanced
+  official/community MCP inspection remains separate. Saved installation/workspace
+  descriptions are local preferences, never release defaults or launch authority.
+- Added 28 constrained command families covering mesh/object/modifier/curve editing,
+  PBR textures/UV/baking, rigging/weights/constraints, named actions/baking/shape keys,
+  bounded Geometry Nodes, collision/LOD and native scene/physics settings. Commands
+  bind to the exact shipped schema digest and are validated twice. All operations
+  use runtime Work/original-review checks, sealed baselines and non-replayable
+  matching tool receipts. Immutable `.blend` revisions and an OS lease retain
+  recovery and single-writer ownership; templates/textures are explicit user intake.
+- Added preview attachment, staged self-contained GLB validation, approved project
+  import with pre-write recovery, per-project replacement exclusion and actual
+  reimport observation. Native clean/scriptless Node3D placement binds source/root/
+  Undo identity, adds one undoable instance and reports editor-only/save-pending.
+  New Session clears memory-only import authority. Unrestricted Python/operators,
+  arbitrary add-ons/custom import scripts and broad scripted-scene placement remain
+  outside these scoped contracts.
+- Verified clean Godot 4.7.2 workspace initialization; ten Python contract/native
+  Blender 5.2.2 cases without skips, including actual rig/skin/animation GLB content,
+  mesh editing/Geometry Nodes, material/animation bake, preview, templates/textures,
+  exclusive lease and failed-edit rollback. The isolated editor case passes
+  headlessly and Linux/X11/OpenGL, including actual source import/revert, native
+  placement/Undo/Redo, Plan/Auto apply/rejection/Stop, five-language narrow layout
+  and coarse history. GLB validator, existing MCP two-process editor, controller,
+  account/settings/session/activity/chat, three translation and five runner checks
+  pass. Compact Work guidance retains the old 32k finalization (24572/24576) and
+  full 64k continuation without dropping scene evidence or response reserves.
+- Matching Cloud vocabulary/authenticated advertisement and metered continuations
+  are implemented in the separately authorized companion backend: sixteen new/
+  existing workspace/MCP cases pass with disposable PostgreSQL, full Ruff/format
+  and mypy (94 files). The disposable DB was stopped/removed. No owner service,
+  paid inference, deployment or publication was performed. CI now includes pinned
+  native Linux/Windows/macOS-arm64 Blender jobs; fresh CI, clean-machine novices,
+  other builds/wrappers and live model-quality acceptance remain follow-ups.
+
+### 2026-11-15 — Official Blender Lab inspection acceptance (unreleased)
+
+- Added explicit `blender_lab` configuration and localized **Blender Lab — Official**
+  selection. Fixed scene/data-block tools are disclosed in catalog/turn context and
+  exact review, with runtime profile mapping checks. Existing community profiles,
+  operation enum, Cloud gating and bounded text/approval/cancellation contracts remain.
+- Expanded permanent protocol/editor fixtures for separate/mixed/wrong vocabularies,
+  incompatible official schemas, JSON/text evidence, tampered mapping/arguments,
+  Plan/Auto apply/Reject/Stop/stale review, matched continuation and official restart
+  persistence. Added explicit installed-server live acceptance to the isolated runner.
+- Verified Godot 4.7.2 clean initialization, `mcp_test.gd`, two-process MCP editor
+  cases headlessly and Linux/X11/OpenGL, and live official v1.0.3 reads against the
+  owner's Blender 5.2.2 LTS default Camera/Cube/Light scene. Scene and data-block
+  observations passed through actual launch/read cards with synthetic inference;
+  no Blender scene writes. Hosted-default/settings/session/activity/account/
+  controller/chat components and three translation/five runner checks pass.
+- Other server/Blender versions, live model competence, Windows/macOS and fresh
+  release CI remain separate acceptance. Reviewed Blender editing/GLB handoff is next.
+
+### 2026-11-15 — Extensions and reviewed MCP inspection (unreleased)
+
+- Added the owner's Extensions icon, localized project-bound connection management,
+  bounded stdio protocol service and a fixed Work-only inspection tool with exact
+  external-read review. No arbitrary Python, asset mutation or automatic launch.
+- Verified real process framing/UTF-8/limits/errors/timeouts/Stop, retained failed-stop
+  ownership, stale review denial, singleton batches, protocol-valid continuation,
+  no restart auto-launch and clean two-process headless/Linux graphical lifecycles.
+- Added capability-gated Cloud contract support in the separately authorized backend.
+  Local component/editor/static checks pass; deployment, real Blender/server and
+  broader platform acceptance remain separate. The asset-handoff milestone follows.
 
 ### 2026-11-13: Orca 1.8.0 release preparation
 

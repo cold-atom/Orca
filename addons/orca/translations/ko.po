@@ -6,6 +6,282 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "Include Blender workspace operations"
+msgstr "Blender 작업 공간 작업 포함"
+
+msgid "Allow workspace help, inspection, modeling, previews and exports automatically. Project import and scene placement still require approval."
+msgstr "작업 공간의 도움말, 검사, 모델링, 미리 보기와 내보내기를 자동으로 실행합니다. 프로젝트 가져오기와 씬 배치는 여전히 승인이 필요합니다."
+
+msgid "Allow automatic Blender operations"
+msgstr "Blender 자동 작업 허용"
+
+msgid "Orca can inspect, model, preview and export assets automatically in your connected dedicated Blender workspace in Work mode. Edits are validated and saved as immutable recovery revisions.\n\nProject imports and scene placement still require their exact approval. This permission covers only Orca's fixed workspace commands. It does not start Blender or authorize arbitrary code or other MCP servers.\n\nRemember for this project enables this scope in future Work conversations and editor restarts. Plan stays read-only. Click the green edit icon beside ORCA to revoke automation and clear the remembered defaults."
+msgstr "작업 모드에서 Orca가 연결된 전용 Blender 작업 공간의 에셋을 자동으로 검사, 모델링, 미리 보기 및 내보내기할 수 있습니다. 변경은 검증되고 변경 불가능한 복구 리비전으로 저장됩니다.\n\n프로젝트 가져오기와 씬 배치는 각각의 명시적 승인이 필요합니다. 이 권한은 Orca의 고정 작업 공간 명령만 포함하며 Blender 시작, 임의 코드 또는 다른 MCP 서버를 허용하지 않습니다.\n\n이 프로젝트에 기억하면 이후 작업 대화와 에디터 재시작에서도 이 범위를 사용합니다. 계획 모드는 읽기 전용입니다. ORCA 옆의 녹색 편집 아이콘을 클릭하면 자동화를 취소하고 기억한 기본값을 지웁니다."
+
+msgid "Automate dedicated workspace modeling, inspection, previews and exports after confirmation. Project import and scene placement still require review."
+msgstr "확인 후 전용 작업 공간의 모델링, 검사, 미리 보기와 내보내기를 자동화합니다. 프로젝트 가져오기와 씬 배치는 여전히 검토가 필요합니다."
+
+msgid "Review operations (default)"
+msgstr "작업 검토 (기본값)"
+
+msgid "Blender workspace operation"
+msgstr "Blender 작업 공간 작업"
+
+msgid "Auto apply workspace…"
+msgstr "작업 공간 자동 적용…"
+
+msgid "Running automatically…"
+msgstr "자동 실행 중…"
+
+msgid "Auto applied"
+msgstr "자동 적용됨"
+
+msgid "Blender operation completed"
+msgstr "Blender 작업 완료"
+
+msgid "Blender operation did not complete"
+msgstr "Blender 작업이 완료되지 않았습니다"
+
+msgid "Frame"
+msgstr "전체 보기"
+
+msgid "Reset"
+msgstr "초기화"
+
+msgid "Expand"
+msgstr "확대"
+
+msgid "Blender 3D preview"
+msgstr "Blender 3D 미리 보기"
+
+msgid "Drag to orbit · Shift-drag or middle-drag to pan · Scroll to zoom"
+msgstr "드래그로 회전 · Shift 또는 가운데 버튼 드래그로 이동 · 스크롤로 확대/축소"
+
+msgid "3D preview unavailable. The rendered image remains available."
+msgstr "3D 미리 보기를 사용할 수 없습니다. 렌더링 이미지는 계속 볼 수 있습니다."
+
+msgid "3D preview released to save memory. The rendered image remains available."
+msgstr "메모리 절약을 위해 3D 미리 보기를 해제했습니다. 렌더링 이미지는 계속 볼 수 있습니다."
+
+msgid " Blender workspace Auto apply is enabled."
+msgstr " Blender 작업 공간 자동 적용이 활성화되었습니다."
+
+msgid " Blender workspace operations still require review."
+msgstr " Blender 작업 공간 작업은 여전히 검토가 필요합니다."
+
+msgid "BLENDER ASSET STUDIO"
+msgstr "BLENDER 에셋 스튜디오"
+
+msgid "Create game assets in a dedicated Blender workspace. Setup uses Blender's built-in Python; no commands, JSON or separate Python installation are needed."
+msgstr "전용 Blender 작업 공간에서 게임 에셋을 만듭니다. Blender 내장 Python을 사용하므로 명령어, JSON 또는 별도 Python 설치가 필요 없습니다."
+
+msgid "Set up Blender"
+msgstr "Blender 설정"
+
+msgid "Choose Blender…"
+msgstr "Blender 선택…"
+
+msgid "Choose Blender"
+msgstr "Blender 선택"
+
+msgid "Connect asset workspace"
+msgstr "에셋 작업 공간 연결"
+
+msgid "Disconnect workspace"
+msgstr "작업 공간 연결 해제"
+
+msgid "New asset workspace"
+msgstr "새 에셋 작업 공간"
+
+msgid "Open asset in Blender"
+msgstr "Blender에서 에셋 열기"
+
+msgid "Attach asset texture…"
+msgstr "에셋 텍스처 첨부…"
+
+msgid "Choose asset texture"
+msgstr "에셋 텍스처 선택"
+
+msgid "Restore previous asset revision"
+msgstr "이전 에셋 버전 복원"
+
+msgid "Revert last asset import"
+msgstr "마지막 에셋 가져오기 되돌리기"
+
+msgid "Attach preview to chat"
+msgstr "미리보기를 채팅에 첨부"
+
+msgid "Blender workspace"
+msgstr "Blender 작업 공간"
+
+msgid "Start the selected Blender installation with Orca's shipped asset connector? It uses an isolated startup and writes only dedicated asset revisions. Your open Blender files are preserved."
+msgstr "Orca에 포함된 에셋 커넥터로 선택한 Blender를 시작할까요? 독립 시작 환경에서 전용 에셋 버전만 저장하며 열린 Blender 파일은 유지합니다."
+
+msgid "Restore the previous asset revision as a new workspace revision? Project imports are unchanged."
+msgstr "이전 에셋 버전을 새 작업 공간 버전으로 복원할까요? 프로젝트의 가져온 에셋은 유지됩니다."
+
+msgid "Revert the last imported asset only if its project bytes and recovery checkpoint still match?"
+msgstr "프로젝트 파일과 복구 체크포인트가 일치할 때만 마지막으로 가져온 에셋을 되돌릴까요?"
+
+msgid "Advanced MCP connections"
+msgstr "고급 MCP 연결"
+
+msgid "Review Blender workspace operation"
+msgstr "Blender 작업 공간 작업 검토"
+
+msgid "Approve this exact operation in the dedicated asset workspace. Project imports have their own reviewed destination and recovery checkpoint."
+msgstr "전용 에셋 작업 공간의 이 작업을 승인하세요. 프로젝트 가져오기에는 별도로 검토한 대상과 복구 체크포인트가 있습니다."
+
+msgid "Apply operation"
+msgstr "작업 적용"
+
+msgid "Allow operation"
+msgstr "작업 허용"
+
+msgid "Applied in editor · Save pending"
+msgstr "편집기에 적용됨 · 저장 대기"
+
+msgid "Start from saved Blender file…"
+msgstr "저장된 Blender 파일로 시작…"
+
+msgid "Choose Blender template"
+msgstr "Blender 템플릿 선택"
+
+msgid "Technical review details"
+msgstr "기술 검토 상세 정보"
+
+msgid "Use the selected saved Blender file as a trusted asset template? Blender loads a private copy with automatic scripts disabled. Linked libraries, embedded scripts and drivers are unsupported. The original file is preserved."
+msgstr "선택한 저장 파일을 신뢰하는 에셋 템플릿으로 사용할까요? 자동 스크립트를 끄고 비공개 복사본을 불러옵니다. 연결된 라이브러리, 내장 스크립트 및 드라이버는 지원하지 않습니다. 원본은 유지됩니다."
+
+msgid "Blender asset workspace"
+msgstr "Blender 에셋 작업 공간"
+
+msgid "Choose Blender to prepare the asset workspace."
+msgstr "Blender를 선택해 에셋 작업 공간을 준비하세요."
+
+msgid "Connected to the Blender asset workspace."
+msgstr "Blender 에셋 작업 공간에 연결되었습니다."
+
+msgid "Asset workspace actions"
+msgstr "에셋 작업 공간 작업"
+
+msgid "Get Blender"
+msgstr "Blender 다운로드"
+
+msgid "Extensions"
+msgstr "확장 기능"
+
+msgid "Available inspections"
+msgstr "사용 가능한 검사"
+
+msgid "Connection needs attention"
+msgstr "연결 확인이 필요합니다"
+
+msgid "Connect local MCP servers for reviewed external inspection."
+msgstr "로컬 MCP 서버에 연결하여 검토 후 외부 정보를 검사합니다."
+
+msgid "EXTENSIONS"
+msgstr "확장 기능"
+
+msgid "MCP Connections"
+msgstr "MCP 연결"
+
+msgid "Connect local tools to Orca. This first release supports listed text resources and Blender scene/status inspection. Modeling, rigging and asset import need the next Blender workflow."
+msgstr "로컬 도구를 Orca에 연결합니다. 첫 버전은 목록의 텍스트 리소스와 Blender 씬·상태 검사를 지원합니다. 모델링, 리깅, 에셋 가져오기는 다음 Blender 작업 흐름에서 지원할 예정입니다."
+
+msgid "Connection name"
+msgstr "연결 이름"
+
+msgid "Executable (absolute path)"
+msgstr "실행 파일(절대 경로)"
+
+msgid "Arguments (JSON array)"
+msgstr "인수(JSON 배열)"
+
+msgid "Inspection profile"
+msgstr "검사 프로필"
+
+msgid "Listed text resources"
+msgstr "목록의 텍스트 리소스"
+
+msgid "Blender — Community"
+msgstr "Blender — 커뮤니티"
+
+msgid "Blender Lab — Official"
+msgstr "Blender Lab — 공식"
+
+msgid "Discovered tools are metadata. Only the listed operations can be requested."
+msgstr "발견된 도구는 메타데이터입니다. 나열된 작업만 요청할 수 있습니다."
+
+msgid "For Blender Lab, install its official MCP add-on and standalone server. Open Blender, start the add-on listener, and choose Blender Lab — Official. The executable above is the MCP server, not Blender."
+msgstr "Blender Lab을 사용하려면 공식 MCP 애드온과 독립 서버를 설치하세요. Blender를 열고 애드온의 수신 서비스를 시작한 다음 Blender Lab — 공식을 선택하세요. 위의 실행 파일은 Blender가 아니라 MCP 서버입니다."
+
+msgid "Blender inspection"
+msgstr "Blender 검사"
+
+msgid "Use a trusted, installed MCP stdio server. The executable runs with your user account's access. Orca does not install packages or start saved connections automatically. Keep credentials out of arguments."
+msgstr "설치된 신뢰할 수 있는 MCP stdio 서버를 사용하세요. 실행 파일은 사용자 계정 권한으로 작동합니다. Orca는 패키지를 설치하거나 저장된 연결을 자동으로 시작하지 않습니다. 인수에 자격 증명을 넣지 마세요."
+
+msgid "Save connection"
+msgstr "연결 저장"
+
+msgid "Connect…"
+msgstr "연결…"
+
+msgid "Remove connection"
+msgstr "연결 삭제"
+
+msgid "Disconnected"
+msgstr "연결 안 됨"
+
+msgid "Blender setup"
+msgstr "Blender 설정"
+
+msgid "Install a compatible MCP bridge and its Blender add-on, then open Blender and enable the add-on connection. Choose the bridge executable and its arguments above. Only the supported inspection operations are offered to Orca."
+msgstr "호환 MCP 브리지와 Blender 애드온을 설치하고 Blender에서 애드온 연결을 켜세요. 위에서 브리지 실행 파일과 인수를 선택하세요. 지원되는 검사 작업만 Orca에 제공됩니다."
+
+msgid "Connections are saved for this exact project on this computer. External reads require Work mode and an Allow read decision. Returned content is shared with the selected model. Cloud requires a server catalog advertising MCP inspection."
+msgstr "연결은 이 컴퓨터의 이 프로젝트 전용으로 저장됩니다. 외부 읽기에는 작업 모드와 읽기 허용 승인이 필요합니다. 반환된 내용은 선택한 모델에 공유됩니다. Cloud에는 MCP 검사 지원을 알리는 서버 카탈로그가 필요합니다."
+
+msgid "Connect MCP server?"
+msgstr "MCP 서버에 연결할까요?"
+
+msgid "Start this local program with your user account's access? It can access files and the network. Only connect a server you trust. This approval starts the connection; external reads have separate review."
+msgstr "이 로컬 프로그램을 사용자 계정 권한으로 시작할까요? 파일과 네트워크에 접근할 수 있습니다. 신뢰하는 서버만 연결하세요. 이 승인은 연결을 시작하며 외부 읽기는 별도로 검토합니다."
+
+msgid "New connection"
+msgstr "새 연결"
+
+msgid "Could not save. Check the name, absolute executable path and JSON argument array (up to four connections)."
+msgstr "저장하지 못했습니다. 이름, 실행 파일 절대 경로, JSON 인수 배열을 확인하세요(최대 4개 연결)."
+
+msgid "Save the configuration before connecting."
+msgstr "연결하기 전에 설정을 저장하세요."
+
+msgid "Connected · %d tools · %d resources"
+msgstr "연결됨 · 도구 %d개 · 리소스 %d개"
+
+msgid "Connecting…"
+msgstr "연결 중…"
+
+msgid "Allow external MCP read?"
+msgstr "외부 MCP 읽기를 허용할까요?"
+
+msgid "Send this inspection request to the connected server and share its returned text with the selected model?"
+msgstr "이 검사 요청을 연결된 서버에 보내고 반환된 텍스트를 선택한 모델과 공유할까요?"
+
+msgid "Allow read"
+msgstr "읽기 허용"
+
+msgid "MCP read finished"
+msgstr "MCP 읽기 완료"
+
+msgid "MCP read did not complete"
+msgstr "MCP 읽기 미완료"
+
+msgid "Inspect MCP connection"
+msgstr "MCP 연결 검사"
+
 msgid "If Orca has been useful to you, a GitHub star or an honest Godot Asset Library review would help other Godot developers discover the project. Thanks for supporting Orca!"
 msgstr "Orca가 도움이 되었다면 GitHub에 별을 남기거나 Godot 에셋 라이브러리에 솔직한 리뷰를 작성해 주세요. 다른 Godot 개발자들이 이 프로젝트를 발견하는 데 도움이 됩니다. Orca를 응원해 주셔서 감사합니다!"
 
@@ -1766,6 +2042,297 @@ msgstr "\n요청 값   %s\n제안 값에는 Godot의 네이티브 숫자 정밀�
 
 msgid "\nSource    %s (%s)"
 msgstr "\n출처      %s (%s)"
+
+msgid "MCP CONNECTIONS"
+msgstr "MCP 연결"
+
+msgid "Connect local MCP tools, including your open Blender."
+msgstr "열린 Blender를 포함한 로컬 MCP 도구에 연결하세요."
+
+msgid "New MCP connection…"
+msgstr "새 MCP 연결…"
+
+msgid "Reconnect local tools using setup saved on this computer. Each project has its own connection."
+msgstr "이 컴퓨터에 저장된 설정으로 로컬 도구에 다시 연결합니다. 각 프로젝트의 연결은 독립적입니다."
+
+msgid "For your open Blender, connect its MCP server here. The asset workspace below starts a dedicated background Blender."
+msgstr "이미 열린 Blender는 여기에서 MCP 서버에 연결하세요. 아래 에셋 작업 공간은 전용 Blender를 백그라운드로 시작합니다."
+
+msgid "This project"
+msgstr "현재 프로젝트"
+
+msgid "Saved on this computer"
+msgstr "이 컴퓨터에 저장됨"
+
+msgid "Connect saved setup…"
+msgstr "저장된 설정으로 연결…"
+
+msgid "Connect to open Blender…"
+msgstr "열린 Blender에 연결…"
+
+msgid "Edit connection setup"
+msgstr "연결 설정 편집"
+
+msgid "Forget saved setup"
+msgstr "저장된 설정 삭제"
+
+msgid "Reuse setup from another project…"
+msgstr "다른 프로젝트 설정 재사용…"
+
+msgid "Use in this project…"
+msgstr "이 프로젝트에서 사용…"
+
+msgid "Save setup for other projects"
+msgstr "다른 프로젝트용 설정 저장"
+
+msgid "Reusable setup stores the executable, arguments and inspection profile locally. It does not start a server or approve external reads. Project copies remain independent."
+msgstr "재사용 설정은 실행 파일, 인수와 검사 프로필을 로컬에 저장합니다. 서버를 시작하거나 외부 읽기를 승인하지 않습니다. 프로젝트별 복사본은 독립적으로 유지됩니다."
+
+msgid "MCP connections support reviewed text resources and Blender scene/status inspection. Use the dedicated asset workspace for game-asset creation."
+msgstr "MCP 연결은 승인된 텍스트 리소스 읽기와 Blender 씬·상태 검사를 지원합니다. 게임 에셋 제작에는 전용 작업 공간을 사용하세요."
+
+msgid "No connection saved in this project"
+msgstr "이 프로젝트에 저장된 연결이 없습니다"
+
+msgid "No reusable setup saved yet"
+msgstr "아직 저장된 재사용 설정이 없습니다"
+
+msgid "Save the project configuration first. Reusable setup supports up to sixteen connections; changed settings require reopening Extensions."
+msgstr "먼저 프로젝트 설정을 저장하세요. 재사용 연결은 최대 16개입니다. 설정이 변경되면 확장을 다시 여세요."
+
+msgid "Setup saved for other projects on this computer. Each project still needs Connect confirmation."
+msgstr "이 컴퓨터의 다른 프로젝트용 설정을 저장했습니다. 각 프로젝트에서 연결 확인이 필요합니다."
+
+msgid "Saved setup changed. Reopen Extensions and try again."
+msgstr "저장된 설정이 변경되었습니다. 확장을 다시 열고 시도하세요."
+
+msgid "No saved setup was found in other projects within the local discovery limit."
+msgstr "로컬 검색 범위 내에서 다른 프로젝트에 저장된 설정을 찾지 못했습니다."
+
+msgid "Could not reuse setup. It changed or this project already has four connections."
+msgstr "설정을 재사용할 수 없습니다. 설정이 변경되었거나 이 프로젝트에 이미 연결이 4개 있습니다."
+
+msgid "Project"
+msgstr "프로젝트"
+
+msgid "Start dedicated asset workspace"
+msgstr "전용 에셋 작업 공간 시작"
+
+msgid "The Blender asset connector is missing or unreadable. Reinstall the complete Orca plugin, including addons/orca/blender/."
+msgstr "Blender 에셋 커넥터가 없거나 읽을 수 없습니다. addons/orca/blender/를 포함한 전체 Orca 플러그인을 다시 설치하세요."
+
+msgid "CONNECTORS"
+msgstr "커넥터"
+
+msgid "Connectors"
+msgstr "커넥터"
+
+msgid "Configure once. Enable the apps you want Orca to use."
+msgstr "한 번 설정하고 Orca에서 사용할 앱을 활성화하세요."
+
+msgid "Add your Blender MCP server or another local connector to get started."
+msgstr "Blender MCP 서버나 다른 로컬 커넥터를 추가해 시작하세요."
+
+msgid "Add connector…"
+msgstr "커넥터 추가…"
+
+msgid "Asset tools…"
+msgstr "에셋 도구…"
+
+msgid "Back to connectors"
+msgstr "커넥터로 돌아가기"
+
+msgid "Connector options"
+msgstr "커넥터 옵션"
+
+msgid "Configure…"
+msgstr "설정…"
+
+msgid "Connection details"
+msgstr "연결 상세 정보"
+
+msgid "Remove connector"
+msgstr "커넥터 삭제"
+
+msgid "Configure connector"
+msgstr "커넥터 설정"
+
+msgid "Connector type"
+msgstr "커넥터 유형"
+
+msgid "Custom MCP"
+msgstr "사용자 지정 MCP"
+
+msgid "Name"
+msgstr "이름"
+
+msgid "MCP server program"
+msgstr "MCP 서버 프로그램"
+
+msgid "Choose an installed MCP server"
+msgstr "설치된 MCP 서버 선택"
+
+msgid "Choose MCP server"
+msgstr "MCP 서버 선택"
+
+msgid "This is the MCP server program, not the Blender executable."
+msgstr "Blender 실행 파일이 아닌 MCP 서버 프로그램입니다."
+
+msgid "Advanced"
+msgstr "고급"
+
+msgid "Setup is saved on this computer. Enable starts this local program with your account's file and network access. External reads ask separately."
+msgstr "설정은 이 컴퓨터에 저장됩니다. 활성화하면 계정의 파일·네트워크 권한으로 로컬 프로그램이 시작됩니다. 외부 읽기는 별도로 승인해야 합니다."
+
+msgid "Choose a name and an absolute MCP server path. Advanced arguments must be a JSON array."
+msgstr "이름과 MCP 서버의 절대 경로를 지정하세요. 고급 인수는 JSON 배열이어야 합니다."
+
+msgid "Setup changed or could not be saved. Reopen Configure and check the connector limit."
+msgstr "설정이 변경되었거나 저장할 수 없습니다. 설정을 다시 열고 커넥터 수 제한을 확인하세요."
+
+msgid "Connector setup changed. Reopen its options."
+msgstr "커넥터 설정이 변경되었습니다. 옵션을 다시 여세요."
+
+msgid "Could not enable connector."
+msgstr "커넥터를 활성화할 수 없습니다."
+
+msgid "Disable the connector before removing it, or reopen Connectors if setup changed."
+msgstr "삭제 전에 커넥터를 비활성화하세요. 설정이 변경되었다면 커넥터를 다시 여세요."
+
+msgid "Enable"
+msgstr "활성화"
+
+msgid "Disable"
+msgstr "비활성화"
+
+msgid "Disabled"
+msgstr "비활성 상태"
+
+msgid "Connected"
+msgstr "연결됨"
+
+msgid "Needs attention"
+msgstr "확인 필요"
+
+msgid "Connection failed"
+msgstr "연결 실패"
+
+msgid "Scene and data-block inspection"
+msgstr "씬 및 데이터 블록 검사"
+
+msgid "Scene and add-on inspection"
+msgstr "씬 및 애드온 검사"
+
+msgid "Data-block inspection"
+msgstr "데이터 블록 검사"
+
+msgid "Add-on inspection"
+msgstr "애드온 검사"
+
+msgid "Scene inspection"
+msgstr "씬 검사"
+
+msgid "No supported inspections found. Check the connector type in Configure."
+msgstr "지원되는 검사 기능이 없습니다. 설정에서 커넥터 유형을 확인하세요."
+
+msgid "Saved connector setup could not be loaded. Existing preferences were preserved."
+msgstr "저장된 커넥터 설정을 불러올 수 없습니다. 기존 설정은 보존되었습니다."
+
+msgid "Disable another connector first. Up to four connections can run in this editor."
+msgstr "먼저 다른 커넥터를 비활성화하세요. 이 편집기에서 최대 4개 연결을 실행할 수 있습니다."
+
+msgid "Blender"
+msgstr "Blender"
+
+msgid "Blender Lab"
+msgstr "Blender Lab"
+
+msgid "Optional connections for inspection and reference."
+msgstr "검사와 참고에 사용하는 선택적 연결입니다."
+
+msgid "No connectors configured."
+msgstr "설정된 커넥터가 없습니다."
+
+msgid "MCP connected — inspection"
+msgstr "MCP 연결됨 — 검사용"
+
+msgid "Inspect your open Blender session. Create assets with Blender Asset Studio above."
+msgstr "열려 있는 Blender 세션을 검사합니다. 에셋은 위의 Blender 에셋 스튜디오에서 만드세요."
+
+msgid "Create 3D game assets with Blender 5.2+. Orca includes the workspace connector."
+msgstr "Blender 5.2 이상으로 3D 게임 에셋을 만드세요. Orca에 작업 공간 커넥터가 포함되어 있습니다."
+
+msgid "No Blender Lab add-on or MCP server installation needed."
+msgstr "Blender Lab 애드온이나 MCP 서버를 설치할 필요가 없습니다."
+
+msgid "Download Blender"
+msgstr "Blender 다운로드"
+
+msgid "Manage workspace…"
+msgstr "작업 공간 관리…"
+
+msgid "Check for Blender"
+msgstr "Blender 찾기"
+
+msgid "Start workspace"
+msgstr "작업 공간 시작"
+
+msgid "Confirm"
+msgstr "확인"
+
+msgid "Back to chat"
+msgstr "채팅으로 돌아가기"
+
+msgid "Start asset workspace"
+msgstr "에셋 작업 공간 시작"
+
+msgid "Try disconnect again"
+msgstr "연결 해제 다시 시도"
+
+msgid "Blender workspace setup is unavailable."
+msgstr "Blender 작업 공간 설정을 사용할 수 없습니다."
+
+msgid "Choose a Blender installation."
+msgstr "Blender 설치를 선택하세요."
+
+msgid "Blender was not found. Choose an installation or download Blender, then check again."
+msgstr "Blender를 찾지 못했습니다. 설치 위치를 선택하거나 Blender를 다운로드한 뒤 다시 찾아보세요."
+
+msgid "Select the Blender installation to use."
+msgstr "사용할 Blender 설치를 선택하세요."
+
+msgid "Choose an installed Blender executable."
+msgstr "설치된 Blender 실행 파일을 선택하세요."
+
+msgid "Orca will start the selected Blender in the background with its shipped connector and a dedicated asset workspace. Your open Blender files are preserved."
+msgstr "Orca가 포함된 커넥터와 전용 에셋 작업 공간을 사용해 선택한 Blender를 백그라운드에서 시작합니다. 열려 있는 Blender 파일은 유지됩니다."
+
+msgid "Return to Work chat and describe your asset. Try: Create a low-poly gold coin and preview it."
+msgstr "작업 모드 채팅으로 돌아가 원하는 에셋을 설명하세요. 예: 로우 폴리 금화를 만들고 미리 보기를 보여줘."
+
+msgid "Workspace ready"
+msgstr "작업 공간 준비 완료"
+
+msgid "Blender workspace startup was cancelled. Start again when ready."
+msgstr "Blender 작업 공간 시작이 취소되었습니다. 준비가 되면 다시 시작하세요."
+
+msgid "Choose a model with enabled Agent tools in Provider Settings to create Blender assets."
+msgstr "Blender 에셋을 만들려면 제공자 설정에서 에이전트 도구가 활성화된 모델을 선택하세요."
+
+msgid "This Orca Cloud model does not offer Blender asset tools. Choose another model or refresh Models."
+msgstr "이 Orca Cloud 모델은 Blender 에셋 도구를 제공하지 않습니다. 다른 모델을 선택하거나 모델 목록을 새로 고치세요."
+
+msgid "Switch to Work mode in chat to create Blender assets."
+msgstr "Blender 에셋을 만들려면 채팅에서 작업 모드로 전환하세요."
+
+msgid "Inspect your open Blender session. For asset creation, use Blender Asset Studio on Extensions."
+msgstr "열려 있는 Blender 세션을 검사합니다. 에셋을 만들려면 확장 기능의 Blender 에셋 스튜디오를 사용하세요."
+
+msgid "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Enable."
+msgstr "1. Blender에서 공식 MCP 애드온을 설치하고 활성화하세요.\n2. 별도의 공식 MCP 서버를 설치하세요.\n3. Blender를 열고 환경설정 → 애드온 → MCP에서 리스너를 시작하세요.\n4. 아래에서 서버 프로그램을 선택하고 저장한 뒤 활성화하세요."
+
+msgid "Blender Lab installation guide"
+msgstr "Blender Lab 설치 안내"
 
 msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
 msgstr "씬이나 스크립트를 로드하지 않고 저장된 네이티브 변환과 인스턴스 출처를 검증했습니다."

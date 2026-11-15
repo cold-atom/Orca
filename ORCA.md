@@ -11,25 +11,41 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-This checkout prepares **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
-for **Godot 4.7.2**. The candidate adds readable card layouts, 24-round/192-call
+The development checkout additionally provides unreleased **Blender Asset Studio**:
+guided setup, dedicated native asset workspaces, reviewed modeling/material/rig/
+animation operations, previews, staged GLB export/import/recovery and native scene
+placement. A separately confirmed, project-remembered workspace Auto apply scope
+automates modeling/inspection/preview/export with visible results; import and scene
+placement retain approval. Preview cards include local 360° orbit, pan, zoom,
+Frame/Reset and an expanded 3D viewer with bounded native-only decoding.
+Settings → Extensions puts guided Blender asset setup first, with installation
+detection, exact startup confirmation and a draft-preserving return to Work chat.
+Optional configure-once MCP cards appear under Connectors with Enable/Disable,
+explicit inspection status and official Blender Lab installation guidance.
+Workspace management/recovery controls stay collapsed. See [Blender workflows](docs/BLENDER.md) and
+[Extensions](docs/EXTENSIONS.md). Broader API/isolation and Skills library work
+remain planned. GitHub has since published the
+1.8.0 baseline described below.
+
+The published baseline is **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
+for **Godot 4.7.2**. It adds readable card layouts, 24-round/192-call
 bounded turns, same-conversation task Resume, reviewed current-scene non-tool
 script attachment and native property editing. Node2D transforms use live values,
 preserve earlier unsaved edits and support consecutive moves without saving;
 native Undo and explicit save-pending receipts remain central to the workflow.
 The owner confirmed the Platformer Node2D move workflow works.
-Publication is pending; **1.7.0 remains the latest published release**, with five
-interface languages, focused scene/animation exploration and a community invitation.
-See [1.8.0](CHANGELOG.md#180---2026-11-13) for the candidate,
+It builds on 1.7.0's five interface languages, focused scene/animation exploration
+and community invitation.
+See [1.8.0](CHANGELOG.md#180---2026-11-13) for the latest release,
 [localization](docs/LOCALIZATION.md),
-[1.7.0](CHANGELOG.md#170---2026-11-06) for the latest published release,
+[1.7.0](CHANGELOG.md#170---2026-11-06) for languages and focused inspection,
 [1.6.0](CHANGELOG.md#160---2026-11-05) for Auto apply/recovery,
 [1.5.0](CHANGELOG.md#150---2026-11-02) for saved project code navigation and
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
-The [pre-candidate Tests run at `91610f0`](https://github.com/cold-atom/Orca/actions/runs/43270415554)
-passed, including four-platform native packaging. The later unsaved-baseline fix
-and final 1.8.0 metadata require fresh CI/package acceptance. Independent language
+The [final Tests run at `dc0e315`](https://github.com/cold-atom/Orca/actions/runs/43282971040)
+passed, including four-platform native packaging. New MCP work needs its own
+CI/package acceptance. Independent language
 review, broader real-model tasks and platform/Store acceptance remain separate.
 
 ### Key Features & Components

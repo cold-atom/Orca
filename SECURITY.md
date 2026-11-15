@@ -1,5 +1,64 @@
 # Security Policy
 
+## Blender Asset Studio (development checkout)
+
+The shipped independent native toolkit runs inside a user-selected Blender process
+and accepts fixed declarative commands, never model Python, executable/environment
+arguments or arbitrary operators. Command schemas are bound to an exact shipped
+SHA-256, not authorized by untrusted MCP metadata. Model operations are Work-only,
+singleton and require exact live review or a separately confirmed current-session
+Blender workspace Auto apply scope for help/inspect/edit/preview/export. This scope
+may be remembered in strict exact-project local EditorSettings, never history or
+project files; old script-only grants do not authorize it. Dispatch/continuation
+recheck runtime root/preference revision, Plan/view-only restoration deny it, header
+revocation clears both saved scopes and uncertain/failing automatic operations
+pause without automatic replay/reacquisition. Import/place always retain exact
+approval. Preferences never launch a process. Owned external
+workspaces save immutable hash-bound revisions; an OS-held lease prevents two
+writers. A working copy/process is not a security sandbox.
+
+Interactive previews decode a bounded, hash-bound static core GLB directly into
+native meshes/materials and a private SubViewport world. No project importer,
+GLTFDocument/extension callback, arbitrary node/script/resource loading or animation
+is used. Binary snapshots are memory-only UI data, not import IDs, model context or
+persisted authorization. Geometry, texture pixels, decode work and render-scene
+retention are bounded; unsupported snapshots retain the rendered PNG.
+
+Binary project import requires reviewed staged/old hashes, bounded self-contained
+GLB validation, protected/symlink/dirty checks and pre-write recovery bytes/receipt.
+Custom import scripts are refused pending separate trust. Actual reimport is observed
+before reporting it verified. Current-scene placement is a separate clean/scriptless
+Node3D native Undo action with immutable review/root/source/history identity and save
+pending, never auto-save/reload. Recovery history never restores write/approval
+authority. Stop targets the retained direct workspace process and never unrelated
+Blender instances; wrapped children may finish an in-flight cache operation and
+remain excluded from automatic replay/replacement by the workspace lease.
+
+See [Blender workflows](docs/BLENDER.md) for limits and platform acceptance.
+
+## MCP inspection (development checkout)
+
+MCP live connections remain exact-project and user-started, while descriptions are
+canonical computer-local EditorSettings. Bounded automatic legacy migration reads
+only Orca's own settings, preserves source records/profile identities, deduplicates
+exact descriptions and stores no process/catalog/read authority or enabled state.
+Enable consumes a sealed single-use memory-only action bound to current normalized
+root, service instance, generation and exact saved registry/configuration snapshot.
+Turn snapshots also recheck service identity. Configuration edits stop the affected
+local bridge and require explicit re-enable; stale saves fail. Cancelled startup
+cannot stop a replacement and closed client Nodes retire only after their coroutines
+settle. Failed stop retains ownership. Nothing is automatically
+started from project files or history. Explicitly connected local programs run
+with the user's OS access and are not sandboxed. Only trusted installed servers
+should be connected. The first model-facing contract is Work-only inspection:
+listed text resources and two fixed Blender queries, with exact per-read approval.
+Server annotations and descriptions cannot authorize arbitrary execution or writes.
+No project-root capability, MCP credentials, shell builder, model-selected process,
+or binary asset writer is provided. External text enters the selected model's
+context; visible model answers can quote it. Raw tool text/URIs and approvals do not
+enter persisted activity receipts. See [Extensions](docs/EXTENSIONS.md) for limits,
+cancellation and supported versions.
+
 ## Supported Version
 
 Security work covers published Orca 1.7.0 and the **1.8.0 release candidate**.

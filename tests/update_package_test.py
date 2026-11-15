@@ -70,7 +70,8 @@ class UpdateTests(unittest.TestCase):
         binary = os.environ.get("GODOT_BIN")
         if not binary:
             self.skipTest("Set GODOT_BIN for actual Godot updater acceptance")
-        env = {**os.environ, "ORCA_DISABLE_ACCOUNT_RESTORE": "1", "ORCA_DISABLE_UPDATE_CHECKS": "1", "ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS": "1"}
+        env = {**os.environ, "ORCA_DISABLE_ACCOUNT_RESTORE": "1", "ORCA_DISABLE_UPDATE_CHECKS": "1", "ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS": "1",
+               "XDG_CONFIG_HOME": str(self.root / "config"), "XDG_DATA_HOME": str(self.root / "data"), "XDG_CACHE_HOME": str(self.root / "cache")}
         # Match display-free CI even when these tests run on a developer desktop.
         # A mistakenly graphical relaunch must fail rather than masking the bug.
         env.pop("DISPLAY", None)
@@ -115,6 +116,65 @@ class UpdateTests(unittest.TestCase):
         packaging.build(source, self.root / "good.zip")
         with self.assertRaises(ValueError):
             packaging.build(source, self.root / "good.zip")
+
+    def test_workspace_runtime_is_required_when_service_is_shipped(self) -> None:
+        source = self.root / "addon"
+        addon(source, "1.4.0")
+        (source / "scripts").mkdir()
+        (source / packaging.WORKSPACE_SERVICE).write_text("@tool\nextends Node\n")
+        (source / "blender").mkdir()
+        for index, present in enumerate((set(), {"blender/workspace_connector.py"}, {"blender/workspace_contract.py"})):
+            with self.subTest(present=present):
+                for name in packaging.WORKSPACE_RUNTIME:
+                    path = source / name
+                    if name in present:
+                        path.write_text("# trusted synthetic fixture, never executed\n")
+                    elif path.exists():
+                        path.unlink()
+                target = self.root / f"missing-{index}.zip"
+                with self.assertRaisesRegex(ValueError, "Blender workspace runtime is incomplete"):
+                    packaging.build(source, target, write_manifest=True)
+                self.assertFalse(target.exists())
+                self.assertFalse(target.with_suffix(".zip.sha256").exists())
+                self.assertFalse((source / "update_manifest.json").exists())
+        for name in packaging.WORKSPACE_RUNTIME:
+            (source / name).write_text("# trusted synthetic fixture, never executed\n")
+        archive = self.root / "complete.zip"
+        packaging.build(source, archive)
+        with zipfile.ZipFile(archive) as reader:
+            manifest = json.loads(reader.read("addons/orca/update_manifest.json"))
+            entries = {entry["path"]: entry for entry in manifest["files"]}
+            for name in packaging.WORKSPACE_RUNTIME:
+                self.assertIn(name, entries)
+                self.assertFalse(entries[name]["executable"])
+                self.assertEqual(reader.read("addons/orca/" + name), (source / name).read_bytes())
+
+    def test_self_consistent_archive_cannot_omit_workspace_dependencies(self) -> None:
+        source = self.root / "addon"
+        addon(source, "1.4.0")
+        (source / "scripts").mkdir()
+        (source / packaging.WORKSPACE_SERVICE).write_text("@tool\nextends Node\n")
+        (source / "blender").mkdir()
+        for name in packaging.WORKSPACE_RUNTIME:
+            (source / name).write_text("# trusted synthetic fixture, never executed\n")
+        archive = self.root / "complete.zip"
+        result = packaging.build(source, archive)
+        with zipfile.ZipFile(archive) as reader:
+            content = {name: reader.read(name) for name in reader.namelist()}
+        bad = []
+        for missing in ({name} for name in sorted(packaging.WORKSPACE_RUNTIME)):
+            manifest = json.loads(content["addons/orca/update_manifest.json"])
+            manifest["files"] = [entry for entry in manifest["files"] if entry["path"] not in missing]
+            destination = self.root / f"incomplete-{len(bad)}.zip"
+            with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as writer:
+                for name, data in content.items():
+                    if name.removeprefix("addons/orca/") in missing:
+                        continue
+                    writer.writestr(name, json.dumps(manifest).encode() if name.endswith("/update_manifest.json") else data)
+            bad.append(str(destination))
+        project = self.root / "project"
+        project.mkdir()
+        self.godot({"operation": "workspace-validation", "project": str(project), "archive": str(archive), "digest": result["sha256"], "version": result["version"], "bad_archives": bad})
 
     def test_real_godot_archive_install_and_rollback(self) -> None:
         project, _, archive, result = self.archives()
@@ -171,6 +231,9 @@ class UpdateTests(unittest.TestCase):
     def test_actual_repository_release_package(self) -> None:
         archive = self.root / "repository.zip"
         result = packaging.build(ROOT / "addons/orca", archive)
+        with zipfile.ZipFile(archive) as reader:
+            for name in packaging.WORKSPACE_RUNTIME:
+                self.assertEqual(reader.read("addons/orca/" + name), (ROOT / "addons/orca" / name).read_bytes())
         project = self.root / "validation-project"
         project.mkdir()
         self.godot({"operation": "validate", "project": str(project), "archive": str(archive), "digest": result["sha256"], "version": result["version"]})

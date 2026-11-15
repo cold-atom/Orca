@@ -131,6 +131,8 @@ static func valid_manifest(value: Dictionary, expected_version: String = "") -> 
 		total += int(size)
 		if total > MAX_TOTAL:
 			return false
+	if seen.has("scripts/blender_workspace_service.gd") and (not seen.has("blender/workspace_connector.py") or not seen.has("blender/workspace_contract.py")):
+		return false
 	return seen.has("plugin.cfg") and seen.has("orca.gd")
 
 

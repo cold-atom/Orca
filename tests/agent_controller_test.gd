@@ -433,15 +433,21 @@ func _test_connection_setup_preflight() -> void:
 	var activations := {"count": 0}
 	controller.request_state_changed.connect(func(_id: int, _active: bool): activations["count"] += 1)
 	_expect(controller.connection_setup()["status"] == "credentials", "missing provider credentials have a structured setup state")
+	_expect(controller.blender_setup_message() == controller.connection_setup()["message"] and controller._turn_provider_config.is_empty(), "Blender setup reports credential blockers without fixing a provider snapshot")
 	_expect(not controller.submission_error().is_empty() and not controller.send_user_message("Keep my draft"), "controller rejects missing credentials before accepting a turn")
 	_expect(controller.message_history == history and not controller.is_busy() and activations["count"] == 0 and fixture["api"].requests.is_empty(), "setup denial creates no history, active turn or provider request")
 	for provider_id in ["ollama", "lmstudio", "local_openai"]:
 		controller.profile = {"provider": provider_id, "base_url": "http://127.0.0.1:18473/v1", "model": "local-fixture", "api_key": ""}
 		_expect(controller.connection_setup()["status"] == "ready" and controller.submission_error().is_empty(), "configured keyless local profile is ready: " + provider_id)
+		_expect(controller.blender_setup_message().contains("enabled Agent tools"), "Blender readiness explains unprobed local tool capability: " + provider_id)
 		controller.profile["model"] = ""
 		_expect(controller.connection_setup()["status"] == "model" and not controller.send_user_message("No model"), "keyless local profile still requires a model")
 	controller.profile = {"provider": "orca_cloud", "model": "fixture"}
 	_expect(controller.connection_setup()["status"] == "account" and not controller.send_user_message("No account"), "managed profile requires an account rather than an API key")
+	controller.profile = {"provider": "openai", "base_url": "https://api.openai.com/v1", "model": "gpt-4o", "api_key": "synthetic"}
+	_expect(controller.blender_setup_message().is_empty(), "canonical configured Work profile has no presentation blocker")
+	controller.set_mode(AgentController.AgentMode.PLAN)
+	_expect(controller.blender_setup_message().contains("Switch to Work") and controller._turn_provider_config.is_empty() and fixture["api"].requests.is_empty(), "Plan guidance changes neither provider lifecycle nor tool authorization")
 	await _free_controller(controller)
 
 
@@ -1551,6 +1557,8 @@ func _test_tool_batch_barriers() -> void:
 	if api.requests.size() == 1:
 		var retry_history: String = JSON.stringify(api.requests[0].get("messages", []))
 		_expect(retry_history.contains(AgentController.TOOL_BATCH_CORRECTION_NOTICE), "unsafe batch correction should explain the singleton barrier")
+		_expect(api.requests[0].get("request_options", {}).get("_orca_serial_tool_calls") == true, "pre-execution correction requests should suppress parallel generation where supported")
+		_expect(retry_history.contains("apply_patch must be the only tool call"), "correction feedback identifies the exact rejected standalone tool")
 		_expect(not retry_history.contains("unsafe_batched_patch") and not retry_history.contains("unsafe_batched_read"), "an unsafe batch must be absent from regenerated history")
 	await _deliver_completion(controller, _tool_response([_simple_tool_call("unsafe_batched_tasks", "update_tasks"), _simple_tool_call("unsafe_second_read", "read_file")]))
 	_expect(api.requests.size() == 1 and not controller.is_busy(), "a second unsafe batch must stop without another correction request")
@@ -1592,6 +1600,8 @@ func _test_tool_batch_barriers() -> void:
 		"stop_game",
 		"observe_game_run",
 		"verify_game_run",
+		"blender_workspace",
+		"inspect_mcp",
 		"future_unknown_tool",
 	]
 	for tool_name in singleton_tools:
@@ -1653,6 +1663,7 @@ func _test_malformed_tool_batch_regeneration() -> void:
 	await _deliver_completion(controller, _tool_response([non_object_call]))
 	_expect(tools.execute_calls == 0 and api.requests.size() == 1, "a second invalid batch must stop without execution or another regeneration")
 	_expect(not controller.is_busy() and errors.size() == 1 and str(errors[0]).contains("No tool from either rejected batch was executed"), "repeated malformed batches should end with an explicit non-execution error")
+	_expect(str(errors[0]).contains("JSON object, not an array or scalar"), "terminal invalid-batch errors retain the exact format reason without raw arguments")
 	_expect(not JSON.stringify(controller.message_history).contains("malformed_once") and not JSON.stringify(controller.message_history).contains("malformed_twice"), "repeated malformed output must not enter retained conversation history")
 	await _free_controller(controller)
 

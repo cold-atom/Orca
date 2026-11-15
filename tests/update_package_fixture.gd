@@ -29,10 +29,17 @@ func _run() -> void:
 		quit(1)
 		return
 	var project: String = setup["project"]
-	if setup.get("operation") == "validate":
+	if setup.get("operation") in ["validate", "workspace-validation"]:
 		var workspace := Package.owned_workspace(project, true)
 		var result := Package.extract_archive(setup["archive"], workspace["root"].path_join("staged"), setup["version"], setup["digest"], "4.7.2")
 		check(result.get("success", false), "actual installable addon package validates without executing its scripts")
+		if setup.get("operation") == "workspace-validation":
+			for path in ["blender/workspace_connector.py", "blender/workspace_contract.py"]:
+				check(FileAccess.file_exists(workspace["root"].path_join("staged").path_join(path)), "workspace Python source survives production extraction")
+			for index in setup["bad_archives"].size():
+				var path: String = setup["bad_archives"][index]
+				var bad: Dictionary = Package.extract_archive(path, workspace["root"].path_join("bad-%d" % index), setup["version"], FileAccess.get_sha256(path), "4.7.2")
+				check(not bad.get("success", false) and str(bad.get("error", "")).contains("manifest"), "manifest-consistent but incomplete workspace archive is rejected")
 		print("Repository update package: " + ("PASS" if failures == 0 else str(result)))
 		quit(0 if failures == 0 else 1)
 		return

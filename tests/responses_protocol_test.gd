@@ -15,6 +15,7 @@ func _init() -> void:
 	_test_invalid_output()
 	_test_streaming()
 	_test_binding_and_deepseek()
+	_test_serial_external_tools()
 	if _failures.is_empty():
 		print("responses_protocol_test: PASS")
 		quit(0)
@@ -72,6 +73,17 @@ func _test_projected_budget() -> void:
 	_expect(Budget.estimate_tokens([message], [], true, false, {}, _config) > projected + 3500, "projected budgeting must retain private reasoning cost")
 	message[Protocol.PRIVATE_FIELD]["items"][1]["content"][0]["text"] = "corrupt"
 	_expect(Budget.estimate_tokens([message], [], true, false, {}, _config) == Budget.estimate_tokens([message], []), "invalid retained state must keep the conservative estimate, never authorize a smaller request")
+
+
+func _test_serial_external_tools() -> void:
+	var messages := [{"role": "user", "content": "Inspect workspace"}]
+	for name in ["blender_workspace", "inspect_mcp"]:
+		var tools := [{"type": "function", "function": {"name": name, "parameters": {"type": "object", "properties": {}}}}]
+		var body: Dictionary = Protocol.request_body(messages, tools, _config)["body"]
+		_expect(body.get("parallel_tool_calls", true) == false and body["store"] == false and body["truncation"] == "disabled", "Responses external tools request one call while preserving private/stateless safeguards")
+		var deepseek := _config.duplicate(true)
+		deepseek["continuation_style"] = "deepseek"
+		_expect(not Protocol.request_body(messages, tools, deepseek)["body"].has("parallel_tool_calls"), "DeepSeek plain-continuation contract does not inherit optional OpenAI generation fields")
 
 
 func _test_invalid_output() -> void:

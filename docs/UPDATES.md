@@ -115,7 +115,11 @@ visibly and are separate from a missing helper.
    helpers are excluded from the ZIP, even if present locally. The public C++ source
    remains included. The ZIP contains only addon files, its generated helper catalog
    and `update_manifest.json`; all ZIP file modes are non-executable. `.import`
-   sidecars are omitted.
+    sidecars are omitted.
+   Workspace-enabled packages must also include `blender/workspace_connector.py`
+   and `blender/workspace_contract.py`. Both are non-executable Python runtime
+   source. The packager and updater manifest checks reject an incomplete pair,
+   while historical packages without the workspace service remain supported.
 4. Publish the exact output set under the matching stable GitHub Release:
 
    ```text
@@ -138,6 +142,20 @@ Ordinary packaging changes no source files. `--write-manifest` explicitly writes
 both generated manifests into source for review. An existing pinned source helper
 catalog must match these exact helper bytes unless that explicit regeneration flag
 is selected. Never mix a ZIP/catalog and helper assets from separate builds.
+
+For a fresh local plugin test ZIP, use the same completeness-checked packager:
+
+```bash
+python3 scripts/package_release.py --output dist/orca-test.zip
+```
+
+The version is read from `plugin.cfg`. A test filename does not change metadata
+or publish a release. The packager refuses existing output files and produces a
+checksum without modifying source manifests. A raw
+`git ls-files -c -o --exclude-standard addons/orca | zip orca-v1.9.0-test.zip -@`
+includes existing non-ignored untracked files but cannot detect absent runtime
+dependencies; `zip` also updates an existing archive. Test the freshly extracted
+complete addon, importing its assets before enabling the plugin as on a new install.
 
 ## Builds and downloads from GitHub Actions
 

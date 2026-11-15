@@ -13,6 +13,7 @@ const SETTING_MODEL_METADATA_CACHE = "orca/cache/model_metadata"
 const SETTING_PROVIDER_MODEL_CACHE = "orca/cache/provider_models_v3"
 const MAX_CACHED_PROVIDER_MODELS := 200
 const PROJECT_SCRIPT_EDITS_PREFIX := "orca/script_edits/projects/"
+const PROJECT_BLENDER_EDITS_PREFIX := "orca/blender/auto_apply/projects/"
 const SETTING_UI_LANGUAGE := "orca/interface/language"
 const UI_LANGUAGES := ["en", "zh_CN", "es", "ja", "ko"]
 
@@ -70,6 +71,34 @@ static func set_project_script_edit_default(enabled: bool) -> bool:
 	var revision := bytes.hex_encode()
 	settings.set_setting(PROJECT_SCRIPT_EDITS_PREFIX + root.sha256_text(), {"version": 1, "project_root": root, "enabled": enabled, "revision": revision})
 	return project_script_edit_preference() == {"enabled": enabled, "revision": revision}
+
+
+static func project_blender_edit_preference() -> Dictionary:
+	# Separate scope: an older script-only decision never grants external edits.
+	var fallback := {"enabled": false, "revision": ""}
+	var settings := _get_editor_settings()
+	var root := ProjectSettings.globalize_path("res://").simplify_path()
+	if settings == null or root.is_empty() or root.length() > 4096: return fallback
+	var key := PROJECT_BLENDER_EDITS_PREFIX + root.sha256_text()
+	if not settings.has_setting(key): return fallback
+	var record = settings.get_setting(key)
+	if typeof(record) != TYPE_DICTIONARY or record.size() != 4 or typeof(record.get("version")) != TYPE_INT or record.get("version") != 1 or record.get("project_root") != root or typeof(record.get("enabled")) != TYPE_BOOL or typeof(record.get("revision")) != TYPE_STRING: return fallback
+	var revision: String = record["revision"]
+	if revision.length() != 32: return fallback
+	for character in revision:
+		if not "0123456789abcdef".contains(character): return fallback
+	return {"enabled": record["enabled"], "revision": revision}
+
+
+static func set_project_blender_edit_default(enabled: bool) -> bool:
+	var settings := _get_editor_settings()
+	var root := ProjectSettings.globalize_path("res://").simplify_path()
+	if settings == null or root.is_empty() or root.length() > 4096: return false
+	var bytes := Crypto.new().generate_random_bytes(16)
+	if bytes.size() != 16: return false
+	var revision := bytes.hex_encode()
+	settings.set_setting(PROJECT_BLENDER_EDITS_PREFIX + root.sha256_text(), {"version": 1, "project_root": root, "enabled": enabled, "revision": revision})
+	return project_blender_edit_preference() == {"enabled": enabled, "revision": revision}
 
 func _init_settings() -> void:
 	var settings = _get_editor_settings()

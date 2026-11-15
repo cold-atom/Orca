@@ -194,6 +194,10 @@ func _update_header() -> void:
 
 func _display_name(tool_name: String) -> String:
 	match tool_name:
+		"blender_workspace":
+			return "Blender asset workspace"
+		"inspect_mcp":
+			return "Inspect MCP connection"
 		"read_file":
 			return "Read file"
 		"list_directory":
@@ -253,6 +257,9 @@ func _display_name(tool_name: String) -> String:
 
 
 func _target_from_arguments(arguments: Dictionary) -> String:
+	if _tool_name == "blender_workspace": return str(arguments.get("operation", ""))
+	if _tool_name == "inspect_mcp":
+		return str(arguments.get("server_id", "")) + " · " + str(arguments.get("operation", ""))
 	if _tool_name == "find_symbol_references":
 		return str(arguments.get("symbol", ""))
 	if _tool_name == "inspect_editor_scene":

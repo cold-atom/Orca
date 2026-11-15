@@ -303,6 +303,9 @@ func _sanitize_event(raw) -> Dictionary:
 			event["outcome"] = _bounded_text(str(raw.get("outcome", "completed")), 32)
 			event["summary"] = _bounded_text(str(raw.get("summary", "")), MAX_SUMMARY_CHARS)
 			event["duration_ms"] = maxi(0, int(raw.get("duration_ms", 0)))
+			if event["name"] in ["inspect_mcp", "blender_workspace"]:
+				event["summary"] = "MCP inspection completed." if event["outcome"] == "completed" else "MCP inspection did not complete."
+				return event
 			event["open_path"] = _bounded_text(str(raw.get("open_path", "")), 512)
 			event["open_line"] = maxi(1, int(raw.get("open_line", 1)))
 			event["open_column"] = maxi(1, int(raw.get("open_column", 1)))
@@ -323,6 +326,8 @@ func _sanitize_event(raw) -> Dictionary:
 
 
 func _sanitize_tool_arguments(raw, tool_name: String = "") -> Dictionary:
+	if tool_name in ["inspect_mcp", "blender_workspace"]:
+		return {}
 	if typeof(raw) != TYPE_DICTIONARY:
 		return {}
 	var result := {}

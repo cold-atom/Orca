@@ -3,6 +3,11 @@ extends SceneTree
 const ApiClient = preload("res://addons/orca/scripts/api_client.gd")
 const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 
+class RequestCapture extends ApiClient:
+	var bodies: Array[Dictionary] = []
+	func _perform_request(_id: int, _endpoint: Dictionary, _headers: PackedStringArray, body: Dictionary, _usage_retry: bool, _connect_retries: int) -> void:
+		bodies.append(body.duplicate(true))
+
 var _failures := PackedStringArray()
 
 
@@ -16,6 +21,7 @@ func _init() -> void:
 	_test_required_auth_configuration()
 	_test_timeout_policy()
 	_test_tool_call_validation()
+	_test_serial_tool_requests()
 	_test_completion_validation()
 	_test_terminal_signal_ownership()
 	if _failures.is_empty():
@@ -171,6 +177,51 @@ func _test_tool_call_validation() -> void:
 	_expect(not client._validate_json_response({"choices": [{"message": "invalid"}]}).is_empty(), "non-streamed JSON assistant messages must have a valid dictionary shape")
 	_expect(not client._validate_json_response({"choices": []}).is_empty(), "non-streamed JSON responses must contain a choice")
 	_expect(client._validate_json_response({"choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}]}).is_empty(), "valid non-streamed JSON assistant messages should pass validation")
+	client.free()
+
+
+func _test_serial_tool_requests() -> void:
+	var client := RequestCapture.new()
+	var failures: Array[Dictionary] = []
+	client.request_failed.connect(func(_id: int, error: Dictionary): failures.append(error))
+	var external := [{"type": "function", "function": {"name": "blender_workspace", "parameters": {"type": "object", "properties": {}}}}]
+	var read := [{"type": "function", "function": {"name": "read_file", "parameters": {"type": "object", "properties": {}}}}]
+	for profile in [
+		{"provider": "openai", "base_url": "https://api.openai.com/v1", "model": "gpt-6.1-sol", "api_key": "synthetic"},
+		{"provider": "azure", "base_url": "http://127.0.0.1:1/v1", "model": "gpt-6.1-sol", "api_key": "synthetic", "api_mode": "chat_completions"},
+		{"provider": "azure", "base_url": "http://127.0.0.1:1/v1", "model": "gpt-6.1-sol", "api_key": "synthetic", "api_mode": "responses"}
+	]:
+		var before: Dictionary = profile.duplicate(true)
+		client.send_chat_completion([{"role": "user", "content": "Create an asset"}], external, profile)
+		_expect(not client.bodies.is_empty() and client.bodies.back().get("parallel_tool_calls", true) == false, "actual OpenAI/Foundry request body disables parallel generation for workspace tools")
+		_expect(profile == before, "serial generation policy never alters the fixed provider profile")
+		client.cancel_request()
+		client.send_chat_completion([{"role": "user", "content": "Inspect"}], read, profile)
+		_expect(not client.bodies.back().has("parallel_tool_calls"), "ordinary project read batches keep their existing generation behavior")
+		client.cancel_request()
+		client.send_chat_completion([{"role": "user", "content": "Correct the batch"}], read, profile, {ApiClient.SERIAL_TOOL_CALLS_OPTION: true})
+		_expect(client.bodies.back().get("parallel_tool_calls", true) == false, "correction requests disable parallel generation even without workspace schemas")
+		client.cancel_request()
+		client.send_chat_completion([{"role": "user", "content": "Finish"}], [], profile, {ApiClient.SERIAL_TOOL_CALLS_OPTION: true})
+		_expect(not client.bodies.back().has("parallel_tool_calls") and not client.bodies.back().has("tools"), "no-tools finalization never sends tool generation fields")
+		client.cancel_request()
+	for provider_id in ["custom", "ollama", "deepseek"]:
+		var profile := {"provider": provider_id, "base_url": "http://127.0.0.1:1/v1", "model": "fixture", "api_key": "synthetic"}
+		if provider_id == "deepseek": profile["base_url"] = "https://api.deepseek.com"
+		client.send_chat_completion([{"role": "user", "content": "Inspect"}], external, profile)
+		_expect(not client.bodies.back().has("parallel_tool_calls"), "unknown/local/DeepSeek contracts do not inherit an unsupported generation field")
+		client.cancel_request()
+	client.send_chat_completion([{"role": "user", "content": "Inspect"}], external, {"provider": "azure", "base_url": "http://127.0.0.1:1/v1", "model": "DeepSeek", "api_mode": "chat_completions", "continuation_style": "deepseek", "api_key": "synthetic"})
+	_expect(not client.bodies.back().has("parallel_tool_calls"), "explicit Azure DeepSeek Chat profile retains its wire contract")
+	client.cancel_request()
+	var cloud := {"provider": "orca_cloud", "base_url": ApiClient.ProviderRegistry.get_provider("orca_cloud").definition()["base_url"], "model": "fixture", "api_key": "synthetic-account-token"}
+	client.send_chat_completion([{"role": "user", "content": "Inspect"}], external, cloud, {ApiClient.SERIAL_TOOL_CALLS_OPTION: true})
+	_expect(not client.bodies.back().has("parallel_tool_calls"), "managed request body retains its existing strict contract")
+	client.cancel_request()
+	_expect(failures.is_empty(), "captured generation-policy requests validate without network errors")
+	var count := client.bodies.size()
+	client.send_chat_completion([{"role": "user", "content": "Invalid"}], read, {"provider": "custom", "base_url": "http://127.0.0.1:1/v1", "model": "fixture", "api_key": "synthetic"}, {ApiClient.SERIAL_TOOL_CALLS_OPTION: "true"})
+	_expect(client.bodies.size() == count and failures.back().get("category") == "configuration", "malformed serial policy fails before dispatch")
 	client.free()
 
 

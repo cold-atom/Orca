@@ -6,6 +6,282 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "Include Blender workspace operations"
+msgstr "包含 Blender 工作区操作"
+
+msgid "Allow workspace help, inspection, modeling, previews and exports automatically. Project import and scene placement still require approval."
+msgstr "自动执行工作区帮助、检查、建模、预览和导出。导入项目和放入场景仍需批准。"
+
+msgid "Allow automatic Blender operations"
+msgstr "允许自动执行 Blender 操作"
+
+msgid "Orca can inspect, model, preview and export assets automatically in your connected dedicated Blender workspace in Work mode. Edits are validated and saved as immutable recovery revisions.\n\nProject imports and scene placement still require their exact approval. This permission covers only Orca's fixed workspace commands. It does not start Blender or authorize arbitrary code or other MCP servers.\n\nRemember for this project enables this scope in future Work conversations and editor restarts. Plan stays read-only. Click the green edit icon beside ORCA to revoke automation and clear the remembered defaults."
+msgstr "在工作模式下，Orca 可在已连接的专用 Blender 工作区中自动检查、建模、预览和导出资源。修改会经过验证，并保存为不可变的恢复版本。\n\n导入项目和放入场景仍需逐项批准。此权限仅涵盖 Orca 的固定工作区命令，不会启动 Blender，也不授权任意代码或其他 MCP 服务器。\n\n勾选“为此项目记住”后，后续工作对话和编辑器重启可使用此权限。计划模式保持只读。点击 ORCA 旁的绿色编辑图标可撤销自动化并清除记住的默认设置。"
+
+msgid "Automate dedicated workspace modeling, inspection, previews and exports after confirmation. Project import and scene placement still require review."
+msgstr "确认后自动执行专用工作区的建模、检查、预览和导出。导入项目和放入场景仍需审阅。"
+
+msgid "Review operations (default)"
+msgstr "审阅操作（默认）"
+
+msgid "Blender workspace operation"
+msgstr "Blender 工作区操作"
+
+msgid "Auto apply workspace…"
+msgstr "自动应用工作区操作…"
+
+msgid "Running automatically…"
+msgstr "正在自动执行…"
+
+msgid "Auto applied"
+msgstr "已自动应用"
+
+msgid "Blender operation completed"
+msgstr "Blender 操作已完成"
+
+msgid "Blender operation did not complete"
+msgstr "Blender 操作未完成"
+
+msgid "Frame"
+msgstr "完整取景"
+
+msgid "Reset"
+msgstr "重置"
+
+msgid "Expand"
+msgstr "放大"
+
+msgid "Blender 3D preview"
+msgstr "Blender 3D 预览"
+
+msgid "Drag to orbit · Shift-drag or middle-drag to pan · Scroll to zoom"
+msgstr "拖动旋转 · Shift 拖动或中键拖动平移 · 滚轮缩放"
+
+msgid "3D preview unavailable. The rendered image remains available."
+msgstr "3D 预览不可用，仍可查看渲染图像。"
+
+msgid "3D preview released to save memory. The rendered image remains available."
+msgstr "已释放 3D 预览以节省内存，仍可查看渲染图像。"
+
+msgid " Blender workspace Auto apply is enabled."
+msgstr " 已启用 Blender 工作区自动应用。"
+
+msgid " Blender workspace operations still require review."
+msgstr " Blender 工作区操作仍需审阅。"
+
+msgid "BLENDER ASSET STUDIO"
+msgstr "BLENDER 资产工作室"
+
+msgid "Create game assets in a dedicated Blender workspace. Setup uses Blender's built-in Python; no commands, JSON or separate Python installation are needed."
+msgstr "在专用 Blender 工作区中创建游戏资产。使用 Blender 内置的 Python，无需输入命令、JSON 或另行安装 Python。"
+
+msgid "Set up Blender"
+msgstr "设置 Blender"
+
+msgid "Choose Blender…"
+msgstr "选择 Blender…"
+
+msgid "Choose Blender"
+msgstr "选择 Blender"
+
+msgid "Connect asset workspace"
+msgstr "连接资产工作区"
+
+msgid "Disconnect workspace"
+msgstr "断开工作区"
+
+msgid "New asset workspace"
+msgstr "新建资产工作区"
+
+msgid "Open asset in Blender"
+msgstr "在 Blender 中打开资产"
+
+msgid "Attach asset texture…"
+msgstr "附加资产纹理…"
+
+msgid "Choose asset texture"
+msgstr "选择资产纹理"
+
+msgid "Restore previous asset revision"
+msgstr "恢复上一资产版本"
+
+msgid "Revert last asset import"
+msgstr "撤销上次资产导入"
+
+msgid "Attach preview to chat"
+msgstr "将预览附加到聊天"
+
+msgid "Blender workspace"
+msgstr "Blender 工作区"
+
+msgid "Start the selected Blender installation with Orca's shipped asset connector? It uses an isolated startup and writes only dedicated asset revisions. Your open Blender files are preserved."
+msgstr "使用 Orca 随附的资产连接器启动所选 Blender？它使用独立启动环境，仅保存专用资产版本，并保留您已打开的 Blender 文件。"
+
+msgid "Restore the previous asset revision as a new workspace revision? Project imports are unchanged."
+msgstr "将上一资产版本恢复为新的工作区版本？项目中已导入的资产保持不变。"
+
+msgid "Revert the last imported asset only if its project bytes and recovery checkpoint still match?"
+msgstr "仅在项目文件与恢复检查点仍匹配时撤销上次导入的资产？"
+
+msgid "Advanced MCP connections"
+msgstr "高级 MCP 连接"
+
+msgid "Review Blender workspace operation"
+msgstr "审查 Blender 工作区操作"
+
+msgid "Approve this exact operation in the dedicated asset workspace. Project imports have their own reviewed destination and recovery checkpoint."
+msgstr "批准专用资产工作区中的此项确切操作。项目导入拥有单独审查的目标位置与恢复检查点。"
+
+msgid "Apply operation"
+msgstr "应用操作"
+
+msgid "Allow operation"
+msgstr "允许操作"
+
+msgid "Applied in editor · Save pending"
+msgstr "已在编辑器中应用 · 待保存"
+
+msgid "Start from saved Blender file…"
+msgstr "从已保存的 Blender 文件开始…"
+
+msgid "Choose Blender template"
+msgstr "选择 Blender 模板"
+
+msgid "Technical review details"
+msgstr "技术审查详情"
+
+msgid "Use the selected saved Blender file as a trusted asset template? Blender loads a private copy with automatic scripts disabled. Linked libraries, embedded scripts and drivers are unsupported. The original file is preserved."
+msgstr "将所选已保存的 Blender 文件用作可信资产模板？Blender 加载私有副本并禁用自动脚本。不支持链接库、内嵌脚本及驱动器。原始文件保持不变。"
+
+msgid "Blender asset workspace"
+msgstr "Blender 资产工作区"
+
+msgid "Choose Blender to prepare the asset workspace."
+msgstr "选择 Blender 以准备资产工作区。"
+
+msgid "Connected to the Blender asset workspace."
+msgstr "已连接 Blender 资产工作区。"
+
+msgid "Asset workspace actions"
+msgstr "资产工作区操作"
+
+msgid "Get Blender"
+msgstr "获取 Blender"
+
+msgid "Extensions"
+msgstr "扩展"
+
+msgid "Available inspections"
+msgstr "可用检查"
+
+msgid "Connection needs attention"
+msgstr "连接需要处理"
+
+msgid "Connect local MCP servers for reviewed external inspection."
+msgstr "连接本地 MCP 服务器，进行需审核的外部检查。"
+
+msgid "EXTENSIONS"
+msgstr "扩展"
+
+msgid "MCP Connections"
+msgstr "MCP 连接"
+
+msgid "Connect local tools to Orca. This first release supports listed text resources and Blender scene/status inspection. Modeling, rigging and asset import need the next Blender workflow."
+msgstr "将本地工具连接到 Orca。首版支持已列出的文本资源及 Blender 场景和状态检查。建模、绑定及资产导入将在后续 Blender 工作流中实现。"
+
+msgid "Connection name"
+msgstr "连接名称"
+
+msgid "Executable (absolute path)"
+msgstr "可执行文件（绝对路径）"
+
+msgid "Arguments (JSON array)"
+msgstr "参数（JSON 数组）"
+
+msgid "Inspection profile"
+msgstr "检查配置"
+
+msgid "Listed text resources"
+msgstr "已列出的文本资源"
+
+msgid "Blender — Community"
+msgstr "Blender — 社区版"
+
+msgid "Blender Lab — Official"
+msgstr "Blender Lab — 官方版"
+
+msgid "Discovered tools are metadata. Only the listed operations can be requested."
+msgstr "发现的工具仅为元数据。只能请求列出的操作。"
+
+msgid "For Blender Lab, install its official MCP add-on and standalone server. Open Blender, start the add-on listener, and choose Blender Lab — Official. The executable above is the MCP server, not Blender."
+msgstr "使用 Blender Lab 时，请安装官方 MCP 插件和独立服务器。打开 Blender，启动插件监听服务，并选择 Blender Lab — 官方版。上方的可执行文件是 MCP 服务器，而非 Blender。"
+
+msgid "Blender inspection"
+msgstr "Blender 检查"
+
+msgid "Use a trusted, installed MCP stdio server. The executable runs with your user account's access. Orca does not install packages or start saved connections automatically. Keep credentials out of arguments."
+msgstr "请使用已安装且可信的 MCP stdio 服务器。程序以您的用户账户权限运行。Orca 不会自动安装软件包或启动已保存的连接。请勿在参数中填写凭据。"
+
+msgid "Save connection"
+msgstr "保存连接"
+
+msgid "Connect…"
+msgstr "连接…"
+
+msgid "Remove connection"
+msgstr "移除连接"
+
+msgid "Disconnected"
+msgstr "未连接"
+
+msgid "Blender setup"
+msgstr "Blender 设置"
+
+msgid "Install a compatible MCP bridge and its Blender add-on, then open Blender and enable the add-on connection. Choose the bridge executable and its arguments above. Only the supported inspection operations are offered to Orca."
+msgstr "安装兼容的 MCP 桥接程序及其 Blender 插件，然后打开 Blender 并启用插件连接。在上方选择桥接程序及参数。Orca 只能使用受支持的检查操作。"
+
+msgid "Connections are saved for this exact project on this computer. External reads require Work mode and an Allow read decision. Returned content is shared with the selected model. Cloud requires a server catalog advertising MCP inspection."
+msgstr "连接仅保存用于本机上的此确切项目。外部读取需要工作模式及“允许读取”确认。返回内容会共享给所选模型。Cloud 需要服务器目录声明支持 MCP 检查。"
+
+msgid "Connect MCP server?"
+msgstr "连接 MCP 服务器？"
+
+msgid "Start this local program with your user account's access? It can access files and the network. Only connect a server you trust. This approval starts the connection; external reads have separate review."
+msgstr "以您的用户账户权限启动此本地程序？它可以访问文件和网络。请仅连接可信的服务器。此确认仅启动连接，外部读取会单独审核。"
+
+msgid "New connection"
+msgstr "新建连接"
+
+msgid "Could not save. Check the name, absolute executable path and JSON argument array (up to four connections)."
+msgstr "无法保存。请检查名称、可执行文件绝对路径及 JSON 参数数组（最多四个连接）。"
+
+msgid "Save the configuration before connecting."
+msgstr "请先保存配置再连接。"
+
+msgid "Connected · %d tools · %d resources"
+msgstr "已连接 · %d 个工具 · %d 个资源"
+
+msgid "Connecting…"
+msgstr "正在连接…"
+
+msgid "Allow external MCP read?"
+msgstr "允许外部 MCP 读取？"
+
+msgid "Send this inspection request to the connected server and share its returned text with the selected model?"
+msgstr "将此检查请求发送给已连接的服务器，并将返回的文本共享给所选模型？"
+
+msgid "Allow read"
+msgstr "允许读取"
+
+msgid "MCP read finished"
+msgstr "MCP 读取已完成"
+
+msgid "MCP read did not complete"
+msgstr "MCP 读取未完成"
+
+msgid "Inspect MCP connection"
+msgstr "检查 MCP 连接"
+
 msgid "If Orca has been useful to you, a GitHub star or an honest Godot Asset Library review would help other Godot developers discover the project. Thanks for supporting Orca!"
 msgstr "如果 Orca 对你有所帮助，在 GitHub 上点个 Star，或在 Godot 资源库留下真实的评价，可以帮助其他 Godot 开发者发现这个项目。感谢你支持 Orca！"
 
@@ -1766,6 +2042,297 @@ msgstr "\n请求值    %s\n提议值使用 Godot 的原生数值精度。"
 
 msgid "\nSource    %s (%s)"
 msgstr "\n来源      %s (%s)"
+
+msgid "MCP CONNECTIONS"
+msgstr "MCP 连接"
+
+msgid "Connect local MCP tools, including your open Blender."
+msgstr "连接本地 MCP 工具，包括已打开的 Blender。"
+
+msgid "New MCP connection…"
+msgstr "新建 MCP 连接…"
+
+msgid "Reconnect local tools using setup saved on this computer. Each project has its own connection."
+msgstr "使用此计算机上保存的配置重新连接本地工具。每个项目拥有独立的连接。"
+
+msgid "For your open Blender, connect its MCP server here. The asset workspace below starts a dedicated background Blender."
+msgstr "如需连接已打开的 Blender，请在此连接其 MCP 服务器。下方的资产工作区会启动专用的后台 Blender。"
+
+msgid "This project"
+msgstr "当前项目"
+
+msgid "Saved on this computer"
+msgstr "保存在此计算机上"
+
+msgid "Connect saved setup…"
+msgstr "连接已保存的配置…"
+
+msgid "Connect to open Blender…"
+msgstr "连接已打开的 Blender…"
+
+msgid "Edit connection setup"
+msgstr "编辑连接配置"
+
+msgid "Forget saved setup"
+msgstr "删除可复用配置"
+
+msgid "Reuse setup from another project…"
+msgstr "复用其他项目的配置…"
+
+msgid "Use in this project…"
+msgstr "在当前项目中使用…"
+
+msgid "Save setup for other projects"
+msgstr "保存配置供其他项目使用"
+
+msgid "Reusable setup stores the executable, arguments and inspection profile locally. It does not start a server or approve external reads. Project copies remain independent."
+msgstr "可复用配置在本地保存可执行文件、参数和检查配置。保存不会启动服务器或批准外部读取。每个项目的副本保持独立。"
+
+msgid "MCP connections support reviewed text resources and Blender scene/status inspection. Use the dedicated asset workspace for game-asset creation."
+msgstr "MCP 连接支持经过批准的文本资源读取及 Blender 场景与状态检查。创建游戏资产请使用专用资产工作区。"
+
+msgid "No connection saved in this project"
+msgstr "此项目尚未保存连接"
+
+msgid "No reusable setup saved yet"
+msgstr "尚未保存可复用配置"
+
+msgid "Save the project configuration first. Reusable setup supports up to sixteen connections; changed settings require reopening Extensions."
+msgstr "请先保存项目配置。最多支持十六个可复用连接；设置变更后请重新打开扩展页面。"
+
+msgid "Setup saved for other projects on this computer. Each project still needs Connect confirmation."
+msgstr "配置已保存，可供此计算机上的其他项目使用。每个项目仍需确认连接。"
+
+msgid "Saved setup changed. Reopen Extensions and try again."
+msgstr "已保存的配置发生变化。请重新打开扩展页面后重试。"
+
+msgid "No saved setup was found in other projects within the local discovery limit."
+msgstr "在本地查找范围内，未发现其他项目中保存的配置。"
+
+msgid "Could not reuse setup. It changed or this project already has four connections."
+msgstr "无法复用配置：配置已变更，或此项目已有四个连接。"
+
+msgid "Project"
+msgstr "项目"
+
+msgid "Start dedicated asset workspace"
+msgstr "启动专用资产工作区"
+
+msgid "The Blender asset connector is missing or unreadable. Reinstall the complete Orca plugin, including addons/orca/blender/."
+msgstr "Blender 资产连接器缺失或无法读取。请重新安装完整的 Orca 插件，包括 addons/orca/blender/。"
+
+msgid "CONNECTORS"
+msgstr "连接器"
+
+msgid "Connectors"
+msgstr "连接器"
+
+msgid "Configure once. Enable the apps you want Orca to use."
+msgstr "只需配置一次，即可启用想让 Orca 使用的应用。"
+
+msgid "Add your Blender MCP server or another local connector to get started."
+msgstr "添加 Blender MCP 服务器或其他本地连接器即可开始。"
+
+msgid "Add connector…"
+msgstr "添加连接器…"
+
+msgid "Asset tools…"
+msgstr "资产工具…"
+
+msgid "Back to connectors"
+msgstr "返回连接器"
+
+msgid "Connector options"
+msgstr "连接器选项"
+
+msgid "Configure…"
+msgstr "配置…"
+
+msgid "Connection details"
+msgstr "连接详情"
+
+msgid "Remove connector"
+msgstr "删除连接器"
+
+msgid "Configure connector"
+msgstr "配置连接器"
+
+msgid "Connector type"
+msgstr "连接器类型"
+
+msgid "Custom MCP"
+msgstr "自定义 MCP"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "MCP server program"
+msgstr "MCP 服务器程序"
+
+msgid "Choose an installed MCP server"
+msgstr "选择已安装的 MCP 服务器"
+
+msgid "Choose MCP server"
+msgstr "选择 MCP 服务器"
+
+msgid "This is the MCP server program, not the Blender executable."
+msgstr "这是 MCP 服务器程序，而不是 Blender 可执行文件。"
+
+msgid "Advanced"
+msgstr "高级"
+
+msgid "Setup is saved on this computer. Enable starts this local program with your account's file and network access. External reads ask separately."
+msgstr "配置保存在此计算机上。启用后，本地程序将以当前账户的文件和网络权限运行。外部读取会另行请求批准。"
+
+msgid "Choose a name and an absolute MCP server path. Advanced arguments must be a JSON array."
+msgstr "请填写名称和 MCP 服务器的绝对路径。高级参数必须为 JSON 数组。"
+
+msgid "Setup changed or could not be saved. Reopen Configure and check the connector limit."
+msgstr "配置已变更或无法保存。请重新打开配置窗口并检查连接器数量上限。"
+
+msgid "Connector setup changed. Reopen its options."
+msgstr "连接器配置已变更。请重新打开其选项。"
+
+msgid "Could not enable connector."
+msgstr "无法启用连接器。"
+
+msgid "Disable the connector before removing it, or reopen Connectors if setup changed."
+msgstr "删除前请先禁用连接器；若配置已变更，请重新打开连接器页面。"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Disable"
+msgstr "禁用"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Connected"
+msgstr "已连接"
+
+msgid "Needs attention"
+msgstr "需要处理"
+
+msgid "Connection failed"
+msgstr "连接失败"
+
+msgid "Scene and data-block inspection"
+msgstr "场景与数据块检查"
+
+msgid "Scene and add-on inspection"
+msgstr "场景与插件检查"
+
+msgid "Data-block inspection"
+msgstr "数据块检查"
+
+msgid "Add-on inspection"
+msgstr "插件检查"
+
+msgid "Scene inspection"
+msgstr "场景检查"
+
+msgid "No supported inspections found. Check the connector type in Configure."
+msgstr "未发现支持的检查功能。请在配置窗口中检查连接器类型。"
+
+msgid "Saved connector setup could not be loaded. Existing preferences were preserved."
+msgstr "无法加载已保存的连接器配置。现有偏好设置已保留。"
+
+msgid "Disable another connector first. Up to four connections can run in this editor."
+msgstr "请先禁用其他连接器。此编辑器最多可同时运行四个连接。"
+
+msgid "Blender"
+msgstr "Blender"
+
+msgid "Blender Lab"
+msgstr "Blender Lab"
+
+msgid "Optional connections for inspection and reference."
+msgstr "用于检查和获取参考信息的可选连接。"
+
+msgid "No connectors configured."
+msgstr "尚未配置连接器。"
+
+msgid "MCP connected — inspection"
+msgstr "MCP 已连接 — 检查功能"
+
+msgid "Inspect your open Blender session. Create assets with Blender Asset Studio above."
+msgstr "检查已打开的 Blender 会话。使用上方的 Blender 资产工作室创建资产。"
+
+msgid "Create 3D game assets with Blender 5.2+. Orca includes the workspace connector."
+msgstr "使用 Blender 5.2 或更高版本创建 3D 游戏资产。Orca 已包含工作区连接器。"
+
+msgid "No Blender Lab add-on or MCP server installation needed."
+msgstr "无需安装 Blender Lab 插件或 MCP 服务器。"
+
+msgid "Download Blender"
+msgstr "下载 Blender"
+
+msgid "Manage workspace…"
+msgstr "管理工作区…"
+
+msgid "Check for Blender"
+msgstr "查找 Blender"
+
+msgid "Start workspace"
+msgstr "启动工作区"
+
+msgid "Confirm"
+msgstr "确认"
+
+msgid "Back to chat"
+msgstr "返回聊天"
+
+msgid "Start asset workspace"
+msgstr "启动资产工作区"
+
+msgid "Try disconnect again"
+msgstr "重试断开连接"
+
+msgid "Blender workspace setup is unavailable."
+msgstr "Blender 工作区设置不可用。"
+
+msgid "Choose a Blender installation."
+msgstr "选择 Blender 安装。"
+
+msgid "Blender was not found. Choose an installation or download Blender, then check again."
+msgstr "未找到 Blender。请选择安装位置，或下载 Blender 后重新查找。"
+
+msgid "Select the Blender installation to use."
+msgstr "选择要使用的 Blender 安装。"
+
+msgid "Choose an installed Blender executable."
+msgstr "请选择已安装的 Blender 可执行文件。"
+
+msgid "Orca will start the selected Blender in the background with its shipped connector and a dedicated asset workspace. Your open Blender files are preserved."
+msgstr "Orca 将在后台启动所选 Blender，并使用自带连接器和专用资产工作区。已打开的 Blender 文件将保持不变。"
+
+msgid "Return to Work chat and describe your asset. Try: Create a low-poly gold coin and preview it."
+msgstr "返回工作模式聊天并描述资产。例如：创建一枚低多边形金币并预览。"
+
+msgid "Workspace ready"
+msgstr "工作区已就绪"
+
+msgid "Blender workspace startup was cancelled. Start again when ready."
+msgstr "Blender 工作区启动已取消。准备好后可重新启动。"
+
+msgid "Choose a model with enabled Agent tools in Provider Settings to create Blender assets."
+msgstr "要创建 Blender 资产，请在提供商设置中选择已启用智能体工具的模型。"
+
+msgid "This Orca Cloud model does not offer Blender asset tools. Choose another model or refresh Models."
+msgstr "此 Orca Cloud 模型不提供 Blender 资产工具。请选择其他模型或刷新模型列表。"
+
+msgid "Switch to Work mode in chat to create Blender assets."
+msgstr "请在聊天中切换到工作模式以创建 Blender 资产。"
+
+msgid "Inspect your open Blender session. For asset creation, use Blender Asset Studio on Extensions."
+msgstr "检查已打开的 Blender 会话。要创建资产，请使用扩展页面中的 Blender 资产工作室。"
+
+msgid "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Enable."
+msgstr "1. 在 Blender 中安装并启用官方 MCP 插件。\n2. 单独安装官方 MCP 服务器。\n3. 打开 Blender，在偏好设置 → 插件 → MCP 中启动监听。\n4. 在下方选择服务器程序，保存后启用。"
+
+msgid "Blender Lab installation guide"
+msgstr "Blender Lab 安装指南"
 
 msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
 msgstr "已验证保存的原生变换及实例来源，未加载场景或脚本。"

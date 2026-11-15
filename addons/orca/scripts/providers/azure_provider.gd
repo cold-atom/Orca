@@ -26,6 +26,11 @@ func apply_chat_options(body: Dictionary, effort: String) -> void:
 		body["reasoning_effort"] = effort
 
 
+func apply_serial_tool_options(body: Dictionary, config: Dictionary) -> void:
+	if body.has("tools") and config.get("continuation_style", "standard") == "standard":
+		body["parallel_tool_calls"] = false
+
+
 func prepare_messages(messages: Array, config: Dictionary) -> Array:
 	var prepared := super.prepare_messages(messages, config)
 	if config.get("continuation_style", "standard") == "deepseek":

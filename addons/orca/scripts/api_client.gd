@@ -24,6 +24,7 @@ const RESPONSE_GENERATION_TIMEOUT_MS := RequestTimeouts.TOTAL_GENERATION_MS
 const INTERNAL_GENERATION_TIMEOUT_OVERRIDE_OPTION := "_orca_internal_generation_timeout_ms"
 const LIFECYCLE_REQUEST_ID_OPTION := "lifecycle_request_id"
 const INCLUDE_HISTORY_IMAGES_OPTION := "_orca_include_history_images"
+const SERIAL_TOOL_CALLS_OPTION := "_orca_serial_tool_calls"
 const GENERATION_TIMEOUT_MESSAGE := "The response exceeded the total generation deadline."
 const MAX_RESPONSE_BYTES := 16 * 1024 * 1024
 const MAX_SSE_LINE_BYTES := 1024 * 1024
@@ -198,9 +199,13 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 			request_failed.emit(lifecycle_request_id, _make_error("This request cannot send new image attachments. Remove the draft images or start a turn with a vision-capable model.", "configuration", false))
 			return
 	var projected := ImageAttachments.request_messages(ScriptReferences.request_messages(messages), include_history_images)
+	if request_options.has(SERIAL_TOOL_CALLS_OPTION) and typeof(request_options[SERIAL_TOOL_CALLS_OPTION]) != TYPE_BOOL:
+		request_failed.emit(lifecycle_request_id, _make_error("Invalid serial tool-call request policy.", "configuration", false))
+		return
+	var serial_tools: bool = request_options.get(SERIAL_TOOL_CALLS_OPTION, false) or tools.any(func(tool): return typeof(tool) == TYPE_DICTIONARY and typeof(tool.get("function")) == TYPE_DICTIONARY and tool["function"].get("name") in ["blender_workspace", "inspect_mcp"])
 	var body: Dictionary
 	if _configured_api_mode == "responses":
-		var converted := ResponsesProtocol.request_body(projected, tools, request_config)
+		var converted := ResponsesProtocol.request_body(projected, tools, request_config, serial_tools)
 		if not converted.get("success", false):
 			request_failed.emit(lifecycle_request_id, _make_error(str(converted.get("error", "Invalid Responses request.")), "configuration", false))
 			return
@@ -210,6 +215,7 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 		if not tools.is_empty():
 			body["tools"] = tools
 			body["tool_choice"] = "auto"
+			if serial_tools: provider.apply_serial_tool_options(body, request_config)
 		provider.apply_chat_options(body, str(request_config.get("reasoning_effort", "default")))
 		if provider_id == "orca_cloud":
 			body["max_tokens"] = clampi(int(request_config.get("hosted_output_tokens", 8192)), 1, 8192)

@@ -4,6 +4,7 @@ extends PanelContainer
 signal done_requested
 signal settings_saved(provider_id: String, model: String)
 signal script_edit_default_requested(enabled: bool)
+signal blender_edit_default_requested(enabled: bool)
 
 const Config = preload("res://addons/orca/scripts/config.gd")
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
@@ -22,6 +23,7 @@ const PROVIDER_ICON = preload("res://addons/orca/assets/providerconfig.svg")
 const SYSTEM_ICON = preload("res://addons/orca/assets/systems.svg")
 const ABOUT_ICON = preload("res://addons/orca/assets/about.svg")
 const ACCOUNT_ICON = preload("res://addons/orca/assets/profile.svg")
+const EXTENSIONS_ICON = preload("res://addons/orca/assets/extension.svg")
 const SUPPORTED_GODOT_VERSION := "4.7.2"
 
 var provider_selector: OptionButton
@@ -72,6 +74,12 @@ var about_tab_button: Button
 var account_tab_button: Button
 var account_scroll: ScrollContainer
 var account_service
+var mcp_service
+var blender_service
+var blender_work_allowed: Callable
+var blender_setup_message: Callable
+var extensions_view
+var extensions_tab_button: Button
 var account_sign_in_button: Button
 var account_cancel_button: Button
 var account_reopen_button: Button
@@ -86,6 +94,7 @@ var _account_code_label: Label
 var _key_help: Label
 var language_selector: OptionButton
 var script_edit_default_selector: OptionButton
+var blender_edit_default_selector: OptionButton
 var image_support_toggle: CheckButton
 var about_version_label: Label
 var update_service
@@ -257,6 +266,10 @@ func _build_ui() -> void:
 	system_tab_button.name = "SystemTab"
 	system_tab_button.pressed.connect(_show_section.bind("system"))
 	tab_row.add_child(system_tab_button)
+	extensions_tab_button = _section_tab("Extensions", EXTENSIONS_ICON, tab_group)
+	extensions_tab_button.name = "ExtensionsTab"
+	extensions_tab_button.pressed.connect(_show_section.bind("extensions"))
+	tab_row.add_child(extensions_tab_button)
 	account_tab_button = _section_tab("Account", ACCOUNT_ICON, tab_group)
 	account_tab_button.name = "AccountTab"
 	account_tab_button.pressed.connect(_show_section.bind("account"))
@@ -435,6 +448,14 @@ func _build_ui() -> void:
 	content.add_child(agent_warning_label)
 
 	system_scroll = _build_system_view()
+	extensions_view = preload("res://addons/orca/scripts/extensions_view.gd").new()
+	extensions_view.service = mcp_service
+	extensions_view.blender_service = blender_service
+	extensions_view.blender_work_allowed = blender_work_allowed
+	extensions_view.blender_setup_message = blender_setup_message
+	extensions_view.chat_requested.connect(_on_done_pressed)
+	root.add_child(extensions_view)
+	extensions_view.hide()
 	root.add_child(system_scroll)
 	account_scroll = _build_account_view()
 	root.add_child(account_scroll)
@@ -622,6 +643,10 @@ func _section_tab(section_name: String, texture: Texture2D, group: ButtonGroup) 
 
 
 func _show_section(section: String) -> void:
+	if extensions_view != null:
+		extensions_view.visible = section == "extensions"
+	if extensions_tab_button != null:
+		extensions_tab_button.set_pressed_no_signal(section == "extensions")
 	if section != "account" and account_service != null and account_service.state in ["pairing", "connecting"]:
 		account_service.cancel_pairing()
 	if account_scroll != null:
@@ -691,6 +716,20 @@ func _build_system_view() -> ScrollContainer:
 	edit_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	edit_help.add_theme_color_override("font_color", Color(0.66, 0.69, 0.74))
 	content.add_child(edit_help)
+	content.add_child(_field_label("Blender workspace"))
+	blender_edit_default_selector = OptionButton.new()
+	blender_edit_default_selector.fit_to_longest_item = false
+	blender_edit_default_selector.clip_text = true
+	blender_edit_default_selector.add_item("Review operations (default)", 0)
+	blender_edit_default_selector.add_item("Auto apply for this project", 1)
+	blender_edit_default_selector.item_selected.connect(func(index: int):
+		sync_script_edit_default()
+		if is_visible_in_tree() and system_scroll.is_visible_in_tree(): blender_edit_default_requested.emit(index == 1))
+	content.add_child(blender_edit_default_selector)
+	var blender_help := Label.new()
+	blender_help.text = "Automate dedicated workspace modeling, inspection, previews and exports after confirmation. Project import and scene placement still require review."
+	blender_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(blender_help)
 	sync_script_edit_default()
 	content.add_child(HSeparator.new())
 	update_panel = UpdatePanel.new()
@@ -710,6 +749,8 @@ func _on_language_selected(index: int) -> void:
 func sync_script_edit_default() -> void:
 	if script_edit_default_selector != null:
 		script_edit_default_selector.select(1 if Config.project_script_edit_preference()["enabled"] else 0)
+	if blender_edit_default_selector != null:
+		blender_edit_default_selector.select(1 if Config.project_blender_edit_preference()["enabled"] else 0)
 
 
 func _on_script_edit_default_selected(index: int) -> void:
@@ -850,6 +891,7 @@ func _on_cloud_signed_in() -> void:
 
 func _on_account_changed() -> void:
 	_render_account()
+	if extensions_view != null: extensions_view.refresh_blender_setup()
 	if _current_provider == "orca_cloud" and account_service != null:
 		var incoming: Array = account_service.models.duplicate(true)
 		if incoming != _current_models:

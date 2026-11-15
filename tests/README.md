@@ -6,6 +6,123 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
+Blender Asset Studio adds:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/blender_asset_validator_test.gd
+python3 -m unittest discover -s tests -p blender_workspace_test.py -v
+python3 tests/run_editor_test.py blender_workspace_editor_test.gd
+python3 tests/run_editor_test.py blender_workspace_editor_test.gd --graphical
+```
+
+For actual native Blender acceptance, explicitly set `ORCA_TEST_BLENDER_BIN` to an
+installed Blender 5.2+ executable for the Python suite. Without it, only the native
+cases skip; contract checks still run. Do not claim Blender coverage from those skips.
+Use `--blender-workspace-executable /absolute/path/to/blender` for the editor case.
+This starts only an owned private workspace, uses synthetic provider responses,
+and never edits an already open Blender document or owner Godot project. The runner
+clears inherited live-executable flags and isolates project/XDG state.
+
+Permanent cases cover actual mesh/material/rig/action creation, native preview and
+GLB export, mesh editing/Geometry Nodes, collision/LOD/physics setup, material/
+animation baking, command-schema SHA binding, failure rollback, templates/textures,
+exclusive workspace ownership, protected/malformed/cyclic GLB rejection, exact
+Work/Auto apply/Reject/Stop reviews, history sanitation, observed Godot import,
+source Revert and native scene placement/Undo/Redo/save-pending. The new CI workflow
+uses pinned official native Blender packages; broader platform/novice acceptance
+and live model quality remain separate. See [Blender](../docs/BLENDER.md).
+The editor case temporarily removes each Python runtime file in its disposable
+addon and checks the actual panel's reinstall error, no process launch and no
+workspace creation, then restores exact source. Package tests reject missing
+connector/contract before writing ZIP/checksum/manifests and reject manifest-consistent
+incomplete ZIPs through production updater extraction. Actual source packages retain
+both runtime files byte-for-byte, non-executable and without Python bytecode caches.
+
+Guided setup coverage exercises the actual Extensions landing card: zero/one/multiple
+installation discovery, invalid Browse recovery, exact/cancelled/stale/consumed startup
+confirmation, immediate Cancel with coroutine settlement, failed-stop recovery,
+one-action reconnect and draft-preserving Back to chat. Mode/provider/managed capability
+guidance is presentation-only and does not change active-turn snapshots or grants.
+All five locales and 1×/1.5×/2× fonts retain the selected installation and pending
+confirmation at narrow widths. Graphical runs may set `ORCA_BLENDER_SETUP_PREVIEW_DIR`
+to an existing external directory to capture the first-use and ready Settings views.
+
+The workspace case now runs five clean editors across two disposable projects:
+exercise, actual restart, different/copied project, header revoke and revoked
+restart. It verifies the separate remembered Blender scope, old script-only review,
+cancelled/stale confirmation, automatic help/inspect/edit/preview/export receipts,
+failure pause/no reacquisition, changed preference revision, revocation at visible
+card dispatch and exact import/place reviews. It exercises real routed orbit/pan/
+wheel input, Frame/Reset, expanded Window teardown, three-view geometry retention
+and all five locales/1×/1.5×/2× hint layouts. Native opt-in acceptance also validates
+actual static Blender GLB snapshots and unchanged revisions. The Python suite has
+eleven contract/native cases, including checkpoint failure preserving prior bytes.
+The GLB component suite also checks the native-only preview decoder's bounds,
+malformed transforms, accessor escapes/work caps and nonfinite vertex rejection.
+Rendering fidelity, broader material features, Windows/macOS UI and live model
+quality remain separate acceptance.
+
+Standalone external-call regressions additionally capture the actual production
+OpenAI/Azure Chat/Responses request body without making network calls, checking
+`parallel_tool_calls=false` for external schemas and corrections, omission for
+ordinary reads/no-tools/custom/local/managed/DeepSeek contracts, and strict local
+option validation. Controller tests retain atomic read-only batching and add
+explicit Blender/MCP barriers plus exact safe JSON/tool-name rejection reasons.
+The workspace case reproduces the reported checklist → two rejected mixed batches
+→ actual Resume → reviewed inspection sequence, preserves original asset bytes,
+and corrects an automatic mixed workspace/read batch into one admitted call.
+The provider replies in these tests are synthetic, including native Blender runs;
+they do not claim live GPT inference acceptance.
+
+The unreleased MCP foundation adds:
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/mcp_test.gd
+python3 tests/run_editor_test.py mcp_editor_test.gd
+python3 tests/run_editor_test.py mcp_editor_test.gd --graphical
+```
+
+The component fixture launches only `tests/mcp_fixture.py` using `/usr/bin/python3`.
+It includes a real 30-second timeout. The editor runner copies that fixture into
+two disposable projects installed from one completeness-checked release ZIP and
+isolates all settings/data/cache. Seven clean editor processes verify legacy migration,
+A setup/restart, A→B enable, B restart, shared edits in A and removal persistence,
+with no automatic launch. These tests exercise
+real stdio, exact launch/read review, stale and malformed inputs, Plan/Stop,
+matched provider continuations, non-replayable history, five languages and narrow
+larger-font layout. They do not use Blender, owner credentials or live inference.
+Official and community vocabularies are separately selected; fixtures cover mixed
+catalogs, exact empty-argument tool binding, JSON/text summaries, profile changes,
+official read approval/rejection/cancellation and disconnected official restoration.
+Cross-project cases additionally cover canonical configure-once storage, automatic
+bounded migration/deduplication, literal arguments and explicit profiles, collision-safe
+IDs, origin/removal fingerprints, malformed/future/stale setup rejection, sealed
+single-use root/service-bound Enable, startup Cancel/double Enable, distinct direct
+process ownership and an actual approved scene-read continuation in B. Compact cards
+and the focused dialog preserve configuration/decision identity across all five
+locales and normal/1.5x/2x fonts at narrow widths. Asset setup is directly visible above
+the optional connectors; its management controls stay collapsed. The official profile
+shows add-on/server/listener guidance in a bounded-height scrolling Configure form.
+Fresh ZIP fixtures import assets before enabling plugins, matching new installation.
+
+An optional explicitly selected live acceptance variant uses an installed official
+Blender Lab v1.0.3 server and an already open default Blender scene on
+`127.0.0.1:9876`:
+
+```bash
+python3 tests/run_editor_test.py mcp_editor_test.gd --graphical --blender-lab-executable /absolute/path/to/blender-mcp
+```
+
+This still isolates Godot project/XDG state and uses synthetic provider responses,
+but approves actual fixed `get_objects_summary` and
+`get_blendfile_summary_datablocks` reads through the real UI. It checks Camera,
+Cube and Light in the scene receipt and the data-block summary continuation. It
+does not install/launch Blender, save/edit the scene, or run live model inference.
+The selected live launch description is also reused in B, including a fresh bridge
+and approved scene read after the project switch. The ordinary runner removes
+inherited live-executable settings; CI remains synthetic.
+
+
 The 1.8.0 candidate workflow regressions also use this runner:
 
 ```bash

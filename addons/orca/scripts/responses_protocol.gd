@@ -16,7 +16,7 @@ static func binding(config: Dictionary) -> String:
 	return JSON.stringify([config.get("provider", ""), config.get("base_url", ""), config.get("model", ""), config.get("reasoning_effort", "default"), "responses", config.get("continuation_style", "standard"), DeepSeekCompatibility.FORMAT_VERSION if DeepSeekCompatibility.enabled(config) else 0]).sha256_text()
 
 
-static func request_body(messages: Array, tools: Array, config: Dictionary) -> Dictionary:
+static func request_body(messages: Array, tools: Array, config: Dictionary, serial_tools: bool = false) -> Dictionary:
 	var inputs: Array = []
 	for message in messages:
 		if typeof(message) != TYPE_DICTIONARY:
@@ -71,6 +71,9 @@ static func request_body(messages: Array, tools: Array, config: Dictionary) -> D
 	if not converted_tools.is_empty():
 		body["tools"] = converted_tools
 		body["tool_choice"] = "auto"
+		var external_tools: bool = converted_tools.any(func(tool): return tool.get("name") in ["blender_workspace", "inspect_mcp"])
+		if (serial_tools or external_tools) and config.get("continuation_style", "standard") == "standard":
+			body["parallel_tool_calls"] = false
 	var effort: String = str(config.get("reasoning_effort", "default"))
 	if not effort.is_empty() and effort != "default":
 		body["reasoning"] = {"effort": effort}
