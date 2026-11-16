@@ -2,26 +2,27 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This checkout prepares **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
-for Godot 4.7.2. Publication is pending; **1.7.0 remains the latest published release**.
-The candidate adds clearer cards, longer bounded tasks, same-conversation Resume,
-and reviewed current-scene script attachment/native property editing. Node2D
-transforms preserve earlier unsaved edits and support consecutive moves without
-saving between them. **Apply in editor** keeps the scene open with native Undo;
-saving remains user-controlled and script attachment requires Trust then Apply.
-The owner confirmed the Platformer Node2D move workflow works.
+This checkout prepares **Orca 1.9.0 — Blender Asset Studio & Live Authoring**
+for Godot 4.7.2. Publication is pending; **1.8.0 remains the latest published release**.
+The candidate adds guided Blender workspaces, reviewed asset creation/editing,
+interactive previews, GLB export/import/recovery and native scene placement.
+Optional official Blender Lab connections can separately enable live authoring
+in an already open document. Workspace and live Auto apply have distinct explicit
+scopes; Godot import and placement always require review.
 Plugin ZIPs are binary-free. On enable, Orca quietly downloads and verifies this
 platform's credential helper from the matching official GitHub Release if missing.
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
-usable. The pre-candidate Tests/native/package run at `91610f0` passed; the later
-unsaved-baseline fix and final 1.8.0 metadata require fresh CI/package acceptance.
-Native-speaker review, broader real-model tasks, platforms and Asset Store moderation
-remain separate. See the
+usable. The feature Tests/native Blender/credential-helper package run at `d799e05`
+passed; the final 1.9.0 revision requires fresh CI/package acceptance. Interactive
+live-authoring/Godot handoff is verified on Linux; Windows/macOS UI, clean-machine
+setup, real-model quality and Asset Store moderation remain separate. See the
+[1.9.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#190---2026-11-17)
+for the candidate and the
 [1.8.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#180---2026-11-13)
-for the candidate, the
+for the latest published release. See the
 [1.7.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#170---2026-11-06)
-for the latest published release, the
+for languages and focused inspection, the
 [1.6.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#160---2026-11-05)
 for the published baseline, the
 [1.5.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#150---2026-11-02)
@@ -35,6 +36,26 @@ for the earlier full feature list.
 2. Open the project in Godot 4.7.2.
 3. Enable **Orca** in **Project > Project Settings > Plugins**.
 4. Open the Orca dock and connect an account or provider.
+
+### Blender setup (1.9.0 candidate)
+
+Open **Settings → Extensions → Blender Asset Studio**, click **Set up Blender**,
+choose a detected Blender 5.2+ installation and confirm **Start workspace**.
+Once ready, return to Work chat to create an asset. Orca ships the connector and
+uses Blender's bundled Python; optional MCP connections are independent.
+
+Review asset operations or explicitly enable **Auto apply workspace…**, optionally
+remembered for this project. Preview cards offer orbit/pan/zoom, Frame/Reset and
+an expanded viewer. Export, then review Godot import and native Node3D placement.
+Placement uses native Undo and reports save pending rather than saving the scene.
+
+For an already open Blender document, configure/connect **Blender Lab — Official**
+under **Optional connections**, then choose **⋮ → Enable live authoring…**.
+Live edits preserve earlier unsaved work and create private recovery copies.
+**Auto apply live session…** is separate and memory-only; import/place retain review.
+Cloud models require the matching backend API vocabulary and catalog refresh.
+See the [Blender guide](https://github.com/cold-atom/Orca/blob/main/docs/BLENDER.md)
+and [Extensions guide](https://github.com/cold-atom/Orca/blob/main/docs/EXTENSIONS.md).
 
 ### Connection setup overlay
 
@@ -128,7 +149,7 @@ Stop keeps completed edits; Revert is a separate idle-Work action.
 
 Ask about the selected nodes or current scene to inspect native UI layout, 2D/3D transforms, visibility/processing, parent Control/Container context, and script/resource identities. `inspect_editor_scene` works with unsaved changes in Plan and Work; specify scene or subtree scope for hierarchy reads. Detailed snapshots are bounded and requested on demand. Saved-state checks and reviewed project changes still apply; live snapshots never provide a patch hash. Restored tool activity is a historical summary rather than current editor state.
 
-### Current-scene property editing (1.8.0 candidate)
+### Current-scene property editing (1.8.0)
 
 In Work, ask Orca to change a Node2D position/rotation/scale/skew in the current
 scene, including existing unsaved edits, or Control anchors/offsets in a clean

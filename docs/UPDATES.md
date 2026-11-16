@@ -5,22 +5,25 @@ precede Asset Store moderation. Updating and native-helper installation are
 user-owned maintenance, never agent tools, and their public downloads require no
 Orca account or GitHub token.
 
-This checkout prepares **1.8.0 — In-Editor Changes & Workflow Reliability**
-for Godot 4.7.2. It adds reviewed current-scene edits, live Node2D baselines
-preserving unsaved work, clearer cards, longer tasks and Resume. Publication is
-pending; **1.7.0 — Multilingual UI & Focused Godot Inspection** remains the latest
-published release. The pre-candidate full Tests/native/package run at `91610f0`
-passed. The later unsaved-baseline fix and final 1.8.0 metadata require fresh CI
-and version-matched ZIP/helper assets. Updater checks cover direct upgrades from
-1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0, same-version suppression and downgrade
-prevention. See [1.8.0](../CHANGELOG.md#180---2026-11-13) for the candidate.
-See [1.7.0](../CHANGELOG.md#170---2026-11-06) for the latest published release
+This checkout prepares **1.9.0 — Blender Asset Studio & Live Authoring**
+for Godot 4.7.2. It adds guided Blender workspaces, interactive previews,
+reviewed GLB handoff, optional live Blender authoring and separate workspace/live
+Auto apply scopes. Publication is pending; **1.8.0 — In-Editor Changes & Workflow
+Reliability** remains the latest published release. The
+[feature Tests/native Blender/helper-package run at `d799e05`](https://github.com/cold-atom/Orca/actions/runs/43898813111)
+passed. Final 1.9.0 metadata and release-workflow changes require fresh CI and
+version-matched ZIP/helper acceptance. Updater checks cover direct upgrades from
+1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0/1.8.0, same-version suppression and downgrade
+prevention. See [1.9.0](../CHANGELOG.md#190---2026-11-17) for the candidate.
+See [1.8.0](../CHANGELOG.md#180---2026-11-13) for the latest published release,
+[1.7.0](../CHANGELOG.md#170---2026-11-06) for languages/focused inspection
 and [1.6.0](../CHANGELOG.md#160---2026-11-05) for Auto apply/recovery.
 See [1.5.0](../CHANGELOG.md#150---2026-11-02) for code navigation and
 [1.4.1](../CHANGELOG.md#141---2026-10-30) for the earlier packaging fixes.
-Store moderation remains separate. The 1.8.0 scene changes reuse the current Cloud
-vocabulary; existing navigation/extended inspection require their matching backend
-API deployment/catalog refresh. Prior Store downloads and the thumbnail
+Store moderation remains separate. The new MCP/workspace/live-session Cloud tools
+require their matching backend API vocabulary deployment and authenticated catalog
+refresh. Existing navigation/extended inspection retain their own capability gates.
+Prior Store downloads and the thumbnail
 correction remain separate reviewer work.
 
 ## User workflow
@@ -106,7 +109,7 @@ visibly and are separate from a missing helper.
 3. Package the binary-free addon and separate helpers together:
 
    ```bash
-   python3 scripts/package_release.py --version 1.8.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.8.0.zip
+   python3 scripts/package_release.py --version 1.9.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.9.0.zip
    ```
 
    Substitute the actual new version. The script refuses version mismatches,
@@ -116,10 +119,12 @@ visibly and are separate from a missing helper.
    remains included. The ZIP contains only addon files, its generated helper catalog
    and `update_manifest.json`; all ZIP file modes are non-executable. `.import`
     sidecars are omitted.
-   Workspace-enabled packages must also include `blender/workspace_connector.py`
-   and `blender/workspace_contract.py`. Both are non-executable Python runtime
-   source. The packager and updater manifest checks reject an incomplete pair,
-   while historical packages without the workspace service remain supported.
+   Workspace-enabled packages must include `blender/workspace_connector.py`
+   and `blender/workspace_contract.py`. Live-authoring packages additionally need
+   `blender/live_session.py` and `blender/live_export.py`. All four are
+   non-executable Python runtime source. The packager and updater manifest checks
+   reject incomplete runtime sets, while historical packages without these
+   services remain supported.
 4. Publish the exact output set under the matching stable GitHub Release:
 
    ```text
@@ -179,6 +184,8 @@ an artifact does not publish it. A test ZIP's helper install requires its assets
 be published under the catalog's tag; use the isolated fixtures before publication.
 
 **Prepare Orca release** is manually dispatched against an existing stable tag.
+It imports assets with plugins disabled, restores exact project settings and
+checks normal initialization through the same bounded strict runner as Tests.
 It rebuilds/tests the helpers, checks the plugin/updater/helper flow, then produces
 **orca-release** with the ZIP, checksum and all raw helpers. Its Publish checkbox
 defaults off. The updater editor case runs through the isolated normal-editor

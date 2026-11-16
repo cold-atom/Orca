@@ -141,7 +141,7 @@ and corrects an automatic mixed workspace/read batch into one admitted call.
 The provider replies in these tests are synthetic, including native Blender runs;
 they do not claim live GPT inference acceptance.
 
-The unreleased MCP foundation adds:
+The 1.9.0 candidate MCP foundation adds:
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/mcp_test.gd
@@ -190,7 +190,7 @@ and approved scene read after the project switch. The ordinary runner removes
 inherited live-executable settings; CI remains synthetic.
 
 
-The 1.8.0 candidate workflow regressions also use this runner:
+The published 1.8.0 workflow regressions also use this runner:
 
 ```bash
 python3 tests/run_editor_test.py card_status_editor_test.gd
@@ -644,31 +644,33 @@ real user browser registration/verification, live hosted models, OS-vault unlock
 other platforms, session expiry and deployed HTTPS pairing/inference. Public HTTPS
 health responses establish reachability only, not authenticated or metered acceptance.
 
-## 1.8.0 release regression verification
+## 1.9.0 release regression verification
 
-The About/support-report expectations follow plugin version 1.8.0. Synthetic
+The About/support-report expectations and MCP client identity follow plugin version 1.9.0. Synthetic
 1.3.0 → 1.4.0 installation/rollback fixtures intentionally retain both versions.
 Historical 1.4.1 update/catalog fixtures remain explicit. Current update metadata
-checks retain 1.5.0/1.6.0/1.7.0 coverage and verify 1.8.0 upgrades from
-1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0, exact official asset naming,
-same-version suppression and no downgrade from 1.8.0. Actual-source
+checks retain 1.5.0/1.6.0/1.7.0/1.8.0 coverage and verify 1.9.0 upgrades from
+1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0/1.8.0, exact official asset naming,
+same-version suppression and no downgrade from 1.9.0. Actual-source
 packaging reads the current version from `plugin.cfg`.
-For this release preparation, run the version-sensitive settings/support checks, updater
-component/editor/package tests, native helper acceptance and clean initialization
+For this release preparation, run the version-sensitive settings/support/MCP checks, updater
+component/editor/package tests, native helper packaging/service checks and clean initialization
 with all three startup suppressions and isolated editor configuration/data/cache.
 Run the updater editor case through `python3 tests/run_editor_test.py update_editor_test.gd`,
-as both Tests and Prepare Orca release now do. The pre-candidate full
-[Tests run at `91610f0`](https://github.com/cold-atom/Orca/actions/runs/43270415554)
-passed, including editor/transport cases, all four native-helper platforms and
-binary-free packaging. The later unsaved-baseline fix and final 1.8.0 metadata
-require fresh complete CI and same-revision helper/package acceptance before
-release; 1.7.0 remains published. The owner confirmed the Platformer Node2D move
-workflow works. Relevant feature regressions include current-scene transforms,
-native properties/script attachment, card layout, task Resume, localization,
-Auto apply and remembered defaults. Broader live acceptance should exercise
-consecutive edits, Undo/Redo/Save/Revert, task Resume and actual provider continuation.
-Real browser/downloaded-helper/graphical platform
-acceptance is not established by metadata, CI or release notes.
+as both Tests and Prepare Orca release now do. Both workflows also import clean
+assets with plugins disabled, restore exact project settings and strictly check
+normal initialization through `run_editor_test.py` helpers. The feature
+[Tests run at `d799e05`](https://github.com/cold-atom/Orca/actions/runs/43898813111)
+passed Godot editor/transport cases, native Blender workspaces on Linux/Windows/macOS,
+Linux interactive live-authoring/Godot handoff and all four credential-helper
+platforms/binary-free packaging. The final 1.9.0 metadata/workflow revision requires
+fresh complete CI and same-revision helper/package acceptance before release;
+1.8.0 remains published. Relevant new regressions include MCP protocol/cancellation,
+workspace/live Auto apply, interactive previews, GLB import/Revert, native placement/
+Undo and five-language narrow/large-font confirmations. Existing Godot workflows
+retain their permanent suites. Real-model asset quality, clean-machine setup,
+Windows/macOS interactive UI and actual downloaded-helper/Store acceptance remain
+separate from metadata and automated fixtures.
 
 ## Project code navigation (1.5.0)
 

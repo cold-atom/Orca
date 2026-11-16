@@ -82,13 +82,42 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
-## 1.8.0 Release Candidate: In-Editor Changes & Workflow Reliability
+## 1.9.0 Release Candidate: Blender Asset Studio & Live Authoring
 
-This checkout prepares **1.8.0** for Godot 4.7.2. Publication is pending;
-**1.7.0 remains the latest published release**. See the
+This checkout prepares **1.9.0** for Godot 4.7.2. Publication is pending;
+**1.8.0 remains the latest published release**. See the
+[1.9.0 changelog](CHANGELOG.md#190---2026-11-17).
+
+### Blender Asset Studio and live authoring
+
+- **Settings → Extensions → Blender Asset Studio** detects Blender 5.2+ and starts
+  a dedicated background asset workspace after exact startup confirmation. Orca
+  ships its connector using Blender's own Python; no separate Python or MCP setup
+  is required for this workflow.
+- Create and edit bounded models, materials, textures, rigs, animations and game
+  geometry through reviewed typed operations. Preview cards support orbit/pan/zoom
+  and an expanded local 3D viewer; export stages a validated GLB for reviewed Godot
+  import and native scene placement with Undo.
+- **Workspace Auto apply** is a separately confirmed scope, optionally remembered
+  for the exact project. It covers help/inspection/editing/preview/export; import
+  and placement retain approval.
+- Optional configure-once MCP connections support reviewed inspection. The official
+  Blender Lab connection can separately enable **Live Blender · Create & edit** in
+  an already open document, with pre-write private copies and conflict-checked
+  native Undo. **Live Auto apply** requires its own session-only confirmation.
+- Compact setup, scrollable confirmations, cancellation/reconnection guards and
+  standalone tool-call guidance keep the workflow clear and bounded.
+
+See [Blender workflows](docs/BLENDER.md) and [Extensions](docs/EXTENSIONS.md).
+Cloud availability requires the matching API rollout and model-catalog refresh;
+BYOK uses the existing exact-profile Agent-tool checks.
+
+## What's New In 1.8.0: In-Editor Changes & Workflow Reliability
+
+**Orca 1.8.0** is the latest published release. See the
 [1.8.0 changelog](CHANGELOG.md#180---2026-11-13).
 
-The candidate adds complete, wrapping change/activity statuses,
+It adds complete, wrapping change/activity statuses,
 24-round bounded tasks with clear stop reasons, and **Resume remaining work** in
 the expanded checklist. Reviewed non-`@tool` script attachment/detachment can keep
 the saved current scene open and preserve normal Godot Undo. **Apply in editor**
@@ -107,7 +136,7 @@ non-editable instance nodes need separate support. Save before running the scene
 
 ## What's New In 1.7.0: Multilingual UI & Focused Godot Inspection
 
-**Orca 1.7.0** for **Godot 4.7.2** is the latest published release. See the
+Published **Orca 1.7.0** for **Godot 4.7.2** introduced these features. See the
 [1.7.0 changelog entry](CHANGELOG.md#170---2026-11-06).
 
 ### Focused Godot inspection
@@ -394,8 +423,9 @@ See [SECURITY.md](SECURITY.md) for the complete security and operational model.
 
 ## Current Limits
 
-- Orca 1.8.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
-- The pre-candidate [Tests run at `91610f0`](https://github.com/cold-atom/Orca/actions/runs/43270415554) passed, including editor/transport checks and four-platform native packaging. The later unsaved-baseline fix and final 1.8.0 metadata require fresh CI/package acceptance. The owner confirmed the Platformer Node2D move workflow; broader real-model tasks, native-speaker review and other platforms remain separate.
+- Orca 1.9.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
+- The [feature Tests run at `d799e05`](https://github.com/cold-atom/Orca/actions/runs/43898813111) passed, including Godot editor/transport checks, native Blender workspaces on Linux/Windows/macOS and four-platform credential-helper packaging. The final 1.9.0 revision requires fresh CI/package acceptance. Interactive live-authoring/Godot handoff is verified on Linux; Windows/macOS UI, clean-machine setup, real-model quality and independent language review remain separate.
+- Blender operations use a fixed typed command catalog and bounded assets. Unrestricted generated Python/add-ons are outside this workflow. Godot import and placement require review; live-session Auto apply is never remembered.
 - Native attachment drops were verified on Linux/X11/Vulkan; other platforms/renderers and detached editor windows need acceptance testing.
 - Runtime verification uses bounded process output and predeclared startup or exit criteria. It cannot prove visual or gameplay correctness.
 - Pending approvals and manual/structured revert checkpoints do not survive restart. Bounded automatic-script checkpoints support explicit historical review/recovery.
@@ -408,8 +438,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the full architecture, tool contracts, 
 
 ## Project Status
 
-This checkout prepares **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
-for **Godot 4.7.2**. It is not yet published; **Orca 1.7.0** remains the latest release.
+This checkout prepares **Orca 1.9.0 — Blender Asset Studio & Live Authoring**
+for **Godot 4.7.2**. Publication is pending; **Orca 1.8.0** remains the latest release.
 Godot Asset Store moderation remains an owner check.
 Orca is a functional development-stage agent
 with permanent automated tests and CI, but it is still evolving. Review proposals

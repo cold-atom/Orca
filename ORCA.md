@@ -11,7 +11,9 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-The development checkout additionally provides unreleased **Blender Asset Studio**:
+This checkout prepares **Orca 1.9.0 — Blender Asset Studio & Live Authoring**
+for Godot 4.7.2. Publication is pending; 1.8.0 is the latest published release.
+The candidate provides **Blender Asset Studio**:
 guided setup, dedicated native asset workspaces, reviewed modeling/material/rig/
 animation operations, previews, staged GLB export/import/recovery and native scene
 placement. A separately confirmed, project-remembered workspace Auto apply scope
@@ -20,12 +22,15 @@ placement retain approval. Preview cards include local 360° orbit, pan, zoom,
 Frame/Reset and an expanded 3D viewer with bounded native-only decoding.
 Settings → Extensions puts guided Blender asset setup first, with installation
 detection, exact startup confirmation and a draft-preserving return to Work chat.
-Optional configure-once MCP cards appear under Connectors with Enable/Disable,
+Optional configure-once MCP cards appear under Optional connections with Connect/Disconnect,
 explicit inspection status and official Blender Lab installation guidance.
-Workspace management/recovery controls stay collapsed. See [Blender workflows](docs/BLENDER.md) and
-[Extensions](docs/EXTENSIONS.md). Broader API/isolation and Skills library work
-remain planned. GitHub has since published the
-1.8.0 baseline described below.
+The official connection can separately enable reviewed live authoring in an open
+Blender document, with native Undo, private recovery copies and a distinct
+memory-only live Auto apply grant. Workspace management/recovery controls stay
+collapsed. Import/place retain exact review in both workflows. Cloud requires the
+matching backend API vocabulary and catalog refresh. See
+[1.9.0](CHANGELOG.md#190---2026-11-17), [Blender workflows](docs/BLENDER.md) and
+[Extensions](docs/EXTENSIONS.md). Broader API/isolation and Skills library work remain planned.
 
 The published baseline is **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
 for **Godot 4.7.2**. It adds readable card layouts, 24-round/192-call
@@ -44,9 +49,12 @@ See [1.8.0](CHANGELOG.md#180---2026-11-13) for the latest release,
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
 The [final Tests run at `dc0e315`](https://github.com/cold-atom/Orca/actions/runs/43282971040)
-passed, including four-platform native packaging. New MCP work needs its own
-CI/package acceptance. Independent language
-review, broader real-model tasks and platform/Store acceptance remain separate.
+passed, including four-platform native packaging. The
+[feature Tests run at `d799e05`](https://github.com/cold-atom/Orca/actions/runs/43898813111)
+also passed, including native Blender workspaces on Linux/Windows/macOS and Linux
+interactive live-authoring/Godot handoff. The final 1.9.0 revision needs its own
+CI/package acceptance. Independent language review, real-model quality,
+Windows/macOS interactive UI, clean-machine setup and Store acceptance remain separate.
 
 ### Key Features & Components
 

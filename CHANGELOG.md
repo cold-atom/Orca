@@ -4,6 +4,14 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+## 1.9.0 - 2026-11-17
+
+**Blender Asset Studio & Live Authoring** — release candidate for Godot 4.7.2.
+Publication is pending; 1.8.0 remains the latest published release. The feature
+revision at `d799e05` passed full Tests, three-platform native Blender workspace
+checks and four-platform credential-helper packaging. The final 1.9.0 revision
+requires its own CI and version-matched package acceptance.
+
 ### Added
 
 - Guided Blender Asset Studio with installation discovery/native browsing, a
@@ -40,6 +48,27 @@ All notable changes to Orca are documented in this file.
   data-block/workspace/render-engine summaries. Live Linux acceptance passes with
   official MCP v1.0.3 and Blender 5.2.2 LTS; existing community profiles retain
   their tool vocabulary. Setup guidance distinguishes Blender from its MCP server.
+- Optional **Live Blender · Create & edit** through the official connection's
+  **Enable live authoring…** action. Twenty-six typed command families support
+  creation, editing, selected-object preview/export and reviewed Godot handoff in
+  an already open Blender 5.2+ scene. Native Undo, live conflict checks and private
+  pre-write recovery copies preserve earlier unsaved work; the document is never
+  automatically saved or reloaded.
+- Separate **Auto apply live session…** confirmation for live help/inspection/
+  editing/preview/export. Its grant is memory-only and bound to the exact current
+  project/connection/document session; script/workspace grants cannot authorize it.
+  Godot import and placement retain exact review. Stop, conflicts, failures and
+  session/mode/connection boundaries pause or clear automation.
+
+### Changed
+
+- Plugin/About/support-report metadata and MCP client identity identify 1.9.0.
+  Updater coverage includes direct upgrades from 1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/
+  1.7.0/1.8.0, exact official ZIP naming, same-version suppression and downgrade
+  prevention.
+- Live-authoring packages require all four shipped workspace/live Python runtime
+  files. Plugin ZIPs remain binary-free, with separately tested version-pinned
+  credential helpers.
 
 ### Fixed
 
@@ -56,6 +85,25 @@ All notable changes to Orca are documented in this file.
   inspections rather than implying that every discovered server tool is available.
 - Single-use launch actions, stale setup checks, startup cancellation and deferred
   client retirement keep late completions from replacing/stopping newer connections.
+- Live enable and automation confirmations use bounded scrollable text and wrapped
+  native footer actions, preserving visible controls at narrow widths and large
+  editor scales/fonts. Live bootstrap scene/catalog responses are separated to
+  remain within budgets when re-enabling a populated scene.
+- Clean-checkout Tests and release preparation import assets before enabling the
+  plugin. Blender fixtures canonicalize temporary paths and clean up failed
+  startup. Strict runner checks reject timeouts, abnormal exits and error/warning
+  diagnostics.
+
+### Verification And Known Limits
+
+- Native Blender workspace tests passed on Linux, Windows and macOS. Interactive
+  live-authoring/native Undo and Godot approval/import/placement acceptance passed
+  on Linux; five-language narrow/large-font UI fixtures use synthetic model replies.
+- Real-model asset quality, Windows/macOS interactive live-authoring/UI,
+  clean-machine installation and Store acceptance remain separate checks.
+- Cloud support requires the matching MCP/workspace/live-session API vocabulary
+  rollout and authenticated model-catalog refresh. Older catalogs retain their
+  existing tools. Blender execution, review and project handoff run locally.
 
 HTTP/OAuth, arbitrary tools and the full Skills library remain planned.
 See [Extensions](docs/EXTENSIONS.md).

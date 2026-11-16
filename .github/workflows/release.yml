@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing stable tag matching plugin.cfg (e.g. v1.8.0)
+        description: Existing stable tag matching plugin.cfg (e.g. v1.9.0)
         required: true
         type: string
       publish:
@@ -52,7 +52,18 @@ jobs:
           chmod 755 addons/orca/native/credential_helper_linux.x86_64 addons/orca/native/credential_helper_windows.x86_64.exe addons/orca/native/credential_helper_macos.arm64 addons/orca/native/credential_helper_macos.x86_64
       - name: Initialize and verify updater
         run: |
-          "$GODOT_BIN" --headless --editor --path . --quit
+          python3 - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, "tests")
+          from run_editor_test import execute, import_ci_project
+          binary = os.environ["GODOT_BIN"]
+          env = dict(os.environ)
+          if not import_ci_project(Path("."), binary, env):
+              sys.exit(1)
+          sys.exit(0 if execute([binary, "--headless", "--editor", "--path", ".", "--quit"], env) else 1)
+          PY
           "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
           python3 tests/run_editor_test.py update_editor_test.gd
           python3 -m unittest discover -s tests -p update_package_test.py

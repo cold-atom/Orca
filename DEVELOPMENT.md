@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-11-16
+Last updated: 2026-11-17
 
 ## Purpose
 
@@ -8,7 +8,22 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Unreleased: Extensions and MCP inspection
+## 1.9.0 Release Candidate: Blender Asset Studio & Live Authoring
+
+Plugin metadata and MCP client identity now target **1.9.0** for Godot 4.7.2.
+Publication is pending; **1.8.0** remains the latest published release. This
+candidate groups the Extensions/MCP, dedicated Blender workspace, interactive
+preview, reviewed live-authoring and separate Auto apply work described below.
+The feature revision at `d799e05` passed
+[complete Tests/native Blender/helper-package CI](https://github.com/cold-atom/Orca/actions/runs/43898813111):
+native workspaces on Linux/Windows/macOS, interactive live-authoring/Godot handoff
+on Linux and all four credential-helper platforms. The final metadata/workflow
+revision requires its own CI and exact ZIP/helper acceptance. Cloud API vocabulary
+rollout/catalog refresh, real-model quality, Windows/macOS interactive UI and
+clean-machine/Store acceptance remain separate. Release preparation uses the same
+strict import-before-enable initialization helper as Tests and preserves historical
+release fixtures. See [1.9.0](CHANGELOG.md#190---2026-11-17) and
+[release operations](docs/UPDATES.md).
 
 ### Reviewed live Blender Lab authoring
 
@@ -447,8 +462,8 @@ commit, dirty/background/reopened targets, saved/live/summary/Undo/redo conflict
 Container/type/range denial, unowned-node and custom-getter isolation, five-language
 review and teardown. Headless and Linux/X11/OpenGL acceptance pass locally.
 The owner confirmed the Platformer Node2D move workflow. Broader real-model tasks,
-themes and Windows/macOS remain acceptance follow-ups. These changes are in the
-1.8.0 candidate and are not yet published.
+themes and Windows/macOS remain acceptance follow-ups. These changes shipped in
+the published 1.8.0 release.
 
 ## 1.8.0: Card Readability, Longer Tasks, And Editor Script Attachment
 
@@ -541,8 +556,8 @@ was published on November 6 at `29fc480`. Its
 [release-commit Tests](https://github.com/cold-atom/Orca/actions/runs/42226616493)
 and [release preparation](https://github.com/cold-atom/Orca/actions/runs/42230762190)
 passed, including all four native-helper platforms and binary-free packaging.
-The ZIP/checksum and four helpers are published. The 1.8.0 candidate above has
-its own metadata and needs final-revision CI/build acceptance before publication.
+The ZIP/checksum and four helpers are published. The later 1.8.0 release above is
+also published; the 1.9.0 candidate needs its own final-revision CI/build acceptance.
 Extended Cloud inspection still requires the matching backend API rollout and
 authenticated catalog refresh. Native-speaker review, real-model usefulness,
 broader themes/platforms and Store moderation remain separate acceptance.
@@ -801,7 +816,7 @@ The plugin has public GitHub releases and remains a functional development-stage
 - The trusted copied `update_runner.gd` runs under the current Godot executable in `res://.orca-update/runner/`, a private minimal project outside the loaded addon. It waits for the initiating editor's exit before transactional directory replacement, retains one verified rollback copy and reopens the same project. Unix uses a fixed signal-0 process-existence probe because Godot's process API only tracks child PIDs, and a fixed positional-argument `exec` wrapper detaches closed installer pipes. Windows uses native Godot process APIs. This is never exposed as executable/argument/PID authority to the model.
 - Handoff snapshots the public active display backend (`DisplayServer.get_name()`), preserving headless relaunch even without an available desktop. Godot consumes `--headless` before returning `OS.get_cmdline_args()`, so command-line membership cannot determine this state. The independent restart fixture removes inherited X11/Wayland display variables and verifies the new editor's headless backend.
 - `res://.orca-update/` is import-isolated (`.gdignore`), Git-ignored and protected from agent reads/search/mutations/dependencies/script references. Its bounded ownership, lock, transaction and result records preserve recovery information. Verified rollback is explicit; a retained standalone launcher can restore the original even if the addon directory is absent. Modified/unknown bytes and locks are preserved for manual review.
-- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox; its updater editor case uses `run_editor_test.py` in the isolated normal-editor lifecycle. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.6.0 is published after complete CI; this source checkout prepares 1.7.0 and requires final-version CI/package acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
+- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox; its updater editor case uses `run_editor_test.py` in the isolated normal-editor lifecycle. Initial release import disables plugins and restores exact project settings, then normal initialization uses the strict bounded diagnostic runner. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.8.0 is published after complete CI; this source checkout prepares 1.9.0 and requires final-version CI/package acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
 - Release preparation retains all four native build/real-test jobs from the selected tag, but packaging now uses `--require-platform-helpers --helper-assets <directory>` to emit a **binary-free** plugin ZIP/checksum plus four separate raw helper assets. The generated `native_helpers.json` pins those exact bytes to the plugin version; the unchanged updater manifest records it as an ordinary non-executable addon file. Known helper build products are excluded from the ZIP; unexpected ELF/PE/Mach-O or compiled-library filenames elsewhere are refused. Native workflow outputs are `orca-package`, `orca-native-release-assets` and a local-preparation tar.gz. Publication attaches the ZIP/checksum and matching raw helpers; downloading Actions artifacts never publishes them. Compiled helpers are Git-ignored/export-excluded and the formerly tracked Linux executable is removed. Explicit `--write-manifest` writes both catalog and update manifest into source; source snapshots must match the accepted ZIP and separately published helpers. A pinned source catalog cannot silently change during a rebuild. Workflow permissions/publication ownership remain unchanged. Exact steps are in `docs/UPDATES.md`.
 - The package artifact explicitly includes hidden files for its narrowly scoped `.ci/orca-v*.zip*` upload pattern; otherwise Actions excludes the hidden `.ci` directory during wildcard discovery, even after successful packaging. All four native build/vault/protocol/locking/cross-Godot-process jobs passed in [Tests run #42](https://github.com/cold-atom/Orca/actions/runs/40904709816); its aggregate upload and display-free updater test exposed these two subsequent failures. A new complete CI run and downloaded-package/platform updater acceptance remain required.
 - Release publication supplies an explicit **Full Changelog** link to `CHANGELOG.md` at the selected release tag. The changelog must be finalized before tagging; the version-bound link stays stable as the default branch advances.
@@ -1772,8 +1787,8 @@ Run instructions are in `tests/README.md`. `.github/workflows/tests.yml` runs th
 
 Expected result: project scan, plugin initialization, and editor layout complete without script or initialization errors.
 
-Clean initial asset imports must run before plugins are enabled. CI uses
-`tests/run_editor_test.py`'s `import_ci_project` on its disposable checkout: it
+Clean initial asset imports must run before plugins are enabled. Tests and release
+preparation use `tests/run_editor_test.py`'s `import_ci_project` on a disposable checkout: it
 temporarily removes only the `editor_plugins` section and restores exact original
 `project.godot` bytes in `finally`, including failure/exception paths. Godot 4.7.2
 `--recovery-mode` still parses plugin preloads before SVG/PNG import and cannot
@@ -1914,7 +1929,7 @@ entry points pending a separate migration.
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
 - BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata remains 1.8.0, the latest published baseline with passing release CI. The new MCP foundation is unreleased and requires fresh CI/package acceptance. Native-speaker translation review, real-model inspection/editing acceptance, broader platform/theme checks, Store moderation and third-party asset attribution remain separate. Historical milestones retain their original verification state.
+- Plugin metadata targets the 1.9.0 release candidate; 1.8.0 remains the latest published baseline. The feature revision at `d799e05` passed complete Godot/native Blender/helper-package CI, while the final 1.9.0 revision requires fresh CI/package acceptance. Native Blender workspace cases cover Linux/Windows/macOS; interactive live-authoring/Godot handoff is Linux-only. Real-model quality, native-speaker translation review, Windows/macOS interactive UI, clean-machine setup, Store moderation and third-party asset attribution remain separate. Historical milestones retain their original verification state.
 
 ## Roadmap
 
@@ -2045,6 +2060,30 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-17 — Orca 1.9.0 release preparation
+
+- Owner selected **1.9.0 — Blender Asset Studio & Live Authoring** for Godot 4.7.2.
+  Updated plugin/MCP client metadata, About/support expectations, release examples,
+  the dated changelog and current product/security/Blender/Extensions/update/testing
+  guides. Corrected stale current-status claims; published release history and
+  historical version fixtures retain their original versions. Publication is pending.
+- Added 1.9.0 updater upgrade/exact ZIP/same-version/downgrade coverage, including
+  1.8.0. Release initialization now uses the existing Tests import-before-enable
+  helper, exact project-settings restoration and strict bounded diagnostics.
+- Local verification passed: clean full tracked-source import/normal initialization
+  and actual-workspace Godot 4.7.2 headless initialization; settings, support report,
+  update service, native-helper service, MCP and hosted-default components; 10
+  updater/package cases, eight native-packaging, three catalog and eight runner
+  Python checks, without skips; isolated normal-editor updater case; release shell/
+  inline Python syntax and diff checks. Hosted compact finalization stays
+  **24562/24576**. Fixtures isolate XDG configuration/data/cache and suppress owner
+  account restore, updates and helper downloads; temporary verification state is removed.
+- Prior feature CI at `d799e05` is green, including native Blender workspaces on
+  Linux/Windows/macOS and all four credential-helper platforms. Final 1.9.0 CI,
+  exact official ZIP/helper acceptance, Cloud API/catalog rollout, real-model asset
+  quality, Windows/macOS interactive UI and Store acceptance remain separate. This
+  pass prepared local changes only; no commit/push/tag/publication or deployment.
 
 ### 2026-11-16 — Clean-checkout and cross-platform Blender CI setup fixes
 

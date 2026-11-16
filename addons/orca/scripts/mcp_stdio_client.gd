@@ -52,7 +52,7 @@ func _connect_process(command: String, arguments: Array) -> Dictionary:
 		return _fail("Could not start the configured MCP executable.")
 	set_process(true)
 	var generation := revision
-	var initialized := await request("initialize", {"protocolVersion": VERSIONS[0], "capabilities": {}, "clientInfo": {"name": "Orca", "version": "1.8.0"}})
+	var initialized := await request("initialize", {"protocolVersion": VERSIONS[0], "capabilities": {}, "clientInfo": {"name": "Orca", "version": "1.9.0"}})
 	if not initialized.get("success", false):
 		return initialized
 	var result: Dictionary = initialized["result"]

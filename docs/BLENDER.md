@@ -1,7 +1,9 @@
 # Blender Asset Studio
 
-The development checkout includes guided Blender setup and reviewed game-asset
-workflows. This is unreleased; plugin metadata stays at the published 1.8.0 baseline.
+The **Orca 1.9.0 — Blender Asset Studio & Live Authoring** release candidate includes
+guided Blender setup, reviewed game-asset workspaces and optional authoring in an
+already open Blender document. Publication is pending; 1.8.0 is the latest published
+release. See the [1.9.0 changelog](../CHANGELOG.md#190---2026-11-17).
 
 ## Few-click setup
 
@@ -51,15 +53,19 @@ source distribution, even if Godot does not display Python files in its FileSyst
 ```text
 addons/orca/blender/workspace_connector.py
 addons/orca/blender/workspace_contract.py
+addons/orca/blender/live_session.py
+addons/orca/blender/live_export.py
 ```
 
-They implement the dedicated asset workspace and its pinned declarative command
-contract using Blender's Python. Keep them in the plugin. The installed Blender
-Lab `blender-mcp` server is the other connection path for an already open Blender.
+They implement the dedicated asset workspace, live-session adapter/export worker
+and pinned declarative command contract using Blender's Python. Keep them in the
+plugin. The installed Blender Lab `blender-mcp` server is the other connection path
+for an already open Blender.
 Workspace startup checks missing/unreadable runtime files before creating a
 workspace or launching a process, and shows a complete-plugin reinstall message.
 The release packager and updater reject workspace-enabled packages missing either
-file; a plain file-list ZIP command does not check that dependency.
+workspace file and live-enabled packages missing any of the four files; a plain
+file-list ZIP command does not check those dependencies.
 
 Use Blender **5.2+**. Native Linux/macOS/Windows installations and portable paths
 have discovery/launch adapters. Linux also has fixed Snap/Flatpak launch adapters;

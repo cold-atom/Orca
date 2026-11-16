@@ -1,6 +1,6 @@
 # Security Policy
 
-## Blender Asset Studio (development checkout)
+## Blender Asset Studio (1.9.0 candidate)
 
 The shipped independent native toolkit runs inside a user-selected Blender process
 and accepts fixed declarative commands, never model Python, executable/environment
@@ -36,7 +36,26 @@ remain excluded from automatic replay/replacement by the workspace lease.
 
 See [Blender workflows](docs/BLENDER.md) for limits and platform acceptance.
 
-## MCP inspection (development checkout)
+## Live Blender authoring (1.9.0 candidate)
+
+The official Blender Lab connection optionally enables authoring through a sealed,
+single-use Work confirmation bound to the project/configuration/process/live-session
+identity and shipped toolkit hashes. Connecting alone provides inspection. Model
+inputs remain bounded typed commands; the official code transport carries only
+verified Orca helper calls, never freely generated Python or generic MCP dispatch.
+
+Review is default. A separate exact live-session Auto apply confirmation can cover
+help/inspection/editing/preview/export, but never Godot import/place. This grant is
+memory-only, cannot inherit script/workspace permissions, and clears or pauses on
+session/restoration/Plan/disconnect/reload, Stop, conflicts and uncertain failures.
+Manual changes invalidate stale live reviews and inverse actions. Edits retain
+native Undo and private pre-write recovery copies; the user's document is never
+automatically saved/reloaded and accepted effects are never replayed. Selected
+preview/export uses a bounded native worker on a private copy. A user-trusted
+Blender environment is not a sandbox; scripted/linked and unsupported documents
+remain outside this contract. See [Blender workflows](docs/BLENDER.md).
+
+## MCP inspection (1.9.0 candidate)
 
 MCP live connections remain exact-project and user-started, while descriptions are
 canonical computer-local EditorSettings. Bounded automatic legacy migration reads
@@ -61,13 +80,15 @@ cancellation and supported versions.
 
 ## Supported Version
 
-Security work covers published Orca 1.7.0 and the **1.8.0 release candidate**.
-The candidate adds reviewed current-scene native edits, unsaved Node2D live baselines,
-bounded save evidence and Undo-preserving script attachment, plus workflow/card
-improvements. Plan/Work, original-proposal approval, conflict checks and execution
-trust remain enforced. Packaging remains binary-free.
-The 1.8.0 candidate requires fresh final-revision CI/package acceptance before publication;
-Asset Store moderation and broader graphical/platform acceptance remain separate.
+Security work covers published Orca 1.8.0 and the **1.9.0 release candidate**.
+The candidate adds constrained Blender workspace/live authoring, separate automation
+scopes, bounded native previews and reviewed binary import/Undo placement. Plan/Work,
+original-proposal approval, conflict checks and execution trust remain enforced.
+Packaging remains binary-free and requires complete shipped Blender runtime source.
+The feature revision at `d799e05` passed Godot, three-platform native Blender and
+four-platform credential-helper/package CI. The final 1.9.0 candidate requires
+fresh final-revision CI/package acceptance before publication; real-model quality,
+Windows/macOS interactive UI and Asset Store acceptance remain separate.
 
 ## Reporting A Vulnerability
 

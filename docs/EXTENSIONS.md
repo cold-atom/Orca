@@ -17,8 +17,10 @@ Blender cards initially identify **Live Blender · Inspection only**. Connected 
 connection, not verification of an open Blender listener. Official Blender Lab can
 separately enable reviewed live authoring, changing its role to **Create & edit**.
 
-The development checkout adds **Settings → Extensions**, using the supplied
-puzzle-piece icon. Plugin metadata remains 1.8.0; this feature is unreleased.
+The **Orca 1.9.0 — Blender Asset Studio & Live Authoring** release candidate adds
+**Settings → Extensions**, using the supplied puzzle-piece icon. Publication is
+pending; 1.8.0 remains the latest published release. See the
+[1.9.0 changelog](../CHANGELOG.md#190---2026-11-17).
 
 ## Connect a local server
 
