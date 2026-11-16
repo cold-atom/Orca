@@ -1772,15 +1772,26 @@ Run instructions are in `tests/README.md`. `.github/workflows/tests.yml` runs th
 
 Expected result: project scan, plugin initialization, and editor layout complete without script or initialization errors.
 
+Clean initial asset imports must run before plugins are enabled. CI uses
+`tests/run_editor_test.py`'s `import_ci_project` on its disposable checkout: it
+temporarily removes only the `editor_plugins` section and restores exact original
+`project.godot` bytes in `finally`, including failure/exception paths. Godot 4.7.2
+`--recovery-mode` still parses plugin preloads before SVG/PNG import and cannot
+replace this ordering. Both CI import and subsequent normal plugin initialization
+reject nonzero exits, timeouts and error/warning diagnostics, even with exit code 0.
+
 ### Editor-Fixture Lifecycle And Native Crash Diagnosis (2026-11-04)
 
 `auto_apply_editor_test.gd`, `remembered_edit_editor_test.gd`, `localization_editor_test.gd`,
 `editor_ui_scale_test.gd` and `update_editor_test.gd` are now `@tool` Nodes
 derived from `editor_test_case.gd`, installed through a disposable test-only
 `editor_test_bootstrap.gd` EditorPlugin. `tests/run_editor_test.py` copies the actual
-addon plus the selected case/dependencies, performs initial import, and starts a
-normal editor using its existing SceneTree. Linux XDG configuration, data **and
-cache** are private, account/update/helper startup is suppressed, both processes
+addon plus the selected case/dependencies without generated `.import` sidecars or
+Python bytecode, performs initial import with plugins disabled, then enables Orca
+and the test plugin and starts a normal editor using its existing SceneTree.
+Secondary cross-project/restart fixtures follow the same ordering. Linux XDG
+configuration, data **and cache** are private, account/update/helper startup is
+suppressed, both processes
 are bounded, and all fixture bytes are removed. CI uses the same runner. A pass
 requires an explicit case completion marker, exit code 0 and no errors/warnings,
 including native shutdown diagnostics. Runner unit tests prove that printed
@@ -2034,6 +2045,23 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-16 — Clean-checkout and cross-platform Blender CI setup fixes
+
+- Traced Actions failures at `69e0b2d` (also present at `02b6c78`) to raw system
+  temporary paths and plugin activation before first asset import. Canonicalized
+  workspace/template fixture roots; startup EOF now fails promptly and registered
+  process/directory cleanup also runs after failed setup.
+- Unified source/ZIP and secondary-project import-before-enable ordering, excluded
+  generated import/bytecode metadata, and made full-checkout import/normal plugin
+  initialization use strict bounded diagnostic checks. CI import restores exact
+  original plugin settings on success, failure and exceptions.
+- Verified eight runner regressions; all twelve contract/native/harness Blender
+  cases on Linux 5.2.2 through an aliased temporary root; five-process real-Blender
+  workspace cases headlessly and on X11/OpenGL; seven-process ZIP MCP, five-process
+  remembered-edit and live-session synthetic editor cases; clean full-source import
+  and normal Godot 4.7.2 initialization with isolated XDG state and startup suppression.
+- Fresh Windows/macOS Actions acceptance remains required.
 
 ### 2026-11-16 — Bounded live confirmations and separate live Auto apply (unreleased)
 

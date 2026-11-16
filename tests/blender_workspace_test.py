@@ -12,7 +12,9 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import unittest
+from unittest import mock
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,11 +67,15 @@ class ContractTest(unittest.TestCase):
 class BlenderTest(unittest.TestCase):
     def setUp(self):
         self.state = tempfile.TemporaryDirectory(prefix="orca-blender-live-", dir=os.environ.get("ORCA_TEST_TMPDIR"))
-        self.path = Path(self.state.name)
+        self.addCleanup(self.state.cleanup)
+        # System temp roots may use /var aliases or Windows short paths. The
+        # trusted connector requires the actual canonical directory identity.
+        self.path = Path(self.state.name).resolve(strict=True)
         self.process = subprocess.Popen([os.environ["ORCA_TEST_BLENDER_BIN"], "--quiet", "--background", "--factory-startup", "--disable-autoexec", "--offline-mode", "--threads", "2", "--python-exit-code", "2", "--python", str(SCRIPT), "--", "--workspace", str(self.path)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.addCleanup(self._stop_process)
         self.lines = queue.Queue()
         self.errors = []
-        self.output_thread = threading.Thread(target=lambda: [self.lines.put(line) for line in iter(self.process.stdout.readline, b"")], daemon=True)
+        self.output_thread = threading.Thread(target=self._read_output, daemon=True)
         self.error_thread = threading.Thread(target=lambda: [self.errors.append(line) for line in iter(self.process.stderr.readline, b"")], daemon=True)
         self.output_thread.start()
         self.error_thread.start()
@@ -79,27 +85,45 @@ class BlenderTest(unittest.TestCase):
         self.process.stdin.flush()
         self.current = self.call("help", {})["workspace"]
 
-    def tearDown(self):
-        self.process.stdin.close()
+    def _read_output(self):
+        try:
+            for line in iter(self.process.stdout.readline, b""):
+                self.lines.put(line)
+        finally:
+            self.lines.put(None)  # Wake a request immediately when startup exits.
+
+    def _stop_process(self):
+        try:
+            self.process.stdin.close()
+        except OSError:
+            pass  # A failed startup may already have closed the input pipe.
         try:
             self.process.wait(timeout=10)
         except subprocess.TimeoutExpired:
             self.process.kill()
             self.process.wait(timeout=5)
-        self.output_thread.join(timeout=2)
-        self.error_thread.join(timeout=2)
+        for name in ("output_thread", "error_thread"):
+            thread = getattr(self, name, None)
+            if thread is not None and thread.ident is not None:
+                thread.join(timeout=2)
         self.process.stdout.close()
         self.process.stderr.close()
-        self.state.cleanup()
 
     def rpc(self, method, params):
         self.serial += 1
-        self.process.stdin.write((json.dumps({"jsonrpc": "2.0", "id": self.serial, "method": method, "params": params}) + "\n").encode())
-        self.process.stdin.flush()
+        try:
+            self.process.stdin.write((json.dumps({"jsonrpc": "2.0", "id": self.serial, "method": method, "params": params}) + "\n").encode())
+            self.process.stdin.flush()
+        except OSError:
+            self.error_thread.join(timeout=2)
+            self.fail("Owned Blender closed its input before replying: " + b"".join(self.errors[-10:]).decode(errors="replace"))
         try:
             raw = self.lines.get(timeout=45)
         except queue.Empty:
             self.fail("Owned Blender request did not complete: " + b"".join(self.errors[-10:]).decode(errors="replace"))
+        if raw is None:
+            self.error_thread.join(timeout=2)
+            self.fail("Owned Blender closed its output before replying: " + b"".join(self.errors[-10:]).decode(errors="replace"))
         reply = json.loads(raw)
         self.assertEqual(reply["id"], self.serial)
         return reply["result"]
@@ -236,15 +260,35 @@ class BlenderTest(unittest.TestCase):
         source = self.path / self.current["blend_file"]
         checksum = hashlib.sha256(source.read_bytes()).hexdigest()
         with tempfile.TemporaryDirectory(prefix="orca-template-", dir=os.environ.get("ORCA_TEST_TMPDIR")) as directory:
-            target = Path(directory)
+            target = Path(directory).resolve(strict=True)
             shutil.copyfile(source, target / "template.blend")
             (target / "template.json").write_text(json.dumps({"sha256": checksum}))
-            command = [*self.process.args[:-1], directory]
+            command = [*self.process.args[:-1], str(target)]
             requests = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}, {"jsonrpc": "2.0", "method": "notifications/initialized"}, {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "orca_workspace_help", "arguments": {}}}]
             result = subprocess.run(command, input=("\n".join(json.dumps(request) for request in requests) + "\n").encode(), capture_output=True, timeout=15)
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-500:])
             self.assertTrue((target / "revision-000001.blend").exists())
             self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), checksum)
+
+
+class HarnessTest(unittest.TestCase):
+    def test_startup_exit_fails_promptly_and_cleans_up_failed_setup(self):
+        # Python rejects the Blender flags and exits without a protocol reply.
+        # This exercises the real pipes/reader and cleanup even when setUp fails.
+        fixture = BlenderTest("test_template_copy_preserves_source")
+        started = time.monotonic()
+        try:
+            with mock.patch.dict(os.environ, {"ORCA_TEST_BLENDER_BIN": sys.executable}):
+                with self.assertRaisesRegex(AssertionError, "Owned Blender closed its .* before replying"):
+                    fixture.setUp()
+        finally:
+            self.assertTrue(fixture.doCleanups())
+        self.assertLess(time.monotonic() - started, 10, "Startup exit must not wait for the 45-second RPC timeout")
+        self.assertFalse(fixture.path.exists())
+        self.assertIsNotNone(fixture.process.poll())
+        self.assertTrue(fixture.process.stdin.closed)
+        self.assertTrue(fixture.process.stdout.closed)
+        self.assertTrue(fixture.process.stderr.closed)
 
 
 if __name__ == "__main__":

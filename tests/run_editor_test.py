@@ -70,11 +70,27 @@ def execute(command: list[str], env: dict[str, str], marker: str = "") -> bool:
     return True
 
 
+def import_ci_project(project: Path, binary: str, env: dict[str, str]) -> bool:
+    """Import a disposable CI checkout with plugins disabled, then restore exact settings."""
+    settings = project / "project.godot"
+    original = settings.read_bytes()
+    # Recovery mode still parses plugin preloads on Godot 4.7.2. Remove only the
+    # editor-plugin section for this import, keeping LF/CRLF and all other bytes.
+    disabled = re.sub(rb"(?ms)^\[editor_plugins\]\r?\n.*?(?=^\[|\Z)", b"", original)
+    command = [binary, "--headless", "--editor", "--path", str(project), "--import", "--quiet"]
+    try:
+        settings.write_bytes(disabled)
+        return execute(command, env)
+    finally:
+        settings.write_bytes(original)
+
+
 def prepare_project(project: Path, case: str, addon_archive: Path | None = None) -> None:
     # Release-like source scope: load the actual addon and the selected case's
     # dependencies, not every unrelated suite in Godot's script-doc generator.
     if addon_archive is None:
-        shutil.copytree(ROOT / "addons" / "orca", project / "addons" / "orca")
+        shutil.copytree(ROOT / "addons" / "orca", project / "addons" / "orca",
+                        ignore=shutil.ignore_patterns("*.import", "__pycache__", "*.pyc"))
     else:
         # This is a trusted archive freshly produced from the local source by
         # the release packager, not an arbitrary ZIP supplied to this runner.
@@ -98,8 +114,7 @@ def prepare_project(project: Path, case: str, addon_archive: Path | None = None)
     (project / "project.godot").write_text(
         'config_version=5\n[application]\nconfig/name="Orca isolated editor fixture"\n'
         'config/features=PackedStringArray("4.7")\n'
-        + (plugin_settings() if addon_archive is None else "")
-        + '[rendering]\n'
+        '[rendering]\n'
         'renderer/rendering_method="gl_compatibility"\n',
         encoding="utf-8",
     )
@@ -110,9 +125,9 @@ def plugin_settings() -> str:
             '"res://addons/editor_fixture/plugin.cfg")\n')
 
 
-def enable_zip_plugins(project: Path) -> None:
-    # Match a fresh ZIP installation: import its assets first, then enable the
-    # editor plugins. Release ZIPs deliberately do not ship .import sidecars.
+def enable_plugins(project: Path) -> None:
+    # Both clean Git checkouts and release ZIPs need their initial asset import
+    # before plugin preloads can resolve SVG/PNG resources.
     settings = project / "project.godot"
     settings.write_text(settings.read_text(encoding="utf-8") + plugin_settings(), encoding="utf-8")
 
@@ -153,7 +168,7 @@ def main() -> int:
     if binary is None:
         parser.error("The Godot executable could not be found")
     with tempfile.TemporaryDirectory(prefix="orca-editor-", dir=args.temp_parent) as folder:
-        state = Path(folder)
+        state = Path(folder).resolve(strict=True)
         project = state / "project"
         project.mkdir()
         addon_archive = None
@@ -189,8 +204,7 @@ def main() -> int:
         common = [binary, "--editor", "--path", str(project), "--no-header", "--audio-driver", "Dummy"]
         if not execute([*common, "--headless", "--import", "--quiet"], env):
             return 1
-        if addon_archive is not None:
-            enable_zip_plugins(project)
+        enable_plugins(project)
         env["ORCA_EDITOR_TEST_CASE"] = args.case
         display = ["--display-driver", "x11", "--rendering-method", "gl_compatibility"] if args.graphical else ["--headless"]
         if args.case == "blender_workspace_editor_test.gd":
@@ -202,6 +216,7 @@ def main() -> int:
             other_common = [binary, "--editor", "--path", str(other_project), "--no-header", "--audio-driver", "Dummy"]
             if not execute([*other_common, "--headless", "--import", "--quiet"], import_env):
                 return 1
+            enable_plugins(other_project)
             env["ORCA_BLENDER_ORIGINAL_ROOT"] = str(project)
             for phase in ["exercise", "restart", "other_project", "revoke", "verify_revoked"]:
                 env["ORCA_BLENDER_EDITOR_PHASE"] = phase
@@ -219,7 +234,7 @@ def main() -> int:
             other_common = [binary, "--editor", "--path", str(other_project), "--no-header", "--audio-driver", "Dummy"]
             if not execute([*other_common, "--headless", "--import", "--quiet"], import_env):
                 return 1
-            enable_zip_plugins(other_project)
+            enable_plugins(other_project)
             env["ORCA_MCP_ORIGINAL_ROOT"] = str(project)
             for phase in ["migration", "exercise", "restart", "other_project", "other_restart", "original_verify", "after_remove"]:
                 env["ORCA_MCP_EDITOR_PHASE"] = phase
@@ -239,6 +254,7 @@ def main() -> int:
             other_common = [binary, "--editor", "--path", str(other_project), "--no-header", "--audio-driver", "Dummy"]
             if not execute([*other_common, "--headless", "--import", "--quiet"], import_env):
                 return 1
+            enable_plugins(other_project)
             env["ORCA_REMEMBERED_PROJECT_ROOT"] = str(project)
             for phase in ["enable", "verify", "other_project", "revoke", "verify_revoked"]:
                 env["ORCA_REMEMBERED_EDIT_TEST_PHASE"] = phase

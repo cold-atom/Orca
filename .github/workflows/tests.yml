@@ -44,7 +44,14 @@ jobs:
       - name: Import project assets
         shell: bash
         run: |
-          "$GODOT_BIN" --headless --editor --path . --import
+          python3 - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, "tests")
+          from run_editor_test import import_ci_project
+          sys.exit(0 if import_ci_project(Path("."), os.environ["GODOT_BIN"], dict(os.environ)) else 1)
+          PY
 
       - name: Run unit and component tests
         shell: bash
@@ -186,7 +193,14 @@ jobs:
       - name: Initialize editor and plugin
         shell: bash
         run: |
-          "$GODOT_BIN" --headless --editor --path . --quit
+          python3 - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, "tests")
+          from run_editor_test import execute
+          command = [os.environ["GODOT_BIN"], "--headless", "--editor", "--path", ".", "--quit"]
+          sys.exit(0 if execute(command, dict(os.environ)) else 1)
+          PY
 
       - name: Check replacement artifact hygiene
         shell: bash

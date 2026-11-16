@@ -6,6 +6,21 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
+Source and ZIP fixtures import their assets **before enabling Orca and the test
+plugin**, including every secondary project used for restart/cross-project cases.
+Source copies omit generated `.import` sidecars and Python bytecode, so a locally
+imported checkout cannot mask clean-install startup failures. Project/settings/cache
+roots remain disposable and isolated.
+
+CI's initial full-checkout import uses `run_editor_test.import_ci_project` to
+temporarily remove the `editor_plugins` section, restoring the original
+`project.godot` bytes in `finally` after success, failure or exceptions. This helper
+is for disposable CI checkouts. Godot 4.7.2 recovery mode still parses plugin asset
+preloads and is insufficient for a clean initial import. Both that import and the
+subsequent normal plugin initialization use the runner's bounded, strict
+exit/error/warning checks. Runner regressions cover import ordering for primary
+and secondary projects, stale source metadata and exact LF/CRLF restoration.
+
 Reviewed live Blender Lab authoring adds:
 
 ```bash
@@ -52,6 +67,10 @@ python3 tests/run_editor_test.py blender_workspace_editor_test.gd --graphical
 For actual native Blender acceptance, explicitly set `ORCA_TEST_BLENDER_BIN` to an
 installed Blender 5.2+ executable for the Python suite. Without it, only the native
 cases skip; contract checks still run. Do not claim Blender coverage from those skips.
+The suite resolves temporary workspace/template roots before launching the trusted
+connector, including system temp aliases/short paths. Startup pipe closure fails
+immediately; registered cleanup stops the owned process and removes its directory
+even when `setUp` fails. A real-pipe harness regression runs without Blender.
 Use `--blender-workspace-executable /absolute/path/to/blender` for the editor case.
 This starts only an owned private workspace, uses synthetic provider responses,
 and never edits an already open Blender document or owner Godot project. The runner
@@ -103,7 +122,8 @@ card dispatch and exact import/place reviews. It exercises real routed orbit/pan
 wheel input, Frame/Reset, expanded Window teardown, three-view geometry retention
 and all five locales/1×/1.5×/2× hint layouts. Native opt-in acceptance also validates
 actual static Blender GLB snapshots and unchanged revisions. The Python suite has
-eleven contract/native cases, including checkpoint failure preserving prior bytes.
+twelve contract/native/harness cases, including checkpoint failure preserving prior
+bytes and immediate startup-exit cleanup.
 The GLB component suite also checks the native-only preview decoder's bounds,
 malformed transforms, accessor escapes/work caps and nonfinite vertex rejection.
 Rendering fidelity, broader material features, Windows/macOS UI and live model
