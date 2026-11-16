@@ -133,6 +133,8 @@ static func valid_manifest(value: Dictionary, expected_version: String = "") -> 
 			return false
 	if seen.has("scripts/blender_workspace_service.gd") and (not seen.has("blender/workspace_connector.py") or not seen.has("blender/workspace_contract.py")):
 		return false
+	if seen.has("scripts/blender_session_service.gd") and (not seen.has("blender/live_session.py") or not seen.has("blender/live_export.py") or not seen.has("blender/workspace_connector.py") or not seen.has("blender/workspace_contract.py")):
+		return false
 	return seen.has("plugin.cfg") and seen.has("orca.gd")
 
 

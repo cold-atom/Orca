@@ -32,6 +32,12 @@ jobs:
       - name: Install pinned Godot
         if: runner.os == 'Linux'
         run: python scripts/install_ci_godot.py
+      - name: Verify owned interactive live-authoring and native Undo
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1 libxi6 libxrender1 libxkbcommon0
+          xvfb-run -a python -m unittest discover -s tests -p blender_live_test.py -v
       - name: Verify editor approvals, import, placement, Undo and cancellation
         if: runner.os == 'Linux'
         run: python tests/run_editor_test.py blender_workspace_editor_test.gd --blender-workspace-executable "$ORCA_TEST_BLENDER_BIN"

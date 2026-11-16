@@ -149,20 +149,38 @@ class UpdateTests(unittest.TestCase):
                 self.assertFalse(entries[name]["executable"])
                 self.assertEqual(reader.read("addons/orca/" + name), (source / name).read_bytes())
 
-    def test_self_consistent_archive_cannot_omit_workspace_dependencies(self) -> None:
+    def test_live_runtime_is_required_when_service_is_shipped(self) -> None:
+        source = self.root / "addon"
+        addon(source, "1.4.0")
+        (source / "scripts").mkdir()
+        (source / packaging.LIVE_SERVICE).write_text("@tool\nextends Node\n")
+        (source / "blender").mkdir()
+        for name in packaging.LIVE_RUNTIME:
+            (source / name).write_text("# trusted synthetic fixture, never executed\n")
+        for index, name in enumerate(sorted(packaging.LIVE_RUNTIME)):
+            with self.subTest(missing=name):
+                (source / name).unlink()
+                target = self.root / f"missing-live-{index}.zip"
+                with self.assertRaisesRegex(ValueError, "Blender live-authoring runtime is incomplete"):
+                    packaging.build(source, target)
+                self.assertFalse(target.exists())
+                (source / name).write_text("# trusted synthetic fixture, never executed\n")
+
+    def test_self_consistent_archive_cannot_omit_blender_dependencies(self) -> None:
         source = self.root / "addon"
         addon(source, "1.4.0")
         (source / "scripts").mkdir()
         (source / packaging.WORKSPACE_SERVICE).write_text("@tool\nextends Node\n")
+        (source / packaging.LIVE_SERVICE).write_text("@tool\nextends Node\n")
         (source / "blender").mkdir()
-        for name in packaging.WORKSPACE_RUNTIME:
+        for name in packaging.LIVE_RUNTIME:
             (source / name).write_text("# trusted synthetic fixture, never executed\n")
         archive = self.root / "complete.zip"
         result = packaging.build(source, archive)
         with zipfile.ZipFile(archive) as reader:
             content = {name: reader.read(name) for name in reader.namelist()}
         bad = []
-        for missing in ({name} for name in sorted(packaging.WORKSPACE_RUNTIME)):
+        for missing in ({name} for name in sorted(packaging.LIVE_RUNTIME)):
             manifest = json.loads(content["addons/orca/update_manifest.json"])
             manifest["files"] = [entry for entry in manifest["files"] if entry["path"] not in missing]
             destination = self.root / f"incomplete-{len(bad)}.zip"

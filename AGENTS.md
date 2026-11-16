@@ -6,7 +6,7 @@ This file applies to the entire repository. Read `DEVELOPMENT.md` before making 
 
 Orca is an AI game-development assistant embedded in the Godot editor. It should combine a coding agent's project exploration and change workflow with Godot-specific scene, script, selection, validation, and debugging context.
 
-The product goal is not merely a chatbot inside a dock. Orca should safely inspect a project, understand the user's current editor context, propose precise changes, explain its work, validate results, and support a future run/fix/verify loop.
+Orca should inspect projects safely, understand current editor context, propose precise changes, explain its work, validate results, and support a future run/fix/verify loop.
 
 ## Documentation
 
@@ -33,16 +33,16 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/orca.gd` | `EditorPlugin` lifecycle, toolbar integration, and dock registration. |
 | `addons/orca/scenes/chat_window.tscn` | Main Orca dock layout and composer. |
 | `addons/orca/scripts/chat_window.gd` | Structured conversation feed, streaming UI, modes, tool cards, approvals, and navigation actions. |
-| `addons/orca/scripts/response_attribution.gd` | Shared bounded model/mode-only response metadata validation for controller, UI, and visible history. |
-| `addons/orca/scripts/api_client.gd` | Nonblocking HTTP transport, SSE parsing, streaming tool-call reconstruction, timeouts, and cancellation. |
-| `addons/orca/scripts/request_timeouts.gd` | Bounded local/opt-in hosted timing, legacy defaults, preference validation and absolute compatibility-test budgets. |
+| `addons/orca/scripts/response_attribution.gd` | Bounded model/mode metadata for controller, UI and history. |
+| `addons/orca/scripts/api_client.gd` | Nonblocking HTTP/SSE, streamed tool calls, timeouts and cancellation. |
+| `addons/orca/scripts/request_timeouts.gd` | Bounded timing, validated preferences and compatibility-test budgets. |
 | `addons/orca/scripts/responses_protocol.gd` | Stateless Responses projection and bounded output normalization; exact-profile opaque reasoning continuation with no session persistence. |
 | `addons/orca/scripts/deepseek_response_compatibility.gd` | Explicit Azure DeepSeek-only bounded leading-delimiter normalization shared by streaming and completed output. |
 | `addons/orca/scripts/endpoint_policy.gd` | Strict endpoint parsing, normalization, network-scope classification, exact-origin confirmation, and generated-endpoint validation. |
 | `addons/orca/scripts/agent_compatibility_probe.gd` | Isolated project-free two-step function-call probe and exact provider/origin/model/version compatibility binding. |
 | `addons/orca/scripts/agent_controller.gd` | Message history, Plan/Work permissions, request-scoped context, tool loop, approval suspension, and cancellation. |
 | `addons/orca/scripts/context_budget.gd` | Conservative request estimation, response/tool reserves, and protocol-aware complete-turn compaction. |
-| `addons/orca/scripts/image_attachments.gd` | Bounded still-image preparation, immutable records, capability-aware historical request projection, multimodal materialization, and image reserves. |
+| `addons/orca/scripts/image_attachments.gd` | Bounded immutable still images, capability-aware history projection, multimodal requests and reserves. |
 | `addons/orca/scripts/image_capability.gd` | Exact-profile image-input capability and explicit unknown-profile configuration. |
 | `addons/orca/scripts/image_attachment_tray.gd` | Composer and message thumbnail trays with removal and preview actions. |
 | `addons/orca/scripts/script_references.gd` | Explicit project-script path validation, bounded saved/active-unsaved source snapshots, canonical records, and outgoing user-context materialization. |
@@ -81,8 +81,8 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 | `addons/orca/scripts/provider_model_service.gd` | Authenticated, bounded provider model discovery and caching. |
 | `addons/orca/scripts/providers/` | Provider-specific endpoints, headers, model normalization, reasoning options, and history sanitation. |
 | `addons/orca/scripts/settings_view.gd` | Responsive in-dock provider, credential, model, effort, and metadata settings page. |
-| `addons/orca/scripts/mcp_*.gd`, `extensions_view.gd` | User-started project-bound stdio MCP, Work-only reviewed text/Blender inspection; no arbitrary execution or asset writes. |
-| `addons/orca/scripts/blender_*.gd`, `blender/` | Guided workspaces/checkpoints, reviewed GLB import/Undo placement; bounded native-only previews/orbit/pan/zoom without importers, extensions or asset edits. |
+| `addons/orca/scripts/mcp_*.gd`, `blender_session_service.gd` | Reviewed stdio MCP inspection/live authoring; exact Work approvals, pinned helpers and private-copy handoff. |
+| `addons/orca/scripts/blender_*.gd`, `blender/` | Workspace/live checkpoints, reviewed GLB import/Undo placement and bounded native-only interactive previews. |
 | `addons/orca/scripts/localization.gd` | Orca-only TranslationDomain, bundled English-fallback catalogs, saved locale selection and non-rebuilding formatted UI refresh. |
 | `addons/orca/scripts/connection_setup_panel.gd` | Dismissible conversation-area connection overlay card with first-open/Send setup choices and draft-preserving navigation. |
 | `addons/orca/scripts/support_reminder.gd`, `support_card.gd` | Local editor-wide, usage-gated community invitation with idle-only below-header overlay, preserved empty-state geometry, bounded reminders and permanent dismissal. |
@@ -112,8 +112,9 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 ## Non-Negotiable Invariants
 
 1. Plan mode is read-only for project and external state. Do not expose or execute project mutation tools in Plan mode; bounded session task metadata may be updated, and a model may request one explicit user-approved transition to Work without performing project or external mutation.
-2. Work mutations require runtime user approval of the original proposal or an explicitly confirmed current-session/exact-project-local Auto apply grant. Script grants cover only bounded standalone project `.gd` patches with durable pre-write checkpoints. Separately confirmed Blender grants cover only help/inspect/edit/preview/export in an already user-connected dedicated workspace; script grants never authorize them. New Session/restoration/reload clear old grants; only resumable Work may acquire fresh exact-project EditorSettings defaults. Plan/view-only never activate grants. Remembered grants recheck the exact enabled preference revision before each write/dispatch; header revocation clears both defaults immediately. Checkpoint/uncertain failures pause without reacquisition. Blender edits retain immutable revision receipts. Asset import, scene placement, scene/configuration proposals and script-execution trust require explicit approval. Revert is a user action in Work, never an automatic model operation.
+2. Work mutations need runtime approval of the original proposal or an explicitly confirmed current-session/exact-project Auto apply grant. Script grants cover only bounded standalone project `.gd` patches with durable pre-write checkpoints. Separate Blender workspace grants cover help/inspect/edit/preview/export only in a user-connected dedicated workspace; live Blender needs its own memory-only session grant. Script/workspace grants never authorize live operations. New Session/restoration/reload clear grants; only resumable Work may acquire fresh exact-project EditorSettings defaults. Plan/view-only never activate them. Remembered grants recheck exact enabled preference revisions before each write/dispatch; header revocation clears both defaults immediately. Checkpoint/uncertain failures pause without automatic reacquisition. Retain immutable Blender receipts. Import/place, scene/configuration proposals and script-execution trust always need exact approval. Revert is user-owned in Work, never automatic.
 3. Keep runtime permission checks even when a tool is omitted from the model schema. Prompt instructions are not a security boundary.
+   Live Blender uses pinned helpers, exact review or its own explicit session-only Auto apply grant. No model Python/inherited grants. Bind project/connection/document; clear on session/Plan/disconnect/reload; pause on conflict/failure. Import/place require review.
 4. Project paths must remain inside `res://`, reject symbolic-link traversal, and protect `res://addons/orca/` and its `res://.orca-update/` staging/rollback workspace from agent tools.
 5. Never apply a disk patch to a script or scene with unsaved editor changes. Reviewed native Node2D editor actions follow the separate live-baseline contract in invariant 27.
 6. Read the current file hash before patching and verify it again before replacement. A stale proposal must fail rather than overwrite newer work.
@@ -157,7 +158,7 @@ Update `DEVELOPMENT.md` whenever a change alters architecture, tool behavior, sa
 - May call `apply_patch` to create a reviewed proposal.
 - May call typed structured mutation tools such as `propose_input_map_changes`; every proposal still requires review.
 - May start a saved current/main scene in one bounded Orca-owned process and stop only that retained direct process.
-- Review edits is default. Script patches and separately granted Blender workspace operations may Auto apply; other proposals require Apply/Reject.
+- Review edits is default. Script patches and separately granted Blender workspace/live operations may Auto apply; import/place and other proposals require Apply/Reject.
 - Uses green assistant headings in the UI.
 - Is the default mode.
 

@@ -9,19 +9,27 @@ var _automatic := false
 var _overview: Label
 var _auto_button: Button
 var _technical: CheckBox
+var _live := false
 
 func configure(request: Dictionary, turn_id: int) -> void:
 	super.configure(request, turn_id)
 	_operation = str(request.get("operation", ""))
+	_live = request.get("live_operation", false)
 	_automatic = request.get("auto_apply", false)
 	_title.text = "Blender workspace operation" if _automatic else "Review Blender workspace operation"
 	_help.text = "Approve this exact operation in the dedicated asset workspace. Project imports have their own reviewed destination and recovery checkpoint."
+	if _live:
+		_title.text = "Live Blender operation" if _automatic else "Review live Blender operation"
+		_help.text = "Approve this exact operation in your open Blender scene. Edits retain a recovery copy and remain unsaved in Blender. Project import and placement require their own review."
+		if _operation in ["preview", "export"]: _help.text = "Preview/export uses a private saved copy in one bounded background Blender worker. Your open document is preserved. Only the reviewed objects and their included rig/parents are handed off."
 	_allow.text = "Apply operation" if request.get("operation") in ["edit", "import", "place"] else "Allow operation"
 	var overview := Label.new()
 	_overview = overview
 	overview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	overview.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	var lines := PackedStringArray([str(request.get("operation", "")).capitalize() + " · " + "Revision " + str(request.get("revision", ""))])
+	if _live: lines.append(str(request.get("document", "")) + " · " + str(request.get("scene", "")))
+	if request.has("objects"): lines.append("• " + ", ".join(request["objects"]))
 	if request.get("operation") == "edit":
 		var commands = JSON.parse_string(str(request.get("commands", "[]")))
 		if commands is Array:
@@ -52,7 +60,7 @@ func configure(request: Dictionary, turn_id: int) -> void:
 		_status.text = "Running automatically…"
 	elif _operation in ["help", "inspect", "edit", "preview", "export"]:
 		_auto_button = Button.new()
-		_auto_button.text = "Auto apply workspace…"
+		_auto_button.text = "Auto apply live session…" if _live else "Auto apply workspace…"
 		_auto_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_auto_button.pressed.connect(func(): auto_apply_requested.emit())
 		get_child(0).add_child(_auto_button)
@@ -66,6 +74,8 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 	_details.hide()
 	_status.text = "Auto applied" if execution.get("success", false) and execution.get("data", {}).get("auto_apply", false) else "Blender operation completed" if execution.get("success", false) else "Blender operation did not complete"
 	if execution.get("data", {}).get("save_pending", false): _status.text = "Applied in editor · Save pending"
+	if _live and execution.get("data", {}).get("save_pending", false): _status.text = "Applied in Blender · Save pending"
+	if _live and execution.get("data", {}).get("save_pending", false) and execution.get("data", {}).get("auto_apply", false): _status.text = "Auto applied in Blender · Save pending"
 	var image: Dictionary = execution.get("data", {}).get("preview_image", {})
 	if not image.is_empty():
 		var bytes: PackedByteArray = execution.get("data", {}).get("preview_glb", PackedByteArray())

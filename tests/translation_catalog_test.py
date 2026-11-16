@@ -9,7 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1] / "addons" / "orca"
 UI_FILES = (
-    "extensions_view", "connector_card", "connector_dialog", "mcp_read_card", "blender_setup_panel", "blender_change_card", "blender_preview_view",
+    "bounded_confirmation", "extensions_view", "connector_card", "connector_dialog", "mcp_read_card", "blender_setup_panel", "blender_change_card", "blender_preview_view",
     "settings_view", "chat_window", "history_view", "change_card",
     "input_map_change_card", "main_scene_change_card", "project_settings_change_card",
     "scene_change_card", "tool_activity_card", "tool_activity_group", "card_header", "task_list_panel",
@@ -70,7 +70,7 @@ class TranslationCatalogTest(unittest.TestCase):
         unchanged = {"ORCA", "Orca", "API", "Chat Completions", "GitHub", "GDScript",
                      "English", "简体中文", "Español", "日本語", "한국어", "s", "gpt-4o", "Unknown model",
                      "Conversation", "No prompt preview", "Image", "Pasted image.png", "Free", "Godot "}
-        markers = re.compile(r"\.(?:text|tooltip_text|placeholder_text|dialog_text|ok_button_text|accessibility_name|title)\s*=|(?:_field_label|_about_heading|add_item|Localization\.bind)\(|(?<!\w)(?:_label|_button)\(")
+        markers = re.compile(r"\.(?:text|tooltip_text|placeholder_text|dialog_text|ok_button_text|accessibility_name|title)\s*=|(?:_field_label|_about_heading|add_item|popup_message|Localization\.bind)\(|(?<!\w)(?:_label|_button)\(")
         missing = set()
         for name in UI_FILES:
             for line in (ROOT / "scripts" / f"{name}.gd").read_text(encoding="utf-8").splitlines():

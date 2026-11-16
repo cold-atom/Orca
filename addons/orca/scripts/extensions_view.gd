@@ -5,6 +5,7 @@ const Localization = preload("res://addons/orca/scripts/localization.gd")
 const Metrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const Card = preload("res://addons/orca/scripts/connector_card.gd")
 const Dialog = preload("res://addons/orca/scripts/connector_dialog.gd")
+const CHEVRON_DOWN = preload("res://addons/orca/assets/chevron_down.svg")
 signal chat_requested
 var service
 var blender_service
@@ -22,6 +23,16 @@ var _empty: Label
 var _locked := false
 var _rendered := []
 var _enable_serials := {}
+var _connectors_toggle: Button
+var _connectors_body: VBoxContainer
+var _connectors_hint: Label
+var _body_font_size := 13
+var _meta_font_size := 11
+var _live_confirmation
+var _live_action := {}
+var _live_texture: FileDialog
+var _texture_session
+var _configuration_error := ""
 
 
 func _enter_tree() -> void:
@@ -36,37 +47,51 @@ func _notification(what: int) -> void:
 
 func _ready() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
+	if Engine.is_editor_hint(): _body_font_size = maxi(13, EditorInterface.get_editor_theme().get_font_size("font_size", "Label"))
+	_meta_font_size = maxi(11, _body_font_size - 1)
 	_main = _scroll()
 	var body := VBoxContainer.new()
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", Metrics.scaled_int(10))
 	_main.add_child(body)
-	_label(body, "EXTENSIONS")
-	var studio := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.115, 0.12, 0.13)
-	style.set_corner_radius_all(Metrics.scaled_int(8))
-	style.content_margin_left = Metrics.scaled(12)
-	style.content_margin_right = Metrics.scaled(12)
-	style.content_margin_top = Metrics.scaled(12)
-	style.content_margin_bottom = Metrics.scaled(12)
-	studio.add_theme_stylebox_override("panel", style)
-	body.add_child(studio)
+	var title := _label(body, "EXTENSIONS")
+	title.add_theme_font_size_override("font_size", _meta_font_size)
+	title.add_theme_color_override("font_color", Color(0.48, 0.68, 0.8))
 	blender_panel = preload("res://addons/orca/scripts/blender_setup_panel.gd").new()
 	blender_panel.service = blender_service
 	blender_panel.work_allowed = blender_work_allowed
 	blender_panel.setup_message = blender_setup_message
 	blender_panel.chat_requested.connect(func(): chat_requested.emit())
-	studio.add_child(blender_panel)
-	_label(body, "CONNECTORS")
-	_label(body, "Optional connections for inspection and reference.")
+	body.add_child(blender_panel)
+	var optional := VBoxContainer.new()
+	optional.add_theme_constant_override("separation", Metrics.scaled_int(8))
+	body.add_child(optional)
+	optional.add_child(HSeparator.new())
+	_connectors_toggle = _button(optional, "Optional connections", func():
+		_connectors_body.visible = _connectors_toggle.button_pressed
+		_connectors_toggle.icon = _disclosure_icon(_connectors_toggle.button_pressed))
+	_connectors_toggle.toggle_mode = true
+	_connectors_toggle.flat = true
+	_connectors_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_connectors_toggle.icon = _disclosure_icon(false)
+	_connectors_toggle.add_theme_constant_override("icon_max_width", Metrics.scaled_int(14))
+	_connectors_hint = _label(optional, "")
+	_connectors_hint.add_theme_font_size_override("font_size", _meta_font_size)
+	_connectors_hint.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_connectors_body = VBoxContainer.new()
+	_connectors_body.add_theme_constant_override("separation", Metrics.scaled_int(10))
+	optional.add_child(_connectors_body)
+	_connectors_body.hide()
+	var explanation := _label(_connectors_body, "Work with an open Blender session or connect other tools. Asset Studio can create assets independently.")
+	explanation.add_theme_font_size_override("font_size", _meta_font_size)
 	_notice = _label(body, "")
 	_notice.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	_empty = _label(body, "No connectors configured.")
+	_empty = _label(_connectors_body, "No connectors configured.")
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", Metrics.scaled_int(10))
-	body.add_child(_list)
-	_button(body, "Add connector…", func(): _configure({}))
+	_connectors_body.add_child(_list)
+	var add := _button(_connectors_body, "Add connection…", func(): _configure({}))
+	add.flat = true
 	_dialog = Dialog.new()
 	_dialog.save_requested.connect(_save)
 	add_child(_dialog)
@@ -79,6 +104,20 @@ func _ready() -> void:
 	_details_text.custom_minimum_size = Metrics.scaled_vector(Vector2(220, 220))
 	_details.add_child(_details_text)
 	add_child(_details)
+	_live_confirmation = preload("res://addons/orca/scripts/bounded_confirmation.gd").new()
+	_live_confirmation.title = "Enable live Blender authoring?"
+	_live_confirmation.ok_button_text = "Enable authoring"
+	_live_confirmation.confirmed.connect(_confirm_live_authoring)
+	_live_confirmation.canceled.connect(func(): _live_action.clear())
+	add_child(_live_confirmation)
+	_live_texture = FileDialog.new()
+	_live_texture.title = "Attach live asset texture"
+	_live_texture.access = FileDialog.ACCESS_FILESYSTEM
+	_live_texture.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_live_texture.use_native_dialog = true
+	_live_texture.file_selected.connect(_attach_live_texture)
+	_live_texture.canceled.connect(func(): _texture_session = null)
+	add_child(_live_texture)
 	if service != null: service.changed.connect(_sync)
 	_sync()
 
@@ -91,10 +130,19 @@ func _scroll() -> ScrollContainer:
 	return scroll
 
 
+static func _disclosure_icon(expanded: bool) -> Texture2D:
+	if Engine.is_editor_hint():
+		return EditorInterface.get_editor_theme().get_icon("GuiTreeArrowDown" if expanded else "GuiTreeArrowRight", "EditorIcons")
+	return CHEVRON_DOWN
+
+
 func _label(parent: Node, text: String) -> Label:
 	var label := Label.new()
 	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", _body_font_size)
+	label.add_theme_color_override("font_color", Color(0.64, 0.68, 0.74))
 	parent.add_child(label)
 	return label
 
@@ -103,6 +151,8 @@ func _button(parent: Node, text: String, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.add_theme_font_size_override("font_size", _body_font_size)
 	button.pressed.connect(action)
 	parent.add_child(button)
 	return button
@@ -127,9 +177,18 @@ func _sync() -> void:
 			_list.add_child(card)
 			_cards[config["id"]] = card
 	_empty.visible = entries.is_empty()
-	_notice.text = Localization.message(service.configuration_error) if service != null else ""
+	var configuration_error: String = service.configuration_error if service != null else ""
+	if configuration_error != _configuration_error:
+		if not configuration_error.is_empty() or _notice.text == Localization.message(_configuration_error): _notice.text = Localization.message(configuration_error)
+		_configuration_error = configuration_error
 	_notice.visible = not _notice.text.is_empty()
 	var snapshot: Dictionary = service.snapshot() if service != null else {}
+	var connected_count: int = snapshot.get("servers", {}).size()
+	var live_count := 0
+	for value in snapshot.get("servers", {}).values():
+		if value.get("live_authoring", false): live_count += 1
+	Localization.bind(_connectors_hint, &"text", "%d connected · %d with live authoring" if live_count > 0 else "%d connected for inspection", [connected_count, live_count] if live_count > 0 else [connected_count])
+	_connectors_hint.visible = connected_count > 0
 	for id in _cards:
 		_cards[id].set_state(service.status(id), snapshot.get("servers", {}).get(id, {}).get("operations", []), _locked)
 
@@ -183,6 +242,47 @@ func _menu(action: int, config: Dictionary) -> void:
 		if not service.remove_connection(config["id"], service.registry_snapshot()):
 			_notice.text = Localization.message("Disable the connector before removing it, or reopen Connectors if setup changed.")
 			_notice.show()
+	elif action == 3:
+		var session = service.live_session(config["id"])
+		if session != null and session.state == "connected":
+			service.disable_live_authoring(config["id"])
+			return
+		_live_action = service.prepare_live_enable(config)
+		if _live_action.is_empty(): return
+		_live_confirmation.popup_message("Enable asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open without automatic save or reload.\n\nOperations require review unless you separately enable Auto apply for this live session. Godot import and scene placement always require review. Linked libraries, embedded scripts and drivers require a separate workflow.", [config["name"]])
+	elif action in [4, 5, 6, 7]:
+		if not service.live_work_allowed.is_valid() or not service.live_work_allowed.call(): return
+		var session = service.live_session(config["id"])
+		if session == null: return
+		if action == 5:
+			if preload("res://addons/orca/scripts/update_package.gd").no_links(session.workspace): OS.shell_open(session.workspace)
+		elif action == 6:
+			_texture_session = session
+			_live_texture.popup_centered_ratio(0.75)
+		else:
+			var result: Dictionary = await session.undo_last(func(): return not _locked and service.live_work_allowed.call() and service.live_session(config["id"]) == session) if action == 4 else session.revert_import(true)
+			_notice.text = Localization.message(str(result.get("content", "")))
+			_notice.show()
+			_sync()
+
+
+func _confirm_live_authoring() -> void:
+	var action := _live_action.duplicate(true)
+	_live_action.clear()
+	if _locked or service == null or action.is_empty(): return
+	var result: Dictionary = await service.enable_live_authoring(action)
+	_notice.text = Localization.message(str(result.get("content", result.get("error", ""))))
+	_notice.visible = not _notice.text.is_empty()
+	_sync()
+
+
+func _attach_live_texture(path: String) -> void:
+	var session = _texture_session
+	_texture_session = null
+	if _locked or service == null or not is_instance_valid(session) or service.live_session(session.server_id) != session or not service.live_work_allowed.call(): return
+	var result: Dictionary = session.attach_texture(path, func(): return not _locked and service.live_work_allowed.call() and service.live_session(session.server_id) == session)
+	_notice.text = Localization.message(str(result.get("content", "")))
+	_notice.show()
 
 
 func refresh_blender_setup() -> void:
@@ -193,4 +293,9 @@ func set_locked(locked: bool) -> void:
 	_locked = locked
 	if _dialog != null: _dialog.set_locked(locked)
 	if blender_panel != null: blender_panel.set_locked(locked)
+	if locked:
+		_live_action.clear()
+		_texture_session = null
+		if _live_confirmation != null: _live_confirmation.hide()
+		if _live_texture != null: _live_texture.hide()
 	_sync()

@@ -1,17 +1,21 @@
 # Extensions and MCP inspection
 
 **Orca → Settings → Extensions** starts with the guided **Blender Asset Studio**
-card for asset creation. It needs only Blender 5.2+; Orca ships the workspace connector.
-Optional MCP integrations appear below it under **Connectors**, with a compact card
-for each configured app.
-Configure once on this computer, then click **Enable** in any Godot project.
-**Disable** stops that editor's bridge; **Cancel** interrupts connection startup.
+section for asset creation. It needs only Blender 5.2+; Orca ships the workspace connector.
+Optional MCP integrations appear below it under the collapsed **Optional connections**
+section, with a compact card for each configured app. Expanding this section never
+starts a connection; collapsing it preserves live connections and shows their count.
+The explanation appears inside the expanded section so the normal page stays compact.
+Configure once on this computer, then click **Connect** in any Godot project.
+**Disconnect** stops that editor's bridge; **Cancel** interrupts connection startup.
 The **⋮** menu contains **Configure…**, **Connection details** and **Remove connector**.
 
 See [Blender setup and workflows](BLENDER.md) for the dedicated asset workspace.
 It can be set up directly without enabling a Blender Lab inspection connector.
-Connected MCP cards say **MCP connected — inspection**: this reports the stdio bridge
-connection, not asset-generation readiness or verification of an open Blender listener.
+Blender cards initially identify **Live Blender · Inspection only**. Connected MCP cards say
+**Connected for inspection**: this reports the stdio bridge
+connection, not verification of an open Blender listener. Official Blender Lab can
+separately enable reviewed live authoring, changing its role to **Create & edit**.
 
 The development checkout adds **Settings → Extensions**, using the supplied
 puzzle-piece icon. Plugin metadata remains 1.8.0; this feature is unreleased.
@@ -19,7 +23,7 @@ puzzle-piece icon. Plugin metadata remains 1.8.0; this feature is unreleased.
 ## Connect a local server
 
 1. Install a trusted MCP stdio server using its own installation instructions.
-2. Open **Settings → Extensions → Connectors → Add connector…**.
+2. Open **Settings → Extensions → Optional connections → Add connection…**.
 3. Choose **Blender Lab — Official**, **Blender — Community**, or **Custom MCP**
    (listed text resources). Confirm the name and installed server program. Orca
    suggests an existing `blender-mcp` path from bounded known locations/PATH entries;
@@ -32,8 +36,8 @@ puzzle-piece icon. Plugin metadata remains 1.8.0; this feature is unreleased.
    Prefer an already installed direct server executable. A package runner can
    itself install packages or spawn children; that is behavior of the chosen
    program, not an Orca-managed installation.
-4. **Save** the configuration, then click **Enable** on its card. Setup discloses
-   the selected local program's OS access; Enable is the explicit user-owned start
+4. **Save** the configuration, then click **Connect** on its card. Setup discloses
+   the selected local program's OS access; Connect is the explicit user-owned start
    decision bound to the displayed configuration and current project/editor.
    Existing `blender` descriptions keep their community profile; selecting the
    official type is an explicit change. Save itself never starts a program.
@@ -42,15 +46,15 @@ puzzle-piece icon. Plugin metadata remains 1.8.0; this feature is unreleased.
 
 Descriptions live once in computer-local EditorSettings. Up to 16 connectors /
 128 KiB of descriptions, 24 arguments per connector and four live bridges per
-editor are supported. Reload restores descriptions only; Enable must be clicked
+editor are supported. Reload restores descriptions only; Connect must be clicked
 again. Do not put credentials in arguments: setup is not encrypted secret storage.
 
 ## Reconnect after switching projects
 
-Open the other project, open **Extensions**, and click **Enable** on the same connector card.
+Open the other project, open **Extensions → Optional connections**, and click **Connect** on the same connector card.
 There is no project copy, export, reuse picker or second setup step. Each editor
 still owns a fresh process and project-bound inspection context. Send a fresh Work
-message after enabling; external reads still require **Allow read**.
+message after connecting; external reads still require **Allow read**.
 
 Older valid project descriptions and the old reusable library are migrated
 automatically into a versioned canonical registry at `orca/extensions/mcp_library`.
@@ -64,7 +68,7 @@ The registry retains at most 512 64-character bookkeeping hashes; migration can
 be incomplete at those limits and never silently drops source records.
 
 Configuration is shared for future starts, never live process/approval authority.
-Configure changes stop the affected local bridge and require a new Enable; unchanged
+Configure changes stop the affected local bridge and require a new Connect; unchanged
 Save preserves it. Launch actions are single-use, sealed in memory and bound to
 root, service identity, generation and exact registry snapshot. An old cancelled
 start cannot stop a newer connection. Closed coroutines settle before their client
@@ -146,7 +150,7 @@ acceptance targets official server/add-on **v1.0.3** with **Blender 5.2.2 LTS**.
 4. In Orca, select **Blender Lab — Official**, enter the official server executable,
    and use `[]` arguments for its default stdio/local connection. The executable
    field is the MCP server, not Blender, its add-on's `__init__.py`, or a `.blend` file.
-5. Save and click **Enable**. Connection details may show 26 discovered tools and zero
+5. Save and click **Connect**. Connection details may show 26 discovered tools and zero
    resources; the card describes only the inspections Orca actually exposes.
    An older community profile against the official server exposes only `catalog`.
 6. Start a fresh Work turn: “Inspect the current Blender scene through Blender Lab
@@ -170,9 +174,12 @@ versions must be compatible. Synthetic MCP tests do not imply live community
 bridge or other Blender-version acceptance.
 
 The MCP connector supports inspection and connection management. Modeling, rigging,
-animation and asset export/import use the independently shipped, reviewed
-[Blender Asset Studio](BLENDER.md) workflow. The official MCP integration does not
-authorize its generic `execute_blender_code` tools or editing an already-open document.
+animation and export/import use [Blender Asset Studio](BLENDER.md) or its optional live
+integration. Official Blender Lab's **⋮ → Enable live authoring…** in Work permits
+reviewed creation/editing in the current interactive scene. `blender_session` uses
+pinned Orca helpers through the exact official execution transport; it exposes typed
+commands, not generic MCP calls or model Python. See the
+[live workflow](BLENDER.md#work-in-an-already-open-blender-session).
 
 The existing `res://skills/<slug>/SKILL.md` loader remains available. A full Skills
 library follows the MCP/Blender milestones described in `DEVELOPMENT.md`.

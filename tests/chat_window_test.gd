@@ -29,6 +29,9 @@ class FakeAgent:
 	func queue_editor_scene_refresh() -> void:
 		pass
 
+	func cancel_live_auto_apply_confirmation() -> void:
+		pass
+
 	func cancel_current_request() -> void:
 		cancellations += 1
 

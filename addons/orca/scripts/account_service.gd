@@ -90,6 +90,7 @@ func profile_config(model_id: String, effort: String = "default") -> Dictionary:
 		"hosted_focused_inspection": typeof(record.get("focused_inspection")) == TYPE_BOOL and record.get("focused_inspection") == true,
 		"hosted_mcp_inspection": typeof(record.get("mcp_inspection")) == TYPE_BOOL and record.get("mcp_inspection") == true,
 		"hosted_blender_workspaces": typeof(record.get("blender_workspaces")) == TYPE_BOOL and record.get("blender_workspaces") == true,
+		"hosted_blender_sessions": typeof(record.get("blender_sessions")) == TYPE_BOOL and record.get("blender_sessions") == true,
 		"hosted_verified_capability": str(record.get("verified_capability", "")),
 		"hosted_context_policy": record.get("context_budget", {}).duplicate(true),
 		"hosted_available": record.get("availability", "") == "available",

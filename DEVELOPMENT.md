@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-11-15
+Last updated: 2026-11-16
 
 ## Purpose
 
@@ -9,6 +9,86 @@ This document is the living technical source of truth for Orca. It records what 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
 ## Unreleased: Extensions and MCP inspection
+
+### Reviewed live Blender Lab authoring
+
+Official `blender_lab` connections optionally enable **Live Blender · Create & edit**
+through **⋮ → Enable live authoring…** in idle resumable Work. Connect remains inspection
+until a sealed single-use exact configuration/root/service/generation confirmation
+succeeds. New Session, restoration, Plan and disconnect clear local authority; no
+authoring/grant/PID/artifact is persisted. Explicit Enable replaces earlier Orca helpers
+in that Blender process, including orphans after an editor restart.
+
+Work-only, standalone `blender_session(server_id, operation, commands?, objects?,
+artifact_id?, destination?)` offers help/inspect/edit/preview/export/import/place. Review
+is default. A separately confirmed, memory-only live-session grant can automate
+help/inspect/edit/preview/export; existing script/workspace grants cannot. Import/place
+always require exact review. The exact
+official `execute_blender_code(code: string)` transport carries only hash-bound shipped
+Orca helper calls; models supply typed JSON, never Python/operators/executables/paths.
+The SHA-bound catalog supplies 26 live command families; global reset and timeline/
+settings changes remain dedicated-workspace-only.
+
+`blender_session_service.gd` specializes existing workspace command validation and
+guarded GLB/import/placement, without its startup/preferences. `workspace_connector.py`
+puts pipe/lease/startup/reset/reload behind `main`; importing native operations has no
+startup effects. The live adapter adds scene-confined lookup, single-user mesh/material/
+action isolation, selection/frame/render-state preservation, native Undo and immutable
+pre-write private `.blend` copies/receipts. Its baseline combines bounded live state
+with native dependency/Undo/Redo/load revisions, not a saved patch hash. Intervening
+manual changes invalidate review/inverse. Explicit Undo revokes native identities and
+requires fresh Enable. Failed partial edits retain recovery and honest uncertainty;
+never reload the user's document, presume rollback, or replay accepted calls.
+
+`live_session.py` requires interactive Blender 5.2+ with global Undo and bounded
+script-free/non-linked data. Embedded scripts/drivers/libraries need another workflow.
+It rejects unsupported evaluation modifiers/Geometry Nodes and bounds checkpoint,
+geometry, texture and animation work. At most 128 recovery copies per enabled session;
+32 MiB source copies and existing 16 MiB GLB import limits. Preview/export selects 1–16
+exact objects, including parents/rig/constraint/Boolean dependencies. A pinned
+`live_export.py` worker uses the running native Blender executable, factory startup,
+disabled autoexec/offline mode and a 25-second direct-process budget; only a private
+copy is opened/pruned. This avoids a locally reproduced Blender 5.2.2 glTF skin-export
+crash under live scene overrides. The user-trusted Blender environment is not a sandbox.
+
+Bootstrap, active dispatch and coroutine retirement retain identity/generation checks;
+cancelled setup cannot erase a replacement or free an awaiting Node. Stop closes only
+Orca's bridge; Blender effects may have happened already. Unknown/malformed accepted
+results pause with uncertainty. History keeps coarse outcomes, never helper code, live
+references or artifact authority. Packaging/updater preflight requires both new live
+Python files and existing workspace helpers. The card menu offers texture intake,
+private recovery copies, conflict-free live Undo and current-session import Revert.
+Original MCP requests retain their 8 KiB frame limit. Only fixed live-helper calls
+use a locally selected 32 KiB escaped-code framing budget; model commands remain
+6 KiB and cannot select a transport budget. The 30-second request and 128 KiB response
+bounds remain intact.
+
+Enable and live Auto apply confirmations use `bounded_confirmation.gd`: a native
+ConfirmationDialog footer with wrapped buttons, theme-measured bounded button minima,
+and a non-fit-content scrollable RichTextLabel. Popup size is bounded by its owner and
+usable display, including large editor scales; text never determines the window width.
+Language refresh preserves the original pending decision and draft.
+
+**Auto apply live session…** on a pending eligible card opens a separate single-use
+confirmation bound to controller/call/turn/revision, exact project, MCP configuration/
+process revision, live-session instance/token/generation and toolkit hashes. Nothing
+is remembered. Runtime checks run before dispatch and after awaits; visible card/header
+callbacks can revoke before any call. Native edits retain the same pre-write checkpoints
+and baseline/Undo checks. Failure/conflict, changed inspection baseline, Stop, header
+revocation or session/Plan/reconnect/reload boundaries pause or clear the grant without
+automatic reacquisition. Import/place stay reviewed. Prompts refresh after a successful
+grant; automatic cards collapse and retain save-pending qualifications. No tool schema
+fields, Python authority or backend vocabulary are added by automation.
+Live setup returns scene identity and the command catalog in separate approved
+bootstrap responses, each keeping the original 32 KiB text limit. This avoids
+re-enable failure as existing object summaries grow; both results bind the same
+session and exact shipped catalog digest, with cancellation checks between.
+
+Cloud requires authenticated strict `blender_sessions`, independently of old
+`mcp_inspection`/`blender_workspaces` flags and normal managed readiness, turn-bound.
+The companion backend adds only bounded vocabulary and never runs Blender. API rollout/
+catalog refresh remain required. Unrestricted model Python/add-ons and independently
+tested execution isolation remain future work.
 
 ### Blender Asset Studio
 
@@ -19,14 +99,24 @@ Python/dependency install is needed. `blender_workspace_service.gd` owns bounded
 discovery, user-owned setup, immutable per-project external asset revisions,
 exact command-contract SHA binding, sealed approval records, source/export hashes,
 texture intake, GLB validation/import checkpoints and observed native reimport.
-`blender_setup_panel.gd` provides the prominent guided setup card directly on
-Settings → Extensions, above optional MCP Connectors. The first user-owned action
-uses bounded discovery, one installation proceeds to exact startup confirmation,
-multiple choices require selection, and missing installations expose Browse/Download.
+`blender_setup_panel.gd` provides a compact native setup section directly on
+Settings → Extensions, above collapsed **Optional connections**. It follows Orca's
+existing settings typography, subtle blue section label, inline connection state
+and native gray buttons. The flat layout has no decorative artwork or nested status
+surface. The first user-owned action uses bounded discovery, one installation proceeds
+to exact startup confirmation, multiple choices require selection, and missing
+installations expose Browse/Download.
+Disconnected setup shows one **Only Blender 5.2+ is required.** note, with the
+bundled-connector explanation in its native localized tooltip. Normal initial/selected
+status details are hidden to avoid repeating the requirement; discovery, error and
+recovery details stay visible. Connected setup hides the requirement note.
 Ready workspaces offer a draft-preserving Back to chat; installation and recovery
-controls stay under Manage workspace. Blender Lab add-on/server setup is optional
-for asset creation. MCP connectors retain compact cards and a focused scrolling
-configuration dialog with official add-on/server/listener guidance.
+controls stay under the quieter Manage workspace disclosure. Blender Lab add-on/server
+setup is optional for asset creation. Optional connections keep their explanation
+inside the expanded section and show a compact connected-inspection count even while
+collapsed; opening/closing them never starts/stops a process. MCP
+connectors retain compact cards and a focused scrolling configuration dialog with
+official add-on/server/listener guidance.
 `blender_change_card.gd` reviews logical operations and previews with expandable
 technical evidence. `blender_asset_placement.gd` binds clean/scriptless Node3D root,
 source/asset hashes and intervening Undo revisions for one native addition, never
@@ -109,13 +199,15 @@ execution isolation. A private working file/process is explicitly not a sandbox.
 ### Configure-once connectors and inspection
 
 Settings has a fifth **Extensions** icon using the owner's `extension.svg`.
-`extensions_view.gd` contains guided Blender setup followed by the **Connectors** card list;
-`connector_card.gd` owns Enable/Disable/Cancel, supported-inspection descriptions and
+`extensions_view.gd` contains guided Blender setup followed by the collapsed
+**Optional connections** card list; `connector_card.gd` owns Connect/Disconnect/Cancel,
+supported-inspection descriptions and
 the options menu. `connector_dialog.gd` holds one focused configuration form with
 optional Advanced arguments and bounded installed-server path suggestions. Raw
 counts/catalog JSON live only in Connection details. The default page contains no
 project/reusable selectors or import/copy actions. MCP connection status explicitly
-says **MCP connected — inspection**, independent of workspace readiness. The
+says **Connected for inspection**, with an explicit **Live Blender · Inspection only**
+role for Blender profiles, independent of workspace readiness. The
 controller shares the existing profile tool-readiness predicate with a presentation-only
 setup message; current account/model/mode blockers never modify the fixed turn snapshot,
 grant authority or start/replay an operation. Startup Cancel retains generation identity,
@@ -136,17 +228,17 @@ The quit-A/open-B workflow relies on normal clean EditorSettings persistence;
 live cross-editor preference synchronization is not provided. Reopening Extensions
 refreshes the current editor's settings and revokes affected stale live bindings.
 
-Save never starts a process. Explicit Enable consumes a sealed single-use launch
+Save never starts a process. Explicit Connect consumes a sealed single-use launch
 action bound to root/service/generation and the complete unchanged registry/config.
 The disclosed local program is launched only from that current user action. Edited
-configuration stops its local bridge and requires re-enable; a no-op Save preserves
+configuration stops its local bridge and requires reconnect; a no-op Save preserves
 it. Cancellation invalidates per-start ownership so late completion cannot stop a
 replacement; bounded settlement counters defer client retirement until coroutines
 return and retain failed-stop ownership. Up to four bridges run per editor.
 Read snapshots bind service identity as well as root/generation; startup/restoration
 never supplies launch/read approval, catalogs, PIDs or model authority. No tool/backend
-vocabulary change is needed. The open-Blender integration remains inspection-only;
-the owner chose setup simplification first, with editing in the existing asset workspace.
+vocabulary change was needed for configure-once inspection. Optional live authoring now
+adds a separately gated tool and explicit current-session user confirmation, as above.
 `mcp_stdio_client.gd` provides
 bounded nonblocking 2025-protocol initialization, discovery and text reads.
 `mcp_service.gd` owns connection generations and an immutable turn snapshot.
@@ -1823,6 +1915,9 @@ entry points pending a separate migration.
   reviewed binary acceptance/recovery, observed import and native placement are
   implemented. Complete platform/clean-machine/model-quality acceptance and Cloud
   rollout. Unrestricted generated-code execution requires real isolation first.
+- Optional reviewed live Blender Lab authoring is implemented alongside Asset Studio.
+  Linux native/official-server acceptance passes; finish Cloud rollout and broader
+  platform/model-quality acceptance before claiming those scenarios.
 - Then: first-class Skills library, explicit selection, bounded supporting files
   and standards compatibility; remote Skills-over-MCP follows tested support.
 
@@ -1939,6 +2034,73 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-16 — Bounded live confirmations and separate live Auto apply (unreleased)
+
+- Replaced the oversized message label with a non-fit-content scrollable body. Native
+  footer actions use theme-measured bounds and wrapping; enable and live automation
+  confirmations fit their owner/display at large editor scales/fonts.
+- Added **Auto apply live session…** to eligible pending cards. One sealed user
+  confirmation covers validated help/inspect/edit/preview/export in the exact live
+  project/connection/document session. It is not remembered or inherited. Import/place
+  retain review; conflicts/failures/manual-baseline changes, Stop and lifecycle changes
+  revoke/pause automation. Header revocation clears all scopes without disconnecting
+  authoring. Auto cards keep visible save-pending outcomes.
+- Split setup scene/catalog responses to preserve text budgets on re-enable, refreshed
+  permission guidance, updated four catalogs and strengthened editor tests.
+- Verified clean headless initialization; live case headless and X11/OpenGL with owned
+  Blender 5.2.2 and installed MCP server; five languages/1×/1.5×/2× fonts, cancelled/
+  forged/stale grants, automatic operations, exact import/place, header/Stop/conflict/
+  Plan/reconnect clearing and re-enable with existing assets. Existing five-process
+  Asset Studio and seven-process MCP cases pass, as do focused controller/MCP/API/chat/
+  history/context suites, native live scenarios, 10 package cases and catalog/runner
+  checks. Hosted finalization remains 24562/24576 without dropping properties/reserves.
+- Windows/macOS UI, real inference and production add-on acceptance remain separate.
+  Captures: `/tmp/opencode/orca-live-{enable,auto}-confirmation.png`. No owner state,
+  paid calls, deployment, commit/push/release or remembered live grant changes.
+
+### 2026-11-16 — Reviewed live Blender Lab asset authoring (unreleased)
+
+- Added explicit live-session enable and Work-only `blender_session`, with 26 typed
+  command families, exact approval under all Auto apply scopes, pinned helpers, bounded
+  live baselines, immutable recovery copies and native conflict-checked Undo.
+- Reused Asset Studio's guarded preview/import/placement path without workspace startup
+  side effects. Private-copy background export avoids a reproduced native glTF crash;
+  the user's open document is never automatically saved/reloaded. Both new Python helpers
+  are mandatory package dependencies. Unknown/partial effects remain uncertain, never replayed.
+- Added capability-aware compact UI and four catalogs, strict Cloud vocabulary and
+  companion backend validation, synthetic/owned-native editor fixtures and Linux/Xvfb CI.
+- Verified clean Godot 4.7.2 headless initialization; live editor case headless and
+  X11/OpenGL with installed official Blender Lab v1.0.3 and owned Blender 5.2.2; 12 Python
+  tests including five native live scenarios; existing five-process workspace and
+  seven-process/two-ZIP-project MCP regressions; relevant controller/API/account/provider/
+  settings/chat/session/context/activity/GLB components; 10 package/updater cases; three
+  catalog and five runner checks. Hosted 32k finalization stays **24567/24576** without
+  dropping scene properties/protocol/reserves. Backend: 27 focused PostgreSQL cases and
+  full Ruff/format/mypy (95 files). Test database removed; no project replacement artifacts.
+- Cloud deployment/catalog refresh, live model competence, Windows/macOS live-authoring
+  and fresh CI remain acceptance. Unrestricted generated Python still needs execution
+  isolation. Metadata remains unreleased at 1.8.0; no commit/push/release/deployment.
+
+### 2026-11-16 — Clear creation and live-inspection setup (unreleased)
+
+- Refined Extensions into a compact native Blender Asset Studio section matching
+  Orca's Provider/General typography, gray buttons and restrained section label.
+  Owner feedback superseded the initial decorative hero with a flat layout, short
+  copy, inline native readiness indicator and quiet workspace management.
+- Moved saved MCP cards into a collapsed Optional connections disclosure. The summary
+  retains compact active inspection counts; explanation stays inside the expanded
+  section, and opening/closing it preserves processes and settings.
+  Blender cards explicitly identify live-session inspection only and use Connect /
+  Disconnect captions, with matching configuration guidance and all four PO catalogs.
+- Verified clean Godot 4.7.2 headless editor initialization, settings component, three
+  translation catalog checks and Linux/X11/OpenGL five-process workspace and seven-process
+  two-ZIP-project MCP cases. Discovery, exact/cancelled/stale startup, draft-preserving chat,
+  separate grants, review/import/recovery, collapse/expand without launch/disconnect and
+  five-language 1×/1.5×/2× narrow layouts and 400-unit graphical captures pass with
+  isolated project/XDG state. Blender
+  responses were synthetic in this UI pass; live inference and Windows/macOS UI remain
+  separate acceptance.
 
 ### 2026-11-15 — Asset-first Extensions onboarding (unreleased)
 

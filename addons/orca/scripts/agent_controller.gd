@@ -85,7 +85,7 @@ const MAX_FINAL_PROVIDER_TEXT_CHARS := 1200
 const WORK_MODE_REQUEST_TOOL := "request_work_mode"
 const TASK_CONTEXT_HEADING := "CURRENT ORCA TASK CHECKLIST:"
 const MAX_TOOL_BATCH_REGENERATION_ATTEMPTS := 1
-const TOOL_BATCH_CORRECTION_NOTICE := "ORCA TOOL CALL CORRECTION: The previous assistant response contained an invalid tool-call batch. No tool from that batch was executed. Regenerate with each function.arguments value as one valid JSON object. Send blender_workspace, inspect_mcp, update_tasks, request_work_mode, mutations, run/stop, observations and verifications as ONE call per response, even for Blender help/inspect/preview or Auto apply. Multiple calls are allowed only for independent project read-only tools. Await each result before dependent calls. Do not treat the rejected batch as completed."
+const TOOL_BATCH_CORRECTION_NOTICE := "ORCA TOOL CALL CORRECTION: The previous assistant response contained an invalid tool-call batch. No tool from that batch was executed. Regenerate with each function.arguments value as one valid JSON object. Send blender_workspace, blender_session, inspect_mcp, update_tasks, request_work_mode, mutations, run/stop, observations and verifications as ONE call per response, even for Blender help/inspect/preview or Auto apply. Multiple calls are allowed only for independent project read-only tools. Await each result before dependent calls. Do not treat the rejected batch as completed."
 const ROUND_BUDGET_WARNING_THRESHOLD := 8
 const EDITOR_SCENE_GUIDANCE := " Node2D transforms: saved local/instance-root provenance, non-@tool GDScript/resources/signals, live unsaved baseline. Do not ask to save before or between these transforms. Read saved base_hash; exact Apply in editor (also under Auto apply), native Undo, keep open. Control layout: clean, scriptless/resource-free/connection-free, non-Container. Attachment: clean scene, Trust then Apply. Save before run; distinguish editor-only/save-pending from saved/verified. Other operations need closed tabs; never bypass with raw .tscn."
 const MAX_EDITOR_SAVE_RECEIPTS := 8
@@ -186,6 +186,9 @@ var _blender_auto_apply_root := ""
 var _blender_auto_apply_default_revision := ""
 var _blender_auto_apply_paused := false
 var _session_allows_auto_apply := true
+const LIVE_AUTO_OPERATIONS := ["help", "inspect", "edit", "preview", "export"]
+var _live_auto_grants := {}
+var _live_auto_confirmation := {}
 var _script_change_records: Dictionary = {}
 var _committing_edit := false
 var _edit_permission_prompt_dirty := false
@@ -217,6 +220,75 @@ func blender_auto_apply_enabled() -> bool:
 
 func can_authorize_pending_blender_edits() -> bool:
 	return _session_allows_auto_apply and _mode == AgentMode.BUILD and _is_running and not _cancel_requested and not _mcp_read_decided and _pending_mcp_read.get("workspace_operation", false) and _pending_mcp_read.get("operation") in ["help", "inspect", "edit", "preview", "export"] and _owns_turn(int(_pending_mcp_read.get("turn_id", -1)))
+
+
+func can_authorize_pending_live_edits() -> bool:
+	return _session_allows_auto_apply and _mode == AgentMode.BUILD and _is_running and not _cancel_requested and not _mcp_read_decided and _pending_mcp_read.get("live_operation", false) and _pending_mcp_read.get("operation") in LIVE_AUTO_OPERATIONS and _owns_turn(int(_pending_mcp_read.get("turn_id", -1)))
+
+
+func live_auto_apply_enabled(server_id: String = "") -> bool:
+	if _mode != AgentMode.BUILD or not _session_allows_auto_apply or mcp_service == null: return false
+	for id in _live_auto_grants.keys():
+		if _live_auto_grants[id]["binding"] != mcp_service.live_automation_binding(id):
+			_live_auto_grants.erase(id)
+			_edit_permission_revision += 1
+			_edit_permission_prompt_dirty = true
+			continue
+		if not server_id.is_empty() and id != server_id: continue
+		return true
+	return false
+
+
+func refresh_live_auto_apply_bindings() -> void:
+	var changed := false
+	for id in _live_auto_grants.keys():
+		if mcp_service == null or _live_auto_grants[id]["binding"] != mcp_service.live_automation_binding(id):
+			_live_auto_grants.erase(id)
+			changed = true
+	if changed:
+		_edit_permission_revision += 1
+		_edit_permission_prompt_dirty = true
+		edit_permission_changed.emit(auto_apply_enabled() or blender_auto_apply_enabled() or live_auto_apply_enabled())
+
+
+func prepare_live_auto_apply_confirmation(call_id: String, turn_id: int) -> Dictionary:
+	if not can_authorize_pending_live_edits() or _pending_mcp_read.get("call_id") != call_id or _pending_mcp_read.get("turn_id") != turn_id or mcp_service == null: return {}
+	var id: String = _pending_mcp_read["server_id"]
+	var binding: Dictionary = mcp_service.live_automation_binding(id)
+	if binding.is_empty(): return {}
+	var session = mcp_service.live_session(id)
+	_live_auto_confirmation = {"token": Crypto.new().generate_random_bytes(16).hex_encode(), "controller_id": get_instance_id(), "revision": _edit_permission_revision, "call_id": call_id, "turn_id": turn_id, "server_id": id, "binding": binding, "name": session.server_name, "document": session.current["document"], "scene": session.current["scene"]}
+	return _live_auto_confirmation.duplicate(true)
+
+
+func cancel_live_auto_apply_confirmation() -> void:
+	_live_auto_confirmation.clear()
+
+
+func authorize_pending_live_edits(action: Dictionary) -> bool:
+	var retained := _live_auto_confirmation.duplicate(true)
+	_live_auto_confirmation.clear()
+	if retained.is_empty() or retained != action or action.get("controller_id") != get_instance_id() or action.get("revision") != _edit_permission_revision or not can_authorize_pending_live_edits() or action.get("call_id") != _pending_mcp_read.get("call_id") or action.get("turn_id") != _pending_mcp_read.get("turn_id") or action.get("server_id") != _pending_mcp_read.get("server_id") or action["binding"] != mcp_service.live_automation_binding(action["server_id"]): return false
+	var id: String = action["server_id"]
+	_live_auto_grants[id] = {"token": action["token"], "binding": action["binding"].duplicate(true)}
+	_edit_permission_revision += 1
+	_edit_permission_prompt_dirty = true
+	edit_permission_changed.emit(true)
+	# Header/UI callbacks may revoke before dispatch. Never convert this grant
+	# into an Apply decision that could survive revocation.
+	if not live_auto_apply_enabled(id) or not can_authorize_pending_live_edits(): return false
+	_mcp_read_decided = true
+	mcp_read_decision_received.emit()
+	return true
+
+
+func revoke_live_auto_apply(server_id: String = "") -> void:
+	_live_auto_confirmation.clear()
+	if server_id.is_empty(): _live_auto_grants.clear()
+	else: _live_auto_grants.erase(server_id)
+	_edit_permission_revision += 1
+	_edit_permission_prompt_dirty = true
+	edit_permission_changed.emit(auto_apply_enabled() or blender_auto_apply_enabled() or live_auto_apply_enabled())
 
 
 func set_blender_auto_apply_enabled(enabled: bool, use_project_default: bool = false) -> bool:
@@ -279,6 +351,8 @@ func set_auto_apply_enabled(enabled: bool, use_project_default: bool = false) ->
 
 func _set_edit_permission_state(enabled: bool, default_revision: String = "") -> void:
 	if not enabled:
+		_live_auto_grants.clear()
+		_live_auto_confirmation.clear()
 		_blender_auto_apply_enabled = false
 		_blender_auto_apply_root = ""
 		_blender_auto_apply_default_revision = ""
@@ -567,6 +641,11 @@ func _add_turn_context() -> void:
 		var mcp_context: String = preload("res://addons/orca/scripts/mcp_service.gd").context(_turn_mcp_snapshot)
 		if not mcp_context.is_empty():
 			sections.append(mcp_context)
+	if _mode == AgentMode.BUILD and _turn_allows_live_blender():
+		var live_ids := []
+		for id in _turn_mcp_snapshot.get("servers", {}):
+			if _turn_mcp_snapshot["servers"][id].get("live_authoring", false): live_ids.append(id)
+		if not live_ids.is_empty(): sections.append("LIVE BLENDER AUTHORING: user-enabled server IDs " + JSON.stringify(live_ids) + ". Use blender_session alone: help/inspect, edit, selected-object preview/export, import/place. Review unless the primary prompt grants separate live-session Auto apply; workspace/script grants never cover live edits. No arbitrary Python or document save/reload.")
 	if not _turn_allows_tools():
 		sections.append("CHAT MODE: This hosted profile does not currently provide project tools. Answer conversationally and do not request or claim tool actions." if _turn_provider_config.get("provider") == "orca_cloud" else "CHAT MODE: Project tools are disabled until this exact profile passes Orca's Agent compatibility check and the user enables tools. Answer conversationally and do not request or claim tool actions.")
 	var instruction_result := _load_project_instructions()
@@ -649,6 +728,7 @@ func start_new_session() -> bool:
 	if _is_running or _committing_edit or not _pending_change_id.is_empty() or api_client.is_requesting():
 		return false
 	set_auto_apply_enabled(false)
+	if mcp_service != null: mcp_service.clear_live_authoring()
 	_script_change_records.clear()
 	_init_system_prompt()
 	_proposals.clear()
@@ -714,6 +794,7 @@ func restore_session_state(mode: int, continuation: Array, usage: Dictionary, ta
 		return false
 	_mode = mode as AgentMode
 	_session_allows_auto_apply = resumable
+	if mcp_service != null: mcp_service.clear_live_authoring()
 	_blender_auto_apply_paused = false
 	set_auto_apply_enabled(false)
 	_script_change_records.clear()
@@ -755,6 +836,7 @@ func set_mode(mode: int) -> bool:
 	_mode = mode as AgentMode
 	if _mode == AgentMode.PLAN:
 		set_auto_apply_enabled(false)
+		if mcp_service != null: mcp_service.clear_live_authoring()
 	else:
 		apply_project_edit_default()
 	if not message_history.is_empty() and message_history[0].get("role") == "system":
@@ -771,6 +853,8 @@ func cancel_current_request() -> void:
 		return
 	var cancelling_turn := _active_turn_id
 	_cancel_requested = true
+	_live_auto_confirmation.clear()
+	if not _live_auto_grants.is_empty(): revoke_live_auto_apply()
 	_observation_generation += 1
 	if not _pending_mcp_read.is_empty():
 		_mcp_read_approved = false
@@ -856,6 +940,56 @@ func _inspect_mcp(arguments: Dictionary, call_id: String, turn_id: int, batch_mo
 
 func _blender_authorized(turn_id: int) -> bool:
 	return _owns_turn(turn_id) and _mode == AgentMode.BUILD and not _cancel_requested and _turn_allows_blender()
+
+
+func _live_blender_authorized(turn_id: int) -> bool:
+	return _owns_turn(turn_id) and _mode == AgentMode.BUILD and not _cancel_requested and _turn_allows_live_blender()
+
+
+func _live_operation_authorized(turn_id: int, id: String, automatic: bool, grant_token: String) -> bool:
+	return _live_blender_authorized(turn_id) and (not automatic or (live_auto_apply_enabled(id) and _live_auto_grants.get(id, {}).get("token") == grant_token))
+
+
+func _inspect_live_blender(arguments: Dictionary, call_id: String, turn_id: int, batch_mode: int) -> Dictionary:
+	var script = preload("res://addons/orca/scripts/blender_session_service.gd")
+	if batch_mode != AgentMode.BUILD or not _live_blender_authorized(turn_id) or mcp_service == null: return script.failure("Live Blender authoring is unavailable in this mode or provider snapshot.")
+	var prepared: Dictionary = mcp_service.prepare_live_operation(_turn_mcp_snapshot, arguments.duplicate(true))
+	var id: String = str(arguments.get("server_id", ""))
+	if not prepared.get("success", false):
+		if live_auto_apply_enabled(id): revoke_live_auto_apply(id)
+		return prepared
+	var review: Dictionary = prepared["review"]
+	_pending_mcp_read = {"call_id": call_id, "turn_id": turn_id, "live_operation": true, "server_id": id, "operation": review["operation"]}
+	_mcp_read_decided = false
+	_mcp_read_approved = false
+	var visible := review.duplicate(true)
+	visible["call_id"] = call_id
+	var automatic: bool = live_auto_apply_enabled(id) and review["operation"] in LIVE_AUTO_OPERATIONS
+	visible["auto_apply"] = automatic
+	mcp_read_requested.emit(turn_id, visible)
+	if automatic and not live_auto_apply_enabled(id) and _live_blender_authorized(turn_id):
+		visible["auto_apply"] = false
+		mcp_read_requested.emit(turn_id, visible)
+	automatic = live_auto_apply_enabled(id) and review["operation"] in LIVE_AUTO_OPERATIONS
+	if not automatic and not _mcp_read_decided: await mcp_read_decision_received
+	automatic = live_auto_apply_enabled(id) and review["operation"] in LIVE_AUTO_OPERATIONS
+	var approved := _mcp_read_approved
+	if automatic and not visible["auto_apply"] and _live_blender_authorized(turn_id):
+		visible["auto_apply"] = true
+		mcp_read_requested.emit(turn_id, visible)
+	_pending_mcp_read.clear()
+	_live_auto_confirmation.clear()
+	if (not approved and not automatic) or not _live_blender_authorized(turn_id):
+		var denied := script.failure("The live Blender operation was cancelled or rejected before sending.")
+		denied["outcome"] = "cancelled" if _cancel_requested else "rejected"
+		return denied
+	var grant_token: String = _live_auto_grants.get(id, {}).get("token", "")
+	var session = mcp_service.live_session(id)
+	var baseline: Dictionary = session.current.duplicate(true) if session != null else {}
+	var result: Dictionary = await mcp_service.execute_live_operation(_turn_mcp_snapshot, id, review, _live_operation_authorized.bind(turn_id, id, automatic, grant_token))
+	result.get("data", {})["auto_apply"] = automatic
+	if automatic and (not result.get("success", false) or (review["operation"] == "inspect" and session != null and session.current.get("sha256") != baseline.get("sha256"))): revoke_live_auto_apply(id)
+	return result
 
 func _blender_operation_authorized(turn_id: int, automatic: bool, revision: int) -> bool:
 	return _blender_authorized(turn_id) and (not automatic or (blender_auto_apply_enabled() and revision == _edit_permission_revision))
@@ -1297,7 +1431,7 @@ func _tool_batch_explanation(validation: Dictionary) -> String:
 	match str(validation.get("reason", "")):
 		"singleton_required":
 			var name := str(validation.get("tool_name", ""))
-			if REVIEWED_MUTATION_TOOLS.has(name) or WORK_OPERATION_TOOLS.has(name) or name in ["blender_workspace", "inspect_mcp", "update_tasks", "request_work_mode", "observe_game_run", "verify_game_run"]:
+			if REVIEWED_MUTATION_TOOLS.has(name) or WORK_OPERATION_TOOLS.has(name) or name in ["blender_workspace", "blender_session", "inspect_mcp", "update_tasks", "request_work_mode", "observe_game_run", "verify_game_run"]:
 				return "%s must be the only tool call in its response, including under Auto apply." % name
 			return "The response combined a non-batchable tool with other calls. Only independent project reads may share a response."
 		"malformed_json":
@@ -1393,6 +1527,11 @@ func _execute_tool_call(tool_call: Dictionary, expected_turn_id: int = -1, permi
 		execution = await _inspect_blender(arguments, call_id, signal_turn_id, batch_mode)
 		if _cancel_requested and not execution.get("success", false): execution["outcome"] = "cancelled"
 		result = str(execution.get("model_content", execution.get("content", "Blender operation failed.")))
+		outcome = str(execution.get("outcome", "failed"))
+	elif result.is_empty() and function_name == "blender_session":
+		execution = await _inspect_live_blender(arguments, call_id, signal_turn_id, batch_mode)
+		if _cancel_requested and not execution.get("success", false): execution["outcome"] = "cancelled"
+		result = str(execution.get("model_content", execution.get("content", "Live Blender operation failed.")))
 		outcome = str(execution.get("outcome", "failed"))
 	elif result.is_empty() and function_name in ["find_project_symbols", "find_symbol_references"] and not _turn_allows_code_navigation():
 		result = "Error: This Cloud request snapshot does not advertise project code navigation. Refresh the catalog after the backend supports it; use existing read/search tools in the meantime."
@@ -2109,6 +2248,14 @@ func _get_tool_definitions() -> Array:
 		var mcp_definition: Dictionary = preload("res://addons/orca/scripts/mcp_service.gd").definition()
 		mcp_definition["function"]["parameters"]["properties"]["server_id"]["enum"] = _turn_mcp_snapshot["servers"].keys()
 		definitions.append(mcp_definition)
+	if _mode == AgentMode.BUILD and _turn_allows_live_blender():
+		var ids := []
+		for id in _turn_mcp_snapshot.get("servers", {}):
+			if _turn_mcp_snapshot["servers"][id].get("live_authoring", false): ids.append(id)
+		if not ids.is_empty():
+			var live_definition: Dictionary = preload("res://addons/orca/scripts/blender_session_service.gd").definition()
+			live_definition["function"]["parameters"]["properties"]["server_id"]["enum"] = ids
+			definitions.append(live_definition)
 	if not _turn_allows_code_navigation():
 		definitions = definitions.filter(func(definition): return definition.get("function", {}).get("name", "") not in ["find_project_symbols", "find_symbol_references"])
 	if not _turn_allows_focused_inspection():
@@ -2130,6 +2277,10 @@ func _turn_allows_mcp() -> bool:
 
 func _turn_allows_blender() -> bool:
 	return _turn_allows_tools() and (_turn_provider_config.get("provider") != "orca_cloud" or (typeof(_turn_provider_config.get("hosted_blender_workspaces")) == TYPE_BOOL and _turn_provider_config.get("hosted_blender_workspaces") == true))
+
+
+func _turn_allows_live_blender() -> bool:
+	return _turn_allows_tools() and (_turn_provider_config.get("provider") != "orca_cloud" or (typeof(_turn_provider_config.get("hosted_blender_sessions")) == TYPE_BOOL and _turn_provider_config.get("hosted_blender_sessions") == true))
 
 
 func _turn_allows_focused_inspection() -> bool:
@@ -2178,6 +2329,12 @@ func _get_system_prompt() -> String:
 	shared += " You are in Work mode."
 	if (not _turn_blender_snapshot.is_empty() and _turn_allows_blender()) or (not _turn_mcp_snapshot.get("servers", {}).is_empty() and _turn_allows_mcp()):
 		shared += " TOOL BATCHES: Send blender_workspace and inspect_mcp alone, including help/inspect/preview and Auto apply. Send update_tasks alone. Await each result before dependent operations; do not combine workspace inspection with project reads."
+	if _turn_allows_live_blender() and _turn_mcp_snapshot.get("servers", {}).values().any(func(server): return server.get("live_authoring", false)):
+		var automatic_ids := []
+		for id in _turn_mcp_snapshot["servers"]:
+			if live_auto_apply_enabled(id): automatic_ids.append(id)
+		shared += " Send blender_session alone. Import/place always need review. Other live operations need review unless a separate live-session grant is active."
+		if not automatic_ids.is_empty(): shared += " LIVE BLENDER PERMISSION: Auto apply is enabled for " + JSON.stringify(automatic_ids) + ": validated help/inspect/edit/preview/export proceed without another Apply click. Retain checkpoints and conflict checks; no replay."
 	return shared + " Work mode: inspect files, editor context and diagnostics, propose authorized edits, and run/stop only Orca-owned games. Read relevant ranges first; use read_file's SHA-256 as base_hash. Use propose_scene_changes for structured scene creation, nodes, typed properties, dependency-free scripts and child instances, and bindless signals instead of writing .tscn text. Script attach/detach requires a script_hash from read_file and two user decisions: trust to execute the exact script while constructing a candidate, then approval to apply it. Use propose_input_map_changes for typed Input Map changes, propose_main_scene_change to configure the launch scene, propose_project_settings_changes for allowlisted display settings, and apply_patch for minimal non-overlapping source edits. Use run_current_scene or run_main_scene only when execution advances the task. Declare clean_startup or expected_exit verification before launch when those narrow criteria match the task, preserve the same criteria across reruns, and use observe_game_run or get_diagnostics for later evidence. Orca waits for one bounded post-launch observation. Claim verification only for verify_game_run=passed; launch, zero exit or no retained errors is not gameplay proof. Visuals, input feel, animation and rendering need visual evidence. Use stop_game only for the current Orca-owned run." + EDITOR_SCENE_GUIDANCE + _edit_authorization_prompt()
 
 

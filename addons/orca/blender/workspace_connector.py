@@ -17,8 +17,9 @@ import bpy
 import bmesh
 from mathutils import Vector
 
-sys.path.insert(0, str(Path(__file__).parent))
-sys.dont_write_bytecode = True
+if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).parent))
+    sys.dont_write_bytecode = True
 from workspace_contract import catalog, parse_commands
 
 MAX_FILE = 32 * 1024 * 1024
@@ -26,36 +27,41 @@ MAX_VERTICES = 100000
 MAX_POLYGONS = 200000
 MAX_OBJECTS = 128
 
-# Preserve just the MCP output pipe; native Blender status/log output goes to
-# stderr, where the bounded transport drains it without exposing arbitrary logs.
-OUT = os.fdopen(os.dup(1), "wb", buffering=0)
-os.dup2(2, 1)
-sys.stdout = sys.stderr
-IN = os.fdopen(0, "rb", closefd=False)
-args = sys.argv[sys.argv.index("--") + 1:]
-if len(args) != 2 or args[0] != "--workspace":
-    raise RuntimeError("Invalid trusted connector arguments")
-ROOT = Path(args[1])
-if not ROOT.is_absolute() or ROOT.resolve() != ROOT or not ROOT.is_dir():
-    raise RuntimeError("Workspace must be a real absolute directory")
-lock_path = ROOT / "workspace.lock"
-if lock_path.is_symlink(): raise RuntimeError("Invalid workspace lease")
-LEASE = lock_path.open("a+b")
-if os.name == "nt":
-    import msvcrt
-    if LEASE.seek(0, 2) == 0:
-        LEASE.write(b"0")
-        LEASE.flush()
-    LEASE.seek(0)
-    msvcrt.locking(LEASE.fileno(), msvcrt.LK_NBLCK, 1)
-else:
-    import fcntl
-    fcntl.flock(LEASE.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-# The OS releases this exclusive lease on exit/kill. A wrapped installation
-# cannot leave two accepted writers racing on the same immutable revision.
+ROOT = None
 REVISION = 0
 CURRENT = None
 HASH = ""
+
+
+def initialize():
+    """User-owned workspace startup. Importing helpers never launches/resets/saves."""
+    global OUT, IN, ROOT, LEASE
+    # Preserve just the MCP output pipe; drain native status output on stderr.
+    OUT = os.fdopen(os.dup(1), "wb", buffering=0)
+    os.dup2(2, 1)
+    sys.stdout = sys.stderr
+    IN = os.fdopen(0, "rb", closefd=False)
+    args = sys.argv[sys.argv.index("--") + 1:]
+    if len(args) != 2 or args[0] != "--workspace":
+        raise RuntimeError("Invalid trusted connector arguments")
+    ROOT = Path(args[1])
+    if not ROOT.is_absolute() or ROOT.resolve() != ROOT or not ROOT.is_dir():
+        raise RuntimeError("Workspace must be a real absolute directory")
+    lock_path = ROOT / "workspace.lock"
+    if lock_path.is_symlink(): raise RuntimeError("Invalid workspace lease")
+    LEASE = lock_path.open("a+b")
+    if os.name == "nt":
+        import msvcrt
+        if LEASE.seek(0, 2) == 0:
+            LEASE.write(b"0")
+            LEASE.flush()
+        LEASE.seek(0)
+        msvcrt.locking(LEASE.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(LEASE.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    # The OS releases this exclusive lease on exit/kill, including wrapped builds.
+    resume()
 
 
 def digest(path):
@@ -647,35 +653,38 @@ def send(message):
     OUT.write(data)
 
 
-resume()
-initialized = False
-for line in iter(lambda: IN.readline(8193), b""):
-    request_id = None
-    try:
-        if len(line) > 8192 or not line.endswith(b"\n"): raise ValueError("Invalid request framing")
-        request = json.loads(line)
-        if request.get("jsonrpc") != "2.0": raise ValueError("Invalid JSON-RPC")
-        method, request_id = request.get("method"), request.get("id")
-        if method == "notifications/initialized":
-            initialized = True
-            continue
-        if type(request_id) is not int: raise ValueError("Invalid request identity")
-        params = request.get("params", {})
-        if method == "initialize":
-            result = {"protocolVersion": "2025-11-25", "capabilities": {"tools": {}}, "serverInfo": {"name": "Orca Blender Workspace", "version": "1"}}
-        elif method == "tools/list" and initialized:
-            result = {"tools": [{"name": "orca_workspace_" + operation, "inputSchema": {"type": "object"}} for operation in ["help", "inspect", "edit", "preview", "export", "restore"]]}
-        elif method == "tools/call" and initialized:
-            name = params.get("name", "")
-            if name not in ["orca_workspace_" + op for op in ["help", "inspect", "edit", "preview", "export", "restore"]]: raise ValueError("Unsupported tool")
-            data = run(name.removeprefix("orca_workspace_"), params.get("arguments", {}))
-            result = {"content": [{"type": "text", "text": json.dumps(data, ensure_ascii=False, allow_nan=False)}]}
-        else: raise ValueError("Unsupported client capability")
-        send({"jsonrpc": "2.0", "id": request_id, "result": result})
-    except Exception as error:
-        # Sanitized bounded contract failure; no traceback, host path or arbitrary
-        # native Blender error details are returned to a model or persisted log.
-        text = str(error)[:256] if isinstance(error, ValueError) else "Native Blender operation failed; the prior revision was restored."
-        if request_id is not None:
-            send({"jsonrpc": "2.0", "id": request_id, "result": {"isError": True, "content": [{"type": "text", "text": text}]}})
-        else: break
+def main():
+    initialize()
+    initialized = False
+    for line in iter(lambda: IN.readline(8193), b""):
+        request_id = None
+        try:
+            if len(line) > 8192 or not line.endswith(b"\n"): raise ValueError("Invalid request framing")
+            request = json.loads(line)
+            if request.get("jsonrpc") != "2.0": raise ValueError("Invalid JSON-RPC")
+            method, request_id = request.get("method"), request.get("id")
+            if method == "notifications/initialized":
+                initialized = True
+                continue
+            if type(request_id) is not int: raise ValueError("Invalid request identity")
+            params = request.get("params", {})
+            if method == "initialize":
+                result = {"protocolVersion": "2025-11-25", "capabilities": {"tools": {}}, "serverInfo": {"name": "Orca Blender Workspace", "version": "1"}}
+            elif method == "tools/list" and initialized:
+                result = {"tools": [{"name": "orca_workspace_" + operation, "inputSchema": {"type": "object"}} for operation in ["help", "inspect", "edit", "preview", "export", "restore"]]}
+            elif method == "tools/call" and initialized:
+                name = params.get("name", "")
+                if name not in ["orca_workspace_" + op for op in ["help", "inspect", "edit", "preview", "export", "restore"]]: raise ValueError("Unsupported tool")
+                data = run(name.removeprefix("orca_workspace_"), params.get("arguments", {}))
+                result = {"content": [{"type": "text", "text": json.dumps(data, ensure_ascii=False, allow_nan=False)}]}
+            else: raise ValueError("Unsupported client capability")
+            send({"jsonrpc": "2.0", "id": request_id, "result": result})
+        except Exception as error:
+            text = str(error)[:256] if isinstance(error, ValueError) else "Native Blender operation failed; the prior revision was restored."
+            if request_id is not None:
+                send({"jsonrpc": "2.0", "id": request_id, "result": {"isError": True, "content": [{"type": "text", "text": text}]}})
+            else: break
+
+
+if __name__ == "__main__":
+    main()

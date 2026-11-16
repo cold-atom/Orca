@@ -202,7 +202,7 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 	if request_options.has(SERIAL_TOOL_CALLS_OPTION) and typeof(request_options[SERIAL_TOOL_CALLS_OPTION]) != TYPE_BOOL:
 		request_failed.emit(lifecycle_request_id, _make_error("Invalid serial tool-call request policy.", "configuration", false))
 		return
-	var serial_tools: bool = request_options.get(SERIAL_TOOL_CALLS_OPTION, false) or tools.any(func(tool): return typeof(tool) == TYPE_DICTIONARY and typeof(tool.get("function")) == TYPE_DICTIONARY and tool["function"].get("name") in ["blender_workspace", "inspect_mcp"])
+	var serial_tools: bool = request_options.get(SERIAL_TOOL_CALLS_OPTION, false) or tools.any(func(tool): return typeof(tool) == TYPE_DICTIONARY and typeof(tool.get("function")) == TYPE_DICTIONARY and tool["function"].get("name") in ["blender_workspace", "blender_session", "inspect_mcp"])
 	var body: Dictionary
 	if _configured_api_mode == "responses":
 		var converted := ResponsesProtocol.request_body(projected, tools, request_config, serial_tools)

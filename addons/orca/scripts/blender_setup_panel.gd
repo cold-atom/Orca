@@ -4,6 +4,8 @@ extends VBoxContainer
 const Localization = preload("res://addons/orca/scripts/localization.gd")
 const Metrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const Images = preload("res://addons/orca/scripts/image_attachments.gd")
+const CHEVRON_DOWN = preload("res://addons/orca/assets/chevron_down.svg")
+const MUTED_COLOR := Color(0.64, 0.68, 0.74)
 signal preview_attachment_requested(image: Dictionary)
 signal chat_requested
 var service
@@ -44,6 +46,11 @@ var _actions: VBoxContainer
 var _setup_started := false
 var _found: Array[String] = []
 var _selection_error := ""
+var _body_font_size := 13
+var _meta_font_size := 11
+var _connection_title: Label
+var _connection_dot: PanelContainer
+var _connection_dot_style: StyleBoxFlat
 
 func _enter_tree() -> void:
 	Localization.attach(self)
@@ -53,15 +60,53 @@ func _notification(what: int) -> void:
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if Engine.is_editor_hint(): _body_font_size = maxi(13, EditorInterface.get_editor_theme().get_font_size("font_size", "Label"))
+	_meta_font_size = maxi(11, _body_font_size - 1)
 	add_theme_constant_override("separation", Metrics.scaled_int(8))
-	_label("BLENDER ASSET STUDIO")
-	_label("Create 3D game assets with Blender 5.2+. Orca includes the workspace connector.")
+	var heading := VBoxContainer.new()
+	heading.add_theme_constant_override("separation", Metrics.scaled_int(5))
+	add_child(heading)
+	var title := _label("Blender Asset Studio", heading)
+	title.add_theme_font_size_override("font_size", _body_font_size + 1)
+	title.add_theme_color_override("font_color", Color(0.85, 0.88, 0.92))
+	var description := _label("Create and preview 3D assets from chat.", heading)
+	description.add_theme_font_size_override("font_size", _meta_font_size)
+	description.add_theme_color_override("font_color", MUTED_COLOR)
+	var connection := HBoxContainer.new()
+	connection.add_theme_constant_override("separation", Metrics.scaled_int(6))
+	add_child(connection)
+	var indicator_margin := MarginContainer.new()
+	indicator_margin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	indicator_margin.add_theme_constant_override("margin_left", int(title.get_theme_stylebox("normal").get_content_margin(SIDE_LEFT)))
+	connection.add_child(indicator_margin)
+	_connection_dot = PanelContainer.new()
+	_connection_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_connection_dot.custom_minimum_size = Metrics.scaled_vector(Vector2(6, 6))
+	_connection_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_connection_dot_style = StyleBoxFlat.new()
+	_connection_dot_style.bg_color = MUTED_COLOR
+	_connection_dot_style.set_corner_radius_all(Metrics.scaled_int(3))
+	_connection_dot.add_theme_stylebox_override("panel", _connection_dot_style)
+	indicator_margin.add_child(_connection_dot)
+	_connection_title = _label("", connection)
+	_connection_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_connection_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_connection_title.add_theme_font_size_override("font_size", _meta_font_size)
+	_connection_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_status = _label("")
+	_status.add_theme_font_size_override("font_size", _meta_font_size)
+	_status.add_theme_color_override("font_color", MUTED_COLOR)
 	_status.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_primary = _button("Set up Blender", _primary_action)
 	_hint = _label("")
+	_hint.add_theme_font_size_override("font_size", _meta_font_size)
+	_hint.add_theme_color_override("font_color", MUTED_COLOR)
 	_hint.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_hint.mouse_filter = Control.MOUSE_FILTER_PASS
+	Localization.bind(_hint, &"tooltip_text", "Orca includes the workspace connector. No Blender add-on or separate MCP installation is needed.")
 	_blocker = _label("")
+	_blocker.add_theme_font_size_override("font_size", _meta_font_size)
+	_blocker.add_theme_color_override("font_color", Color(0.92, 0.74, 0.46))
 	_blocker.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_installation_help = VBoxContainer.new()
 	add_child(_installation_help)
@@ -81,10 +126,20 @@ func _ready() -> void:
 		if not _locked: OS.shell_open("https://www.blender.org/download/"), _installation_help)
 	_manage = _button("Manage workspace…", func(): _actions.visible = _manage.button_pressed)
 	_manage.toggle_mode = true
+	_manage.flat = true
+	_manage.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_manage.add_theme_font_size_override("font_size", _meta_font_size)
+	_manage.add_theme_color_override("font_color", MUTED_COLOR)
+	_manage.add_theme_constant_override("icon_max_width", Metrics.scaled_int(12))
+	_manage.toggled.connect(func(expanded): _manage.icon = _disclosure_icon(expanded))
+	_manage.icon = _disclosure_icon(false)
 	_actions = VBoxContainer.new()
+	_actions.add_theme_constant_override("separation", Metrics.scaled_int(8))
 	add_child(_actions)
 	_actions.hide()
 	_program = _label("", _actions)
+	_program.add_theme_font_size_override("font_size", _meta_font_size)
+	_program.add_theme_color_override("font_color", MUTED_COLOR)
 	_program.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_manage_choose = _button("Choose Blender…", _browse_blender, _actions)
 	_rescan = _button("Check for Blender", _setup, _actions)
@@ -156,7 +211,9 @@ func _ready() -> void:
 func _label(text: String, parent: Node = null) -> Label:
 	var label := Label.new()
 	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", _body_font_size)
 	(parent if parent != null else self).add_child(label)
 	return label
 
@@ -164,9 +221,16 @@ func _button(text: String, action: Callable, parent: Node = null) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.add_theme_font_size_override("font_size", _body_font_size)
 	button.pressed.connect(action)
 	(parent if parent != null else self).add_child(button)
 	return button
+
+static func _disclosure_icon(expanded: bool) -> Texture2D:
+	if Engine.is_editor_hint():
+		return EditorInterface.get_editor_theme().get_icon("GuiTreeArrowDown" if expanded else "GuiTreeArrowRight", "EditorIcons")
+	return CHEVRON_DOWN
 
 func set_locked(locked: bool) -> void:
 	_locked = locked
@@ -258,6 +322,9 @@ func _sync() -> void:
 	if _status == null: return
 	if service == null:
 		Localization.bind(_status, &"text", "Blender workspace setup is unavailable.")
+		_status.show()
+		Localization.bind(_connection_title, &"text", "Setup unavailable")
+		_connection_dot_style.bg_color = MUTED_COLOR
 		_primary.disabled = true
 		_installation_help.hide()
 		_manage.hide()
@@ -268,17 +335,29 @@ func _sync() -> void:
 	var connected: bool = service.state == "connected"
 	var selecting: bool = _setup_started and service.executable.is_empty()
 	_status.text = Localization.message(service.status)
+	var connection_title := "Connect Blender" if service.executable.is_empty() else "Ready to start"
+	var connection_color := MUTED_COLOR
+	if connected:
+		connection_title = "Workspace ready"
+		connection_color = Color(0.48, 0.78, 0.58)
+		if service.status == "Workspace ready": Localization.bind(_status, &"text", "Blender is running in the background.")
+	elif service.state == "connecting": connection_title = "Starting asset workspace"
+	elif service.state == "stop_failed":
+		connection_title = "Connection needs attention"
+		connection_color = Color(0.92, 0.74, 0.46)
+	Localization.bind(_connection_title, &"text", connection_title)
+	_connection_dot_style.bg_color = connection_color
 	if service.state == "disconnected" and service.executable.is_empty() and selecting:
 		Localization.bind(_status, &"text", "Choose a Blender installation." if not _found.is_empty() else "Blender was not found. Choose an installation or download Blender, then check again.")
 	if not _selection_error.is_empty(): _status.text = Localization.message(_selection_error)
+	_status.visible = service.state != "disconnected" or selecting or not _selection_error.is_empty() or service.status not in ["Choose Blender to prepare the asset workspace.", "Blender selected. Connect to create a dedicated asset workspace."]
 	var caption := "Back to chat" if connected else "Start asset workspace" if not service.executable.is_empty() else "Check for Blender" if selecting else "Set up Blender"
 	if service.state == "connecting": caption = "Cancel"
 	elif service.state == "stop_failed": caption = "Try disconnect again"
 	Localization.bind(_primary, &"text", caption)
 	_primary.disabled = busy and service.state not in ["connecting", "stop_failed"]
-	var hint := "Return to Work chat and describe your asset. Try: Create a low-poly gold coin and preview it." if connected else "No Blender Lab add-on or MCP server installation needed."
-	Localization.bind(_hint, &"text", hint)
-	_hint.visible = service.state == "connected" or (service.state == "disconnected" and not selecting)
+	Localization.bind(_hint, &"text", "Only Blender 5.2+ is required.")
+	_hint.visible = service.state == "disconnected" and not selecting
 	var blocker: String = setup_message.call() if connected and setup_message.is_valid() else ""
 	_blocker.text = Localization.message(blocker)
 	_blocker.visible = not blocker.is_empty()

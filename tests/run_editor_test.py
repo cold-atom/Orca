@@ -17,6 +17,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    "blender_session_editor_test.gd": ["auto_apply_test.gd", "blender_live_fixture.py", "blender_live_server.py", "fixtures/blender_workspace_scene.tscn"],
     "blender_workspace_editor_test.gd": ["auto_apply_test.gd", "blender_workspace_fixture.py", "fixtures/blender_workspace_scene.tscn"],
     "mcp_editor_test.gd": ["auto_apply_test.gd", "mcp_fixture.py"],
     "editor_transform_test.gd": ["auto_apply_test.gd", "fixtures/editor_transform_game.tscn", "fixtures/editor_transform_coin.tscn", "fixtures/editor_transform_coin.gd", "fixtures/editor_attach_script.gd"],
@@ -125,6 +126,7 @@ def main() -> int:
     parser.add_argument("--ui-only", action="store_true", help="Auto-apply layout subset")
     parser.add_argument("--blender-lab-executable", type=Path, help="Opt-in MCP acceptance against an installed official server and an already open default Blender scene")
     parser.add_argument("--blender-workspace-executable", type=Path, help="Opt-in owned Blender workspace acceptance; starts only a disposable workspace")
+    parser.add_argument("--blender-session-executable", type=Path, help="Opt-in live-authoring acceptance in an owned disposable interactive Blender")
     args = parser.parse_args()
     if not args.godot:
         parser.error("Set GODOT_BIN or pass --godot")
@@ -132,8 +134,13 @@ def main() -> int:
         parser.error("This runner currently isolates Linux XDG editor state only")
     if args.ui_only and args.case != "auto_apply_editor_test.gd":
         parser.error("--ui-only is supported only by auto_apply_editor_test.gd")
+    if args.blender_session_executable is not None:
+        if args.case != "blender_session_editor_test.gd" or args.blender_lab_executable is None or not args.graphical:
+            parser.error("Live authoring requires its editor case, --graphical and explicit Blender/MCP executables")
+        if not args.blender_session_executable.is_absolute() or not args.blender_session_executable.is_file():
+            parser.error("Choose an absolute installed Blender executable")
     if args.blender_lab_executable is not None:
-        if args.case != "mcp_editor_test.gd":
+        if args.case not in {"mcp_editor_test.gd", "blender_session_editor_test.gd"}:
             parser.error("--blender-lab-executable is supported only by mcp_editor_test.gd")
         if not args.blender_lab_executable.is_absolute() or not args.blender_lab_executable.is_file() or not os.access(args.blender_lab_executable, os.X_OK):
             parser.error("The Blender Lab executable must be an installed executable at an absolute path")
@@ -169,11 +176,16 @@ def main() -> int:
         env.pop("ORCA_EDITOR_TEST_CASE", None)
         env.pop("ORCA_BLENDER_LAB_LIVE_EXECUTABLE", None)
         env.pop("ORCA_BLENDER_WORKSPACE_LIVE_EXECUTABLE", None)
+        env.pop("ORCA_BLENDER_SESSION_LIVE_EXECUTABLE", None)
+        env.pop("ORCA_BLENDER_SESSION_MCP_EXECUTABLE", None)
         env.pop("ORCA_BLENDER_EDITOR_PHASE", None)
         if args.blender_workspace_executable is not None:
             env["ORCA_BLENDER_WORKSPACE_LIVE_EXECUTABLE"] = str(args.blender_workspace_executable)
         if args.blender_lab_executable is not None:
             env["ORCA_BLENDER_LAB_LIVE_EXECUTABLE"] = str(args.blender_lab_executable)
+        if args.blender_session_executable is not None:
+            env["ORCA_BLENDER_SESSION_LIVE_EXECUTABLE"] = str(args.blender_session_executable)
+            env["ORCA_BLENDER_SESSION_MCP_EXECUTABLE"] = str(args.blender_lab_executable)
         common = [binary, "--editor", "--path", str(project), "--no-header", "--audio-driver", "Dummy"]
         if not execute([*common, "--headless", "--import", "--quiet"], env):
             return 1
@@ -253,6 +265,7 @@ def main() -> int:
         if args.ui_only:
             command += ["--", "--ui-only"]
         marker = {
+            "blender_session_editor_test.gd": "blender_session_editor_test: PASS",
             "blender_workspace_editor_test.gd": "blender_workspace_editor_test: PASS",
             "mcp_editor_test.gd": "mcp_editor_test: PASS",
             "editor_transform_test.gd": "editor_transform_test: PASS",

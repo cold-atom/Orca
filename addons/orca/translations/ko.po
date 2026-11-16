@@ -2334,5 +2334,188 @@ msgstr "1. Blender에서 공식 MCP 애드온을 설치하고 활성화하세요
 msgid "Blender Lab installation guide"
 msgstr "Blender Lab 설치 안내"
 
+msgid "3D ASSET CREATION"
+msgstr "3D 에셋 제작"
+
+msgid "Blender Asset Studio"
+msgstr "Blender 에셋 스튜디오"
+
+msgid "Create, preview, and export 3D game assets from chat."
+msgstr "채팅에서 3D 게임 에셋을 만들고, 미리 보고, 내보내세요."
+
+msgid "Setup unavailable"
+msgstr "설정을 사용할 수 없음"
+
+msgid "Connect Blender"
+msgstr "Blender 연결"
+
+msgid "Ready to start"
+msgstr "시작 준비 완료"
+
+msgid "Uses Blender 5.2+ installed on your computer."
+msgstr "컴퓨터에 설치된 Blender 5.2 이상을 사용합니다."
+
+msgid "Blender is running in the background."
+msgstr "Blender가 백그라운드에서 실행 중입니다."
+
+msgid "Starting asset workspace"
+msgstr "에셋 작업 공간 시작 중"
+
+msgid "Return to Work chat and describe your next asset."
+msgstr "작업 모드 채팅으로 돌아가 다음 에셋을 설명하세요."
+
+msgid "Runs Blender in the background. No add-on or separate connector setup needed."
+msgstr "Blender를 백그라운드에서 실행합니다. 애드온이나 별도 커넥터 설정이 필요하지 않습니다."
+
+msgid "Bring your creative tools into Orca."
+msgstr "창작 도구를 Orca에 연결하세요."
+
+msgid "Optional connections"
+msgstr "선택적 연결"
+
+msgid "Inspect an open Blender session or connect other tools. Not needed to create assets."
+msgstr "열려 있는 Blender 세션을 살펴보거나 다른 도구를 연결합니다. 에셋 제작에는 필요하지 않습니다."
+
+msgid "Add connection…"
+msgstr "연결 추가…"
+
+msgid "%d connected for inspection · Optional for asset creation"
+msgstr "검사용 연결 %d개 · 에셋 제작에는 선택 사항"
+
+msgid "Live Blender · Inspection only"
+msgstr "열려 있는 Blender · 검사 전용"
+
+msgid "MCP · Inspection only"
+msgstr "MCP · 검사 전용"
+
+msgid "Not connected"
+msgstr "연결되지 않음"
+
+msgid "Connected for inspection"
+msgstr "검사용으로 연결됨"
+
+msgid "Read objects and scene details from Blender you have open. This connection does not create or edit assets."
+msgstr "열려 있는 Blender에서 오브젝트와 씬 정보를 읽습니다. 이 연결로는 에셋을 만들거나 편집하지 않습니다."
+
+msgid "Connect to Blender you have open for inspection only. To create assets, start Blender Asset Studio on Extensions."
+msgstr "열려 있는 Blender에 검사 전용으로 연결합니다. 에셋을 만들려면 확장에서 Blender 에셋 스튜디오를 시작하세요."
+
+msgid "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Connect."
+msgstr "1. Blender에서 공식 MCP 애드온을 설치하고 활성화합니다.\n2. 별도의 공식 MCP 서버를 설치합니다.\n3. Blender를 열고 환경설정 → 애드온 → MCP에서 리스너를 시작합니다.\n4. 아래에서 서버 프로그램을 선택하고 저장한 다음 연결합니다."
+
+msgid "Setup is saved on this computer. Connect starts this local program with your account's file and network access. External reads ask separately."
+msgstr "설정은 이 컴퓨터에 저장됩니다. 연결하면 계정의 파일 및 네트워크 접근 권한으로 이 로컬 프로그램을 시작합니다. 외부 읽기는 별도로 승인을 요청합니다."
+
+msgid "Create and preview 3D assets from chat."
+msgstr "채팅에서 3D 에셋을 만들고 미리 보세요."
+
+msgid "No Blender add-on or MCP setup needed."
+msgstr "Blender 애드온이나 MCP 설정이 필요하지 않습니다."
+
+msgid "%d connected for inspection"
+msgstr "검사용 연결 %d개"
+
+msgid "Inspect objects and scene details in your open Blender session."
+msgstr "열려 있는 Blender 세션의 오브젝트와 씬 정보를 살펴봅니다."
+
+msgid "Only Blender 5.2+ is required."
+msgstr "Blender 5.2 이상만 필요합니다."
+
+msgid "Orca includes the workspace connector. No Blender add-on or separate MCP installation is needed."
+msgstr "Orca에 작업 공간 커넥터가 포함되어 있습니다. Blender 애드온이나 별도의 MCP 설치가 필요하지 않습니다."
+
+msgid "Enable live authoring…"
+msgstr "실시간 제작 활성화…"
+
+msgid "Disable live authoring"
+msgstr "실시간 제작 비활성화"
+
+msgid "Enable live Blender authoring?"
+msgstr "Blender 실시간 제작을 활성화할까요?"
+
+msgid "Enable authoring"
+msgstr "제작 활성화"
+
+msgid "Undo last Orca live edit"
+msgstr "Orca의 마지막 실시간 편집 실행 취소"
+
+msgid "Show live recovery copies"
+msgstr "실시간 편집 복구 사본 보기"
+
+msgid "Attach live asset texture…"
+msgstr "실시간 에셋 텍스처 첨부…"
+
+msgid "Attach live asset texture"
+msgstr "실시간 에셋 텍스처 첨부"
+
+msgid "Revert live asset import"
+msgstr "실시간 에셋 가져오기 되돌리기"
+
+msgid "Live Blender · Create & edit"
+msgstr "실시간 Blender · 생성 및 편집"
+
+msgid "Connected for creation and editing"
+msgstr "생성 및 편집용으로 연결됨"
+
+msgid "Preparing live authoring…"
+msgstr "실시간 제작 준비 중…"
+
+msgid "Live authoring needs attention"
+msgstr "실시간 제작 확인 필요"
+
+msgid "%d connected · %d with live authoring"
+msgstr "%d개 연결됨 · %d개 실시간 제작 활성화"
+
+msgid "Create, edit, preview and export assets in your open Blender scene."
+msgstr "열려 있는 Blender 씬에서 에셋을 생성, 편집, 미리보기 및 내보내기합니다."
+
+msgid "Work with an open Blender session or connect other tools. Asset Studio can create assets independently."
+msgstr "열려 있는 Blender 세션에서 작업하거나 다른 도구를 연결합니다. Asset Studio는 독립적으로 에셋을 생성할 수 있습니다."
+
+msgid "Connect to your open Blender session. Official Blender Lab also supports optional reviewed live authoring. Asset Studio creates assets with only Blender installed."
+msgstr "열려 있는 Blender 세션에 연결합니다. 공식 Blender Lab에서는 검토 후 실시간 제작을 선택적으로 활성화할 수 있습니다. Asset Studio는 Blender 설치만으로 에셋을 생성합니다."
+
+msgid "Enable reviewed asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open and unsaved. Every operation asks for approval; Auto apply does not cover this session. Linked libraries, embedded scripts and drivers require a separate workflow."
+msgstr "%s을(를) 통해 현재 Blender 씬에서 검토 후 에셋 생성 및 편집을 활성화할까요?\n\nOrca는 검증된 도우미를 설치하고 이 Blender 인스턴스의 이전 Orca 제작 세션을 대체합니다. 편집 전의 비공개 복구 사본을 보관하며 원본 문서는 열린 상태로 자동 저장하지 않습니다. 모든 작업에 승인이 필요하고 자동 적용 권한은 이 세션에 적용되지 않습니다. 링크된 라이브러리, 내장 스크립트 및 드라이버에는 별도의 작업 흐름이 필요합니다."
+
+msgid "Review live Blender operation"
+msgstr "Blender 실시간 작업 검토"
+
+msgid "Approve this exact operation in your open Blender scene. Edits retain a recovery copy and remain unsaved in Blender. Project import and placement require their own review."
+msgstr "열려 있는 Blender 씬에서 이 정확한 작업을 승인합니다. 편집 전의 복구 사본을 보관하고 Blender에서 자동 저장하지 않습니다. 프로젝트 가져오기와 씬 배치는 각각 검토가 필요합니다."
+
+msgid "Preview/export uses a private saved copy in one bounded background Blender worker. Your open document is preserved. Only the reviewed objects and their included rig/parents are handed off."
+msgstr "미리보기와 내보내기는 비공개 저장 사본을 제한된 백그라운드 Blender 프로세스에서 처리합니다. 열려 있는 문서는 보존되며 검토된 오브젝트와 포함된 리그 및 부모만 전달됩니다."
+
+msgid "Applied in Blender · Save pending"
+msgstr "Blender에 적용됨 · 저장 대기"
+
+msgid "Live Blender authoring"
+msgstr "Blender 실시간 제작"
+
+msgid "Auto apply live session…"
+msgstr "이 실시간 세션에 자동 적용…"
+
+msgid "Live Blender operation"
+msgstr "Blender 실시간 작업"
+
+msgid "Auto applied in Blender · Save pending"
+msgstr "Blender에 자동 적용됨 · 저장 대기"
+
+msgid "Allow automatic live Blender operations"
+msgstr "Blender 실시간 작업 자동 적용 허용"
+
+msgid "Allow live operations"
+msgstr "실시간 작업 허용"
+
+msgid " Live Blender Auto apply is enabled for the confirmed session only; import and placement still require review."
+msgstr " Blender 실시간 자동 적용은 확인된 세션에서만 활성화되며 가져오기와 배치는 계속 검토가 필요합니다."
+
+msgid "Enable asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open without automatic save or reload.\n\nOperations require review unless you separately enable Auto apply for this live session. Godot import and scene placement always require review. Linked libraries, embedded scripts and drivers require a separate workflow."
+msgstr "%s을(를) 통해 현재 Blender 씬에서 에셋 생성 및 편집을 활성화할까요?\n\nOrca는 검증된 도우미를 설치하고 이 Blender 인스턴스의 이전 Orca 제작 세션을 대체합니다. 편집 전의 비공개 복구 사본을 보관하며 원본 문서는 자동 저장이나 다시 불러오기 없이 열린 상태로 유지됩니다.\n\n이 실시간 세션에 자동 적용을 별도로 활성화하지 않으면 작업에 검토가 필요합니다. Godot 가져오기와 씬 배치는 항상 검토가 필요합니다. 링크된 라이브러리, 내장 스크립트 및 드라이버에는 별도의 작업 흐름이 필요합니다."
+
+msgid "Allow Orca to inspect, create, edit, preview and export automatically through %s?\n\nDocument: %s\nScene: %s\n\nThis permission is only for this live session. Edits still validate the current scene and create recovery copies. Conflicts, failures or Stop pause automation. New Session, Plan, reconnect and reload clear it.\n\nGodot import and placement always require review. This does not authorize script edits, other Blender sessions or arbitrary Python. Click the green edit icon beside ORCA to revoke Auto apply."
+msgstr "Orca가 %s을(를) 통해 검사, 생성, 편집, 미리보기 및 내보내기를 자동으로 수행하도록 허용할까요?\n\n문서: %s\n씬: %s\n\n이 권한은 현재 실시간 세션에서만 유효합니다. 편집할 때 현재 씬 검증과 복구 사본 생성은 계속됩니다. 충돌, 실패 또는 중지는 자동화를 일시 중지하며 새 세션, Plan, 재연결 및 다시 불러오기는 권한을 해제합니다.\n\nGodot 가져오기와 배치는 항상 검토가 필요합니다. 스크립트 편집, 다른 Blender 세션 또는 임의의 Python 실행은 허용하지 않습니다. ORCA 옆의 녹색 편집 아이콘으로 자동 적용을 해제할 수 있습니다."
+
 msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
 msgstr "씬이나 스크립트를 로드하지 않고 저장된 네이티브 변환과 인스턴스 출처를 검증했습니다."

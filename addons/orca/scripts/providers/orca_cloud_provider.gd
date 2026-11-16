@@ -67,4 +67,5 @@ static func normalize_catalog(response) -> Array[Dictionary]:
 		result[-1]["focused_inspection"] = typeof(cloud.get("focused_inspection")) == TYPE_BOOL and cloud.get("focused_inspection") == true
 		result[-1]["mcp_inspection"] = typeof(cloud.get("mcp_inspection")) == TYPE_BOOL and cloud.get("mcp_inspection") == true
 		result[-1]["blender_workspaces"] = typeof(cloud.get("blender_workspaces")) == TYPE_BOOL and cloud.get("blender_workspaces") == true
+		result[-1]["blender_sessions"] = typeof(cloud.get("blender_sessions")) == TYPE_BOOL and cloud.get("blender_sessions") == true
 	return result

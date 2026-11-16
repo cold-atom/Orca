@@ -2334,5 +2334,188 @@ msgstr "1. Blender に公式 MCP アドオンをインストールして有効�
 msgid "Blender Lab installation guide"
 msgstr "Blender Lab インストールガイド"
 
+msgid "3D ASSET CREATION"
+msgstr "3D アセット制作"
+
+msgid "Blender Asset Studio"
+msgstr "Blender アセットスタジオ"
+
+msgid "Create, preview, and export 3D game assets from chat."
+msgstr "チャットで 3D ゲームアセットを作成、プレビュー、書き出し。"
+
+msgid "Setup unavailable"
+msgstr "セットアップを利用できません"
+
+msgid "Connect Blender"
+msgstr "Blender を接続"
+
+msgid "Ready to start"
+msgstr "開始できます"
+
+msgid "Uses Blender 5.2+ installed on your computer."
+msgstr "コンピューターにインストールした Blender 5.2 以降を使用します。"
+
+msgid "Blender is running in the background."
+msgstr "Blender をバックグラウンドで実行中です。"
+
+msgid "Starting asset workspace"
+msgstr "アセットワークスペースを起動中"
+
+msgid "Return to Work chat and describe your next asset."
+msgstr "作業モードのチャットに戻って、次のアセットを説明してください。"
+
+msgid "Runs Blender in the background. No add-on or separate connector setup needed."
+msgstr "Blender をバックグラウンドで実行します。アドオンや別のコネクター設定は不要です。"
+
+msgid "Bring your creative tools into Orca."
+msgstr "制作ツールを Orca に接続。"
+
+msgid "Optional connections"
+msgstr "オプションの接続"
+
+msgid "Inspect an open Blender session or connect other tools. Not needed to create assets."
+msgstr "開いている Blender の確認や他のツールへの接続用です。アセット制作には不要です。"
+
+msgid "Add connection…"
+msgstr "接続を追加…"
+
+msgid "%d connected for inspection · Optional for asset creation"
+msgstr "確認用に %d 件接続中 · アセット制作には任意"
+
+msgid "Live Blender · Inspection only"
+msgstr "起動中の Blender · 確認専用"
+
+msgid "MCP · Inspection only"
+msgstr "MCP · 確認専用"
+
+msgid "Not connected"
+msgstr "未接続"
+
+msgid "Connected for inspection"
+msgstr "確認用に接続済み"
+
+msgid "Read objects and scene details from Blender you have open. This connection does not create or edit assets."
+msgstr "開いている Blender からオブジェクトやシーンの詳細を読み取ります。この接続ではアセットの作成や編集はできません。"
+
+msgid "Connect to Blender you have open for inspection only. To create assets, start Blender Asset Studio on Extensions."
+msgstr "開いている Blender に確認専用で接続します。アセット制作は拡張機能ページの Blender アセットスタジオを起動してください。"
+
+msgid "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Connect."
+msgstr "1. Blender に公式 MCP アドオンをインストールして有効にします。\n2. 別途、公式 MCP サーバーをインストールします。\n3. Blender を開き、プリファレンス → アドオン → MCP でリスナーを起動します。\n4. 下でサーバープログラムを選び、保存して接続します。"
+
+msgid "Setup is saved on this computer. Connect starts this local program with your account's file and network access. External reads ask separately."
+msgstr "設定はこのコンピューターに保存されます。接続すると、アカウントのファイルとネットワークへのアクセス権でローカルプログラムを起動します。外部の読み取りは別途確認します。"
+
+msgid "Create and preview 3D assets from chat."
+msgstr "チャットで 3D アセットを作成・プレビュー。"
+
+msgid "No Blender add-on or MCP setup needed."
+msgstr "Blender アドオンや MCP の設定は不要です。"
+
+msgid "%d connected for inspection"
+msgstr "確認用に %d 件接続中"
+
+msgid "Inspect objects and scene details in your open Blender session."
+msgstr "開いている Blender のオブジェクトやシーンの詳細を確認します。"
+
+msgid "Only Blender 5.2+ is required."
+msgstr "必要なのは Blender 5.2 以降のみです。"
+
+msgid "Orca includes the workspace connector. No Blender add-on or separate MCP installation is needed."
+msgstr "Orca にワークスペースコネクターが含まれています。Blender アドオンや MCP の別途インストールは不要です。"
+
+msgid "Enable live authoring…"
+msgstr "ライブ制作を有効にする…"
+
+msgid "Disable live authoring"
+msgstr "ライブ制作を無効にする"
+
+msgid "Enable live Blender authoring?"
+msgstr "Blender のライブ制作を有効にしますか？"
+
+msgid "Enable authoring"
+msgstr "制作を有効にする"
+
+msgid "Undo last Orca live edit"
+msgstr "Orca の直前のライブ編集を元に戻す"
+
+msgid "Show live recovery copies"
+msgstr "ライブ編集の復旧コピーを表示"
+
+msgid "Attach live asset texture…"
+msgstr "ライブアセットのテクスチャを添付…"
+
+msgid "Attach live asset texture"
+msgstr "ライブアセットのテクスチャを添付"
+
+msgid "Revert live asset import"
+msgstr "ライブアセットのインポートを取り消す"
+
+msgid "Live Blender · Create & edit"
+msgstr "ライブ Blender · 作成と編集"
+
+msgid "Connected for creation and editing"
+msgstr "作成と編集用に接続済み"
+
+msgid "Preparing live authoring…"
+msgstr "ライブ制作を準備中…"
+
+msgid "Live authoring needs attention"
+msgstr "ライブ制作の確認が必要です"
+
+msgid "%d connected · %d with live authoring"
+msgstr "%d 件接続中 · %d 件でライブ制作が有効"
+
+msgid "Create, edit, preview and export assets in your open Blender scene."
+msgstr "開いている Blender シーンでアセットを作成、編集、プレビュー、エクスポートします。"
+
+msgid "Work with an open Blender session or connect other tools. Asset Studio can create assets independently."
+msgstr "開いている Blender セッションで作業するか、ほかのツールを接続します。Asset Studio は単独でアセットを作成できます。"
+
+msgid "Connect to your open Blender session. Official Blender Lab also supports optional reviewed live authoring. Asset Studio creates assets with only Blender installed."
+msgstr "開いている Blender セッションに接続します。公式 Blender Lab では、確認付きライブ制作も任意で有効にできます。Asset Studio は Blender のインストールだけでアセットを作成できます。"
+
+msgid "Enable reviewed asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open and unsaved. Every operation asks for approval; Auto apply does not cover this session. Linked libraries, embedded scripts and drivers require a separate workflow."
+msgstr "%s を通じて、現在の Blender シーンで確認付きアセット作成と編集を有効にしますか？\n\nOrca は検証済みヘルパーを導入し、この Blender インスタンスの以前の Orca 制作セッションを置き換えます。編集前の復旧コピーを個別に保管し、元のドキュメントは開いたまま自動保存しません。操作ごとに承認が必要で、自動適用はこのセッションに適用されません。リンクライブラリ、埋め込みスクリプト、ドライバーには別の手順が必要です。"
+
+msgid "Review live Blender operation"
+msgstr "Blender のライブ操作を確認"
+
+msgid "Approve this exact operation in your open Blender scene. Edits retain a recovery copy and remain unsaved in Blender. Project import and placement require their own review."
+msgstr "開いている Blender シーンで、この操作そのものを承認します。編集前の復旧コピーを保持し、Blender では自動保存しません。プロジェクトへのインポートと配置はそれぞれ確認が必要です。"
+
+msgid "Preview/export uses a private saved copy in one bounded background Blender worker. Your open document is preserved. Only the reviewed objects and their included rig/parents are handed off."
+msgstr "プレビューとエクスポートは、個別の保存コピーを制限付きのバックグラウンド Blender プロセスで処理します。開いているドキュメントは保持され、確認済みオブジェクトと含まれているリグ・親だけを引き渡します。"
+
+msgid "Applied in Blender · Save pending"
+msgstr "Blender に適用済み · 保存待ち"
+
+msgid "Live Blender authoring"
+msgstr "Blender のライブ制作"
+
+msgid "Auto apply live session…"
+msgstr "このライブセッションに自動適用…"
+
+msgid "Live Blender operation"
+msgstr "Blender のライブ操作"
+
+msgid "Auto applied in Blender · Save pending"
+msgstr "Blender に自動適用済み · 保存待ち"
+
+msgid "Allow automatic live Blender operations"
+msgstr "Blender のライブ操作の自動適用を許可"
+
+msgid "Allow live operations"
+msgstr "ライブ操作を許可"
+
+msgid " Live Blender Auto apply is enabled for the confirmed session only; import and placement still require review."
+msgstr " Blender のライブ自動適用は確認済みセッションだけで有効です。インポートと配置は引き続き確認が必要です。"
+
+msgid "Enable asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open without automatic save or reload.\n\nOperations require review unless you separately enable Auto apply for this live session. Godot import and scene placement always require review. Linked libraries, embedded scripts and drivers require a separate workflow."
+msgstr "%s を通じて、現在の Blender シーンでアセット作成と編集を有効にしますか？\n\nOrca は検証済みヘルパーを導入し、この Blender インスタンスの以前の Orca 制作セッションを置き換えます。編集前の復旧コピーを個別に保管し、元のドキュメントは開いたまま、自動保存や再読み込みは行いません。\n\nこのライブセッションで自動適用を別途有効にしない限り、操作には確認が必要です。Godot へのインポートと配置は常に確認が必要です。リンクライブラリ、埋め込みスクリプト、ドライバーには別の手順が必要です。"
+
+msgid "Allow Orca to inspect, create, edit, preview and export automatically through %s?\n\nDocument: %s\nScene: %s\n\nThis permission is only for this live session. Edits still validate the current scene and create recovery copies. Conflicts, failures or Stop pause automation. New Session, Plan, reconnect and reload clear it.\n\nGodot import and placement always require review. This does not authorize script edits, other Blender sessions or arbitrary Python. Click the green edit icon beside ORCA to revoke Auto apply."
+msgstr "%s を通じて Orca が確認、作成、編集、プレビュー、エクスポートを自動で行うことを許可しますか？\n\nドキュメント：%s\nシーン：%s\n\nこの権限は現在のライブセッションだけに適用されます。編集時のシーン検証と復旧コピー作成は継続します。競合、失敗、停止操作で自動化を一時停止し、新規セッション、Plan、再接続、再読み込みで権限を解除します。\n\nGodot へのインポートと配置は常に確認が必要です。スクリプト編集、ほかの Blender セッション、任意の Python は許可されません。ORCA の横の緑の編集アイコンで自動適用を解除できます。"
+
 msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
 msgstr "シーンやスクリプトを読み込まずに、保存済みのネイティブ変換とインスタンスの出所を検証しました。"

@@ -2334,5 +2334,188 @@ msgstr "1. 在 Blender 中安装并启用官方 MCP 插件。\n2. 单独安装�
 msgid "Blender Lab installation guide"
 msgstr "Blender Lab 安装指南"
 
+msgid "3D ASSET CREATION"
+msgstr "3D 资源创作"
+
+msgid "Blender Asset Studio"
+msgstr "Blender 资源工作室"
+
+msgid "Create, preview, and export 3D game assets from chat."
+msgstr "通过聊天创建、预览并导出 3D 游戏资源。"
+
+msgid "Setup unavailable"
+msgstr "设置不可用"
+
+msgid "Connect Blender"
+msgstr "连接 Blender"
+
+msgid "Ready to start"
+msgstr "可以开始"
+
+msgid "Uses Blender 5.2+ installed on your computer."
+msgstr "使用电脑上安装的 Blender 5.2 或更高版本。"
+
+msgid "Blender is running in the background."
+msgstr "Blender 正在后台运行。"
+
+msgid "Starting asset workspace"
+msgstr "正在启动资源工作区"
+
+msgid "Return to Work chat and describe your next asset."
+msgstr "返回工作模式聊天，描述你的下一个资源。"
+
+msgid "Runs Blender in the background. No add-on or separate connector setup needed."
+msgstr "在后台运行 Blender，无需插件或单独配置连接器。"
+
+msgid "Bring your creative tools into Orca."
+msgstr "将你的创作工具接入 Orca。"
+
+msgid "Optional connections"
+msgstr "可选连接"
+
+msgid "Inspect an open Blender session or connect other tools. Not needed to create assets."
+msgstr "检查已打开的 Blender 会话或连接其他工具。创建资源无需这些连接。"
+
+msgid "Add connection…"
+msgstr "添加连接…"
+
+msgid "%d connected for inspection · Optional for asset creation"
+msgstr "%d 个检查连接已连接 · 创建资源时可选"
+
+msgid "Live Blender · Inspection only"
+msgstr "已打开的 Blender · 仅检查"
+
+msgid "MCP · Inspection only"
+msgstr "MCP · 仅检查"
+
+msgid "Not connected"
+msgstr "未连接"
+
+msgid "Connected for inspection"
+msgstr "已连接，可检查"
+
+msgid "Read objects and scene details from Blender you have open. This connection does not create or edit assets."
+msgstr "读取已打开的 Blender 中的对象和场景详情。此连接不会创建或编辑资源。"
+
+msgid "Connect to Blender you have open for inspection only. To create assets, start Blender Asset Studio on Extensions."
+msgstr "连接已打开的 Blender，仅用于检查。要创建资源，请在扩展页面启动 Blender 资源工作室。"
+
+msgid "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Connect."
+msgstr "1. 在 Blender 中安装并启用官方 MCP 插件。\n2. 单独安装官方 MCP 服务器。\n3. 打开 Blender，在偏好设置 → 插件 → MCP 中启动监听器。\n4. 在下方选择服务器程序，保存后点击连接。"
+
+msgid "Setup is saved on this computer. Connect starts this local program with your account's file and network access. External reads ask separately."
+msgstr "设置保存在此电脑上。点击连接会启动本地程序，并使用你账户的文件和网络权限。外部读取需单独批准。"
+
+msgid "Create and preview 3D assets from chat."
+msgstr "通过聊天创建并预览 3D 资源。"
+
+msgid "No Blender add-on or MCP setup needed."
+msgstr "无需配置 Blender 插件或 MCP。"
+
+msgid "%d connected for inspection"
+msgstr "%d 个检查连接已连接"
+
+msgid "Inspect objects and scene details in your open Blender session."
+msgstr "检查已打开的 Blender 会话中的对象和场景详情。"
+
+msgid "Only Blender 5.2+ is required."
+msgstr "只需 Blender 5.2 或更高版本。"
+
+msgid "Orca includes the workspace connector. No Blender add-on or separate MCP installation is needed."
+msgstr "Orca 已包含工作区连接器，无需安装 Blender 插件或单独安装 MCP。"
+
+msgid "Enable live authoring…"
+msgstr "启用实时创作…"
+
+msgid "Disable live authoring"
+msgstr "停用实时创作"
+
+msgid "Enable live Blender authoring?"
+msgstr "启用 Blender 实时创作？"
+
+msgid "Enable authoring"
+msgstr "启用创作"
+
+msgid "Undo last Orca live edit"
+msgstr "撤销 Orca 上一次实时编辑"
+
+msgid "Show live recovery copies"
+msgstr "显示实时编辑恢复副本"
+
+msgid "Attach live asset texture…"
+msgstr "附加实时资产纹理…"
+
+msgid "Attach live asset texture"
+msgstr "附加实时资产纹理"
+
+msgid "Revert live asset import"
+msgstr "还原实时资产导入"
+
+msgid "Live Blender · Create & edit"
+msgstr "实时 Blender · 创建与编辑"
+
+msgid "Connected for creation and editing"
+msgstr "已连接，可创建与编辑"
+
+msgid "Preparing live authoring…"
+msgstr "正在准备实时创作…"
+
+msgid "Live authoring needs attention"
+msgstr "实时创作需要处理"
+
+msgid "%d connected · %d with live authoring"
+msgstr "%d 个已连接 · %d 个支持实时创作"
+
+msgid "Create, edit, preview and export assets in your open Blender scene."
+msgstr "在已打开的 Blender 场景中创建、编辑、预览和导出资产。"
+
+msgid "Work with an open Blender session or connect other tools. Asset Studio can create assets independently."
+msgstr "使用已打开的 Blender 会话，或连接其他工具。资产工作室可以独立创建资产。"
+
+msgid "Connect to your open Blender session. Official Blender Lab also supports optional reviewed live authoring. Asset Studio creates assets with only Blender installed."
+msgstr "连接已打开的 Blender 会话。官方 Blender Lab 还支持可选的经审核实时创作。资产工作室只需安装 Blender 即可创建资产。"
+
+msgid "Enable reviewed asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open and unsaved. Every operation asks for approval; Auto apply does not cover this session. Linked libraries, embedded scripts and drivers require a separate workflow."
+msgstr "通过 %s 在当前 Blender 场景中启用经审核的资产创建与编辑？\n\nOrca 会安装经过验证的辅助工具，并替换此 Blender 实例中之前的 Orca 创作会话。编辑会保留私有恢复副本，原始文档保持打开且不会自动保存。每项操作都需要批准，自动应用权限不涵盖此会话。链接库、嵌入脚本和驱动器需要单独的工作流程。"
+
+msgid "Review live Blender operation"
+msgstr "审核 Blender 实时操作"
+
+msgid "Approve this exact operation in your open Blender scene. Edits retain a recovery copy and remain unsaved in Blender. Project import and placement require their own review."
+msgstr "批准在已打开的 Blender 场景中执行此确切操作。编辑会保留恢复副本，且不会在 Blender 中自动保存。项目导入和场景放置需要分别审核。"
+
+msgid "Preview/export uses a private saved copy in one bounded background Blender worker. Your open document is preserved. Only the reviewed objects and their included rig/parents are handed off."
+msgstr "预览和导出使用一个受限的后台 Blender 进程处理私有保存副本，保留您已打开的文档。只移交经审核的对象及已包含的骨架和父对象。"
+
+msgid "Applied in Blender · Save pending"
+msgstr "已在 Blender 中应用 · 待保存"
+
+msgid "Live Blender authoring"
+msgstr "Blender 实时创作"
+
+msgid "Auto apply live session…"
+msgstr "自动应用到此实时会话…"
+
+msgid "Live Blender operation"
+msgstr "Blender 实时操作"
+
+msgid "Auto applied in Blender · Save pending"
+msgstr "已自动应用到 Blender · 待保存"
+
+msgid "Allow automatic live Blender operations"
+msgstr "允许自动执行 Blender 实时操作"
+
+msgid "Allow live operations"
+msgstr "允许实时操作"
+
+msgid " Live Blender Auto apply is enabled for the confirmed session only; import and placement still require review."
+msgstr " Blender 实时自动应用仅在已确认的会话中启用；导入和放置仍需审核。"
+
+msgid "Enable asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open without automatic save or reload.\n\nOperations require review unless you separately enable Auto apply for this live session. Godot import and scene placement always require review. Linked libraries, embedded scripts and drivers require a separate workflow."
+msgstr "通过 %s 在当前 Blender 场景中启用资产创建与编辑？\n\nOrca 会安装经过验证的辅助工具，并替换此 Blender 实例中之前的 Orca 创作会话。编辑会保留私有恢复副本；原始文档保持打开，不会自动保存或重新加载。\n\n操作需要审核，除非您为此实时会话单独启用自动应用。导入 Godot 和场景放置始终需要审核。链接库、嵌入脚本和驱动器需要单独的工作流程。"
+
+msgid "Allow Orca to inspect, create, edit, preview and export automatically through %s?\n\nDocument: %s\nScene: %s\n\nThis permission is only for this live session. Edits still validate the current scene and create recovery copies. Conflicts, failures or Stop pause automation. New Session, Plan, reconnect and reload clear it.\n\nGodot import and placement always require review. This does not authorize script edits, other Blender sessions or arbitrary Python. Click the green edit icon beside ORCA to revoke Auto apply."
+msgstr "允许 Orca 通过 %s 自动检查、创建、编辑、预览和导出？\n\n文档：%s\n场景：%s\n\n此权限仅适用于此实时会话。编辑仍会验证当前场景并创建恢复副本。冲突、失败或停止操作会暂停自动化；新建会话、切换到规划模式、重新连接或重新加载会清除此权限。\n\n导入 Godot 和场景放置始终需要审核。此权限不涵盖脚本编辑、其他 Blender 会话或任意 Python 代码。点击 ORCA 旁的绿色编辑图标可撤销自动应用权限。"
+
 msgid "Validated the saved native transform and instance provenance without loading scenes or scripts."
 msgstr "已验证保存的原生变换及实例来源，未加载场景或脚本。"

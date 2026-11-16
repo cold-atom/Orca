@@ -48,10 +48,10 @@ func _ready() -> void:
 		profile_selector.set_item_metadata(profile_selector.item_count - 1, profile[1])
 	profile_selector.item_selected.connect(_type_changed)
 	body.add_child(profile_selector)
-	_purpose = _label(body, "Inspect your open Blender session. For asset creation, use Blender Asset Studio on Extensions.")
+	_purpose = _label(body, "Connect to your open Blender session. Official Blender Lab also supports optional reviewed live authoring. Asset Studio creates assets with only Blender installed.")
 	_blender_help = VBoxContainer.new()
 	body.add_child(_blender_help)
-	_label(_blender_help, "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Enable.")
+	_label(_blender_help, "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Connect.")
 	var guide := Button.new()
 	guide.text = "Blender Lab installation guide"
 	guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -83,7 +83,7 @@ func _ready() -> void:
 	arguments_input.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	arguments_input.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_advanced.add_child(arguments_input)
-	_label(body, "Setup is saved on this computer. Enable starts this local program with your account's file and network access. External reads ask separately.")
+	_label(body, "Setup is saved on this computer. Connect starts this local program with your account's file and network access. External reads ask separately.")
 	_error = _label(body, "")
 	_error.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_browse = FileDialog.new()

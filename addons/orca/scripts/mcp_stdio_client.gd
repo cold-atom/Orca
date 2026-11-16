@@ -7,6 +7,7 @@ signal changed
 const VERSIONS := ["2025-11-25", "2025-06-18", "2024-11-05"]
 const MAX_FRAME := 128 * 1024
 const MAX_REQUEST := 8192
+const MAX_TRUSTED_REQUEST := 32 * 1024 # Fixed Orca helper framing; no advertised/model limit.
 const MAX_LIST := 64
 const TIMEOUT_MS := 30000
 
@@ -117,14 +118,15 @@ func _list(kind: String) -> Dictionary:
 	return {"success": true}
 
 
-func request(method: String, params: Dictionary) -> Dictionary:
+func request(method: String, params: Dictionary, request_limit: int = MAX_REQUEST) -> Dictionary:
 	_active_requests += 1
-	var result := await _request(method, params)
+	var result := await _request(method, params, request_limit)
 	_active_requests -= 1
 	return result
 
 
-func _request(method: String, params: Dictionary) -> Dictionary:
+func _request(method: String, params: Dictionary, request_limit: int = MAX_REQUEST) -> Dictionary:
+	if request_limit not in [MAX_REQUEST, MAX_TRUSTED_REQUEST]: return {"success": false, "error": "Unsupported local MCP request budget."}
 	if _child.is_empty() or _pending_id != 0 or state not in ["connecting", "connected"]:
 		return {"success": false, "error": "The MCP connection is unavailable or busy."}
 	_serial += 1
@@ -135,7 +137,7 @@ func _request(method: String, params: Dictionary) -> Dictionary:
 	_stderr_received = 0
 	_notifications = 0
 	var generation := revision
-	if not _send({"jsonrpc": "2.0", "id": _pending_id, "method": method, "params": params}):
+	if not _send({"jsonrpc": "2.0", "id": _pending_id, "method": method, "params": params}, request_limit):
 		return _fail("The MCP request could not be sent.")
 	var deadline := Time.get_ticks_msec() + TIMEOUT_MS
 	while _response.is_empty() and generation == revision and Time.get_ticks_msec() < deadline:
@@ -251,9 +253,9 @@ func _process(_delta: float) -> void:
 		_fail("The MCP process exited.")
 
 
-func _send(message: Dictionary) -> bool:
+func _send(message: Dictionary, request_limit: int = MAX_REQUEST) -> bool:
 	var bytes := (JSON.stringify(message) + "\n").to_utf8_buffer()
-	if _child.is_empty() or bytes.size() > MAX_REQUEST:
+	if _child.is_empty() or request_limit not in [MAX_REQUEST, MAX_TRUSTED_REQUEST] or bytes.size() > request_limit:
 		return false
 	_child["stdio"].store_buffer(bytes)
 	return _child["stdio"].get_error() == OK

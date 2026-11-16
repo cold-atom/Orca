@@ -6,7 +6,11 @@ workflows. This is unreleased; plugin metadata stays at the published 1.8.0 base
 ## Few-click setup
 
 1. Restart Godot and open **Orca → Settings → Extensions**. **Blender Asset Studio**
-   is the first card, above the optional MCP **Connectors** section.
+   is the first section, using Orca's compact settings typography, inline connection
+   status and native setup button. **Optional connections** below is collapsed by default and is not
+   a prerequisite for asset creation.
+   The single requirement note reads **Only Blender 5.2+ is required.** Hover it
+   for the included-connector explanation; it disappears once connected.
 2. Click **Set up Blender**. Orca checks Godot's Blender preference and bounded
    known installation locations. One detected installation goes straight to startup
    confirmation. Several installations require an explicit selection. If none are
@@ -17,7 +21,8 @@ workflows. This is unreleased; plugin metadata stays at the published 1.8.0 base
    Blender in the background. Startup exposes **Cancel**; **Workspace ready** appears
    only after the shipped connector's command contract and workspace identity validate.
 4. Click **Back to chat** and describe your asset in **Work** mode. Your composer draft
-   is preserved. The card separately explains missing provider/tool capability or Plan
+   is preserved. **Workspace ready** confirms the dedicated background connection;
+   the section separately explains missing provider/tool capability or Plan
    mode; workspace readiness itself does not grant model capability or edit permission.
 
 No Python installation, package command, JSON configuration or `opencode.json`
@@ -34,7 +39,7 @@ replays the previous start. Reopening Settings/loading preferences never launche
 The selected program is saved in local EditorSettings, not in the project/plugin
 release. Installations are user-local; the saved workspace is bound to the exact
 Godot project root. Loading preferences never starts a process. Connections to
-already open Blender documents appear as separate cards under **Extensions → Connectors**, with
+already open Blender documents appear as separate cards under **Extensions → Optional connections**, with
 configuration/details under their **⋮** menu;
 see [cross-project MCP setup](EXTENSIONS.md#reconnect-after-switching-projects).
 
@@ -183,6 +188,45 @@ critical replacement can leave a private lock requiring explicit recovery inspec
 it is never silently cleared and never authorizes replaying the original operation.
 
 ## Cloud and validation
+
+### Work in an already open Blender session
+
+Connect the official **Blender Lab** card under **Extensions → Optional connections**,
+then choose **⋮ → Enable live authoring…** in Work and confirm. Its role becomes
+**Live Blender · Create & edit**. Asset Studio's setup is independent. Interactive
+Blender 5.2+ and native Undo are required; scripted/linked documents, unsupported
+evaluation nodes/modifiers and exceeded budgets fail explicitly.
+
+Example: “Create a low-poly robot in this Blender scene, give it a blue material,
+preview Body and Rig, then import it into Godot.” `blender_session` supports reviewed
+help/inspect/edit/preview/export/import/place. Its 26 typed families reuse the workspace
+catalog except global reset and timeline/settings changes. Review is default;
+script/workspace Auto apply does not cover live work. On a pending operation choose
+**Auto apply live session…** and confirm to automate help/inspect/edit/preview/export
+in that exact current session. This is memory-only, not a remembered project default.
+Godot import and placement always require review. Failures/conflicts, intervening live
+changes found by inspection, Stop or the green header revoke pause automation; session/
+Plan/reconnect/reload boundaries clear it. Both confirmations have scrollable bodies
+and visible native actions at narrow widths/large fonts.
+
+Edits preserve earlier unsaved work and create private recovery copies before mutation.
+Manual edits invalidate stale proposals. The original document stays open, without
+automatic save/reload. **Undo last Orca live edit** requires unchanged live state and
+revokes old identities. For partial/uncertain failures, inspect Blender and **Show live
+recovery copies**; opening/recovering a copy is user-owned, never automatic restoration.
+**Attach live asset texture…** supplies bounded texture IDs.
+
+Preview/export selects 1–16 exact object names, including parents, rigs and referenced
+constraint/Boolean targets. A private snapshot runs in a bounded background Blender
+worker, preserving the open document. Godot preview, validated import, conflict-checked
+source Revert and native Undo placement use Asset Studio's reviewed handoff.
+New Session/restoration/Plan/disconnect clear authoring. Enabling replaces earlier
+Orca authoring in that Blender instance. Interrupted effects are never replayed.
+
+The MCP execution transport carries verified Orca helpers, **not unrestricted generated
+Python**. Full Python-driven MCP control still needs independently tested isolation.
+Cloud needs the additive `blender_sessions` rollout and catalog refresh; older flags
+alone do not enable the tool.
 
 Cloud requires strict authenticated `orca.blender_workspaces` plus normal managed
 readiness, pinned through the turn. The companion backend supports only this

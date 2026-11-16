@@ -177,6 +177,8 @@ var _connection_setup_first_open := false
 @onready var _edit_permission_button: Button = $MarginContainer/EditPermissionOverlay/EditPermissionButton
 @onready var _edit_permission_status: Button = $MarginContainer/VBoxContainer/Header/TopRow/TitleGroup/EditPermissionStatus
 var _edit_permission_dialog: ConfirmationDialog
+var _live_auto_dialog
+var _live_auto_action := {}
 var _edit_permission_dialog_body: RichTextLabel
 var _edit_permission_remember: CheckBox
 var _edit_permission_blender: CheckBox
@@ -273,6 +275,8 @@ func _ready() -> void:
 		mcp_service = preload("res://addons/orca/scripts/mcp_service.gd").new()
 		add_child(mcp_service)
 	agent_controller.mcp_service = mcp_service
+	mcp_service.changed.connect(_on_live_connection_changed)
+	mcp_service.live_work_allowed = func(): return agent_controller.get_mode() == 1 and not agent_controller.is_busy() and agent_controller._session_allows_auto_apply
 	if blender_service == null:
 		blender_service = preload("res://addons/orca/scripts/blender_workspace_service.gd").new()
 		add_child(blender_service)
@@ -1159,6 +1163,8 @@ func _on_turn_request_state_changed(turn_id: int, active: bool) -> void:
 		return
 	_set_request_active(active)
 	if not active and agent_controller != null:
+		_cancel_live_auto_apply_confirmation()
+		if _live_auto_dialog != null: _live_auto_dialog.hide()
 		agent_controller.queue_editor_scene_refresh()
 
 
@@ -1328,13 +1334,13 @@ func _on_mcp_read_requested(turn_id: int, request: Dictionary) -> void:
 	var call_id: String = request["call_id"]
 	if _tool_cards.has(call_id) and is_instance_valid(_tool_cards[call_id]):
 		_tool_cards[call_id].queue_free()
-	var card = preload("res://addons/orca/scripts/blender_change_card.gd").new() if request.get("workspace_operation", false) else preload("res://addons/orca/scripts/mcp_read_card.gd").new()
+	var card = preload("res://addons/orca/scripts/blender_change_card.gd").new() if request.get("workspace_operation", false) or request.get("live_operation", false) else preload("res://addons/orca/scripts/mcp_read_card.gd").new()
 	chat_feed.add_child(card)
 	card.configure(request, turn_id)
 	card.decision_requested.connect(agent_controller.resolve_mcp_read)
 	if card.has_signal("preview_attachment_requested"):
 		card.preview_attachment_requested.connect(_attach_blender_preview)
-		card.auto_apply_requested.connect(_show_blender_permission_confirmation.bind(call_id, turn_id))
+		card.auto_apply_requested.connect(_on_blender_auto_apply_requested.bind(call_id, turn_id))
 	_tool_cards[call_id] = card
 	_scroll_to_bottom()
 
@@ -1748,6 +1754,42 @@ func _setup_edit_permission_control() -> void:
 	_edit_permission_dialog.ok_button_text = "Allow edits"
 	_edit_permission_dialog.confirmed.connect(_enable_session_edits)
 	add_child(_edit_permission_dialog)
+	_live_auto_dialog = preload("res://addons/orca/scripts/bounded_confirmation.gd").new()
+	_live_auto_dialog.title = "Allow automatic live Blender operations"
+	_live_auto_dialog.ok_button_text = "Allow live operations"
+	_live_auto_dialog.confirmed.connect(_confirm_live_auto_apply)
+	_live_auto_dialog.canceled.connect(_cancel_live_auto_apply_confirmation)
+	add_child(_live_auto_dialog)
+
+
+func _on_live_connection_changed() -> void:
+	if agent_controller != null: agent_controller.refresh_live_auto_apply_bindings()
+	_sync_edit_permission_ui()
+
+
+func _on_blender_auto_apply_requested(call_id: String, turn_id: int) -> void:
+	if agent_controller._pending_mcp_read.get("live_operation", false):
+		_show_live_auto_apply_confirmation(call_id, turn_id)
+	else:
+		_show_blender_permission_confirmation(call_id, turn_id)
+
+
+func _show_live_auto_apply_confirmation(call_id: String, turn_id: int) -> void:
+	if not _session_resumable: return
+	_live_auto_action = agent_controller.prepare_live_auto_apply_confirmation(call_id, turn_id)
+	if _live_auto_action.is_empty(): return
+	_live_auto_dialog.popup_message("Allow Orca to inspect, create, edit, preview and export automatically through %s?\n\nDocument: %s\nScene: %s\n\nThis permission is only for this live session. Edits still validate the current scene and create recovery copies. Conflicts, failures or Stop pause automation. New Session, Plan, reconnect and reload clear it.\n\nGodot import and placement always require review. This does not authorize script edits, other Blender sessions or arbitrary Python. Click the green edit icon beside ORCA to revoke Auto apply.", [_live_auto_action["name"], _live_auto_action["document"], _live_auto_action["scene"]])
+
+
+func _cancel_live_auto_apply_confirmation() -> void:
+	_live_auto_action.clear()
+	if agent_controller != null: agent_controller.cancel_live_auto_apply_confirmation()
+
+
+func _confirm_live_auto_apply() -> void:
+	var action := _live_auto_action.duplicate(true)
+	_live_auto_action.clear()
+	if not action.is_empty(): agent_controller.authorize_pending_live_edits(action)
 
 
 func _position_edit_permission_button() -> void:
@@ -1772,7 +1814,7 @@ func _position_edit_permission_button() -> void:
 func _on_edit_permission_pressed() -> void:
 	if agent_controller == null:
 		return
-	if agent_controller.auto_apply_enabled() or agent_controller.blender_auto_apply_enabled():
+	if agent_controller.auto_apply_enabled() or agent_controller.blender_auto_apply_enabled() or agent_controller.live_auto_apply_enabled():
 		agent_controller.set_auto_apply_enabled(false)
 		_clear_project_edit_default()
 		return
@@ -1928,7 +1970,7 @@ func _enable_session_edits() -> void:
 func _sync_edit_permission_ui(_enabled: bool = false) -> void:
 	if _edit_permission_button == null or _edit_permission_status == null or agent_controller == null or not agent_controller.has_method("auto_apply_enabled"):
 		return
-	var enabled: bool = agent_controller.auto_apply_enabled() or agent_controller.blender_auto_apply_enabled()
+	var enabled: bool = agent_controller.auto_apply_enabled() or agent_controller.blender_auto_apply_enabled() or agent_controller.live_auto_apply_enabled()
 	var work: bool = agent_controller.get_mode() == AgentController.AgentMode.BUILD
 	var compact := enabled or _has_session_content or not empty_state.visible
 	_edit_permission_button.visible = not compact
@@ -1941,6 +1983,7 @@ func _sync_edit_permission_ui(_enabled: bool = false) -> void:
 		var scope := "Remembered for this project: new Work conversations and editor restarts use Auto apply." if remembered else "Auto apply is enabled for this session only."
 		parts = [[scope, []], [" Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action.", []]]
 		parts.append([" Blender workspace Auto apply is enabled." if agent_controller.blender_auto_apply_enabled() else " Blender workspace operations still require review.", []])
+		if agent_controller.live_auto_apply_enabled(): parts.append([" Live Blender Auto apply is enabled for the confirmed session only; import and placement still require review.", []])
 	else:
 		parts = [["Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval.", []]]
 		if Config.project_script_edit_preference()["enabled"]:
@@ -2114,6 +2157,8 @@ func _on_new_session_pressed() -> void:
 
 
 func _start_new_session() -> void:
+	_cancel_live_auto_apply_confirmation()
+	if _live_auto_dialog != null: _live_auto_dialog.hide()
 	if blender_service != null:
 		blender_service.last_import.clear()
 	if _edit_permission_dialog != null:
@@ -2180,6 +2225,8 @@ func _restore_active_session() -> void:
 
 
 func _restore_session(session: Dictionary) -> bool:
+	_cancel_live_auto_apply_confirmation()
+	if _live_auto_dialog != null: _live_auto_dialog.hide()
 	if _edit_permission_dialog != null:
 		_edit_permission_dialog.hide()
 	_close_image_attachment_window()
@@ -2374,7 +2421,7 @@ func _message_event(sender: String, text: String, kind: String, completion: Stri
 
 func _safe_tool_arguments(arguments: Dictionary, tool_name: String = "") -> Dictionary:
 	var result := {}
-	if tool_name in ["inspect_mcp", "blender_workspace"]:
+	if tool_name in ["inspect_mcp", "blender_workspace", "blender_session"]:
 		return result # External identities/URIs are not historical navigation.
 	if tool_name == "inspect_animation":
 		return preload("res://addons/orca/scripts/animation_inspector.gd").history_arguments(arguments)
@@ -2463,8 +2510,9 @@ func _update_tool_event(call_id: String, execution: Dictionary, duration_ms: int
 	event["outcome"] = outcome
 	event["duration_ms"] = duration_ms
 	var data: Dictionary = execution.get("data", {})
-	if str(event.get("name", "")) in ["inspect_mcp", "blender_workspace"]:
+	if str(event.get("name", "")) in ["inspect_mcp", "blender_workspace", "blender_session"]:
 		event["summary"] = "MCP inspection completed." if outcome == "completed" else "MCP inspection did not complete."
+		if event["name"] == "blender_session": event["summary"] = "Live Blender operation completed." if outcome == "completed" else "Live Blender operation did not complete."
 	elif str(event.get("name", "")) == "inspect_editor_scene":
 		if outcome == "completed":
 			var node_count := clampi(int(data.get("returned_node_count", 0)), 0, 120)
@@ -3462,7 +3510,7 @@ func _setup_support_reminder() -> void:
 	_support_card.minimum_size_changed.connect(func(): call_deferred("_position_support_overlay"))
 	chat_scroll.resized.connect(_position_support_overlay)
 	chat_scroll.item_rect_changed.connect(_position_support_overlay)
-	for surface in [self, main_content, mode_overlay, _connection_overlay, _edit_permission_dialog, _new_session_dialog, _image_picker, _image_preview, _image_attachment_window]:
+	for surface in [self, main_content, mode_overlay, _connection_overlay, _edit_permission_dialog, _live_auto_dialog, _new_session_dialog, _image_picker, _image_preview, _image_attachment_window]:
 		if surface != null:
 			surface.visibility_changed.connect(_pause_support_reminder)
 	account_service.changed.connect(_pause_support_reminder)
@@ -3512,7 +3560,7 @@ func _support_idle() -> bool:
 		return false
 	if not agent_controller._pending_change_id.is_empty() or not agent_controller._pending_work_mode_call_id.is_empty() or prompt_input.has_focus() or not prompt_input.text.is_empty() or not _draft_images.is_empty() or not _draft_script_paths.is_empty():
 		return false
-	for surface in [mode_overlay, _connection_overlay, _edit_permission_dialog, _new_session_dialog, _image_picker, _image_preview, _image_attachment_window]:
+	for surface in [mode_overlay, _connection_overlay, _edit_permission_dialog, _live_auto_dialog, _new_session_dialog, _image_picker, _image_preview, _image_attachment_window]:
 		if surface != null and surface.visible:
 			return false
 	if account_service.state not in ["connected", "signed_out"] or account_service._refreshing or (update_service != null and update_service.busy()) or game_process_service.is_running():

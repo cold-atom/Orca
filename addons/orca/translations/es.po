@@ -2336,3 +2336,186 @@ msgstr "1. Instala y activa el complemento MCP oficial en Blender.\n2. Instala e
 
 msgid "Blender Lab installation guide"
 msgstr "Guía de instalación de Blender Lab"
+
+msgid "3D ASSET CREATION"
+msgstr "CREACIÓN DE RECURSOS 3D"
+
+msgid "Blender Asset Studio"
+msgstr "Blender Asset Studio"
+
+msgid "Create, preview, and export 3D game assets from chat."
+msgstr "Crea, previsualiza y exporta recursos 3D para juegos desde el chat."
+
+msgid "Setup unavailable"
+msgstr "Configuración no disponible"
+
+msgid "Connect Blender"
+msgstr "Conecta Blender"
+
+msgid "Ready to start"
+msgstr "Listo para comenzar"
+
+msgid "Uses Blender 5.2+ installed on your computer."
+msgstr "Usa Blender 5.2 o posterior instalado en tu equipo."
+
+msgid "Blender is running in the background."
+msgstr "Blender se está ejecutando en segundo plano."
+
+msgid "Starting asset workspace"
+msgstr "Iniciando espacio de recursos"
+
+msgid "Return to Work chat and describe your next asset."
+msgstr "Vuelve al chat en modo Trabajo y describe tu próximo recurso."
+
+msgid "Runs Blender in the background. No add-on or separate connector setup needed."
+msgstr "Ejecuta Blender en segundo plano. No necesitas complementos ni configurar otro conector."
+
+msgid "Bring your creative tools into Orca."
+msgstr "Integra tus herramientas creativas en Orca."
+
+msgid "Optional connections"
+msgstr "Conexiones opcionales"
+
+msgid "Inspect an open Blender session or connect other tools. Not needed to create assets."
+msgstr "Inspecciona una sesión abierta de Blender o conecta otras herramientas. No es necesario para crear recursos."
+
+msgid "Add connection…"
+msgstr "Añadir conexión…"
+
+msgid "%d connected for inspection · Optional for asset creation"
+msgstr "%d conexiones de inspección · Opcionales para crear recursos"
+
+msgid "Live Blender · Inspection only"
+msgstr "Blender abierto · Solo inspección"
+
+msgid "MCP · Inspection only"
+msgstr "MCP · Solo inspección"
+
+msgid "Not connected"
+msgstr "Sin conexión"
+
+msgid "Connected for inspection"
+msgstr "Conectado para inspección"
+
+msgid "Read objects and scene details from Blender you have open. This connection does not create or edit assets."
+msgstr "Consulta objetos y detalles de escena del Blender que tienes abierto. Esta conexión no crea ni edita recursos."
+
+msgid "Connect to Blender you have open for inspection only. To create assets, start Blender Asset Studio on Extensions."
+msgstr "Conéctate al Blender que tienes abierto solo para inspección. Para crear recursos, inicia Blender Asset Studio en Extensiones."
+
+msgid "1. Install and enable the official MCP add-on in Blender.\n2. Install the separate official MCP server.\n3. Open Blender and start the listener in Preferences → Add-ons → MCP.\n4. Choose the server program below, Save, then Connect."
+msgstr "1. Instala y activa el complemento MCP oficial en Blender.\n2. Instala el servidor MCP oficial por separado.\n3. Abre Blender e inicia la escucha en Preferencias → Complementos → MCP.\n4. Selecciona el programa del servidor abajo, guarda y conecta."
+
+msgid "Setup is saved on this computer. Connect starts this local program with your account's file and network access. External reads ask separately."
+msgstr "La configuración se guarda en este equipo. Conectar inicia este programa local con el acceso a archivos y red de tu cuenta. Las lecturas externas solicitan permiso por separado."
+
+msgid "Create and preview 3D assets from chat."
+msgstr "Crea y previsualiza recursos 3D desde el chat."
+
+msgid "No Blender add-on or MCP setup needed."
+msgstr "No necesitas configurar complementos de Blender ni MCP."
+
+msgid "%d connected for inspection"
+msgstr "%d conexiones de inspección"
+
+msgid "Inspect objects and scene details in your open Blender session."
+msgstr "Inspecciona objetos y detalles de escena en tu sesión abierta de Blender."
+
+msgid "Only Blender 5.2+ is required."
+msgstr "Solo se requiere Blender 5.2 o posterior."
+
+msgid "Orca includes the workspace connector. No Blender add-on or separate MCP installation is needed."
+msgstr "Orca incluye el conector del espacio de trabajo. No necesitas instalar complementos de Blender ni MCP por separado."
+
+msgid "Enable live authoring…"
+msgstr "Activar creación en Blender…"
+
+msgid "Disable live authoring"
+msgstr "Desactivar creación en Blender"
+
+msgid "Enable live Blender authoring?"
+msgstr "¿Activar la creación en Blender abierto?"
+
+msgid "Enable authoring"
+msgstr "Activar creación"
+
+msgid "Undo last Orca live edit"
+msgstr "Deshacer la última edición de Orca en Blender"
+
+msgid "Show live recovery copies"
+msgstr "Mostrar copias de recuperación de Blender"
+
+msgid "Attach live asset texture…"
+msgstr "Adjuntar textura al recurso de Blender…"
+
+msgid "Attach live asset texture"
+msgstr "Adjuntar textura al recurso de Blender"
+
+msgid "Revert live asset import"
+msgstr "Revertir importación del recurso de Blender"
+
+msgid "Live Blender · Create & edit"
+msgstr "Blender abierto · Crear y editar"
+
+msgid "Connected for creation and editing"
+msgstr "Conectado para crear y editar"
+
+msgid "Preparing live authoring…"
+msgstr "Preparando creación en Blender…"
+
+msgid "Live authoring needs attention"
+msgstr "La creación en Blender requiere atención"
+
+msgid "%d connected · %d with live authoring"
+msgstr "%d conexiones · %d con creación en Blender"
+
+msgid "Create, edit, preview and export assets in your open Blender scene."
+msgstr "Crea, edita, previsualiza y exporta recursos en tu escena abierta de Blender."
+
+msgid "Work with an open Blender session or connect other tools. Asset Studio can create assets independently."
+msgstr "Trabaja con una sesión abierta de Blender o conecta otras herramientas. Asset Studio puede crear recursos de forma independiente."
+
+msgid "Connect to your open Blender session. Official Blender Lab also supports optional reviewed live authoring. Asset Studio creates assets with only Blender installed."
+msgstr "Conecta tu sesión abierta de Blender. Blender Lab oficial también permite activar la creación con revisión. Asset Studio crea recursos con solo Blender instalado."
+
+msgid "Enable reviewed asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open and unsaved. Every operation asks for approval; Auto apply does not cover this session. Linked libraries, embedded scripts and drivers require a separate workflow."
+msgstr "¿Activar la creación y edición de recursos con revisión mediante %s en la escena actual de Blender?\n\nOrca instala su asistente verificado y sustituye las sesiones de creación anteriores de Orca en esta instancia de Blender. Las ediciones conservan copias privadas de recuperación; el documento original permanece abierto sin guardarse. Cada operación solicita aprobación; Aplicar automáticamente no cubre esta sesión. Las bibliotecas vinculadas, los scripts incrustados y los controladores requieren otro flujo de trabajo."
+
+msgid "Review live Blender operation"
+msgstr "Revisar operación en Blender abierto"
+
+msgid "Approve this exact operation in your open Blender scene. Edits retain a recovery copy and remain unsaved in Blender. Project import and placement require their own review."
+msgstr "Aprueba esta operación exacta en tu escena abierta de Blender. Las ediciones conservan una copia de recuperación y permanecen sin guardar en Blender. La importación al proyecto y la colocación requieren su propia revisión."
+
+msgid "Preview/export uses a private saved copy in one bounded background Blender worker. Your open document is preserved. Only the reviewed objects and their included rig/parents are handed off."
+msgstr "La previsualización/exportación utiliza una copia privada guardada en un proceso limitado de Blender en segundo plano. Tu documento abierto se conserva. Solo se transfieren los objetos revisados y los esqueletos/objetos padre incluidos."
+
+msgid "Applied in Blender · Save pending"
+msgstr "Aplicado en Blender · Pendiente de guardar"
+
+msgid "Live Blender authoring"
+msgstr "Creación en Blender abierto"
+
+msgid "Auto apply live session…"
+msgstr "Aplicar automáticamente en esta sesión…"
+
+msgid "Live Blender operation"
+msgstr "Operación en Blender abierto"
+
+msgid "Auto applied in Blender · Save pending"
+msgstr "Aplicado automáticamente en Blender · Pendiente de guardar"
+
+msgid "Allow automatic live Blender operations"
+msgstr "Permitir operaciones automáticas en Blender abierto"
+
+msgid "Allow live operations"
+msgstr "Permitir operaciones en Blender"
+
+msgid " Live Blender Auto apply is enabled for the confirmed session only; import and placement still require review."
+msgstr " La aplicación automática en Blender está activa solo para la sesión confirmada; la importación y la colocación requieren revisión."
+
+msgid "Enable asset creation and editing through %s in the current Blender scene?\n\nOrca installs its verified helper and replaces earlier Orca authoring sessions in this Blender instance. Edits keep private recovery copies; the original document stays open without automatic save or reload.\n\nOperations require review unless you separately enable Auto apply for this live session. Godot import and scene placement always require review. Linked libraries, embedded scripts and drivers require a separate workflow."
+msgstr "¿Activar la creación y edición de recursos mediante %s en la escena actual de Blender?\n\nOrca instala su asistente verificado y sustituye las sesiones de creación anteriores de Orca en esta instancia de Blender. Las ediciones conservan copias privadas de recuperación; el documento original permanece abierto sin guardarse ni recargarse automáticamente.\n\nLas operaciones requieren revisión salvo que actives por separado la aplicación automática para esta sesión. La importación a Godot y la colocación en escenas siempre requieren revisión. Las bibliotecas vinculadas, los scripts incrustados y los controladores requieren otro flujo de trabajo."
+
+msgid "Allow Orca to inspect, create, edit, preview and export automatically through %s?\n\nDocument: %s\nScene: %s\n\nThis permission is only for this live session. Edits still validate the current scene and create recovery copies. Conflicts, failures or Stop pause automation. New Session, Plan, reconnect and reload clear it.\n\nGodot import and placement always require review. This does not authorize script edits, other Blender sessions or arbitrary Python. Click the green edit icon beside ORCA to revoke Auto apply."
+msgstr "¿Permitir que Orca inspeccione, cree, edite, previsualice y exporte automáticamente mediante %s?\n\nDocumento: %s\nEscena: %s\n\nEste permiso solo cubre esta sesión abierta. Las ediciones siguen validando la escena actual y creando copias de recuperación. Los conflictos, los fallos o Detener pausan la automatización. Nueva sesión, Plan, reconectar y recargar eliminan el permiso.\n\nLa importación a Godot y la colocación siempre requieren revisión. Esto no autoriza editar scripts, otras sesiones de Blender ni Python arbitrario. Haz clic en el icono verde de edición junto a ORCA para revocar la aplicación automática."

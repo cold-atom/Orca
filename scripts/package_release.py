@@ -33,6 +33,8 @@ REQUIRED_HELPERS = {
 }
 WORKSPACE_SERVICE = "scripts/blender_workspace_service.gd"
 WORKSPACE_RUNTIME = {"blender/workspace_connector.py", "blender/workspace_contract.py"}
+LIVE_SERVICE = "scripts/blender_session_service.gd"
+LIVE_RUNTIME = WORKSPACE_RUNTIME | {"blender/live_session.py", "blender/live_export.py"}
 RESERVED = {"CON", "PRN", "AUX", "NUL"} | {
     f"{prefix}{number}" for prefix in ("COM", "LPT") for number in range(1, 10)
 }
@@ -149,6 +151,8 @@ def build(addon: Path, output: Path, version: str | None = None, min_godot: str 
         raise ValueError("Required addon files are missing")
     if WORKSPACE_SERVICE in seen and (missing := WORKSPACE_RUNTIME - seen):
         raise ValueError("Blender workspace runtime is incomplete: " + ", ".join(sorted(missing)))
+    if LIVE_SERVICE in seen and (missing := LIVE_RUNTIME - seen):
+        raise ValueError("Blender live-authoring runtime is incomplete: " + ", ".join(sorted(missing)))
     catalog_payload = None
     if helper_assets is not None:
         catalog = helper_catalog(helpers, version, require_platform_helpers)

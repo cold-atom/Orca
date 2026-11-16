@@ -6,6 +6,40 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
+Reviewed live Blender Lab authoring adds:
+
+```bash
+python3 tests/run_editor_test.py blender_session_editor_test.gd
+python3 tests/run_editor_test.py blender_session_editor_test.gd --graphical
+ORCA_TEST_BLENDER_BIN=/absolute/path/to/blender python3 -m unittest discover -s tests -p blender_live_test.py -v
+python3 tests/run_editor_test.py blender_session_editor_test.gd --graphical --blender-session-executable /absolute/path/to/blender --blender-lab-executable /absolute/path/to/blender-mcp
+```
+
+Native cases require an explicit Blender 5.2+ executable and a graphical display.
+They launch factory-startup disposable documents with isolated Blender config/scripts/
+temporary directories. The combined editor variant starts an owned disposable Blender
+listener and the explicitly installed official MCP bridge on a private test port; it
+never targets an owner's Blender document/listener or uses paid inference. Both native
+paths have completion/exit checks. The ordinary editor case uses synthetic stdio.
+The Linux combined fixture keeps peer state inside isolated XDG cache and binds its
+owned Blender/server children to kernel parent-death cleanup, including Godot's SIGKILL
+bridge stop. Production disconnect still stops only the user's selected bridge.
+
+Coverage includes real creation/material/rig/action work, unsaved-state preservation,
+checkpoint receipts, native Undo/inverse conflicts, partial failure without reload,
+selected-object static preview/export and shared mesh isolation. Editor cases exercise
+actual Enable/Reject/Stop, exact project/session/proposal binding, Plan/raw-Python denial,
+Auto apply exclusion, singleton batching, malformed-result uncertainty, five-language
+1×/1.5×/2× narrow review, validated import/placement/Revert and non-actionable history.
+New Session removes live permission without disconnecting inspection. CI includes a
+Linux/Xvfb native helper case; fresh CI and other-platform/live-model acceptance remain
+separate from local verification.
+The live editor case also checks owner/display-bounded confirmation geometry and native
+button visibility across five languages/1×/1.5×/2× fonts. It verifies separate live Auto
+apply acquisition (cancelled/forged/stale decisions), automatic help/inspect/edit/preview/
+export, exact import/place review, header and Stop revocation, conflict/manual-baseline
+pause and Plan/re-enable clearing. No live grant is restored from settings/history.
+
 Blender Asset Studio adds:
 
 ```bash
@@ -38,14 +72,27 @@ connector/contract before writing ZIP/checksum/manifests and reject manifest-con
 incomplete ZIPs through production updater extraction. Actual source packages retain
 both runtime files byte-for-byte, non-executable and without Python bytecode caches.
 
-Guided setup coverage exercises the actual Extensions landing card: zero/one/multiple
+Guided setup coverage exercises the actual Extensions setup section: zero/one/multiple
 installation discovery, invalid Browse recovery, exact/cancelled/stale/consumed startup
 confirmation, immediate Cancel with coroutine settlement, failed-stop recovery,
 one-action reconnect and draft-preserving Back to chat. Mode/provider/managed capability
 guidance is presentation-only and does not change active-turn snapshots or grants.
 All five locales and 1×/1.5×/2× fonts retain the selected installation and pending
 confirmation at narrow widths. Graphical runs may set `ORCA_BLENDER_SETUP_PREVIEW_DIR`
-to an existing external directory to capture the first-use and ready Settings views.
+to an existing external directory to capture the first-use and ready Settings views
+at the fixture's narrow width and a 400-unit dock width (`-wide.png`).
+Optional setup captures explicitly draw the settled frame; an idle editor may not
+schedule another render after layout changes finish.
+The native asset-creation section and inline state remain independent of the collapsed
+Optional connections section. Requirement copy and its native tooltip localize together;
+initial/selected setup omits duplicate version status while invalid choices restore
+visible guidance. The requirement hides after connection.
+MCP editor checks expand saved cards without launch,
+collapse live cards without disconnect, retain an aggregate inspection count and
+preserve disclosure/configuration identity across live language changes. All five
+locales and 1×/1.5×/2× fonts also exercise the expanded inspection-only cards and
+Connect/Disconnect captions. `ORCA_MCP_PREVIEW` can capture the landing and scrolled
+live-connection views during graphical runs.
 
 The workspace case now runs five clean editors across two disposable projects:
 exercise, actual restart, different/copied project, header revoke and revoked

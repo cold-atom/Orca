@@ -81,7 +81,7 @@ func _run() -> void:
 	view._on_settings_button_pressed()
 	view.settings_view._show_section("extensions")
 	var studio = view.settings_view.extensions_view.blender_panel
-	_check(studio.is_visible_in_tree() and studio._primary.text == Localization.message("Back to chat") and not studio._actions.visible, "connected workspace offers a direct compact return to chat")
+	_check(studio.is_visible_in_tree() and studio._primary.text == Localization.message("Back to chat") and not studio._actions.visible and not studio._hint.visible, "connected workspace offers a compact return to chat without repeated setup guidance")
 	controller.set_mode(0)
 	_check(studio._blocker.visible and studio._blocker.text == Localization.message("Switch to Work mode in chat to create Blender assets."), "workspace readiness distinguishes the Plan-mode blocker")
 	controller.set_mode(1)
@@ -319,17 +319,20 @@ func _exercise_guided_setup() -> void:
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var panel = page.blender_panel
 	_check(panel.is_visible_in_tree() and panel._primary.text == Localization.message("Set up Blender") and service._client._child.is_empty(), "first-open asset setup is visible and never launches Blender")
+	_check(not page._connectors_body.visible and panel._connection_title.text == Localization.message("Connect Blender"), "asset setup has a clear connection state and optional live integrations stay collapsed")
+	_check(not panel._status.visible and panel._hint.visible and panel._hint.text == Localization.message("Only Blender 5.2+ is required."), "initial setup shows one requirement line without duplicate version status")
 	await _capture_setup(host, "orca-blender-setup-first.png")
 	panel._primary.pressed.emit()
 	_check(panel._choose.is_visible_in_tree() and panel._download.is_visible_in_tree() and not panel._browse.visible and not panel._confirm.visible, "missing Blender explains Browse and Download without forcing a file dialog")
 	panel._browse.file_selected.emit("/not/blender")
-	_check(panel._status.text == Localization.message("Choose an installed Blender executable.") and service.executable.is_empty(), "invalid file choice has visible recovery guidance")
+	_check(panel._status.is_visible_in_tree() and panel._status.text == Localization.message("Choose an installed Blender executable.") and service.executable.is_empty(), "invalid file choice restores visible recovery guidance")
 	service.installations.assign(["/fixture/blender-a", "/fixture/blender-b"])
 	panel._primary.pressed.emit()
 	_check(panel._installations.visible and panel._installations.selected == -1 and not panel._download.visible and service.executable.is_empty(), "multiple installations require an explicit choice and do not assume the first")
 	panel._installations.select(1)
 	panel._installations.item_selected.emit(1)
 	_check(service.executable == "/fixture/blender-b" and not panel._confirm.visible and service._client._child.is_empty(), "installation choice alone never starts a workspace")
+	_check(not panel._status.visible and panel._hint.visible, "selected installation retains a single compact requirement note")
 	panel._primary.pressed.emit()
 	_check(panel._confirm.visible and panel._confirm.dialog_text.contains(service.executable), "startup confirmation discloses the exact selected Blender")
 	panel._confirm.canceled.emit()
@@ -352,6 +355,7 @@ func _exercise_guided_setup() -> void:
 			for frame in 3: await process_frame
 			_check(page.get_combined_minimum_size().x <= Metrics.scaled(300) + 1, "guided setup fits narrow dock and enlarged fonts " + locale + str(factor))
 			_check(panel._confirm.visible and panel._approved_executable == service.executable and panel._choice == "connect", "language and font refresh preserve the exact pending startup decision")
+			_check(panel._hint.text == Localization.message("Only Blender 5.2+ is required.") and panel._hint.get_tooltip(Vector2.ZERO) == Localization.message("Orca includes the workspace connector. No Blender add-on or separate MCP installation is needed."), "requirement and native tooltip localize together " + locale)
 	_scale_setup_fonts(page, 1.0)
 	Localization.select_language("en")
 	panel._confirm.hide()
@@ -368,7 +372,8 @@ func _exercise_guided_setup() -> void:
 	for frame in 600:
 		if service.state == "connected" or not service.busy(): break
 		await process_frame
-	_check(service.state == "connected" and panel._status.text == "Workspace ready" and panel._primary.text == "Back to chat", "fresh user restart validates the workspace and offers chat without an MCP connector")
+	_check(service.state == "connected" and panel._status.text == "Blender is running in the background." and panel._primary.text == "Back to chat", "fresh user restart validates the workspace and offers chat without an MCP connector")
+	_check(panel._connection_title.text == "Workspace ready" and not page._connectors_body.visible, "asset readiness is independent of optional inspection connections")
 	var snapshot: Dictionary = service.snapshot()
 	panel._confirm.confirmed.emit()
 	_check(service.snapshot() == snapshot, "consumed confirmation cannot restart a ready workspace")
@@ -394,8 +399,16 @@ func _capture_setup(host: Window, filename: String) -> void:
 	var directory := OS.get_environment("ORCA_BLENDER_SETUP_PREVIEW_DIR")
 	if directory.is_empty() or not DirAccess.dir_exists_absolute(directory) or DisplayServer.get_name() == "headless": return
 	for frame in 4: await process_frame
-	await RenderingServer.frame_post_draw
+	# The idle editor may not schedule another frame after layout settles.
+	RenderingServer.force_draw(false)
 	host.get_texture().get_image().save_png(directory.path_join(filename))
+	var original_size := host.size
+	host.size.x = Metrics.scaled_int(400)
+	for frame in 4: await process_frame
+	RenderingServer.force_draw(false)
+	host.get_texture().get_image().save_png(directory.path_join(filename.get_basename() + "-wide.png"))
+	host.size = original_size
+	for frame in 4: await process_frame
 
 func _scale_setup_fonts(node: Node, factor: float) -> void:
 	if node is Label or node is Button:

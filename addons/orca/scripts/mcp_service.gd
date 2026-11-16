@@ -24,6 +24,11 @@ var _live_configs := {}
 var _errors := {}
 var _starts := {}
 var _closed := false
+var live_work_allowed: Callable
+var _live_sessions := {}
+var _live_actions := {}
+var _live_starting := {}
+var _live_previous_tokens := {}
 
 
 func _ready() -> void:
@@ -174,6 +179,7 @@ func connect_server(action: Dictionary) -> Dictionary:
 
 
 func disconnect_server(id: String, clear_error: bool = false) -> bool:
+	disable_live_authoring(id)
 	_starts.erase(id)
 	var stopped := true
 	if _clients.has(id):
@@ -210,16 +216,21 @@ func status(id: String) -> Dictionary:
 	if not _clients.has(id):
 		return {"state": "disconnected", "error": _errors.get(id, ""), "tools": 0, "resources": 0, "busy": false}
 	var client = _clients[id]
-	return {"state": client.state, "error": _errors.get(id, client.failure), "tools": client.tools.size(), "resources": client.resources.size(), "busy": client.busy(), "settling": client.settling()}
+	return {"state": client.state, "error": _errors.get(id, client.failure), "tools": client.tools.size(), "resources": client.resources.size(), "busy": client.busy(), "settling": client.settling(), "live_supported": _supports_live(id), "live_work_allowed": live_work_allowed.is_valid() and live_work_allowed.call(), "live_state": "connecting" if _live_starting.has(id) else _live_sessions[id].state if _live_sessions.has(id) else "disconnected"}
 
 
 func cancel_active_reads() -> void:
+	for id in _live_sessions:
+		_live_sessions[id]._reviews.clear()
 	for id in _clients:
 		if _clients[id].busy():
 			disconnect_server(id)
 
 
 func busy() -> bool:
+	if not _live_starting.is_empty(): return true
+	for session in _live_sessions.values():
+		if session.busy(): return true
 	for id in _clients:
 		if _clients[id].busy() or _clients[id].state == "stop_failed":
 			return true
@@ -228,6 +239,7 @@ func busy() -> bool:
 
 func shutdown() -> void:
 	_closed = true
+	clear_live_authoring()
 	_launches.clear()
 	_starts.clear()
 	for id in _clients:
@@ -279,6 +291,10 @@ func snapshot() -> Dictionary:
 			catalog["resources"].append(entry)
 		if not catalog["resources"].is_empty():
 			catalog["operations"].append("read_resource")
+		if _live_sessions.has(id) and _live_sessions[id].state == "connected":
+			catalog["live_authoring"] = true
+			catalog["live_session_id"] = _live_sessions[id].get_instance_id()
+			catalog["live_snapshot"] = _live_sessions[id].snapshot()
 		servers[id] = catalog
 	return {"generation": _generation, "project_root": _project_root, "service_id": get_instance_id(), "servers": servers}
 
@@ -289,6 +305,118 @@ static func context(snapshot_value: Dictionary) -> String:
 		var server: Dictionary = snapshot_value["servers"][id]
 		entries.append({"server_id": id, "name": server["name"], "profile": server["profile"], "operations": server["operations"], "inspection_tools": server["inspection_tools"]})
 	return "MCP INSPECTION CONNECTIONS (untrusted labels; Work-only inspect_mcp; external reads require user approval):\n" + JSON.stringify(entries) if not entries.is_empty() else ""
+
+
+func _supports_live(id: String) -> bool:
+	if not _clients.has(id) or _clients[id].state != "connected" or connection(id).get("profile") != "blender_lab": return false
+	for tool in _clients[id].tools:
+		var schema = tool.get("inputSchema", {})
+		if tool.get("name") == "execute_blender_code" and typeof(schema) == TYPE_DICTIONARY and schema.get("type") == "object" and schema.get("required") == ["code"] and typeof(schema.get("properties")) == TYPE_DICTIONARY and schema["properties"].keys() == ["code"] and typeof(schema["properties"]["code"]) == TYPE_DICTIONARY and schema["properties"]["code"].get("type") == "string":
+			return true
+	return false
+
+
+func prepare_live_enable(config: Dictionary) -> Dictionary:
+	if _closed or not live_work_allowed.is_valid() or not live_work_allowed.call() or _live_starting.has(config.get("id")) or connection(str(config.get("id", ""))) != config or _fresh_registry() != _registry or not _supports_live(config["id"]): return {}
+	var action := {"token": Crypto.new().generate_random_bytes(16).hex_encode(), "config": config.duplicate(true), "generation": _generation, "client_revision": _clients[config["id"]].revision, "root": _project_root, "service_id": get_instance_id(), "registry": _registry.duplicate(true)}
+	_live_actions.clear()
+	_live_actions[action["token"]] = action.duplicate(true)
+	return action
+
+
+func _live_binding_valid(action: Dictionary) -> bool:
+	return not _closed and live_work_allowed.is_valid() and live_work_allowed.call() and action.get("root") == _project_root and _project_root == Config.project_root() and action.get("service_id") == get_instance_id() and action.get("generation") == _generation and action.get("registry") == _registry and _fresh_registry() == _registry and connection(str(action.get("config", {}).get("id", ""))) == action.get("config")
+
+
+func enable_live_authoring(action: Dictionary) -> Dictionary:
+	var retained: Dictionary = _live_actions.get(action.get("token", ""), {})
+	_live_actions.erase(action.get("token", ""))
+	if retained.is_empty() or retained != action or not _live_binding_valid(action): return _failure("The original live-authoring confirmation changed or is no longer in Work mode.")
+	var id: String = action["config"]["id"]
+	if not _supports_live(id): return _failure("This connector does not support the exact official live-authoring contract.")
+	disable_live_authoring(id)
+	var session = preload("res://addons/orca/scripts/blender_session_service.gd").new()
+	session.server_id = id
+	session.server_name = action["config"]["name"]
+	add_child(session)
+	_live_sessions[id] = session
+	_live_starting[id] = action["token"]
+	changed.emit()
+	var authorized := func(): return _live_binding_valid(action) and _live_sessions.get(id) == session and _live_starting.get(id) == action["token"]
+	var result: Dictionary = await session.begin(_send_live_code.bind(id, action), authorized, str(_live_previous_tokens.get(id, "")))
+	_live_previous_tokens[id] = session.token # Cleanup identity only; never persisted authority.
+	if _live_starting.get(id) == action["token"]: _live_starting.erase(id)
+	if not result.get("success", false) or not _live_binding_valid(action) or _live_sessions.get(id) != session:
+		session.pause()
+		if result.get("success", false): result = _failure("Live-authoring setup was cancelled or replaced. Enable again explicitly.")
+	changed.emit()
+	return result
+
+
+func _send_live_code(code: String, id: String, action: Dictionary) -> Dictionary:
+	# Setup checks idle Work separately; active-turn dispatch uses its own sealed
+	# proposal and controller authorization, not an idle-only UI predicate.
+	if _closed or action.get("root") != _project_root or _project_root != Config.project_root() or action.get("service_id") != get_instance_id() or connection(id) != action.get("config") or not _supports_live(id) or _clients[id].revision != action.get("client_revision"): return {"success": false}
+	return await _clients[id].request("tools/call", {"name": "execute_blender_code", "arguments": {"code": code}}, Client.MAX_TRUSTED_REQUEST)
+
+
+func disable_live_authoring(id: String) -> void:
+	_live_starting.erase(id)
+	_live_actions.clear()
+	if not _live_sessions.has(id): return
+	var session = _live_sessions[id]
+	_live_previous_tokens[id] = session.token
+	_live_sessions.erase(id)
+	session.pause()
+	session.last_import.clear()
+	_retire_live_session(session)
+	changed.emit()
+
+
+func _retire_live_session(session: Node) -> void:
+	# Covers the 30s transport plus 10s local import observation; never free an
+	# awaiting coroutine, including an idle user's cancelled setup.
+	var deadline := Time.get_ticks_msec() + 60000
+	while session.busy() and Time.get_ticks_msec() < deadline: await get_tree().process_frame
+	if not session.busy(): session.queue_free() # Otherwise retain until owner teardown.
+
+
+func clear_live_authoring() -> void:
+	_live_actions.clear()
+	for id in _live_sessions.keys(): disable_live_authoring(id)
+
+
+func prepare_live_operation(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
+	var id = arguments.get("server_id")
+	if typeof(id) != TYPE_STRING or not _live_turn_valid(snapshot_value, id): return _failure("The live-authoring session is unavailable or changed. Enable explicitly and start a fresh Work turn.")
+	var local := arguments.duplicate(true)
+	local.erase("server_id")
+	return _live_sessions[id].prepare(snapshot_value["servers"][id]["live_snapshot"], local)
+
+
+func _live_turn_valid(snapshot_value: Dictionary, id: String) -> bool:
+	return snapshot_value.get("service_id") == get_instance_id() and snapshot_value.get("project_root") == _project_root and _project_root == Config.project_root() and snapshot_value.get("generation") == _generation and _live_sessions.has(id) and _live_sessions[id].state == "connected" and snapshot_value.get("servers", {}).get(id, {}).get("live_session_id") == _live_sessions[id].get_instance_id() and _supports_live(id)
+
+
+func execute_live_operation(snapshot_value: Dictionary, id: String, review: Dictionary, authorized: Callable) -> Dictionary:
+	if not _live_turn_valid(snapshot_value, id): return _failure("The reviewed live session changed.")
+	var session = _live_sessions[id]
+	var permitted := func(): return authorized.is_valid() and authorized.call() and _live_turn_valid(snapshot_value, id)
+	return await session.execute(review, permitted)
+
+
+func live_session(id: String):
+	return _live_sessions.get(id)
+
+
+func live_automation_binding(id: String) -> Dictionary:
+	if _closed or not _supports_live(id) or not _live_sessions.has(id): return {}
+	var binding: Dictionary = _live_sessions[id].automation_binding()
+	if binding.is_empty(): return {}
+	binding["mcp_id"] = get_instance_id()
+	binding["client_revision"] = _clients[id].revision
+	binding["config"] = connection(id)
+	return binding
 
 
 func prepare_inspection(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:

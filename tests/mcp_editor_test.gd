@@ -52,6 +52,7 @@ func _run() -> void:
 	var page = settings.extensions_view
 	_check(settings.extensions_tab_button.icon == Settings.EXTENSIONS_ICON and page.visible and not settings.system_scroll.visible, "extension icon and independent section")
 	_check(page._main.visible and page.blender_panel.is_visible_in_tree() and not page.blender_panel._actions.visible, "Extensions exposes compact asset setup before optional connectors")
+	_check(not page._connectors_body.visible and not page._connectors_toggle.button_pressed and not page._connectors_hint.visible, "optional live connections are collapsed on first open without empty status copy")
 	_check(settings.extensions_tab_button.tooltip_text == Localization.message("Extensions"), "Settings names the umbrella section Extensions")
 	page._configure({})
 	var dialog = page._dialog
@@ -72,6 +73,10 @@ func _run() -> void:
 	_check(service.connections.size() == 1, "actual canonical computer-local EditorSettings save")
 	_check(service.connections[0]["profile"] == "blender", "existing community selection retains its stored identity")
 	var id: String = service.connections[0]["id"]
+	page._connectors_toggle.button_pressed = true
+	page._connectors_toggle.pressed.emit()
+	_check(page._cards[id].is_visible_in_tree() and service._clients.is_empty(), "opening optional connections reveals saved cards without starting a process")
+	_check(page._cards[id]._role.text == Localization.message("Live Blender · Inspection only") and page._cards[id]._action.text == Localization.message("Connect"), "live Blender has an explicit inspection-only role and Connect action")
 	var live_executable := OS.get_environment("ORCA_BLENDER_LAB_LIVE_EXECUTABLE")
 	page._configure(service.connection(id))
 	dialog.profile_selector.select(0)
@@ -105,6 +110,11 @@ func _run() -> void:
 		if service.status(id)["state"] != "connecting": break
 		await process_frame
 	_check(service.status(id)["state"] == "connected", "real stdio connection from UI")
+	page._connectors_toggle.button_pressed = false
+	page._connectors_toggle.pressed.emit()
+	_check(not page._connectors_body.visible and page._connectors_hint.visible and page._connectors_hint.text == Localization.message("%d connected for inspection") % 1 and service.status(id)["state"] == "connected", "collapsed connections retain compact inspection status and preserve the live process")
+	page._connectors_toggle.button_pressed = true
+	page._connectors_toggle.pressed.emit()
 	var catalog: Dictionary = service.snapshot().get("servers", {}).get(id, {})
 	_check(catalog.get("inspection_tools", {}) == Service.PROFILE_READS["blender_lab"], "UI connection discovers exact official inspection tools")
 	var before_save := service.snapshot()
@@ -119,8 +129,9 @@ func _run() -> void:
 			_check(page._main.get_h_scroll_bar().max_value <= page.size.x + 1, "no horizontal scroll " + locale + str(factor))
 			_check(dialog.name_input.text == "Fixture" and page._cards[id].config["id"] == id, "live language refresh preserves exact configuration")
 			_check(dialog.profile_selector.get_selected_metadata() == "blender_lab", "language refresh preserves official profile " + locale)
-			_check(page._cards[id]._action.text == Localization.message("Disable"), "connector action is localized without changing its decision " + locale)
-			_check(page._cards[id]._status.text == Localization.message("MCP connected — inspection"), "connected state explicitly describes inspection " + locale)
+			_check(page._connectors_body.visible and page._connectors_toggle.button_pressed, "language refresh preserves disclosure state " + locale)
+			_check(page._cards[id]._action.text == Localization.message("Disconnect"), "connector action is localized without changing its decision " + locale)
+			_check(page._cards[id]._status.text == Localization.message("Connected for inspection"), "connected state explicitly describes inspection " + locale)
 			_check(dialog._body.get_combined_minimum_size().x <= Metrics.scaled(300), "focused dialog minimum fits narrow/large-font layout " + locale + str(factor))
 	_scale_fonts(settings, 1.0)
 	Localization.select_language("en")
@@ -128,6 +139,10 @@ func _run() -> void:
 	for frame in 8: await process_frame
 	if not OS.get_environment("ORCA_MCP_PREVIEW").is_empty() and DisplayServer.get_name() != "headless":
 		host.get_texture().get_image().save_png(OS.get_environment("ORCA_MCP_PREVIEW"))
+		page._main.scroll_vertical = int(page._main.get_v_scroll_bar().max_value)
+		for frame in 4: await process_frame
+		await RenderingServer.frame_post_draw
+		host.get_texture().get_image().save_png(OS.get_environment("ORCA_MCP_PREVIEW").get_basename() + "-live.png")
 	host.hide()
 	var editor_settings := EditorInterface.get_editor_settings()
 	editor_settings.set_setting(Config.SETTING_PROVIDER, "openai")
