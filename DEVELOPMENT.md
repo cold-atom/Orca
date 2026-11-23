@@ -8,7 +8,15 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## 1.9.0 Release Candidate: Blender Asset Studio & Live Authoring
+## Unreleased: Blender workspace scope and Cloud tool reliability
+
+- New/restored chat and reconnection require a pre-submit scope decision for an existing dedicated workspace. The controller captures either the selected connection or no workspace for the whole turn; omitted tools are also denied at dispatch. Choice is in memory, bound to chat epoch, workspace/generation, revision/hash and installation; it grants no edit authority. An empty workspace needs no extra decision. The setup confirmation creates a separate empty workspace only on user action and keeps the draft and prior revisions. Unrelated chat and live Blender remain available independently.
+- Workspace and live help now provide minimal valid catalog calls and distinguish malformed, empty, oversized and unknown command selections. No rejected operation is replayed. In the companion Cloud backend the Responses adapter explicitly defaults to non-strict function generation, preserving optional arguments while local validation remains authoritative. Its API change requires rollout.
+- Preview/export cards keep the reviewed scope and revision visible; failed cards show bounded raw error evidence. Native Blender 5.2.2 emits required `KHR_lights_punctual` for a point light but omits lights in static preview. Validate bounded native light tables, values and node indices before handoff; other required extensions remain denied and are named. The editor regression verifies a lit prop previews, exports, and imports with its native Godot light. User testing confirms real Cloud workspace and live creation on tested configurations, not general model quality.
+
+## 1.9.0 Release Preparation: Blender Asset Studio & Live Authoring
+
+Historical preparation notes below; [v1.9.0 subsequently shipped](https://github.com/cold-atom/Orca/releases/tag/v1.9.0) at `e566b73` after [release-tag CI](https://github.com/cold-atom/Orca/actions/runs/43927177883).
 
 Plugin metadata and MCP client identity now target **1.9.0** for Godot 4.7.2.
 Publication is pending; **1.8.0** remains the latest published release. This

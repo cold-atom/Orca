@@ -200,8 +200,18 @@ func _valid_current(value: Dictionary) -> bool:
 func snapshot() -> Dictionary:
 	return {"generation": _generation, "workspace": workspace} if state == "connected" else {}
 
+func has_existing_asset() -> bool:
+	# The bootstrap summary deliberately omits the object list; a revision-one
+	# template may already be populated. Only a known empty workspace is exempt.
+	if state != "connected": return false
+	if current.get("objects") is Array: return not current["objects"].is_empty() or int(current.get("revision", 0)) > 1
+	return int(current.get("object_count", -1)) != 0 or int(current.get("revision", 0)) > 1
+
 func context() -> String:
 	return "BLENDER ASSET WORKSPACE (untrusted names; Work-only blender_workspace; runtime permission follows the primary BLENDER PERMISSION instructions; metres/degrees; help/inspect then edit, preview, export, import and place; no Python/executable/file arguments):\n" + JSON.stringify({"revision": current.get("revision"), "objects": current.get("objects", []), "commands": capabilities.keys(), "user_textures": textures}) if state == "connected" else ""
+
+func _catalog_hint() -> String:
+	return 'For the catalog send {"operation":"help"} only.'
 
 func prepare(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 	if state != "connected" or snapshot_value != snapshot() or busy(): return failure("The Blender workspace changed or is busy. Reconnect and start a fresh turn.")
@@ -210,7 +220,8 @@ func prepare(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 	var operation: String = arguments["operation"]
 	if operation == "export" and artifacts.size() >= 64: return failure("The workspace export limit was reached. Start a new asset workspace.")
 	if operation not in ["help", "edit"] and arguments.has("commands"): return failure("Only help and edit accept command selections.")
-	if operation != "import" and (arguments.has("artifact_id") or arguments.has("destination")): return failure("Only import accepts an artifact and project destination.")
+	if operation != "import" and (arguments.has("artifact_id") or arguments.has("destination")):
+		return failure("Omit artifact_id and destination entirely for %s; only import accepts them. %s" % [operation, _catalog_hint() if operation == "help" else "Do not send empty placeholders."])
 	var review := {"operation": operation, "revision": current["revision"], "sha256": current["sha256"], "workspace": workspace, "generation": _generation}
 	if operation == "place":
 		if last_import.is_empty() or not last_import.get("import_verified", false): return failure("Import and verify the current asset before placing it in a scene.")
@@ -220,20 +231,25 @@ func prepare(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 		if not placement.get("success", false): return placement
 		review["placement"] = placement["summary"]
 	if operation == "help" and arguments.has("commands"):
-		if typeof(arguments["commands"]) != TYPE_STRING or arguments["commands"].to_utf8_buffer().size() > 256: return failure("Help accepts up to four command names as a JSON array.")
-		var names = JSON.parse_string(arguments["commands"])
-		if typeof(names) != TYPE_ARRAY or names.is_empty() or names.size() > 4: return failure("Select between one and four help command names.")
+		if typeof(arguments["commands"]) != TYPE_STRING or arguments["commands"].to_utf8_buffer().size() > 256: return failure("For schemas, commands must be a string containing a JSON array of 1–4 catalog names (max 256 bytes). " + _catalog_hint())
+		var selection := JSON.new()
+		var names = selection.data if selection.parse(arguments["commands"]) == OK else null
+		if typeof(names) != TYPE_ARRAY or names.is_empty() or names.size() > 4: return failure('For schemas select 1–4 names, e.g. commands=\'["primitive","material"]\'. ' + _catalog_hint())
 		for name in names:
-			if typeof(name) != TYPE_STRING or not capabilities.has(name): return failure("Unknown help command name.")
+			if typeof(name) != TYPE_STRING or not capabilities.has(name): return failure("Unknown command name; use exact names from the catalog. " + _catalog_hint())
 		review["help_names"] = names
 	if operation == "edit":
-		if typeof(arguments.get("commands")) != TYPE_STRING or arguments["commands"].to_utf8_buffer().size() > 6000: return failure("Supply a JSON command array of at most 6000 UTF-8 bytes.")
+		if typeof(arguments.get("commands")) != TYPE_STRING: return failure("edit.commands must be a string encoding an array of 1–16 command objects.")
+		if arguments["commands"].to_utf8_buffer().size() > 6000: return failure("This edit exceeds 6000 UTF-8 bytes; none ran. Split into smaller batches and await each result.")
 		var parsed := JSON.new()
-		if parsed.parse(arguments["commands"]) != OK or typeof(parsed.data) != TYPE_ARRAY or parsed.data.is_empty() or parsed.data.size() > 16: return failure("Supply between one and sixteen declarative commands.")
-		for command in parsed.data:
-			if typeof(command) != TYPE_DICTIONARY or not capabilities.has(command.get("op")): return failure("Unknown command. Request Blender workspace help.")
+		if parsed.parse(arguments["commands"]) != OK or typeof(parsed.data) != TYPE_ARRAY: return failure('edit.commands must be a string containing a valid JSON array of objects, each with an "op" field.')
+		if parsed.data.is_empty(): return failure("Empty edit: supply at least one command. Use inspect to read without editing.")
+		if parsed.data.size() > 16: return failure("This edit has %d commands; none ran. Split into batches of at most 16 and await each result." % parsed.data.size())
+		for index in parsed.data.size():
+			var command = parsed.data[index]
+			if typeof(command) != TYPE_DICTIONARY or not capabilities.has(command.get("op")): return failure("Command %d needs an exact catalog op. " % (index + 1) + _catalog_hint())
 			var error := _schema_error(command, capabilities[command["op"]])
-			if not error.is_empty(): return failure(error)
+			if not error.is_empty(): return failure("Command %d (%s): %s" % [index + 1, command["op"], error])
 		review["commands"] = arguments["commands"]
 	if operation == "import":
 		if typeof(arguments.get("artifact_id")) != TYPE_STRING or not artifacts.has(arguments["artifact_id"]) or typeof(arguments.get("destination")) != TYPE_STRING: return failure("Select a current staged artifact and a project .glb destination.")
@@ -297,7 +313,7 @@ func execute(review: Dictionary, authorized: Callable) -> Dictionary:
 		var help := {"units": "metres", "rotations": "degrees", "max_commands": 16, "max_bytes": 6000, "commands": {}}
 		for name in review.get("help_names", capabilities.keys()):
 			help["commands"][name] = capabilities[name] if review.has("help_names") else capabilities[name].get("description", "")
-		if not review.has("help_names"): help["schema_request"] = "For exact fields/types, call help with commands as a JSON array of up to four names."
+		if not review.has("help_names"): help["schema_request"] = 'For exact fields/types, pass commands as a string encoding 1–4 names, e.g. \'["primitive","material"]\'.'
 		return success(JSON.stringify(help), {"history_summary": "Blender workspace command catalog inspected."})
 	if operation == "import": return await _import_asset(review, authorized)
 	if operation == "place":
@@ -565,4 +581,4 @@ static func failure(message: String) -> Dictionary:
 	return {"success": false, "outcome": "failed", "content": message, "error": message, "data": {"history_summary": "Blender workspace operation did not complete."}}
 
 static func definition() -> Dictionary:
-	return {"type": "function", "function": {"name": "blender_workspace", "description": SINGLETON_GUIDANCE + "Work in the connected dedicated Blender asset workspace. help lists commands; select up to four names for exact schemas. inspect reads objects/actions. edit validates native modeling/material/rig/animation/Geometry Nodes commands and saves immutable revisions. preview renders an image and interactive static 3D snapshot. export stages a self-contained GLB; import reviews its artifact_id at a project destination. Workspace operations use review or the user's separate Blender Auto apply grant; import/place always require approval. Script Auto apply alone is insufficient. No Python/executable/arbitrary operator dispatch. Save/export alone is not visual or Godot import verification.", "parameters": {"type": "object", "properties": {"operation": {"type": "string", "enum": OPERATIONS}, "commands": {"type": "string", "maxLength": 6000, "description": "help: JSON array of 1–4 command names for schemas. edit: JSON array of 1–16 typed commands, metres/degrees, at most 6000 UTF-8 bytes; never Python."}, "artifact_id": {"type": "string", "maxLength": 64, "description": "import only: exact ID returned by export."}, "destination": {"type": "string", "maxLength": 512, "description": "import only: project .glb path in an existing unprotected folder."}}, "required": ["operation"], "additionalProperties": false}}}
+	return {"type": "function", "function": {"name": "blender_workspace", "description": SINGLETON_GUIDANCE + 'Start with {"operation":"help"} for command names. Omit unused fields entirely. inspect reads objects/actions. edit saves an immutable asset revision. preview/export cover the entire workspace. export stages a GLB; only import takes artifact_id and destination. Import/place always require review; other calls use review or the separate workspace grant. No Python or arbitrary operators. Preview/export is not Godot import verification.', "parameters": {"type": "object", "properties": {"operation": {"type": "string", "enum": OPERATIONS}, "commands": {"type": "string", "maxLength": 6000, "description": "Omit for catalog help. For schemas: string encoding 1–4 exact catalog names. For edit: string encoding 1–16 command objects, metres/degrees, at most 6000 UTF-8 bytes."}, "artifact_id": {"type": "string", "maxLength": 64, "description": "import only: exact ID returned by export."}, "destination": {"type": "string", "maxLength": 512, "description": "import only: project .glb path in an existing unprotected folder."}}, "required": ["operation"], "additionalProperties": false}}}

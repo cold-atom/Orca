@@ -77,6 +77,11 @@ func _run() -> void:
 		await _finish(host)
 		return
 	var original: Dictionary = session.current.duplicate(true)
+	var too_many := []
+	too_many.resize(17)
+	for item in [[{"operation": "help", "commands": '["unknown"]'}, "server_id"], [{"operation": "edit", "commands": "broken JSON"}, "valid JSON"], [{"operation": "edit", "commands": "[]"}, "Empty edit"], [{"operation": "edit", "commands": JSON.stringify(too_many)}, "17 commands; none ran"]]:
+		var invalid: Dictionary = session.prepare(session.snapshot(), item[0])
+		_check(not invalid["success"] and item[1] in invalid["error"] and session.current == original, "live validation gives a specific correction before dispatch")
 	_check(not (await session.execute({"operation": "import", "review_id": "forged"}, func(): return true)).get("success", false), "sealed review is checked before external handoff inspection")
 	var denied: Dictionary = await controller._inspect_live_blender({"server_id": config["id"], "operation": "inspect"}, "plan_denial", 1, 0)
 	_check(not denied.get("success", false), "direct Plan runtime denial")

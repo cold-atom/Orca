@@ -2337,6 +2337,33 @@ msgstr "Blender Lab 설치 안내"
 msgid "3D ASSET CREATION"
 msgstr "3D 에셋 제작"
 
+msgid "Blender Asset Studio · Revision %d\nPreview and export include the whole workspace. Which asset do you want to work on?"
+msgstr "Blender 에셋 스튜디오 · 리비전 %d\n미리보기와 내보내기에는 작업 공간 전체가 포함됩니다. 어떤 에셋으로 작업할까요?"
+
+msgid "Continue this workspace"
+msgstr "이 작업 공간에서 계속"
+
+msgid "Start a separate asset…"
+msgstr "별도 에셋 시작…"
+
+msgid "Chat without Asset Studio"
+msgstr "에셋 스튜디오 없이 채팅"
+
+msgid "Start Blender with an empty asset workspace? The previous workspace and its saved revisions stay on disk. Return to chat to send your draft."
+msgstr "빈 에셋 작업 공간으로 Blender를 시작할까요? 기존 작업 공간과 저장된 리비전은 디스크에 보존됩니다. 채팅으로 돌아가 초안을 전송하세요."
+
+msgid "Preview · Entire workspace · Revision %d"
+msgstr "미리보기 · 작업 공간 전체 · 리비전 %d"
+
+msgid "Export · Entire workspace · Revision %d"
+msgstr "내보내기 · 작업 공간 전체 · 리비전 %d"
+
+msgid "Preview · Selected objects · Revision %d"
+msgstr "미리보기 · 선택한 오브젝트 · 리비전 %d"
+
+msgid "Export · Selected objects · Revision %d"
+msgstr "내보내기 · 선택한 오브젝트 · 리비전 %d"
+
 msgid "Blender Asset Studio"
 msgstr "Blender 에셋 스튜디오"
 

@@ -41,6 +41,7 @@ var _template_hash := ""
 var _confirm: ConfirmationDialog
 var _choice := ""
 var _approved_executable := ""
+var _new_baseline := {}
 var _locked := false
 var _actions: VBoxContainer
 var _setup_started := false
@@ -278,12 +279,17 @@ func _setup() -> void:
 
 func _request(choice: String) -> void:
 	if _locked or service == null or service.busy(): return
-	if choice in ["restore", "revert", "template"] and not _work_mode(): return
+	if choice in ["restore", "revert", "template", "new"] and not _work_mode(): return
 	_choice = choice
 	_approved_executable = service.executable
+	_new_baseline = service.snapshot().duplicate(true) if choice == "new" else {}
+	if choice == "new": _new_baseline["hash"] = service.current.get("sha256", "")
 	var message := ""
 	var evidence := ""
-	if choice in ["connect", "new"]:
+	if choice == "new":
+		message = "Start Blender with an empty asset workspace? The previous workspace and its saved revisions stay on disk. Return to chat to send your draft."
+		evidence = service.executable
+	elif choice == "connect":
 		message = "Orca will start the selected Blender in the background with its shipped connector and a dedicated asset workspace. Your open Blender files are preserved."
 		evidence = service.executable
 	elif choice == "template":
@@ -296,11 +302,15 @@ func _request(choice: String) -> void:
 	_confirm.popup_centered_clamped(Metrics.scaled_vector(Vector2(480, 280)), 0.85)
 
 func _confirmed() -> void:
-	if _locked or service == null or service.busy(): return
-	if service.executable != _approved_executable: return
 	var choice := _choice
+	var approved_program := _approved_executable
 	_choice = ""
 	_approved_executable = ""
+	if _locked or service == null or service.busy() or service.executable != approved_program: return
+	if choice == "new":
+		var baseline: Dictionary = service.snapshot().duplicate(true)
+		baseline["hash"] = service.current.get("sha256", "")
+		if not _work_mode() or baseline != _new_baseline: return
 	if choice in ["connect", "new"]: await service.connect_workspace(choice == "new")
 	elif choice == "template" and _work_mode(): await service.connect_workspace(true, _template, _template_hash)
 	elif choice == "restore" and _work_mode(): await service.restore_previous(_work_mode)
@@ -377,7 +387,7 @@ func _sync() -> void:
 	_rescan.visible = service.state == "disconnected"
 	_rescan.disabled = busy
 	_disconnect.disabled = service.state == "disconnected"
-	_new_asset.disabled = busy or service.executable.is_empty()
+	_new_asset.disabled = busy or service.executable.is_empty() or not _work_mode()
 	_open.disabled = busy or service.current.is_empty()
 	_template_button.disabled = busy or service.executable.is_empty() or not _work_mode()
 	_texture_button.disabled = busy or not connected or not _work_mode()

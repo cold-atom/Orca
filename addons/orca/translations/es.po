@@ -2340,6 +2340,33 @@ msgstr "Guía de instalación de Blender Lab"
 msgid "3D ASSET CREATION"
 msgstr "CREACIÓN DE RECURSOS 3D"
 
+msgid "Blender Asset Studio · Revision %d\nPreview and export include the whole workspace. Which asset do you want to work on?"
+msgstr "Blender Asset Studio · Revisión %d\nLa vista previa y la exportación incluyen todo el espacio de trabajo. ¿En qué recurso quieres trabajar?"
+
+msgid "Continue this workspace"
+msgstr "Continuar en este espacio"
+
+msgid "Start a separate asset…"
+msgstr "Empezar un recurso aparte…"
+
+msgid "Chat without Asset Studio"
+msgstr "Chatear sin Asset Studio"
+
+msgid "Start Blender with an empty asset workspace? The previous workspace and its saved revisions stay on disk. Return to chat to send your draft."
+msgstr "¿Iniciar Blender con un espacio de trabajo vacío? El espacio anterior y sus revisiones guardadas se conservan en disco. Vuelve al chat para enviar el borrador."
+
+msgid "Preview · Entire workspace · Revision %d"
+msgstr "Vista previa · Todo el espacio · Revisión %d"
+
+msgid "Export · Entire workspace · Revision %d"
+msgstr "Exportación · Todo el espacio · Revisión %d"
+
+msgid "Preview · Selected objects · Revision %d"
+msgstr "Vista previa · Objetos seleccionados · Revisión %d"
+
+msgid "Export · Selected objects · Revision %d"
+msgstr "Exportación · Objetos seleccionados · Revisión %d"
+
 msgid "Blender Asset Studio"
 msgstr "Blender Asset Studio"
 

@@ -197,6 +197,17 @@ class BlenderTest(unittest.TestCase):
         self.assertEqual({o["name"] for o in self.current["objects"]}, {"Triangle", "Joined", "Cable"})
         self.call("export")
 
+    def test_lit_prop_preview_and_export_use_different_extension_contracts(self):
+        self.edit([{"op": "primitive", "name": "Lantern", "kind": "cube"},
+                   {"op": "light", "name": "Glow", "kind": "POINT"}])
+        for result, lit in [(self.call("preview")["preview_3d"], False), (self.call("export"), True)]:
+            binary = (self.path / result["file"]).read_bytes()
+            document = json.loads(binary[20:20 + int.from_bytes(binary[12:16], "little")])
+            self.assertIn("Lantern", [node.get("name") for node in document["nodes"]])
+            self.assertEqual("KHR_lights_punctual" in document.get("extensionsRequired", []), lit)
+            if lit:
+                self.assertEqual(document["extensions"]["KHR_lights_punctual"]["lights"][0]["type"], "point")
+
     def test_checkpoint_failure_preserves_owned_baseline(self):
         self.call("inspect")
         before = self.current.copy()

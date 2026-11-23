@@ -4,13 +4,14 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+- Choose whether to continue an existing Blender workspace, start a separate asset or chat without Asset Studio before sending. Preview/export cards identify the scope and revision.
+- Blender help/edit errors give operation-specific corrections. GLB handoff validates supported punctual lights; blocked required extensions are named on the failed card.
+
 ## 1.9.0 - 2026-11-17
 
-**Blender Asset Studio & Live Authoring** — release candidate for Godot 4.7.2.
-Publication is pending; 1.8.0 remains the latest published release. The feature
-revision at `d799e05` passed full Tests, three-platform native Blender workspace
-checks and four-platform credential-helper packaging. The final 1.9.0 revision
-requires its own CI and version-matched package acceptance.
+**Blender Asset Studio & Live Authoring** for Godot 4.7.2.
+[Published release](https://github.com/cold-atom/Orca/releases/tag/v1.9.0) ·
+[release-tag tests](https://github.com/cold-atom/Orca/actions/runs/43927177883).
 
 ### Added
 

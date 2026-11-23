@@ -10,6 +10,7 @@ var _overview: Label
 var _auto_button: Button
 var _technical: CheckBox
 var _live := false
+var _scope: Label
 
 func configure(request: Dictionary, turn_id: int) -> void:
 	super.configure(request, turn_id)
@@ -22,6 +23,14 @@ func configure(request: Dictionary, turn_id: int) -> void:
 		_title.text = "Live Blender operation" if _automatic else "Review live Blender operation"
 		_help.text = "Approve this exact operation in your open Blender scene. Edits retain a recovery copy and remain unsaved in Blender. Project import and placement require their own review."
 		if _operation in ["preview", "export"]: _help.text = "Preview/export uses a private saved copy in one bounded background Blender worker. Your open document is preserved. Only the reviewed objects and their included rig/parents are handed off."
+	if _operation in ["preview", "export"]:
+		_scope = Label.new()
+		_scope.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		get_child(0).add_child(_scope)
+		get_child(0).move_child(_scope, 1)
+		var caption := "Preview · Entire workspace · Revision %d" if _operation == "preview" else "Export · Entire workspace · Revision %d"
+		if _live: caption = "Preview · Selected objects · Revision %d" if _operation == "preview" else "Export · Selected objects · Revision %d"
+		Localization.bind(_scope, &"text", caption, [int(request["revision"])])
 	_allow.text = "Apply operation" if request.get("operation") in ["edit", "import", "place"] else "Allow operation"
 	var overview := Label.new()
 	_overview = overview
@@ -76,6 +85,12 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 	if execution.get("data", {}).get("save_pending", false): _status.text = "Applied in editor · Save pending"
 	if _live and execution.get("data", {}).get("save_pending", false): _status.text = "Applied in Blender · Save pending"
 	if _live and execution.get("data", {}).get("save_pending", false) and execution.get("data", {}).get("auto_apply", false): _status.text = "Auto applied in Blender · Save pending"
+	if not execution.get("success", false) and execution.has("error"):
+		var reason := Label.new()
+		reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		reason.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		reason.text = str(execution["error"]).left(512)
+		get_child(0).add_child(reason)
 	var image: Dictionary = execution.get("data", {}).get("preview_image", {})
 	if not image.is_empty():
 		var bytes: PackedByteArray = execution.get("data", {}).get("preview_glb", PackedByteArray())

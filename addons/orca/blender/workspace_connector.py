@@ -604,7 +604,9 @@ def run(operation, arguments):
     if operation == "help":
         if arguments: raise ValueError("Help takes no arguments")
         value = summary()
-        return {"catalog_json": json.dumps(catalog(), sort_keys=True, separators=(",", ":"), ensure_ascii=False), "workspace": {key: value[key] for key in ["revision", "sha256", "blend_file", "blender_version", "scene"]}, "units": "metres", "rotation": "degrees", "max_commands": 16, "max_bytes": 6000}
+        workspace = {key: value[key] for key in ["revision", "sha256", "blend_file", "blender_version", "scene"]}
+        workspace["object_count"] = len(value["objects"])
+        return {"catalog_json": json.dumps(catalog(), sort_keys=True, separators=(",", ":"), ensure_ascii=False), "workspace": workspace, "units": "metres", "rotation": "degrees", "max_commands": 16, "max_bytes": 6000}
     if set(arguments) - {"revision", "sha256", "commands", "restore_revision"}: raise ValueError("Unsupported workspace arguments")
     if arguments.get("revision") != REVISION or arguments.get("sha256") != HASH or digest(CURRENT) != HASH:
         raise ValueError("Workspace revision changed; reconnect and review a fresh baseline")

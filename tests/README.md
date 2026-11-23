@@ -84,6 +84,15 @@ Work/Auto apply/Reject/Stop reviews, history sanitation, observed Godot import,
 source Revert and native scene placement/Undo/Redo/save-pending. The new CI workflow
 uses pinned official native Blender packages; broader platform/novice acceptance
 and live model quality remain separate. See [Blender](../docs/BLENDER.md).
+
+The workspace case also checks occupied-workspace selection before a provider request,
+stale chat choices, opting out (including a direct model call), cancelled/new startup,
+and preservation of the draft and previous native revision. The native run creates
+a lit prop and checks that the imported `PackedScene` contains an `OmniLight3D`,
+`SpotLight3D` and `DirectionalLight3D`. The GLB component tests invalid light tables/
+references and mixed unsupported required extensions. The synthetic exporter checks
+that a blocked required extension is visible on the collapsed card and no artifact
+is registered. Workspace/live editor tests exercise malformed help/edit corrections.
 The editor case temporarily removes each Python runtime file in its disposable
 addon and checks the actual panel's reinstall error, no process launch and no
 workspace creation, then restores exact source. Package tests reject missing

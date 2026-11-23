@@ -5,6 +5,7 @@ extends RefCounted
 ## scripts, native loader extensions, or exporter-selected project paths.
 const MAX_BYTES := 16 * 1024 * 1024
 const MAX_JSON := 1024 * 1024
+const LIGHTS := "KHR_lights_punctual"
 
 static func inspect(bytes: PackedByteArray) -> Dictionary:
 	if bytes.size() < 20 or bytes.size() > MAX_BYTES or bytes.decode_u32(0) != 0x46546c67 or bytes.decode_u32(4) != 2 or bytes.decode_u32(8) != bytes.size():
@@ -26,12 +27,14 @@ static func inspect(bytes: PackedByteArray) -> Dictionary:
 		binary = bytes.slice(offset + 8)
 	var queue: Array = [data]
 	var visited := 0
+	var light_blocks := 0
 	while not queue.is_empty():
 		var value = queue.pop_back()
 		visited += 1
 		if visited > 50000: return _error("GLB structure exceeds its budget.")
 		if value is Dictionary:
 			if value.has("uri"): return _error("External or data-URI assets are unsupported; use embedded GLB buffers/images.")
+			if value.get("extensions") is Dictionary and value["extensions"].has(LIGHTS): light_blocks += 1
 			queue.append_array(value.values())
 		elif value is Array: queue.append_array(value)
 		elif typeof(value) == TYPE_FLOAT and not is_finite(value): return _error("GLB numbers must be finite.")
@@ -69,8 +72,57 @@ static func inspect(bytes: PackedByteArray) -> Dictionary:
 		var view: Dictionary = data["bufferViews"][int(image["bufferView"])]
 		var dimensions := preload("res://addons/orca/scripts/image_attachments.gd")._source_dimensions(binary.slice(int(view.get("byteOffset", 0)), int(view.get("byteOffset", 0) + view["byteLength"])))
 		if not preload("res://addons/orca/scripts/image_attachments.gd")._valid_dimensions(dimensions): return _error("GLB image exceeds supported image dimensions.")
-	if typeof(data.get("extensionsRequired", [])) != TYPE_ARRAY or not data.get("extensionsRequired", []).is_empty(): return _error("Required glTF extensions need separate compatibility validation.")
+	var required = data.get("extensionsRequired", [])
+	if not required is Array or required.size() > 32: return _error("Malformed or oversized required glTF extension list.")
+	var unknown := PackedStringArray()
+	var seen_extensions := {}
+	for extension in required:
+		if typeof(extension) != TYPE_STRING or extension.length() > 64 or not extension.is_valid_ascii_identifier() or seen_extensions.has(extension): return _error("Invalid required glTF extension identifier.")
+		seen_extensions[extension] = true
+		if extension != LIGHTS: unknown.append(extension)
+	if not unknown.is_empty():
+		return _error("Unsupported required glTF extensions: %s%s. No import artifact was registered. Use core glTF equivalents for those features." % [", ".join(unknown.slice(0, 4)), " (+%d more)" % (unknown.size() - 4) if unknown.size() > 4 else ""])
+	if light_blocks > 0 or seen_extensions.has(LIGHTS):
+		var error := _lights_error(data, nodes, light_blocks)
+		if not error.is_empty(): return _error(LIGHTS + ": " + error)
 	return {"success": true, "summary": {"bytes": bytes.size(), "nodes": data.get("nodes", []).size(), "meshes": data.get("meshes", []).size(), "materials": data.get("materials", []).size(), "skins": data.get("skins", []).size(), "animations": data.get("animations", []).size(), "images": data.get("images", []).size()}}
+
+# The built-in Godot importer supports these native lights. Validate precisely
+# their root definitions and node references, without invoking any importer here.
+static func _lights_error(data: Dictionary, nodes: Array, blocks: int) -> String:
+	var used = data.get("extensionsUsed")
+	var root = data.get("extensions")
+	if not used is Array or used.size() > 32 or not used.has(LIGHTS) or not root is Dictionary: return "Missing extension declaration or root light table."
+	var table = root.get(LIGHTS)
+	if not table is Dictionary or table.size() != 1 or not table.get("lights") is Array: return "Invalid root light table."
+	var lights: Array = table["lights"]
+	if lights.is_empty() or lights.size() > 128: return "Invalid light count."
+	for light in lights:
+		if not light is Dictionary or light.get("type") not in ["point", "spot", "directional"] or light.keys().any(func(key): return key not in ["name", "type", "color", "intensity", "range", "spot"]): return "Unsupported light definition."
+		if light.has("name") and (typeof(light["name"]) != TYPE_STRING or light["name"].length() > 256): return "Invalid light name."
+		var color = light.get("color", [1, 1, 1])
+		if not color is Array or color.size() != 3 or color.any(func(channel): return not _number_in(channel, 0, 1)): return "Invalid light color."
+		if not _number_in(light.get("intensity", 1), 0, 1e9) or (light.has("range") and (not _number_in(light["range"], 0, 1e6) or light["range"] <= 0)): return "Light intensity or range exceeds supported bounds."
+		if light.has("spot") or light["type"] == "spot":
+			var spot = light.get("spot", {})
+			if light["type"] != "spot" or not spot is Dictionary or spot.keys().any(func(key): return key not in ["innerConeAngle", "outerConeAngle"]): return "Invalid spot parameters."
+			var inner = spot.get("innerConeAngle", 0)
+			var outer = spot.get("outerConeAngle", PI / 4)
+			if not _number_in(inner, 0, PI / 2) or not _number_in(outer, 0, PI / 2) or inner >= outer: return "Invalid spot cone angles."
+	var accounted := 1 # root table
+	for node in nodes:
+		var extensions = node.get("extensions", {})
+		if not extensions is Dictionary: return "Invalid node extensions."
+		if not extensions.has(LIGHTS): continue
+		var reference = extensions[LIGHTS]
+		if not reference is Dictionary or reference.size() != 1: return "Invalid node light reference."
+		var index = reference.get("light")
+		if not _number_in(index, 0, lights.size() - 1) or index != floorf(index): return "Invalid node light index."
+		accounted += 1
+	return "Unexpected light extension location." if accounted != blocks else ""
+
+static func _number_in(value: Variant, low: float, high: float) -> bool:
+	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value)) and value >= low and value <= high
 
 static func _error(message: String) -> Dictionary:
 	return {"success": false, "error": message}

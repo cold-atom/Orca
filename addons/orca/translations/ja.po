@@ -2337,6 +2337,33 @@ msgstr "Blender Lab インストールガイド"
 msgid "3D ASSET CREATION"
 msgstr "3D アセット制作"
 
+msgid "Blender Asset Studio · Revision %d\nPreview and export include the whole workspace. Which asset do you want to work on?"
+msgstr "Blender アセットスタジオ · リビジョン %d\nプレビューとエクスポートの対象はワークスペース全体です。どのアセットを扱いますか？"
+
+msgid "Continue this workspace"
+msgstr "このワークスペースで続ける"
+
+msgid "Start a separate asset…"
+msgstr "別のアセットを作成…"
+
+msgid "Chat without Asset Studio"
+msgstr "アセットスタジオを使わずにチャット"
+
+msgid "Start Blender with an empty asset workspace? The previous workspace and its saved revisions stay on disk. Return to chat to send your draft."
+msgstr "空のアセットワークスペースで Blender を起動しますか？ 以前のワークスペースと保存済みリビジョンはディスクに残ります。チャットに戻ると下書きを送信できます。"
+
+msgid "Preview · Entire workspace · Revision %d"
+msgstr "プレビュー · ワークスペース全体 · リビジョン %d"
+
+msgid "Export · Entire workspace · Revision %d"
+msgstr "エクスポート · ワークスペース全体 · リビジョン %d"
+
+msgid "Preview · Selected objects · Revision %d"
+msgstr "プレビュー · 選択したオブジェクト · リビジョン %d"
+
+msgid "Export · Selected objects · Revision %d"
+msgstr "エクスポート · 選択したオブジェクト · リビジョン %d"
+
 msgid "Blender Asset Studio"
 msgstr "Blender アセットスタジオ"
 

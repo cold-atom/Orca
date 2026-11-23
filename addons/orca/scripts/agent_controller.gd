@@ -101,6 +101,9 @@ var account_service
 var mcp_service
 var blender_service
 var _turn_blender_snapshot := {}
+var _session_workspace := {}
+var _omitted_workspace := {}
+var _workspace_choice_epoch := 0
 var _turn_mcp_snapshot := {}
 var _pending_mcp_read := {}
 var _mcp_read_decided := false
@@ -520,6 +523,24 @@ func blender_setup_message() -> String:
 	return ""
 
 
+func workspace_choice() -> Dictionary:
+	if _is_running or not _session_allows_auto_apply or _mode != AgentMode.BUILD or blender_service == null or not blender_service.has_existing_asset(): return {}
+	var target: Dictionary = blender_service.snapshot()
+	if target == _session_workspace or target == _omitted_workspace or not blender_setup_message().is_empty(): return {}
+	return {"target": target, "epoch": _workspace_choice_epoch, "revision": blender_service.current["revision"], "hash": blender_service.current["sha256"], "executable": blender_service.executable}
+
+
+func select_workspace(choice: Dictionary, use_current: bool) -> bool:
+	if choice.is_empty() or choice != workspace_choice(): return false
+	if use_current: _session_workspace = choice["target"].duplicate(true)
+	else: _omitted_workspace = choice["target"].duplicate(true)
+	return true
+
+
+func reconsider_omitted_workspace() -> void:
+	if not _is_running: _omitted_workspace.clear()
+
+
 func has_configured_connection() -> bool:
 	# Local preferences/catalog state only. This is onboarding, not a network or
 	# capability check, and never grants tool permission or exposes credentials.
@@ -608,6 +629,8 @@ func send_user_message(text: String, images: Array = [], references: Array = [])
 	_turn_provider_config = provider_config.duplicate(true)
 	_turn_mcp_snapshot = mcp_service.snapshot() if mcp_service != null else {}
 	_turn_blender_snapshot = blender_service.snapshot() if blender_service != null else {}
+	if not _turn_blender_snapshot.is_empty() and (_turn_blender_snapshot == _omitted_workspace or (blender_service.has_existing_asset() and _turn_blender_snapshot != _session_workspace)):
+		_turn_blender_snapshot = {} # No implicit carry-over, including on a later Plan-to-Work switch.
 	# Connection/provider/permission guidance must reflect this fresh turn, not
 	# the empty connection snapshot present when the session prompt was created.
 	_edit_permission_prompt_dirty = true
@@ -727,6 +750,9 @@ func support_request_metadata() -> Dictionary:
 func start_new_session() -> bool:
 	if _is_running or _committing_edit or not _pending_change_id.is_empty() or api_client.is_requesting():
 		return false
+	_session_workspace.clear()
+	_omitted_workspace.clear()
+	_workspace_choice_epoch += 1
 	set_auto_apply_enabled(false)
 	if mcp_service != null: mcp_service.clear_live_authoring()
 	_script_change_records.clear()
@@ -794,6 +820,9 @@ func restore_session_state(mode: int, continuation: Array, usage: Dictionary, ta
 		return false
 	_mode = mode as AgentMode
 	_session_allows_auto_apply = resumable
+	_session_workspace.clear()
+	_omitted_workspace.clear()
+	_workspace_choice_epoch += 1
 	if mcp_service != null: mcp_service.clear_live_authoring()
 	_blender_auto_apply_paused = false
 	set_auto_apply_enabled(false)
@@ -996,9 +1025,10 @@ func _blender_operation_authorized(turn_id: int, automatic: bool, revision: int)
 
 func _inspect_blender(arguments: Dictionary, call_id: String, turn_id: int, batch_mode: int) -> Dictionary:
 	var script = preload("res://addons/orca/scripts/blender_workspace_service.gd")
-	if batch_mode != AgentMode.BUILD or not _blender_authorized(turn_id) or blender_service == null: return script.failure("Blender workspace operations are unavailable in this mode or provider snapshot.")
+	if batch_mode != AgentMode.BUILD or not _blender_authorized(turn_id) or blender_service == null or _turn_blender_snapshot.is_empty(): return script.failure("No asset workspace was selected for this Work turn. Do not retry workspace calls in this turn.")
 	var prepared: Dictionary = blender_service.prepare(_turn_blender_snapshot, arguments.duplicate(true))
 	if not prepared.get("success", false): return prepared
+	_session_workspace = _turn_blender_snapshot.duplicate(true)
 	var review: Dictionary = prepared["review"]
 	_pending_mcp_read = {"call_id": call_id, "turn_id": turn_id, "workspace_operation": true, "operation": review["operation"]}
 	_mcp_read_decided = false

@@ -1,9 +1,8 @@
 # Blender Asset Studio
 
-The **Orca 1.9.0 — Blender Asset Studio & Live Authoring** release candidate includes
+The **Orca 1.9.0 — Blender Asset Studio & Live Authoring** release includes
 guided Blender setup, reviewed game-asset workspaces and optional authoring in an
-already open Blender document. Publication is pending; 1.8.0 is the latest published
-release. See the [1.9.0 changelog](../CHANGELOG.md#190---2026-11-17).
+already open Blender document. See the [published release](https://github.com/cold-atom/Orca/releases/tag/v1.9.0).
 
 ## Few-click setup
 
@@ -87,6 +86,17 @@ saved revision for manual inspection/editing; future agent edits create other
 revision files rather than overwriting that file. Changed saved revision bytes
 invalidate the baseline. **Restore previous asset revision** is an explicit idle
 Work action that saves a new revision, rather than overwriting the old one.
+
+**After 1.9.0 (development build):** New Session starts a conversation, not a new
+Blender file. Before the first Work submission with an existing asset and a capable
+provider, choose **Continue this workspace**, **Start a separate asset…**, or
+**Chat without Asset Studio**. Continue sends the draft with the existing workspace;
+separate opens startup confirmation, preserves earlier revisions and keeps the draft
+until you return to chat and send. Opting out omits only Asset Studio for this chat;
+the optional live Blender connection is independent. **Back to chat** in Asset Studio
+lets you reconsider. A new/restored chat or reconnection does not inherit this choice.
+Whole-workspace preview/export cards show the revision even when collapsed. Live
+preview/export cards say **Selected objects** instead.
 
 **Start from saved Blender file…** copies an explicitly selected, hash-bound
 `.blend` file. Automatic scripts are disabled. Linked libraries, embedded scripts
@@ -189,6 +199,12 @@ placement/save-pending are reported separately. Placement never saves/reloads a
 scene and is natively undoable. **Revert last asset import** checks exact current
 bytes against its memory-only current-session receipt; New Session clears that
 receipt. Recovery bytes remain on disk but never restore approval authority.
+
+In the development build, native point, spot and directional lights in
+`KHR_lights_punctual` have a bounded validation path. The static preview uses its
+own lighting, while the exported asset retains supported authored lights. Other
+required extensions are identified on the failed operation card and do not become
+import artifacts. A successful preview alone never confirms the exported contents.
 Project replacement is also mutually excluded across editor instances. A crashed
 critical replacement can leave a private lock requiring explicit recovery inspection;
 it is never silently cleared and never authorizes replaying the original operation.

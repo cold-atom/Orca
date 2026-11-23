@@ -2337,6 +2337,33 @@ msgstr "Blender Lab 安装指南"
 msgid "3D ASSET CREATION"
 msgstr "3D 资源创作"
 
+msgid "Blender Asset Studio · Revision %d\nPreview and export include the whole workspace. Which asset do you want to work on?"
+msgstr "Blender 资产工作室 · 修订版 %d\n预览和导出都包含整个工作区。你想处理哪个资产？"
+
+msgid "Continue this workspace"
+msgstr "继续使用当前工作区"
+
+msgid "Start a separate asset…"
+msgstr "新建独立资产…"
+
+msgid "Chat without Asset Studio"
+msgstr "不使用资产工作室，直接聊天"
+
+msgid "Start Blender with an empty asset workspace? The previous workspace and its saved revisions stay on disk. Return to chat to send your draft."
+msgstr "使用空白资产工作区启动 Blender？原工作区及其已保存的修订版将保留在磁盘上。返回聊天即可发送草稿。"
+
+msgid "Preview · Entire workspace · Revision %d"
+msgstr "预览 · 整个工作区 · 修订版 %d"
+
+msgid "Export · Entire workspace · Revision %d"
+msgstr "导出 · 整个工作区 · 修订版 %d"
+
+msgid "Preview · Selected objects · Revision %d"
+msgstr "预览 · 所选对象 · 修订版 %d"
+
+msgid "Export · Selected objects · Revision %d"
+msgstr "导出 · 所选对象 · 修订版 %d"
+
 msgid "Blender Asset Studio"
 msgstr "Blender 资源工作室"
 

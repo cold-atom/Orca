@@ -85,6 +85,10 @@ func _valid_current(value: Dictionary) -> bool:
 	return typeof(value.get("revision")) in [TYPE_INT, TYPE_FLOAT] and value["revision"] == floorf(value["revision"]) and value["revision"] >= 1 and value["revision"] <= 128 and typeof(value.get("sha256")) == TYPE_STRING and value["sha256"].length() == 64 and value["sha256"].is_valid_hex_number(false) and value.get("live_token") == token and typeof(value.get("scene")) == TYPE_STRING and typeof(value.get("document")) == TYPE_STRING and typeof(value.get("objects")) == TYPE_ARRAY and value["objects"].size() <= 128
 
 
+func _catalog_hint() -> String:
+	return 'For the live catalog send only operation="help" and the current server_id.'
+
+
 func prepare(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 	var selected = arguments.get("objects", [])
 	var local := arguments.duplicate(true)
@@ -230,7 +234,7 @@ static func definition() -> Dictionary:
 	var value := preload("res://addons/orca/scripts/blender_workspace_service.gd").definition()
 	var function: Dictionary = value["function"]
 	function["name"] = "blender_session"
-	function["description"] = "Send blender_session as the ONLY tool call in its response. Work-only authoring in a user-enabled live Blender Lab session. help lists fixed commands; inspect refreshes the live baseline; edit takes validated JSON commands; preview/export require exact names including parents/rigs. Review is default. Only a separately confirmed live-session Auto apply grant covers help/inspect/edit/preview/export; script/workspace grants never apply. Import/place always require exact review. Keep checkpoints and conflicts. No arbitrary Python/tools/paths or document save/reload; no replay."
+	function["description"] = "Send blender_session as the ONLY tool call in its response. For catalog help send just server_id and operation=help. Omit unused fields entirely. inspect refreshes the baseline; edit takes validated JSON commands; preview/export need exact object names including parents/rigs. Only a separately confirmed live-session grant covers help/inspect/edit/preview/export. Import/place always require exact review. No arbitrary Python/tools/paths or document save/reload; no replay."
 	var parameters: Dictionary = function["parameters"]
 	parameters["properties"]["server_id"] = {"type": "string", "maxLength": 48}
 	parameters["properties"]["objects"] = {"type": "array", "items": {"type": "string", "maxLength": 256}, "minItems": 1, "maxItems": 16, "description": "Only preview/export: exact names from live inspect, including the asset's parent/armature."}

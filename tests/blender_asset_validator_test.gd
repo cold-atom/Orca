@@ -9,6 +9,18 @@ func _init() -> void:
 	check(Validator.inspect(glb(valid))["success"], "bounded self-contained GLB")
 	for bad in [{"asset": "wrong"}, {"asset": {"version": "2.0"}, "buffers": [{"uri": "../../secret.bin"}]}, {"asset": {"version": "2.0"}, "nodes": [{"children": [0]}]}, {"asset": {"version": "2.0"}, "nodes": [{"children": [1]}, {"children": [0]}]}, {"asset": {"version": "2.0"}, "extensionsRequired": ["arbitrary_extension"]}, {"asset": {"version": "2.0"}, "accessors": [{"count": 9000000}]}]:
 		check(not Validator.inspect(glb(bad))["success"], "deny unsupported/cyclic/external GLB " + str(bad))
+	var key := Validator.LIGHTS
+	var lit := {"asset": {"version": "2.0"}, "extensionsUsed": [key], "extensionsRequired": [key], "extensions": {key: {"lights": [{"type": "point"}]}}, "nodes": [{"extensions": {key: {"light": 0}}}]}
+	for definition in [{"type": "point"}, {"type": "directional"}, {"type": "spot", "spot": {"innerConeAngle": 0.1, "outerConeAngle": 0.3}}]:
+		lit["extensions"][key]["lights"] = [definition]
+		check(Validator.inspect(glb(lit))["success"], "bounded native light: " + definition["type"])
+	for changes in [{"extensionsRequired": [key, "EXT_fixture"]}, {"extensionsRequired": [key, key]}, {"extensionsUsed": null}, {"extensions": {}}, {"nodes": [{"extensions": {key: {"light": 1}}}]}, {"nodes": [{"extensions": {key: {"light": 0.5}}}]}, {"extras": {"extensions": {key: {}}}}]:
+		var invalid := Validator.inspect(glb(lit.merged(changes, true)))
+		check(not invalid["success"], "malformed or unknown required extension denied")
+		if changes.get("extensionsRequired", []).has("EXT_fixture"): check("EXT_fixture" in invalid["error"], "unsupported extension is identified even alongside a supported light")
+	for definition in [{"type": "point", "color": [0, 0, 2]}, {"type": "spot", "spot": {"innerConeAngle": 1}}, {"type": "spot", "spot": false}, {"type": "point", "range": -1}, {"type": "point", "intensity": "high"}, {"type": "unknown"}]:
+		lit["extensions"][key]["lights"] = [definition]
+		check(not Validator.inspect(glb(lit))["success"], "unsupported light parameters refused")
 	var broken := glb(valid)
 	broken.encode_u32(8, 123)
 	check(not Validator.inspect(broken)["success"], "chunk length integrity")

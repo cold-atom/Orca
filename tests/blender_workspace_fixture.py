@@ -14,9 +14,11 @@ root = Path(sys.argv[1])
 current = {"revision": 1, "sha256": "a" * 64, "blend_file": "revision-000001.blend", "objects": [], "actions": []}
 
 
-def glb():
+def glb(unsupported=False):
     binary = struct.pack("<9f3H", 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 2) + b"\0\0"
     data = {"asset": {"version": "2.0"}, "buffers": [{"byteLength": len(binary)}], "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 36}, {"buffer": 0, "byteOffset": 36, "byteLength": 6}], "accessors": [{"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0]}, {"bufferView": 1, "componentType": 5123, "count": 3, "type": "SCALAR"}], "meshes": [{"primitives": [{"attributes": {"POSITION": 0}, "indices": 1}]}], "nodes": [{"mesh": 0}], "scenes": [{"nodes": [0]}], "scene": 0}
+    if unsupported:
+        data["extensionsRequired"] = ["EXT_fixture_material"]
     source = json.dumps(data).encode()
     source += b" " * (-len(source) % 4)
     return struct.pack("<5I", 0x46546C67, 2, 28 + len(source) + len(binary), len(source), 0x4E4F534A) + source + struct.pack("<2I", len(binary), 0x004E4942) + binary
@@ -45,7 +47,7 @@ for line in sys.stdin:
                 current["sha256"] = hashlib.sha256(json.dumps(commands).encode()).hexdigest()
                 current["blend_file"] = f'revision-{current["revision"]:06d}.blend'
         elif operation in {"export", "preview"}:
-            content = glb()
+            content = glb(operation == "export" and any(obj["name"] == "ExtensionFixture" for obj in current["objects"]))
             path = root / "asset-fixture.glb"
             path.write_bytes(content)
             data = {"file": path.name, "sha256": hashlib.sha256(content).hexdigest(), "revision": current["revision"]}

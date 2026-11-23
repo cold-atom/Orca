@@ -94,7 +94,12 @@ func _run() -> void:
 	view._start_new_session()
 	_check(controller.set_auto_apply_enabled(true), "script Auto apply fixture grant")
 	var initial: Dictionary = service.current.duplicate(true)
-	var commands := JSON.stringify([{"op": "primitive", "name": "GameProp", "kind": "cube"}, {"op": "material", "name": "GameProp", "material": "Blue", "color": [0.1, 0.5, 0.9, 1]}])
+	for args in [{"operation": "help", "destination": ""}, {"operation": "help", "commands": "[]"}, {"operation": "help", "commands": "malformed"}, {"operation": "help", "commands": '["invented"]'}]:
+		var invalid: Dictionary = service.prepare(service.snapshot(), args)
+		_check(not invalid["success"] and '{"operation":"help"}' in invalid["error"], "invalid help returns the minimal legal call")
+	var help: Dictionary = service.prepare(service.snapshot(), {"operation": "help"})
+	_check(help["success"] and (await service.execute(help["review"], func(): return true))["content"].contains("primitive"), "minimal help provides the catalog after rejected calls")
+	var commands := JSON.stringify([{"op": "primitive", "name": "GameProp", "kind": "cube"}, {"op": "material", "name": "GameProp", "material": "Blue", "color": [0.1, 0.5, 0.9, 1]}, {"op": "light", "name": "Glow", "kind": "POINT"}, {"op": "light", "name": "Beam", "kind": "SPOT"}, {"op": "light", "name": "Sun", "kind": "SUN"}])
 	controller.send_user_message("Create a game prop in Blender.")
 	_check(client.requests.back()["tools"].any(func(tool): return tool["function"]["name"] == "blender_workspace"), "connected Work exposes bounded workspace tool")
 	var call := {"id": "studio_edit", "type": "function", "function": {"name": "blender_workspace", "arguments": JSON.stringify({"operation": "edit", "commands": commands})}}
@@ -172,6 +177,9 @@ func _run() -> void:
 			await process_frame
 		_check(_receipts(controller, id_call).size() == 1 and controller._pending_mcp_read.is_empty(), "automatic continuation without approval " + operation)
 		_check(service.current["revision"] == automatic_revision, "read/render/export preserves asset revision " + operation)
+		if operation in ["preview", "export"]:
+			var scope = view._tool_cards[id_call]._scope
+			_check(scope.is_visible_in_tree() and scope.text.contains(str(automatic_revision)), "scope and revision remain visible on compact " + operation)
 		if operation == "preview":
 			card = view._tool_cards.get(id_call)
 			var viewers: Array = card.get_child(0).get_children().filter(func(child): return child is Preview)
@@ -203,9 +211,24 @@ func _run() -> void:
 	_check(not controller.blender_auto_apply_enabled(), "failed automatic operation cannot silently reacquire remembered scope")
 	view._start_new_session()
 	_check(controller.blender_auto_apply_enabled(), "user-initiated New Session may obtain fresh remembered permission")
+	var stale_choice: Dictionary = controller.workspace_choice()
+	view._start_new_session()
+	for frame in 4: await process_frame # Retire the old feed before measuring the new conversation.
+	_check(not controller.select_workspace(stale_choice, true), "previous session's scope choice expires even at the same revision")
 	Config.set_project_blender_edit_default(true)
 	_check(not controller.blender_auto_apply_enabled(), "changed preference revision revokes the exact runtime binding")
-	controller.send_user_message("Review after preference revision changed.")
+	view.prompt_input.text = "Review after preference revision changed."
+	requests_before = client.requests.size()
+	view._on_send_button_pressed()
+	_check(view._workspace_picker.visible and client.requests.size() == requests_before and not controller.is_busy(), "occupied studio asks before inference even under a remembered grant")
+	for locale in Localization.LOCALES:
+		Localization.select_language(locale)
+		_scale_setup_fonts(view._workspace_picker, 1.5)
+		for frame in 2: await process_frame
+		_check(view._workspace_picker.get_combined_minimum_size().x <= Metrics.scaled(320) and view._workspace_picker.get_child(2).is_visible_in_tree(), "narrow workspace choice fits without losing actions: " + locale)
+	Localization.select_language("en")
+	view._workspace_picker.get_child(1).pressed.emit()
+	_check(not view._workspace_picker.visible and client.requests.size() == requests_before + 1 and controller._turn_blender_snapshot == service.snapshot(), "Continue binds the existing workspace and sends once")
 	call = {"id": "studio_stale_grant", "type": "function", "function": {"name": "blender_workspace", "arguments": JSON.stringify({"operation": "inspect"})}}
 	client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
 	for frame in 4: await process_frame
@@ -215,6 +238,7 @@ func _run() -> void:
 	client.complete({"role": "assistant", "content": "Reviewed scope required."})
 	for frame in 4: await process_frame
 	view._start_new_session()
+	_check(controller.select_workspace(controller.workspace_choice(), true), "fresh scope choice for revocation scenario")
 	controller.mcp_read_requested.connect(func(_turn: int, visible: Dictionary):
 		if visible.get("auto_apply", false): controller.set_blender_auto_apply_enabled(false), CONNECT_ONE_SHOT)
 	controller.send_user_message("Revoke before dispatch.")
@@ -227,6 +251,7 @@ func _run() -> void:
 	client.complete({"role": "assistant", "content": "Revoked."})
 	for frame in 4: await process_frame
 	view._start_new_session()
+	_check(controller.select_workspace(controller.workspace_choice(), true), "fresh scope choice for import scenario")
 	var exported := service.prepare(service.snapshot(), {"operation": "export"})
 	var result: Dictionary = await service.execute(exported["review"], func(): return true)
 	_check(result.get("success", false), "bounded staged GLB export: " + str(result.get("error", "")))
@@ -239,6 +264,12 @@ func _run() -> void:
 		_check(not (await service.execute(tampered, func(): return true)).get("success", false), "tampered import review denied")
 		result = await service.execute(prepared["review"], func(): return true)
 		_check(result.get("success", false) and result.get("data", {}).get("import_verified", false), "actual Godot GLB import observed")
+		if not live.is_empty() and result.get("success", false):
+			var imported: PackedScene = ResourceLoader.load("res://game_prop.glb", "PackedScene", ResourceLoader.CACHE_MODE_IGNORE)
+			var imported_state := imported.get_state()
+			var types := range(imported_state.get_node_count()).map(func(i): return imported_state.get_node_type(i))
+			for light_type in [&"OmniLight3D", &"SpotLight3D", &"DirectionalLight3D"]:
+				_check(types.has(light_type), "Godot retains %s after real preview/export/import" % light_type)
 		EditorInterface.open_scene_from_path("res://tests/fixtures/blender_workspace_scene.tscn")
 		for frame in 20: await process_frame
 		var scene := EditorInterface.get_edited_scene_root()
@@ -288,6 +319,51 @@ func _run() -> void:
 	_check(_receipts(controller, "studio_stop").size() == 1 and not controller.is_busy(), "Stop settles matching workspace receipt")
 	var events: Array = view._session.get("events", []).filter(func(event): return event.get("name") == "blender_workspace")
 	_check(events.all(func(event): return event.get("arguments", {}).is_empty() and not JSON.stringify(event).contains("GameProp")), "history keeps coarse receipts, never command/review authority")
+	view._start_new_session()
+	view.prompt_input.text = "Just discuss this project."
+	view._on_send_button_pressed()
+	view._workspace_picker.get_child(3).pressed.emit()
+	_check(controller.is_busy() and controller._turn_blender_snapshot.is_empty() and not client.requests.back()["tools"].any(func(t): return t["function"]["name"] == "blender_workspace"), "opt out retains chat without exposing the existing workspace")
+	var denied: Dictionary = await controller._inspect_blender({"operation": "edit", "commands": commands}, "forged_scope", controller._active_turn_id, 1)
+	_check(not denied["success"] and service.current == before_reject, "direct workspace calls cannot bypass opting out")
+	client.complete({"role": "assistant", "content": "Discussed."})
+	view._start_new_session()
+	var old_root: String = service.workspace
+	var old_file: String = old_root.path_join(service.current["blend_file"])
+	var old_hash: String = service.current["sha256"]
+	view.prompt_input.text = "Start a separate lantern."
+	requests_before = client.requests.size()
+	view._on_send_button_pressed()
+	view._workspace_picker.get_child(2).pressed.emit()
+	_check(studio._confirm.visible and service.workspace == old_root, "separate asset opens the original user-owned startup confirmation")
+	studio._confirm.canceled.emit()
+	studio._confirm.hide()
+	await studio._confirmed()
+	_check(service.workspace == old_root and view.prompt_input.text == "Start a separate lantern.", "dismissing separate startup preserves the asset and draft")
+	studio._primary.pressed.emit()
+	view._on_send_button_pressed()
+	view._workspace_picker.get_child(2).pressed.emit()
+	studio._confirm.hide()
+	await studio._confirmed()
+	_check(service.state == "connected" and service.workspace != old_root and service.current["revision"] == 1 and not service.has_existing_asset(), "separate asset starts empty without prior objects")
+	if not live.is_empty(): _check(FileAccess.get_sha256(old_file) == old_hash, "previous native revision is unchanged on disk")
+	_check(view.prompt_input.text == "Start a separate lantern." and client.requests.size() == requests_before, "separate startup preserves the draft without automatic inference")
+	if live.is_empty():
+		# The synthetic exporter marks this prop with a required unsupported extension.
+		studio._primary.pressed.emit()
+		var setup := service.prepare(service.snapshot(), {"operation": "edit", "commands": '[{"op":"primitive","name":"ExtensionFixture","kind":"cube"}]'})
+		_check((await service.execute(setup["review"], func(): return true)).get("success", false), "prepare unsupported export fixture")
+		view._on_send_button_pressed()
+		view._workspace_picker.get_child(1).pressed.emit()
+		call = {"id": "blocked_export", "type": "function", "function": {"name": "blender_workspace", "arguments": '{"operation":"export"}'}}
+		client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
+		card = view._tool_cards["blocked_export"]
+		if not card._allow.disabled: card._allow.pressed.emit()
+		for frame in 600:
+			if not controller._executing_tool_call: break
+			await process_frame
+		_check(service.artifacts.is_empty() and card.get_child(0).get_children().any(func(child): return child is Label and child.is_visible_in_tree() and "EXT_fixture_material" in child.text), "blocked export names the extension outside collapsed details and registers no artifact")
+		client.complete({"role": "assistant", "content": "Export blocked."})
 	view.settings_view._show_section("extensions")
 	for locale in Localization.LOCALES:
 		Localization.select_language(locale)

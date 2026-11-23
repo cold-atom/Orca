@@ -144,6 +144,10 @@ var _meta_font_size := 11
 var _composer_style: StyleBoxFlat
 var _composer_focus_style: StyleBoxFlat
 var _new_session_dialog: ConfirmationDialog
+var _workspace_picker: VBoxContainer
+var _workspace_popup: PopupPanel
+var _workspace_hint: Label
+var _workspace_binding := {}
 var _has_session_content := false
 var _session: Dictionary = {}
 var _last_usage_summary: Dictionary = {}
@@ -281,6 +285,8 @@ func _ready() -> void:
 		blender_service = preload("res://addons/orca/scripts/blender_workspace_service.gd").new()
 		add_child(blender_service)
 	agent_controller.blender_service = blender_service
+	_setup_workspace_picker()
+	blender_service.changed.connect(_dismiss_workspace_picker)
 	agent_controller.mcp_read_requested.connect(_on_mcp_read_requested)
 	agent_controller.api_client.account_service = account_service
 	account_service.changed.connect(_on_account_state_changed)
@@ -317,12 +323,13 @@ func _ready() -> void:
 	settings_view.account_service = account_service
 	settings_view.mcp_service = mcp_service
 	settings_view.blender_service = blender_service
-	settings_view.blender_work_allowed = func(): return agent_controller.get_mode() == 1 and not agent_controller.is_busy()
+	settings_view.blender_work_allowed = func(): return _session_resumable and agent_controller.get_mode() == 1 and not agent_controller.is_busy()
 	settings_view.blender_setup_message = agent_controller.blender_setup_message
 	settings_view.update_service = update_service
 	settings_view.hide()
 	add_child(settings_view)
 	settings_view.extensions_view.blender_panel.preview_attachment_requested.connect(_attach_blender_preview)
+	settings_view.extensions_view.blender_panel.chat_requested.connect(agent_controller.reconsider_omitted_workspace)
 	settings_view.done_requested.connect(_on_settings_done)
 	settings_view.settings_saved.connect(_on_settings_saved)
 	settings_view.script_edit_default_requested.connect(_on_script_edit_default_requested)
@@ -1089,6 +1096,14 @@ func _on_send_button_pressed() -> void:
 		_show_connection_setup(setup)
 		return
 	_dismiss_connection_setup(false)
+	var choice: Dictionary = agent_controller.workspace_choice()
+	if not choice.is_empty():
+		_workspace_binding = choice
+		Localization.bind(_workspace_hint, &"text", "Blender Asset Studio · Revision %d\nPreview and export include the whole workspace. Which asset do you want to work on?", [int(choice["revision"])])
+		_workspace_picker.show()
+		_workspace_popup.popup_centered_clamped(UiMetrics.scaled_vector(Vector2(400, 260)), 0.85)
+		return
+	_dismiss_workspace_picker()
 	var prepared := _prepare_script_references()
 	if not prepared.get("success", false):
 		_show_image_intake_error(str(prepared.get("error", "Could not prepare script references.")))
@@ -1152,8 +1167,54 @@ func _on_send_button_pressed() -> void:
 	_save_current_session()
 
 
+func _setup_workspace_picker() -> void:
+	# A separate scrollable surface keeps the chat/composer geometry fixed,
+	# including at large editor scales and when the empty state is translated.
+	_workspace_popup = PopupPanel.new()
+	_workspace_popup.title = "Blender Asset Studio"
+	add_child(_workspace_popup)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_workspace_popup.add_child(scroll)
+	_workspace_picker = VBoxContainer.new()
+	_workspace_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_workspace_picker.add_theme_constant_override("separation", UiMetrics.scaled_int(8))
+	_workspace_picker.hide()
+	scroll.add_child(_workspace_picker)
+	_workspace_hint = Label.new()
+	_workspace_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_workspace_picker.add_child(_workspace_hint)
+	for item in [["continue", "Continue this workspace"], ["new", "Start a separate asset…"], ["omit", "Chat without Asset Studio"]]:
+		var button := Button.new()
+		button.text = item[1]
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		button.pressed.connect(_choose_workspace.bind(item[0]))
+		_workspace_picker.add_child(button)
+	_workspace_popup.popup_hide.connect(_dismiss_workspace_picker)
+	main_content.visibility_changed.connect(_dismiss_workspace_picker)
+
+
+func _dismiss_workspace_picker() -> void:
+	_workspace_binding = {}
+	if _workspace_popup != null and _workspace_popup.visible: _workspace_popup.hide()
+	if _workspace_picker != null: _workspace_picker.hide()
+
+
+func _choose_workspace(action: String) -> void:
+	var choice := _workspace_binding
+	_dismiss_workspace_picker()
+	if choice.is_empty() or choice != agent_controller.workspace_choice() or not _session_resumable or not main_content.is_visible_in_tree(): return
+	if action == "new":
+		_open_settings(false)
+		settings_view._show_section("extensions")
+		if choice == agent_controller.workspace_choice(): settings_view.extensions_view.blender_panel._request("new")
+	elif action in ["continue", "omit"] and agent_controller.select_workspace(choice, action == "continue"):
+		_on_send_button_pressed()
+
+
 func _on_turn_request_state_changed(turn_id: int, active: bool) -> void:
 	if active:
+		_dismiss_workspace_picker()
 		if turn_id <= _active_turn_id:
 			return
 		_active_turn_id = turn_id
@@ -2073,6 +2134,7 @@ func _on_mode_selected(mode: int, keep_prompt_focus: bool = false) -> void:
 		_hide_mode_menu()
 
 func _sync_mode_ui(mode: int) -> void:
+	_dismiss_workspace_picker()
 	var is_build := mode == AgentController.AgentMode.BUILD
 	mode_label.text = "Work" if is_build else "Plan"
 	mode_label.add_theme_color_override(
@@ -2157,6 +2219,7 @@ func _on_new_session_pressed() -> void:
 
 
 func _start_new_session() -> void:
+	_dismiss_workspace_picker()
 	_cancel_live_auto_apply_confirmation()
 	if _live_auto_dialog != null: _live_auto_dialog.hide()
 	if blender_service != null:
@@ -3510,7 +3573,7 @@ func _setup_support_reminder() -> void:
 	_support_card.minimum_size_changed.connect(func(): call_deferred("_position_support_overlay"))
 	chat_scroll.resized.connect(_position_support_overlay)
 	chat_scroll.item_rect_changed.connect(_position_support_overlay)
-	for surface in [self, main_content, mode_overlay, _connection_overlay, _edit_permission_dialog, _live_auto_dialog, _new_session_dialog, _image_picker, _image_preview, _image_attachment_window]:
+	for surface in [self, main_content, mode_overlay, _connection_overlay, _edit_permission_dialog, _live_auto_dialog, _new_session_dialog, _workspace_popup, _image_picker, _image_preview, _image_attachment_window]:
 		if surface != null:
 			surface.visibility_changed.connect(_pause_support_reminder)
 	account_service.changed.connect(_pause_support_reminder)
@@ -3560,7 +3623,7 @@ func _support_idle() -> bool:
 		return false
 	if not agent_controller._pending_change_id.is_empty() or not agent_controller._pending_work_mode_call_id.is_empty() or prompt_input.has_focus() or not prompt_input.text.is_empty() or not _draft_images.is_empty() or not _draft_script_paths.is_empty():
 		return false
-	for surface in [mode_overlay, _connection_overlay, _edit_permission_dialog, _live_auto_dialog, _new_session_dialog, _image_picker, _image_preview, _image_attachment_window]:
+	for surface in [mode_overlay, _connection_overlay, _edit_permission_dialog, _live_auto_dialog, _new_session_dialog, _workspace_popup, _image_picker, _image_preview, _image_attachment_window]:
 		if surface != null and surface.visible:
 			return false
 	if account_service.state not in ["connected", "signed_out"] or account_service._refreshing or (update_service != null and update_service.busy()) or game_process_service.is_running():
