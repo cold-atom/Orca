@@ -187,6 +187,7 @@ func _run() -> void:
 			if not viewers.is_empty(): await _exercise_viewer(viewers[0], window, view)
 	client.complete({"role": "assistant", "content": "Automatic workspace complete."})
 	for frame in 4: await process_frame
+	await _exercise_cloud_command_correction(view, controller, client, service)
 	before_reject = service.current.duplicate(true)
 	# Provider/catalog state never substitutes for user approval of import/place.
 	controller.send_user_message("Review project import.")
@@ -205,10 +206,32 @@ func _run() -> void:
 		if not controller._executing_tool_call: break
 		await process_frame
 	_check(not controller.blender_auto_apply_enabled() and service.current == before_reject and _receipts(controller, "studio_auto_failure").size() == 1, "failure pauses automatic operations, preserves baseline and settles one receipt")
+	_check(client.requests.back()["tools"].is_empty() and controller._pending_mcp_read.is_empty() and controller._loop_final_trigger_reason == controller.LOOP_TRIGGER_BLENDER_PAUSE, "automatic workspace failure ends with one no-tools summary instead of repeated approvals")
+	var pause_caption: String = Localization.message("Workspace Auto apply paused: %s") % controller.blender_auto_apply_pause_reason()
+	_check(view._tool_cards["studio_auto_failure"]._pause_note.visible and view._tool_cards["studio_auto_failure"]._pause_note.text == pause_caption and view._edit_permission_status.tooltip_text.contains(pause_caption), "failed card and header make the workspace pause explicit in the current locale")
+	var pause_color: Color = view._edit_permission_status.get_theme_color("icon_normal_color")
+	_check(pause_color.r > pause_color.g, "another active scope cannot leave Blender's paused header looking green")
 	client.complete({"role": "assistant", "content": "Operation failed without replay."})
 	for frame in 4: await process_frame
+	view._show_blender_permission_confirmation()
+	_check(view._edit_permission_dialog.title == "Resume workspace Auto apply" and view._edit_permission_dialog_body.text.contains(controller.blender_auto_apply_pause_reason()), "explicit workspace resume confirmation names the original failure")
+	view._edit_permission_dialog.hide()
 	controller.apply_project_edit_default()
 	_check(not controller.blender_auto_apply_enabled(), "failed automatic operation cannot silently reacquire remembered scope")
+	controller.send_user_message("Inspect this workspace and explicitly resume automation.")
+	call = {"id": "studio_resume_inspection", "type": "function", "function": {"name": "blender_workspace", "arguments": JSON.stringify({"operation": "inspect"})}}
+	client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
+	for frame in 3: await process_frame
+	card = view._tool_cards[call["id"]]
+	_check(card._auto_button.text == "Resume workspace Auto apply…" and card._pause_note.visible, "fresh review exposes a clearly named workspace resume action")
+	card._auto_button.pressed.emit()
+	view._edit_permission_dialog.confirmed.emit()
+	for frame in 1200:
+		if not controller._executing_tool_call: break
+		await process_frame
+	_check(controller.blender_auto_apply_enabled() and controller.blender_auto_apply_pause_reason().is_empty() and controller._pending_mcp_read.is_empty() and _receipts(controller, call["id"]).size() == 1 and service.current == before_reject, "one explicit resume approves only the fresh inspection, without replaying the failed edit")
+	client.complete({"role": "assistant", "content": "Workspace automation explicitly resumed."})
+	for frame in 3: await process_frame
 	view._start_new_session()
 	_check(controller.blender_auto_apply_enabled(), "user-initiated New Session may obtain fresh remembered permission")
 	var stale_choice: Dictionary = controller.workspace_choice()
@@ -643,6 +666,55 @@ func _remembered_phase(phase: String) -> void:
 
 func _receipts(controller, id: String) -> Array:
 	return controller.message_history.filter(func(message): return message.get("role") == "tool" and message.get("tool_call_id") == id)
+
+func _exercise_cloud_command_correction(view, controller, client, service) -> void:
+	var settings := EditorInterface.get_editor_settings()
+	var account = Component.BlenderCloudAccount.new()
+	root.add_child(account)
+	var previous_account = controller.account_service
+	controller.account_service = account
+	settings.set_setting("orca/providers/selected", "orca_cloud")
+	settings.set_setting("orca/providers/orca_cloud/model", Component.BlenderCloudAccount.MODEL)
+	var preference: Dictionary = Config.project_blender_edit_preference().duplicate(true)
+	var original: Dictionary = service.current.duplicate(true)
+	var serial: int = service._client._serial
+	_check(controller.send_user_message("Correct an invalid hosted workspace command."), "start hosted workspace correction turn")
+	_check(client.requests.back()["profile"].get("hosted_blender_workspaces") == true, "strict normalized hosted workspace vocabulary is present")
+	var receipt_ids := []
+	for arguments in [
+		{"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "CloudWorkspaceCorrected", "kind": "cube", "radius": 0}])},
+		{"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "CloudWorkspaceCorrected", "kind": "cube", "scale": [1, 0, 1]}])},
+		{"operation": "help", "commands": "[]"},
+		{"operation": "help", "destination": ""},
+	]:
+		var id_call := "studio_cloud_invalid_" + str(receipt_ids.size())
+		var call := {"id": id_call, "type": "function", "function": {"name": "blender_workspace", "arguments": JSON.stringify(arguments)}}
+		client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
+		for frame in 3: await process_frame
+		_check(_receipts(controller, id_call).size() == 1 and controller._pending_mcp_read.is_empty(), "invalid hosted workspace call settles one matching result without an approval")
+		_check(controller.blender_auto_apply_enabled() and Config.project_blender_edit_preference() == preference and service.current == original and service._client._serial == serial, "numeric/help rejection retains the remembered workspace grant and never dispatches")
+		receipt_ids.append(id_call)
+	var call := {"id": "studio_cloud_corrected", "type": "function", "function": {"name": "blender_workspace", "arguments": JSON.stringify({"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "CloudWorkspaceCorrected", "kind": "cube", "radius": 1}])})}}
+	client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
+	for frame in 1200:
+		if not controller._executing_tool_call: break
+		await process_frame
+	_check(controller.blender_auto_apply_enabled() and controller._pending_mcp_read.is_empty() and service.current["revision"] == original["revision"] + 1 and _receipts(controller, call["id"]).size() == 1, "corrected hosted workspace command applies without renewed permission")
+	service.artifacts.clear()
+	for operation in ["help", "inspect", "preview", "export"]:
+		var id_call: String = "studio_cloud_" + operation
+		call = {"id": id_call, "type": "function", "function": {"name": "blender_workspace", "arguments": JSON.stringify({"operation": operation})}}
+		client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
+		for frame in 1200:
+			if not controller._executing_tool_call: break
+			await process_frame
+		_check(controller.blender_auto_apply_enabled() and controller._pending_mcp_read.is_empty() and _receipts(controller, id_call).size() == 1, "hosted workspace continuation retains permission: " + operation)
+	client.complete({"role": "assistant", "content": "Hosted workspace correction complete."})
+	for frame in 3: await process_frame
+	controller.account_service = previous_account
+	settings.set_setting("orca/providers/selected", "openai")
+	account.queue_free()
+
 
 func _check(condition: bool, message: String) -> void:
 	if not condition: failures.append(message)

@@ -94,13 +94,13 @@ func prepare(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 	var local := arguments.duplicate(true)
 	local.erase("objects")
 	if arguments.get("operation") in ["preview", "export"]:
-		if typeof(selected) != TYPE_ARRAY or selected.is_empty() or selected.size() > 16: return failure("Select one to sixteen exact live-scene object names for preview/export.")
+		if typeof(selected) != TYPE_ARRAY or selected.is_empty() or selected.size() > 16: return argument_failure("Select one to sixteen exact live-scene object names for preview/export.")
 		var names := {}
 		for name in selected:
-			if typeof(name) != TYPE_STRING or names.has(name) or not current["objects"].any(func(value): return typeof(value) == TYPE_DICTIONARY and value.get("name") == name): return failure("The preview/export selection does not match the inspected live scene.")
+			if typeof(name) != TYPE_STRING or names.has(name) or not current["objects"].any(func(value): return typeof(value) == TYPE_DICTIONARY and value.get("name") == name): return argument_failure("The preview/export selection does not match the inspected live scene.")
 			names[name] = true
 	elif arguments.has("objects"):
-		return failure("Only preview and export accept object selections.")
+		return argument_failure("Only preview and export accept object selections.")
 	var prepared := super.prepare(snapshot_value, local)
 	if not prepared.get("success", false): return prepared
 	var review: Dictionary = prepared["review"]

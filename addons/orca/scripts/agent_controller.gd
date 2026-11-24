@@ -81,6 +81,7 @@ const MAX_GUIDANCE_WARNING_CHARS := 240
 const LOOP_TRIGGER_ROUND_CAP := "round_cap"
 const LOOP_TRIGGER_CALL_CAP := "call_cap"
 const LOOP_TRIGGER_CONTEXT_PRESSURE := "context_pressure"
+const LOOP_TRIGGER_BLENDER_PAUSE := "blender_auto_apply_paused"
 const MAX_FINAL_PROVIDER_TEXT_CHARS := 1200
 const WORK_MODE_REQUEST_TOOL := "request_work_mode"
 const TASK_CONTEXT_HEADING := "CURRENT ORCA TASK CHECKLIST:"
@@ -188,10 +189,12 @@ var _blender_auto_apply_enabled := false
 var _blender_auto_apply_root := ""
 var _blender_auto_apply_default_revision := ""
 var _blender_auto_apply_paused := false
+var _blender_auto_apply_pause_reason := ""
 var _session_allows_auto_apply := true
 const LIVE_AUTO_OPERATIONS := ["help", "inspect", "edit", "preview", "export"]
 var _live_auto_grants := {}
 var _live_auto_confirmation := {}
+var _live_auto_pauses := {}
 var _script_change_records: Dictionary = {}
 var _committing_edit := false
 var _edit_permission_prompt_dirty := false
@@ -248,6 +251,11 @@ func refresh_live_auto_apply_bindings() -> void:
 		if mcp_service == null or _live_auto_grants[id]["binding"] != mcp_service.live_automation_binding(id):
 			_live_auto_grants.erase(id)
 			changed = true
+	for id in _live_auto_pauses.keys():
+		var session = mcp_service.live_session(id) if mcp_service != null else null
+		if session == null or session.get_instance_id() != _live_auto_pauses[id]["session_id"]:
+			_live_auto_pauses.erase(id)
+			changed = true
 	if changed:
 		_edit_permission_revision += 1
 		_edit_permission_prompt_dirty = true
@@ -260,7 +268,9 @@ func prepare_live_auto_apply_confirmation(call_id: String, turn_id: int) -> Dict
 	var binding: Dictionary = mcp_service.live_automation_binding(id)
 	if binding.is_empty(): return {}
 	var session = mcp_service.live_session(id)
-	_live_auto_confirmation = {"token": Crypto.new().generate_random_bytes(16).hex_encode(), "controller_id": get_instance_id(), "revision": _edit_permission_revision, "call_id": call_id, "turn_id": turn_id, "server_id": id, "binding": binding, "name": session.server_name, "document": session.current["document"], "scene": session.current["scene"]}
+	var resuming := not live_auto_apply_pause_reason(id).is_empty()
+	if resuming and _pending_mcp_read["operation"] != "inspect": return {}
+	_live_auto_confirmation = {"token": Crypto.new().generate_random_bytes(16).hex_encode(), "controller_id": get_instance_id(), "revision": _edit_permission_revision, "call_id": call_id, "turn_id": turn_id, "server_id": id, "binding": binding, "name": session.server_name, "document": session.current["document"], "scene": session.current["scene"], "resuming": resuming, "pause_reason": live_auto_apply_pause_reason(id)}
 	return _live_auto_confirmation.duplicate(true)
 
 
@@ -274,6 +284,12 @@ func authorize_pending_live_edits(action: Dictionary) -> bool:
 	if retained.is_empty() or retained != action or action.get("controller_id") != get_instance_id() or action.get("revision") != _edit_permission_revision or not can_authorize_pending_live_edits() or action.get("call_id") != _pending_mcp_read.get("call_id") or action.get("turn_id") != _pending_mcp_read.get("turn_id") or action.get("server_id") != _pending_mcp_read.get("server_id") or action["binding"] != mcp_service.live_automation_binding(action["server_id"]): return false
 	var id: String = action["server_id"]
 	_live_auto_grants[id] = {"token": action["token"], "binding": action["binding"].duplicate(true)}
+	if action["resuming"]:
+		# The original user confirmation approves this exact fresh inspection. Only
+		# its matching receipt may establish the baseline for the newly granted scope.
+		_live_auto_grants[id]["refresh_call_id"] = action["call_id"]
+		_live_auto_grants[id]["refresh_turn_id"] = action["turn_id"]
+	_live_auto_pauses.erase(id)
 	_edit_permission_revision += 1
 	_edit_permission_prompt_dirty = true
 	edit_permission_changed.emit(true)
@@ -287,11 +303,58 @@ func authorize_pending_live_edits(action: Dictionary) -> bool:
 
 func revoke_live_auto_apply(server_id: String = "") -> void:
 	_live_auto_confirmation.clear()
-	if server_id.is_empty(): _live_auto_grants.clear()
-	else: _live_auto_grants.erase(server_id)
+	if server_id.is_empty():
+		_live_auto_grants.clear()
+		_live_auto_pauses.clear()
+	else:
+		_live_auto_grants.erase(server_id)
+		_live_auto_pauses.erase(server_id)
 	_edit_permission_revision += 1
 	_edit_permission_prompt_dirty = true
 	edit_permission_changed.emit(auto_apply_enabled() or blender_auto_apply_enabled() or live_auto_apply_enabled())
+
+func blender_auto_apply_pause_reason() -> String:
+	return _blender_auto_apply_pause_reason if _blender_auto_apply_paused else ""
+
+
+func live_auto_apply_pause_reason(server_id: String = "") -> String:
+	for id in _live_auto_pauses:
+		if not server_id.is_empty() and id != server_id: continue
+		var session = mcp_service.live_session(id) if mcp_service != null else null
+		if session != null and session.get_instance_id() == _live_auto_pauses[id]["session_id"]:
+			return _live_auto_pauses[id]["reason"]
+	return ""
+
+
+func _pause_blender_auto_apply(reason: String, server_id: String = "") -> void:
+	var bounded_reason := reason.left(512)
+	if server_id.is_empty():
+		_blender_auto_apply_enabled = false
+		_blender_auto_apply_root = ""
+		_blender_auto_apply_default_revision = ""
+		_blender_auto_apply_paused = true
+		_blender_auto_apply_pause_reason = bounded_reason
+	else:
+		_live_auto_grants.erase(server_id)
+		_live_auto_confirmation.clear()
+		var session = mcp_service.live_session(server_id) if mcp_service != null else null
+		if session != null: _live_auto_pauses[server_id] = {"reason": bounded_reason, "session_id": session.get_instance_id()}
+	_edit_permission_revision += 1
+	_edit_permission_prompt_dirty = true
+	edit_permission_changed.emit(auto_apply_enabled() or blender_auto_apply_enabled() or live_auto_apply_enabled())
+
+
+func _mark_blender_auto_apply_pause(result: Dictionary, reason: String, server_id: String = "") -> Dictionary:
+	reason = reason.strip_edges().left(512)
+	if reason.is_empty(): reason = "The Blender operation did not complete."
+	_pause_blender_auto_apply(reason, server_id)
+	result["data"]["auto_apply_paused"] = true
+	result["data"]["auto_apply_pause_reason"] = reason.left(512)
+	var caption := "Workspace Auto apply paused: " if server_id.is_empty() else "Live Blender Auto apply paused: "
+	var notice := caption + reason.left(512) + "\nInspect current Blender state and explicitly resume the affected scope. No failed operation is replayed."
+	result["content"] = str(result.get("content", "")) + "\n\n" + notice
+	if result.has("model_content"): result["model_content"] += "\n\n" + notice
+	return result
 
 
 func set_blender_auto_apply_enabled(enabled: bool, use_project_default: bool = false) -> bool:
@@ -302,10 +365,11 @@ func set_blender_auto_apply_enabled(enabled: bool, use_project_default: bool = f
 	_blender_auto_apply_enabled = enabled
 	_blender_auto_apply_root = ProjectSettings.globalize_path("res://").simplify_path() if enabled else ""
 	_blender_auto_apply_default_revision = preference["revision"] if enabled and use_project_default else ""
-	if enabled: _blender_auto_apply_paused = false
+	_blender_auto_apply_paused = false
+	_blender_auto_apply_pause_reason = ""
 	_edit_permission_revision += 1
 	_edit_permission_prompt_dirty = true
-	edit_permission_changed.emit(auto_apply_enabled() or blender_auto_apply_enabled())
+	edit_permission_changed.emit(auto_apply_enabled() or blender_auto_apply_enabled() or live_auto_apply_enabled())
 	return true
 
 
@@ -348,23 +412,28 @@ func set_auto_apply_enabled(enabled: bool, use_project_default: bool = false) ->
 	var preference := Config.project_script_edit_preference()
 	if enabled and use_project_default and not preference["enabled"]:
 		return false
+	if not enabled:
+		# Explicit all-scope revocation and session/mode boundaries use this public
+		# action. A script-only refresh/failure must not clear Blender permissions.
+		_live_auto_grants.clear()
+		_live_auto_confirmation.clear()
+		_live_auto_pauses.clear()
+		_blender_auto_apply_enabled = false
+		_blender_auto_apply_root = ""
+		_blender_auto_apply_default_revision = ""
+		_blender_auto_apply_paused = false
+		_blender_auto_apply_pause_reason = ""
 	_set_edit_permission_state(enabled, preference["revision"] if enabled and use_project_default else "")
 	return true
 
 
 func _set_edit_permission_state(enabled: bool, default_revision: String = "") -> void:
-	if not enabled:
-		_live_auto_grants.clear()
-		_live_auto_confirmation.clear()
-		_blender_auto_apply_enabled = false
-		_blender_auto_apply_root = ""
-		_blender_auto_apply_default_revision = ""
 	_auto_apply_enabled = enabled
 	_auto_apply_project_root = ProjectSettings.globalize_path("res://").simplify_path() if enabled else ""
 	_auto_apply_default_revision = default_revision if enabled else ""
 	_edit_permission_revision += 1
 	_edit_permission_prompt_dirty = true
-	edit_permission_changed.emit(enabled)
+	edit_permission_changed.emit(enabled or blender_auto_apply_enabled() or live_auto_apply_enabled())
 
 
 func can_authorize_pending_script_edits() -> bool:
@@ -985,7 +1054,12 @@ func _inspect_live_blender(arguments: Dictionary, call_id: String, turn_id: int,
 	var prepared: Dictionary = mcp_service.prepare_live_operation(_turn_mcp_snapshot, arguments.duplicate(true))
 	var id: String = str(arguments.get("server_id", ""))
 	if not prepared.get("success", false):
-		if live_auto_apply_enabled(id): revoke_live_auto_apply(id)
+		# Invalid JSON command values are rejected before native dispatch. They do
+		# not invalidate the user's separate, still-bound live-session permission.
+		if prepared.get("data", {}).get("failure_phase") == "argument_validation":
+			prepared["data"]["auto_apply_retained"] = live_auto_apply_enabled(id)
+		elif live_auto_apply_enabled(id):
+			return _mark_blender_auto_apply_pause(prepared, str(prepared.get("error", "Live preparation failed.")), id)
 		return prepared
 	var review: Dictionary = prepared["review"]
 	_pending_mcp_read = {"call_id": call_id, "turn_id": turn_id, "live_operation": true, "server_id": id, "operation": review["operation"]}
@@ -993,6 +1067,8 @@ func _inspect_live_blender(arguments: Dictionary, call_id: String, turn_id: int,
 	_mcp_read_approved = false
 	var visible := review.duplicate(true)
 	visible["call_id"] = call_id
+	visible["auto_apply_pause_reason"] = live_auto_apply_pause_reason(id)
+	visible["auto_apply_resume_requires_inspection"] = not live_auto_apply_pause_reason(id).is_empty() and review["operation"] != "inspect"
 	var automatic: bool = live_auto_apply_enabled(id) and review["operation"] in LIVE_AUTO_OPERATIONS
 	visible["auto_apply"] = automatic
 	mcp_read_requested.emit(turn_id, visible)
@@ -1015,9 +1091,17 @@ func _inspect_live_blender(arguments: Dictionary, call_id: String, turn_id: int,
 	var grant_token: String = _live_auto_grants.get(id, {}).get("token", "")
 	var session = mcp_service.live_session(id)
 	var baseline: Dictionary = session.current.duplicate(true) if session != null else {}
+	var refresh_approved: bool = _live_auto_grants.get(id, {}).get("refresh_call_id") == call_id and _live_auto_grants.get(id, {}).get("refresh_turn_id") == turn_id
 	var result: Dictionary = await mcp_service.execute_live_operation(_turn_mcp_snapshot, id, review, _live_operation_authorized.bind(turn_id, id, automatic, grant_token))
 	result.get("data", {})["auto_apply"] = automatic
-	if automatic and (not result.get("success", false) or (review["operation"] == "inspect" and session != null and session.current.get("sha256") != baseline.get("sha256"))): revoke_live_auto_apply(id)
+	if _live_auto_grants.get(id, {}).get("token") == grant_token:
+		_live_auto_grants[id].erase("refresh_call_id")
+		_live_auto_grants[id].erase("refresh_turn_id")
+	if automatic and _owns_turn(turn_id):
+		if not result.get("success", false):
+			return _mark_blender_auto_apply_pause(result, str(result.get("error", "Live execution failed.")), id)
+		if not refresh_approved and review["operation"] == "inspect" and session != null and session.current.get("sha256") != baseline.get("sha256"):
+			return _mark_blender_auto_apply_pause(result, "The live scene changed since Orca's previous inspection.", id)
 	return result
 
 func _blender_operation_authorized(turn_id: int, automatic: bool, revision: int) -> bool:
@@ -1027,7 +1111,12 @@ func _inspect_blender(arguments: Dictionary, call_id: String, turn_id: int, batc
 	var script = preload("res://addons/orca/scripts/blender_workspace_service.gd")
 	if batch_mode != AgentMode.BUILD or not _blender_authorized(turn_id) or blender_service == null or _turn_blender_snapshot.is_empty(): return script.failure("No asset workspace was selected for this Work turn. Do not retry workspace calls in this turn.")
 	var prepared: Dictionary = blender_service.prepare(_turn_blender_snapshot, arguments.duplicate(true))
-	if not prepared.get("success", false): return prepared
+	if not prepared.get("success", false):
+		if prepared.get("data", {}).get("failure_phase") == "argument_validation":
+			prepared["data"]["auto_apply_retained"] = blender_auto_apply_enabled()
+		elif blender_auto_apply_enabled() and arguments.get("operation") in LIVE_AUTO_OPERATIONS:
+			return _mark_blender_auto_apply_pause(prepared, str(prepared.get("error", "Workspace preparation failed.")))
+		return prepared
 	_session_workspace = _turn_blender_snapshot.duplicate(true)
 	var review: Dictionary = prepared["review"]
 	_pending_mcp_read = {"call_id": call_id, "turn_id": turn_id, "workspace_operation": true, "operation": review["operation"]}
@@ -1036,6 +1125,7 @@ func _inspect_blender(arguments: Dictionary, call_id: String, turn_id: int, batc
 	var visible := review.duplicate(true)
 	visible["call_id"] = call_id
 	visible["workspace_operation"] = true
+	visible["auto_apply_pause_reason"] = blender_auto_apply_pause_reason()
 	var automatic: bool = blender_auto_apply_enabled() and review["operation"] in ["help", "inspect", "edit", "preview", "export"]
 	visible["auto_apply"] = automatic
 	mcp_read_requested.emit(turn_id, visible)
@@ -1060,8 +1150,7 @@ func _inspect_blender(arguments: Dictionary, call_id: String, turn_id: int, batc
 	var result: Dictionary = await blender_service.execute(review, _blender_operation_authorized.bind(turn_id, automatic, permission_revision))
 	result.get("data", {})["auto_apply"] = automatic
 	if automatic and not result.get("success", false) and _owns_turn(turn_id):
-		_blender_auto_apply_paused = true
-		set_blender_auto_apply_enabled(false)
+		return _mark_blender_auto_apply_pause(result, str(result.get("error", "Workspace execution failed.")))
 	return result
 
 func resolve_edit(change_id: String, origin_turn_id: int, approved: bool) -> void:
@@ -1135,7 +1224,7 @@ func _resolve_automatic_edit(change_id: String, origin_turn_id: int, revision: i
 		_complete_edit_resolution(change_id, proposal, "failed", "Error: The saved script bytes no longer match the checkpoint base. No file was written. Read the saved file again before preparing a new edit.", false)
 		return
 	if not _write_script_checkpoint(record):
-		set_auto_apply_enabled(false)
+		_set_edit_permission_state(false)
 		_complete_edit_resolution(change_id, proposal, "failed", "Error: Auto apply paused because the script-change checkpoint could not be saved. No file was written. Use Review edits or start a new session if the recovery limit was reached.", false)
 		return
 	# Persistence/UI callbacks may revoke the grant or cancel this exact turn.
@@ -1152,12 +1241,12 @@ func _resolve_automatic_edit(change_id: String, origin_turn_id: int, revision: i
 	var status := _apply_status(result)
 	record["status"] = status
 	if not _write_script_checkpoint(record):
-		set_auto_apply_enabled(false)
+		_set_edit_permission_state(false)
 		result += "\nAuto apply paused: the final checkpoint status could not be saved. The pre-write checkpoint remains available in History; check recovery against current disk state."
 		if status == "applied":
 			status = "applied_recovery"
 	if status in ["applied_recovery", "apply_recovery_required"]:
-		set_auto_apply_enabled(false)
+		_set_edit_permission_state(false)
 	_complete_edit_resolution(change_id, proposal, status, result, status in ["applied", "applied_recovery"])
 
 
@@ -1381,7 +1470,9 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 			if _tool_loop_guard == null:
 				_tool_loop_guard = ToolLoopGuardScript.new()
 			var loop_result := _record_tool_round(round_results)
-			if bool(loop_result.get("triggered", false)):
+			if round_results.any(func(result): return result.get("name") in ["blender_workspace", "blender_session"] and result.get("execution", {}).get("data", {}).get("auto_apply_paused") == true):
+				_begin_loop_finalization(LOOP_TRIGGER_BLENDER_PAUSE)
+			elif bool(loop_result.get("triggered", false)):
 				_begin_loop_finalization(str(loop_result.get("reason", "no_progress")))
 			elif _tool_rounds >= MAX_TOOL_ROUNDS:
 				_begin_loop_finalization(LOOP_TRIGGER_ROUND_CAP)
@@ -2008,6 +2099,8 @@ func _empty_finalization_fallback() -> String:
 
 
 func _continuation_guidance() -> String:
+	if _loop_final_trigger_reason == LOOP_TRIGGER_BLENDER_PAUSE:
+		return "Blender Auto apply remains paused. Send a follow-up to inspect current Blender state and explicitly resume the affected scope on its review card. If live authoring itself is paused, enable it again in Extensions. Completed operations will not be replayed automatically."
 	return "To continue unfinished work, use Resume remaining work in the checklist or send a follow-up in this conversation. Orca will re-inspect the current state; completed actions will not be replayed automatically."
 
 
@@ -2034,6 +2127,8 @@ func _loop_trigger_description() -> String:
 			return "%d-call tool limit" % MAX_TOOL_CALLS_PER_TURN
 		LOOP_TRIGGER_CONTEXT_PRESSURE:
 			return "context-window pressure"
+		LOOP_TRIGGER_BLENDER_PAUSE:
+			return "Blender Auto apply paused"
 	return "tool-loop safety trigger"
 
 
@@ -2361,15 +2456,19 @@ func _get_system_prompt() -> String:
 		shared += " TOOL BATCHES: Send blender_workspace and inspect_mcp alone, including help/inspect/preview and Auto apply. Send update_tasks alone. Await each result before dependent operations; do not combine workspace inspection with project reads."
 	if _turn_allows_live_blender() and _turn_mcp_snapshot.get("servers", {}).values().any(func(server): return server.get("live_authoring", false)):
 		var automatic_ids := []
+		var paused_ids := []
 		for id in _turn_mcp_snapshot["servers"]:
 			if live_auto_apply_enabled(id): automatic_ids.append(id)
+			if not live_auto_apply_pause_reason(id).is_empty(): paused_ids.append(id)
 		shared += " Send blender_session alone. Import/place always need review. Other live operations need review unless a separate live-session grant is active."
 		if not automatic_ids.is_empty(): shared += " LIVE BLENDER PERMISSION: Auto apply is enabled for " + JSON.stringify(automatic_ids) + ": validated help/inspect/edit/preview/export proceed without another Apply click. Retain checkpoints and conflict checks; no replay."
+		if not paused_ids.is_empty(): shared += " LIVE BLENDER PERMISSION: Auto apply is paused for " + JSON.stringify(paused_ids) + ". Start with inspect; only an explicit user-confirmed inspection can resume it. Never replay the failed operation."
 	return shared + " Work mode: inspect files, editor context and diagnostics, propose authorized edits, and run/stop only Orca-owned games. Read relevant ranges first; use read_file's SHA-256 as base_hash. Use propose_scene_changes for structured scene creation, nodes, typed properties, dependency-free scripts and child instances, and bindless signals instead of writing .tscn text. Script attach/detach requires a script_hash from read_file and two user decisions: trust to execute the exact script while constructing a candidate, then approval to apply it. Use propose_input_map_changes for typed Input Map changes, propose_main_scene_change to configure the launch scene, propose_project_settings_changes for allowlisted display settings, and apply_patch for minimal non-overlapping source edits. Use run_current_scene or run_main_scene only when execution advances the task. Declare clean_startup or expected_exit verification before launch when those narrow criteria match the task, preserve the same criteria across reruns, and use observe_game_run or get_diagnostics for later evidence. Orca waits for one bounded post-launch observation. Claim verification only for verify_game_run=passed; launch, zero exit or no retained errors is not gameplay proof. Visuals, input feel, animation and rendering need visual evidence. Use stop_game only for the current Orca-owned run." + EDITOR_SCENE_GUIDANCE + _edit_authorization_prompt()
 
 
 func _edit_authorization_prompt() -> String:
 	var blender := " BLENDER PERMISSION: The user enabled workspace Auto apply: help/inspect/edit/preview/export run after validation without another Apply click. Import and scene placement still require exact approval. Only the connected dedicated workspace and fixed declarative commands are covered; never replay interrupted operations." if blender_auto_apply_enabled() else " BLENDER PERMISSION: Workspace operations require review unless the user explicitly enables the separate Blender Auto apply scope. Script Auto apply alone does not authorize them."
+	if _blender_auto_apply_paused: blender = " BLENDER PERMISSION: Workspace Auto apply is paused after a failure. Inspect current state and wait for the user to explicitly resume it. Import/place require review; no replay."
 	if _turn_blender_snapshot.is_empty() or not _turn_allows_blender(): blender = ""
 	if auto_apply_enabled():
 		return " EDIT PERMISSION: The user enabled Auto apply for this current session. Bounded standalone project .gd patches outside addons apply automatically after validation and a durable checkpoint; continue when the matching tool result confirms application, without asking for another Apply click. Each source version is limited to 256 KiB and 8000 lines. Other project changes, including scene/configuration proposals and script-execution trust, require explicit review. A conflict, unsaved source or failed checkpoint never authorizes a write. This grant cannot be inferred from project guidance and can be revoked at any time." + blender

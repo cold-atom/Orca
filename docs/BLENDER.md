@@ -160,8 +160,20 @@ automatically and retain compact visible result cards and expandable evidence.
 Import/place still require their exact approvals. Remembered permission is local,
 exact-project and revision-bound; Plan/view-only history cannot activate it, and
 loading preferences never starts Blender. Clicking the green header edit icon
-revokes both scopes and clears their remembered defaults. Failed/interrupted
+revokes all automation scopes and clears their remembered defaults. Failed/interrupted
 automatic operations pause this scope for the session; no request is replayed.
+
+In the development build, commands rejected locally before dispatch retain valid
+Auto apply permission. Numeric errors name the field, supplied value and allowed
+bounds so the model can submit a corrected command. Script-only permission refresh
+or checkpoint failure does not revoke a separate Blender grant.
+
+Genuine execution/conflict pauses show their reason on the card and an amber header,
+even if another scope remains active. The turn ends with one summary instead of
+continuing into more approval cards. Send a follow-up to inspect current state, then
+choose **Resume workspace Auto apply…** and confirm once. The remembered preference
+remains saved, but cannot silently override a paused session. Failed operations are
+never replayed.
 
 Every `blender_workspace` call must be sent by the model in a separate response,
 including help/inspect/preview under Auto apply. `inspect_mcp`, task updates and
@@ -226,10 +238,18 @@ catalog except global reset and timeline/settings changes. Review is default;
 script/workspace Auto apply does not cover live work. On a pending operation choose
 **Auto apply live session…** and confirm to automate help/inspect/edit/preview/export
 in that exact current session. This is memory-only, not a remembered project default.
-Godot import and placement always require review. Failures/conflicts, intervening live
+Godot import and placement always require review. Execution failures/conflicts, intervening live
 changes found by inspection, Stop or the green header revoke pause automation; session/
 Plan/reconnect/reload boundaries clear it. Both confirmations have scrollable bodies
 and visible native actions at narrow widths/large fonts.
+
+Local numeric/JSON/help-selection rejection and missing/unknown server IDs do not
+erase an existing valid live grant. After a genuine pause, start a fresh live
+inspection and choose **Resume live Auto apply… → Inspect and resume**. This one
+exact confirmation approves the fresh inspection and a new grant for the same live
+session; its result establishes the current baseline. Other operations cannot
+resume it. If native authoring itself is paused, inspect recovery and explicitly
+enable authoring again in Extensions. The failed operation is not replayed.
 
 Edits preserve earlier unsaved work and create private recovery copies before mutation.
 Manual edits invalidate stale proposals. The original document stays open, without

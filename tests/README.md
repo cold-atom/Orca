@@ -55,6 +55,19 @@ apply acquisition (cancelled/forged/stale decisions), automatic help/inspect/edi
 export, exact import/place review, header and Stop revocation, conflict/manual-baseline
 pause and Plan/re-enable clearing. No live grant is restored from settings/history.
 
+Cloud correction cases use production catalog/profile normalization, an isolated
+synthetic identity/token and synthetic model replies. Numeric scalar/vector/integer
+errors, a valid first command followed by an invalid second command, invalid help
+and missing/unknown server IDs must send no native request, settle one matching tool
+result and retain the exact existing grant. A valid correction and follow-up
+help/inspection/preview/export proceed without another Apply click. Old Cloud flags
+still deny schemas/direct calls. Script-only default/checkpoint failure cannot clear
+unrelated Blender grants. Genuine pauses finalize with no tools and visible localized
+scope/reason feedback; cancelled/forged/stale inspection-resume decisions cannot grant
+authority or replay the failed edit. Raw evidence remains untranslated. The normal
+native opt-in cases exercise the same scenarios against owned Blender 5.2.2; real
+hosted inference is a separate acceptance check.
+
 Blender Asset Studio adds:
 
 ```bash

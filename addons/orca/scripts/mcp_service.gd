@@ -388,7 +388,9 @@ func clear_live_authoring() -> void:
 
 func prepare_live_operation(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 	var id = arguments.get("server_id")
-	if typeof(id) != TYPE_STRING or not _live_turn_valid(snapshot_value, id): return _failure("The live-authoring session is unavailable or changed. Enable explicitly and start a fresh Work turn.")
+	if typeof(id) != TYPE_STRING or not snapshot_value.get("servers", {}).has(id):
+		return preload("res://addons/orca/scripts/blender_workspace_service.gd").argument_failure("Choose an exact live-authoring server_id from the current turn's connections.")
+	if not _live_turn_valid(snapshot_value, id): return _failure("The live-authoring session is unavailable or changed. Enable explicitly and start a fresh Work turn.")
 	var local := arguments.duplicate(true)
 	local.erase("server_id")
 	return _live_sessions[id].prepare(snapshot_value["servers"][id]["live_snapshot"], local)

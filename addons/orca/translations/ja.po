@@ -2364,6 +2364,54 @@ msgstr "プレビュー · 選択したオブジェクト · リビジョン %d"
 msgid "Export · Selected objects · Revision %d"
 msgstr "エクスポート · 選択したオブジェクト · リビジョン %d"
 
+msgid "Command rejected before sending to Blender."
+msgstr "Blender に送信する前にコマンドを拒否しました。"
+
+msgid "Command rejected locally; Auto apply remains enabled."
+msgstr "コマンドをローカルで拒否しました。自動適用は有効のままです。"
+
+msgid "Inspect and resume"
+msgstr "検査して再開"
+
+msgid "Inspect the live scene before resuming Auto apply."
+msgstr "自動適用を再開する前にライブシーンを検査してください。"
+
+msgid "Resume Auto apply"
+msgstr "自動適用を再開"
+
+msgid "Resume automatic operations through %s?\n\nDocument: %s\nScene: %s\nPaused: %s\n\nThis decision approves a fresh inspection of the current live scene, then resumes help, editing, preview and export for this session. Failed operations are not replayed. Edits retain validation and recovery copies. Godot import and placement still require review. Stop, conflicts or execution failures pause automation; New Session, Plan, reconnect and reload clear it."
+msgstr "%s を通じた自動操作を再開しますか？\n\nドキュメント: %s\nシーン: %s\n一時停止の理由: %s\n\nこの決定は現在のライブシーンの再検査を承認し、その後このセッションのヘルプ、編集、プレビュー、エクスポートを再開します。失敗した操作は再実行しません。編集の検証と復旧用コピーは維持されます。Godot へのインポートと配置には引き続き確認が必要です。停止、競合、実行失敗で自動操作が一時停止し、新規セッション、計画モード、再接続、再読み込みで権限が解除されます。"
+
+msgid "Resume live Auto apply"
+msgstr "ライブ自動適用を再開"
+
+msgid "Resume live Auto apply…"
+msgstr "ライブ自動適用を再開…"
+
+msgid "Resume workspace Auto apply"
+msgstr "ワークスペースの自動適用を再開"
+
+msgid "Resume workspace Auto apply…"
+msgstr "ワークスペースの自動適用を再開…"
+
+msgid "Live Blender Auto apply paused: %s"
+msgstr "Blender のライブ自動適用を一時停止: %s"
+
+msgid "Workspace Auto apply paused: %s"
+msgstr "ワークスペースの自動適用を一時停止: %s"
+
+msgid "Auto apply paused"
+msgstr "自動適用を一時停止"
+
+msgid "Auto apply · Blender paused"
+msgstr "自動適用 · Blender を一時停止"
+
+msgid "Script Auto apply is enabled."
+msgstr "スクリプトの自動適用は有効です。"
+
+msgid "Project scripts still require review."
+msgstr "プロジェクトのスクリプトには引き続き確認が必要です。"
+
 msgid "Blender Asset Studio"
 msgstr "Blender アセットスタジオ"
 

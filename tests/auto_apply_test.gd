@@ -32,6 +32,24 @@ class FixtureController extends Controller:
 	func _capture_provider_config() -> Dictionary:
 		return {"provider": "openai", "model": "gpt-4o-mini", "api_key": "synthetic", "base_url": "https://api.openai.com/v1"}
 
+class BlenderCloudAccount extends Node:
+	const MODEL := "blender-cloud-fixture"
+	var profile := {}
+	func _init() -> void:
+		# Use production catalog/profile normalization without authentication, HTTP,
+		# a vault or owner settings. The transport supplies synthetic model replies.
+		var account = preload("res://addons/orca/scripts/account_service.gd").new()
+		account.account = {"id": "blender-fixture"}
+		account._tokens = {"session_id": "blender-fixture-session"}
+		account.models = preload("res://addons/orca/scripts/providers/orca_cloud_provider.gd").normalize_catalog({"data": [{"id": MODEL, "context_window": 131072, "max_output_tokens": 8192, "effort": {"supported_levels": ["default"]}, "orca": {"protocol": "chat_completions", "tools": true, "agent": {"status": "operator_verified", "capability_version": "blender-fixture-v1", "tool_contract": "orca-tools-v1"}, "context_budget": {"version": "utf8-conservative-v2", "text_bytes_per_token": 3, "message_overhead": 32, "tool_overhead": 64, "image_tokens": 16384, "opaque_reasoning_bytes": false}, "continuation_style": "standard", "capability_version": "blender-fixture-v1", "availability": "available", "access": {"allowed": true}, "mcp_inspection": true, "blender_workspaces": true, "blender_sessions": true}}]})
+		profile = account.profile_config(MODEL)
+		account.free()
+	func connected() -> bool: return true
+	func identity() -> String: return profile["hosted_identity"]
+	func profile_config(_model: String, _effort: String = "default") -> Dictionary: return profile.duplicate(true)
+	func authorization(expected: String = "") -> Dictionary: return {"success": expected == identity(), "token": "synthetic-blender-cloud-token"}
+	func refresh_account() -> void: pass
+
 class StopAfterWrite extends RefCounted:
 	var controller
 	func get_tool_definitions(edit: bool, switch: bool) -> Array: return Tools.get_tool_definitions(edit, switch)
@@ -217,6 +235,7 @@ func _permission_changes() -> void:
 func _failure_and_cancellation() -> void:
 	for behavior in ["fail_before", "fail_after", "cancel", "independent"]:
 		await _reset(true)
+		if behavior in ["fail_before", "fail_after"]: check(controller.set_blender_auto_apply_enabled(true), "separately confirmed workspace fixture scope")
 		write_behavior = behavior
 		controller.send_user_message("Work")
 		_tool(_patch())
@@ -227,6 +246,7 @@ func _failure_and_cancellation() -> void:
 			check(_read().contains("INDEPENDENT"), "stale pre-write content never replaces independent edits")
 		else:
 			check(_read() == OLD, "%s causes no replacement" % behavior)
+		if behavior in ["fail_before", "fail_after"]: check(controller.blender_auto_apply_enabled(), "script checkpoint failure does not revoke a separate workspace grant")
 		if behavior == "cancel":
 			check(not controller.is_busy() and client.requests.size() == 1, "pre-write cancellation sends no continuation")
 		else:

@@ -216,12 +216,12 @@ func _catalog_hint() -> String:
 func prepare(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 	if state != "connected" or snapshot_value != snapshot() or busy(): return failure("The Blender workspace changed or is busy. Reconnect and start a fresh turn.")
 	if _current_script_hashes() != _script_hashes: return failure("The connector changed. Disconnect and reconnect before using it.")
-	if arguments.keys().any(func(key): return key not in ["operation", "commands", "artifact_id", "destination"]) or arguments.get("operation") not in OPERATIONS: return failure("Unsupported Blender workspace arguments.")
+	if arguments.keys().any(func(key): return key not in ["operation", "commands", "artifact_id", "destination"]) or arguments.get("operation") not in OPERATIONS: return argument_failure("Unsupported Blender workspace arguments.")
 	var operation: String = arguments["operation"]
 	if operation == "export" and artifacts.size() >= 64: return failure("The workspace export limit was reached. Start a new asset workspace.")
-	if operation not in ["help", "edit"] and arguments.has("commands"): return failure("Only help and edit accept command selections.")
+	if operation not in ["help", "edit"] and arguments.has("commands"): return argument_failure("Only help and edit accept command selections.")
 	if operation != "import" and (arguments.has("artifact_id") or arguments.has("destination")):
-		return failure("Omit artifact_id and destination entirely for %s; only import accepts them. %s" % [operation, _catalog_hint() if operation == "help" else "Do not send empty placeholders."])
+		return argument_failure("Omit artifact_id and destination entirely for %s; only import accepts them. %s" % [operation, _catalog_hint() if operation == "help" else "Do not send empty placeholders."])
 	var review := {"operation": operation, "revision": current["revision"], "sha256": current["sha256"], "workspace": workspace, "generation": _generation}
 	if operation == "place":
 		if last_import.is_empty() or not last_import.get("import_verified", false): return failure("Import and verify the current asset before placing it in a scene.")
@@ -231,25 +231,25 @@ func prepare(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 		if not placement.get("success", false): return placement
 		review["placement"] = placement["summary"]
 	if operation == "help" and arguments.has("commands"):
-		if typeof(arguments["commands"]) != TYPE_STRING or arguments["commands"].to_utf8_buffer().size() > 256: return failure("For schemas, commands must be a string containing a JSON array of 1–4 catalog names (max 256 bytes). " + _catalog_hint())
+		if typeof(arguments["commands"]) != TYPE_STRING or arguments["commands"].to_utf8_buffer().size() > 256: return argument_failure("For schemas, commands must be a string containing a JSON array of 1–4 catalog names (max 256 bytes). " + _catalog_hint())
 		var selection := JSON.new()
 		var names = selection.data if selection.parse(arguments["commands"]) == OK else null
-		if typeof(names) != TYPE_ARRAY or names.is_empty() or names.size() > 4: return failure('For schemas select 1–4 names, e.g. commands=\'["primitive","material"]\'. ' + _catalog_hint())
+		if typeof(names) != TYPE_ARRAY or names.is_empty() or names.size() > 4: return argument_failure('For schemas select 1–4 names, e.g. commands=\'["primitive","material"]\'. ' + _catalog_hint())
 		for name in names:
-			if typeof(name) != TYPE_STRING or not capabilities.has(name): return failure("Unknown command name; use exact names from the catalog. " + _catalog_hint())
+			if typeof(name) != TYPE_STRING or not capabilities.has(name): return argument_failure("Unknown command name; use exact names from the catalog. " + _catalog_hint())
 		review["help_names"] = names
 	if operation == "edit":
-		if typeof(arguments.get("commands")) != TYPE_STRING: return failure("edit.commands must be a string encoding an array of 1–16 command objects.")
-		if arguments["commands"].to_utf8_buffer().size() > 6000: return failure("This edit exceeds 6000 UTF-8 bytes; none ran. Split into smaller batches and await each result.")
+		if typeof(arguments.get("commands")) != TYPE_STRING: return argument_failure("edit.commands must be a string encoding an array of 1–16 command objects.")
+		if arguments["commands"].to_utf8_buffer().size() > 6000: return argument_failure("This edit exceeds 6000 UTF-8 bytes; none ran. Split into smaller batches and await each result.")
 		var parsed := JSON.new()
-		if parsed.parse(arguments["commands"]) != OK or typeof(parsed.data) != TYPE_ARRAY: return failure('edit.commands must be a string containing a valid JSON array of objects, each with an "op" field.')
-		if parsed.data.is_empty(): return failure("Empty edit: supply at least one command. Use inspect to read without editing.")
-		if parsed.data.size() > 16: return failure("This edit has %d commands; none ran. Split into batches of at most 16 and await each result." % parsed.data.size())
+		if parsed.parse(arguments["commands"]) != OK or typeof(parsed.data) != TYPE_ARRAY: return argument_failure('edit.commands must be a string containing a valid JSON array of objects, each with an "op" field.')
+		if parsed.data.is_empty(): return argument_failure("Empty edit: supply at least one command. Use inspect to read without editing.")
+		if parsed.data.size() > 16: return argument_failure("This edit has %d commands; none ran. Split into batches of at most 16 and await each result." % parsed.data.size())
 		for index in parsed.data.size():
 			var command = parsed.data[index]
-			if typeof(command) != TYPE_DICTIONARY or not capabilities.has(command.get("op")): return failure("Command %d needs an exact catalog op. " % (index + 1) + _catalog_hint())
-			var error := _schema_error(command, capabilities[command["op"]])
-			if not error.is_empty(): return failure("Command %d (%s): %s" % [index + 1, command["op"], error])
+			if typeof(command) != TYPE_DICTIONARY or not capabilities.has(command.get("op")): return argument_failure("Command %d needs an exact catalog op. " % (index + 1) + _catalog_hint())
+			var error := _schema_error(command, capabilities[command["op"]], 0, "commands[%d]" % index)
+			if not error.is_empty(): return argument_failure("Command %d (%s): %s" % [index + 1, command["op"], error])
 		review["commands"] = arguments["commands"]
 	if operation == "import":
 		if typeof(arguments.get("artifact_id")) != TYPE_STRING or not artifacts.has(arguments["artifact_id"]) or typeof(arguments.get("destination")) != TYPE_STRING: return failure("Select a current staged artifact and a project .glb destination.")
@@ -276,30 +276,31 @@ func prepare(snapshot_value: Dictionary, arguments: Dictionary) -> Dictionary:
 	_reviews[token] = review.duplicate(true)
 	return {"success": true, "review": review}
 
-static func _schema_error(value, schema: Dictionary, depth: int = 0) -> String:
+static func _schema_error(value, schema: Dictionary, depth: int = 0, field_path: String = "command") -> String:
 	if depth > 12: return "Command nesting exceeds its budget."
 	var kind: String = schema.get("type", "")
 	var good := (kind == "object" and value is Dictionary) or (kind == "array" and value is Array) or (kind == "string" and typeof(value) == TYPE_STRING) or (kind == "boolean" and typeof(value) == TYPE_BOOL) or (kind in ["number", "integer"] and typeof(value) in [TYPE_INT, TYPE_FLOAT])
-	if not good: return "Command field has the wrong type."
-	if schema.has("enum") and value not in schema["enum"]: return "Command field has an unsupported value."
+	if not good: return field_path + ": expected " + kind + "."
+	if schema.has("enum") and value not in schema["enum"]: return field_path + ": unsupported value; allowed " + JSON.stringify(schema["enum"]) + "."
 	if kind in ["number", "integer"]:
-		if not is_finite(float(value)) or value < schema.get("minimum", -10000) or value > schema.get("maximum", 10000) or (kind == "integer" and value != floorf(value)): return "Command number is outside its supported range."
+		if not is_finite(float(value)) or value < schema.get("minimum", -10000) or value > schema.get("maximum", 10000) or (kind == "integer" and value != floorf(value)):
+			return "%s: %s must be a finite %s in [%s, %s]." % [field_path, str(value), kind, str(schema.get("minimum", -10000)), str(schema.get("maximum", 10000))]
 	elif kind == "string":
 		if value.length() < schema.get("minLength", 0) or value.length() > schema.get("maxLength", 1024): return "Command text exceeds its bounds."
 		for character in value:
 			if character.unicode_at(0) < 32 or character.unicode_at(0) == 127: return "Command text contains unsupported controls."
 	elif kind == "array":
 		if value.size() < schema.get("minItems", 0) or value.size() > schema.get("maxItems", 0): return "Command list exceeds its bounds."
-		for item in value:
-			var error := _schema_error(item, schema["items"], depth + 1)
+		for index in value.size():
+			var error := _schema_error(value[index], schema["items"], depth + 1, field_path + "[%d]" % index)
 			if not error.is_empty(): return error
 	elif kind == "object":
 		var properties: Dictionary = schema.get("properties", {})
 		for required in schema.get("required", []):
-			if not value.has(required): return "Command is missing a required field: " + required
+			if not value.has(required): return field_path + ": missing required field " + required + "."
 		for key in value:
 			if not properties.has(key): return "Command contains an unsupported field: " + str(key)
-			var error := _schema_error(value[key], properties[key], depth + 1)
+			var error := _schema_error(value[key], properties[key], depth + 1, field_path + "." + str(key))
 			if not error.is_empty(): return error
 	return ""
 
@@ -579,6 +580,14 @@ static func success(message: String, data: Dictionary) -> Dictionary:
 
 static func failure(message: String) -> Dictionary:
 	return {"success": false, "outcome": "failed", "content": message, "error": message, "data": {"history_summary": "Blender workspace operation did not complete."}}
+
+static func argument_failure(message: String) -> Dictionary:
+	# Only local input checks mint this marker. It is never inferred from server
+	# text or zero completed commands after an accepted external operation.
+	var result := failure(message)
+	result["data"]["failure_phase"] = "argument_validation"
+	result["data"]["dispatched"] = false
+	return result
 
 static func definition() -> Dictionary:
 	return {"type": "function", "function": {"name": "blender_workspace", "description": SINGLETON_GUIDANCE + 'Start with {"operation":"help"} for command names. Omit unused fields entirely. inspect reads objects/actions. edit saves an immutable asset revision. preview/export cover the entire workspace. export stages a GLB; only import takes artifact_id and destination. Import/place always require review; other calls use review or the separate workspace grant. No Python or arbitrary operators. Preview/export is not Godot import verification.', "parameters": {"type": "object", "properties": {"operation": {"type": "string", "enum": OPERATIONS}, "commands": {"type": "string", "maxLength": 6000, "description": "Omit for catalog help. For schemas: string encoding 1–4 exact catalog names. For edit: string encoding 1–16 command objects, metres/degrees, at most 6000 UTF-8 bytes."}, "artifact_id": {"type": "string", "maxLength": 64, "description": "import only: exact ID returned by export."}, "destination": {"type": "string", "maxLength": 512, "description": "import only: project .glb path in an existing unprotected folder."}}, "required": ["operation"], "additionalProperties": false}}}

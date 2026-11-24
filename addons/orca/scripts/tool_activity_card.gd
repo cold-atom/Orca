@@ -31,6 +31,7 @@ var _match_scroll: ScrollContainer
 var _match_list: VBoxContainer
 var _match_summary: Label
 var _has_match_results := false
+var _validation_note: Label
 
 
 func _enter_tree() -> void:
@@ -80,6 +81,10 @@ func _ready() -> void:
 	_duration_label.add_theme_color_override("font_color", Color(0.55, 0.62, 0.68))
 	_duration_label.hide()
 	content.add_child(_duration_label)
+	_validation_note = Label.new()
+	_validation_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_validation_note.hide()
+	content.add_child(_validation_note)
 
 	var navigation := HFlowContainer.new()
 	content.add_child(navigation)
@@ -142,6 +147,9 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 	var outcome := str(execution.get("outcome", "failed"))
 	var data: Dictionary = execution.get("data", {})
 	_details.text = result
+	_validation_note.visible = _tool_name in ["blender_workspace", "blender_session"] and data.get("failure_phase") == "argument_validation" and data.get("dispatched") == false
+	if _validation_note.visible:
+		_validation_note.text = "Command rejected locally; Auto apply remains enabled." if data.get("auto_apply_retained") == true else "Command rejected before sending to Blender."
 	if _tool_name in ["search_files", "find_project_symbols", "find_symbol_references"]:
 		_open_path = ""
 		_open_button.hide()

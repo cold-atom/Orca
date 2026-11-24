@@ -2364,6 +2364,54 @@ msgstr "미리보기 · 선택한 오브젝트 · 리비전 %d"
 msgid "Export · Selected objects · Revision %d"
 msgstr "내보내기 · 선택한 오브젝트 · 리비전 %d"
 
+msgid "Command rejected before sending to Blender."
+msgstr "Blender로 보내기 전에 명령을 거부했습니다."
+
+msgid "Command rejected locally; Auto apply remains enabled."
+msgstr "명령을 로컬에서 거부했습니다. 자동 적용은 계속 활성화되어 있습니다."
+
+msgid "Inspect and resume"
+msgstr "검사 후 재개"
+
+msgid "Inspect the live scene before resuming Auto apply."
+msgstr "자동 적용을 재개하기 전에 실시간 씬을 검사하세요."
+
+msgid "Resume Auto apply"
+msgstr "자동 적용 재개"
+
+msgid "Resume automatic operations through %s?\n\nDocument: %s\nScene: %s\nPaused: %s\n\nThis decision approves a fresh inspection of the current live scene, then resumes help, editing, preview and export for this session. Failed operations are not replayed. Edits retain validation and recovery copies. Godot import and placement still require review. Stop, conflicts or execution failures pause automation; New Session, Plan, reconnect and reload clear it."
+msgstr "%s을(를) 통한 자동 작업을 재개할까요?\n\n문서: %s\n씬: %s\n일시 중지 이유: %s\n\n이 결정은 현재 실시간 씬의 새 검사를 승인한 다음 이 세션의 도움말, 편집, 미리보기, 내보내기를 재개합니다. 실패한 작업은 다시 실행하지 않습니다. 편집 시 검증과 복구 사본은 유지됩니다. Godot 가져오기와 배치는 계속 검토가 필요합니다. 중지, 충돌, 실행 실패는 자동화를 일시 중지하고 새 세션, 계획 모드, 재연결, 다시 불러오기는 권한을 해제합니다."
+
+msgid "Resume live Auto apply"
+msgstr "실시간 자동 적용 재개"
+
+msgid "Resume live Auto apply…"
+msgstr "실시간 자동 적용 재개…"
+
+msgid "Resume workspace Auto apply"
+msgstr "작업 공간 자동 적용 재개"
+
+msgid "Resume workspace Auto apply…"
+msgstr "작업 공간 자동 적용 재개…"
+
+msgid "Live Blender Auto apply paused: %s"
+msgstr "Blender 실시간 자동 적용 일시 중지: %s"
+
+msgid "Workspace Auto apply paused: %s"
+msgstr "작업 공간 자동 적용 일시 중지: %s"
+
+msgid "Auto apply paused"
+msgstr "자동 적용 일시 중지"
+
+msgid "Auto apply · Blender paused"
+msgstr "자동 적용 · Blender 일시 중지"
+
+msgid "Script Auto apply is enabled."
+msgstr "스크립트 자동 적용이 활성화되어 있습니다."
+
+msgid "Project scripts still require review."
+msgstr "프로젝트 스크립트는 계속 검토가 필요합니다."
+
 msgid "Blender Asset Studio"
 msgstr "Blender 에셋 스튜디오"
 

@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-11-17
+Last updated: 2026-11-25
 
 ## Purpose
 
@@ -13,6 +13,53 @@ Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the cur
 - New/restored chat and reconnection require a pre-submit scope decision for an existing dedicated workspace. The controller captures either the selected connection or no workspace for the whole turn; omitted tools are also denied at dispatch. Choice is in memory, bound to chat epoch, workspace/generation, revision/hash and installation; it grants no edit authority. An empty workspace needs no extra decision. The setup confirmation creates a separate empty workspace only on user action and keeps the draft and prior revisions. Unrelated chat and live Blender remain available independently.
 - Workspace and live help now provide minimal valid catalog calls and distinguish malformed, empty, oversized and unknown command selections. No rejected operation is replayed. In the companion Cloud backend the Responses adapter explicitly defaults to non-strict function generation, preserving optional arguments while local validation remains authoritative. Its API change requires rollout.
 - Preview/export cards keep the reviewed scope and revision visible; failed cards show bounded raw error evidence. Native Blender 5.2.2 emits required `KHR_lights_punctual` for a point light but omits lights in static preview. Validate bounded native light tables, values and node indices before handoff; other required extensions remain denied and are named. The editor regression verifies a lit prop previews, exports, and imports with its native Godot light. User testing confirms real Cloud workspace and live creation on tested configurations, not general model quality.
+
+### Blender Auto apply continuity and explicit pauses
+
+Local command/input rejection uses `data.failure_phase=argument_validation` and
+`dispatched=false`, minted only by the plugin's pre-dispatch validators. Invalid
+numbers, command JSON/help selections and missing/unknown live server IDs preserve
+an otherwise valid exact-bound workspace/live grant. They never create a grant.
+Native replies, zero completed commands and model text cannot supply this exemption.
+Numeric errors identify the command, nested field, supplied value, finite numeric
+type and inclusive bounds; validation limits and the pinned command catalog remain
+unchanged. Corrected calls are new proposals with their own matching tool result.
+
+Script-only default refresh/checkpoint failure updates only script permission.
+Public all-scope revocation and session/mode/restoration boundaries still clear
+workspace/live authority, with project defaults handled by their existing explicit
+UI action. Remembered workspace preferences retain exact-root/revision checks and
+cannot automatically reacquire permission after a genuine workspace pause.
+
+Preparation conflicts/operation limits, failed accepted execution and changed
+automatic live inspection baselines pause the affected scope with a bounded
+memory-only reason. After the matching result is recorded, the controller performs
+one no-tools finalization using `blender_auto_apply_paused`; it does not continue
+into more approval cards. Successful inspection/edit receipts retain their true
+outcome. Cards identify the paused workspace/live scope, and the combined header
+becomes amber even when another scope remains enabled. Local rejection cards
+explicitly state when Auto apply remains enabled. UI captions never determine
+permission.
+
+Workspace **Resume workspace Auto apply…** reuses the exact user-owned confirmation.
+Live **Resume live Auto apply…** is available on a fresh inspection review only.
+Its single-use original confirmation explicitly approves that exact call/turn's
+native inspection and a new session grant. Only the matching successful receipt
+can refresh its baseline; failure, stale identity, revocation and uncertain effects
+still pause/deny. Live pause display records bind the current live-service instance
+and are never persisted or used as authority. A paused native authoring service
+needs explicit Enable in Extensions. No failed operation, import or placement is
+replayed.
+
+Permanent workspace/live editor regressions use production Cloud catalog/profile
+normalization and synthetic, identity-bound authorization/replies. They cover local
+numeric/help rejection followed by automatic correction, missing server IDs,
+independent scopes, hosted vocabulary denial, follow-up help/preview/export, genuine
+pause/finalization and explicit inspection/resume. Headless and Linux X11/OpenGL
+cases pass, including owned Blender 5.2.2 workspaces and an owned interactive
+Blender/installed official MCP bridge. Real paid-model inference and Windows/macOS
+interactive acceptance remain separate. Hosted compact finalization remains
+**24562/24576**.
 
 ## 1.9.0 Release Preparation: Blender Asset Studio & Live Authoring
 
@@ -97,7 +144,7 @@ confirmation bound to controller/call/turn/revision, exact project, MCP configur
 process revision, live-session instance/token/generation and toolkit hashes. Nothing
 is remembered. Runtime checks run before dispatch and after awaits; visible card/header
 callbacks can revoke before any call. Native edits retain the same pre-write checkpoints
-and baseline/Undo checks. Failure/conflict, changed inspection baseline, Stop, header
+and baseline/Undo checks. Execution failure/conflict, changed inspection baseline, Stop, header
 revocation or session/Plan/reconnect/reload boundaries pause or clear the grant without
 automatic reacquisition. Import/place stay reviewed. Prompts refresh after a successful
 grant; automatic cards collapse and retain save-pending qualifications. No tool schema
@@ -2068,6 +2115,25 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-25 — Blender Auto apply continuity and explicit recovery
+
+- Reproduced the owner's hosted live numeric-range rejection: no Blender request
+  occurred, but the controller erased its grant. Local input rejection now retains
+  valid separate grants, names numeric fields/values/bounds, and settles one result.
+  Script-only default/checkpoint handling no longer revokes Blender permissions.
+- Genuine pauses expose a bounded reason and finish the turn with one no-tools
+  summary. Scope-aware amber headers, localized cards and exact workspace/live
+  inspection-resume confirmations preserve original reviews, native conflict checks,
+  recovery and non-replay semantics. Import/place remain reviewed.
+- Verified eleven focused components and strict ordinary Godot 4.7.2 initialization;
+  workspace/live cases headlessly and graphically, with native Blender 5.2.2 on Linux
+  and the installed official bridge in an owned interactive fixture; five-process
+  remembered edits, three-process localization, seven-process/two-ZIP-root MCP and
+  normal-editor script Auto apply. Cloud profiles/replies are synthetic. Four
+  catalogs retain parity/format contracts; hosted finalization stays 24562/24576.
+- Paid hosted inference, other-platform interactive acceptance and fresh full CI
+  remain separate from this local verification. Plugin metadata remains 1.9.0.
 
 ### 2026-11-17 — Orca 1.9.0 release preparation
 

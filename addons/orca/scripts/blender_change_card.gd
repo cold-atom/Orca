@@ -11,6 +11,7 @@ var _auto_button: Button
 var _technical: CheckBox
 var _live := false
 var _scope: Label
+var _pause_note: Label
 
 func configure(request: Dictionary, turn_id: int) -> void:
 	super.configure(request, turn_id)
@@ -69,10 +70,14 @@ func configure(request: Dictionary, turn_id: int) -> void:
 		_status.text = "Running automatically…"
 	elif _operation in ["help", "inspect", "edit", "preview", "export"]:
 		_auto_button = Button.new()
-		_auto_button.text = "Auto apply live session…" if _live else "Auto apply workspace…"
+		var paused := not str(request.get("auto_apply_pause_reason", "")).is_empty()
+		_auto_button.text = ("Resume live Auto apply…" if _live else "Resume workspace Auto apply…") if paused else ("Auto apply live session…" if _live else "Auto apply workspace…")
+		_auto_button.disabled = request.get("auto_apply_resume_requires_inspection", false)
+		if _auto_button.disabled: _auto_button.tooltip_text = "Inspect the live scene before resuming Auto apply."
 		_auto_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_auto_button.pressed.connect(func(): auto_apply_requested.emit())
 		get_child(0).add_child(_auto_button)
+	if not _automatic: _show_pause_reason(str(request.get("auto_apply_pause_reason", "")))
 
 func complete(execution: Dictionary, duration_ms: int) -> void:
 	super.complete(execution, duration_ms)
@@ -85,7 +90,8 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 	if execution.get("data", {}).get("save_pending", false): _status.text = "Applied in editor · Save pending"
 	if _live and execution.get("data", {}).get("save_pending", false): _status.text = "Applied in Blender · Save pending"
 	if _live and execution.get("data", {}).get("save_pending", false) and execution.get("data", {}).get("auto_apply", false): _status.text = "Auto applied in Blender · Save pending"
-	if not execution.get("success", false) and execution.has("error"):
+	_show_pause_reason(str(execution.get("data", {}).get("auto_apply_pause_reason", "")))
+	if not execution.get("success", false) and execution.has("error") and not execution.get("data", {}).get("auto_apply_paused", false):
 		var reason := Label.new()
 		reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		reason.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -104,6 +110,19 @@ func complete(execution: Dictionary, duration_ms: int) -> void:
 		attach.text = "Attach preview to chat"
 		attach.pressed.connect(func(): preview_attachment_requested.emit(image.duplicate(true)))
 		get_child(0).add_child(attach)
+
+func _show_pause_reason(reason: String) -> void:
+	if reason.is_empty():
+		if _pause_note != null: _pause_note.hide()
+		return
+	if _pause_note == null:
+		_pause_note = Label.new()
+		_pause_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		get_child(0).add_child(_pause_note)
+		get_child(0).move_child(_pause_note, 1)
+	var caption := "Live Blender Auto apply paused: %s" if _live else "Workspace Auto apply paused: %s"
+	Localization.bind(_pause_note, &"text", caption, [reason.left(512)])
+	_pause_note.show()
 
 func _add_thumbnail(image: Dictionary) -> void:
 	var preview := TextureRect.new()

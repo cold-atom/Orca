@@ -2367,6 +2367,54 @@ msgstr "Vista previa · Objetos seleccionados · Revisión %d"
 msgid "Export · Selected objects · Revision %d"
 msgstr "Exportación · Objetos seleccionados · Revisión %d"
 
+msgid "Command rejected before sending to Blender."
+msgstr "Comando rechazado antes de enviarlo a Blender."
+
+msgid "Command rejected locally; Auto apply remains enabled."
+msgstr "Comando rechazado localmente; la aplicación automática sigue activada."
+
+msgid "Inspect and resume"
+msgstr "Inspeccionar y reanudar"
+
+msgid "Inspect the live scene before resuming Auto apply."
+msgstr "Inspecciona la escena en vivo antes de reanudar la aplicación automática."
+
+msgid "Resume Auto apply"
+msgstr "Reanudar aplicación automática"
+
+msgid "Resume automatic operations through %s?\n\nDocument: %s\nScene: %s\nPaused: %s\n\nThis decision approves a fresh inspection of the current live scene, then resumes help, editing, preview and export for this session. Failed operations are not replayed. Edits retain validation and recovery copies. Godot import and placement still require review. Stop, conflicts or execution failures pause automation; New Session, Plan, reconnect and reload clear it."
+msgstr "¿Reanudar las operaciones automáticas a través de %s?\n\nDocumento: %s\nEscena: %s\nMotivo de la pausa: %s\n\nEsta decisión autoriza una nueva inspección de la escena en vivo y después reanuda la ayuda, edición, vista previa y exportación en esta sesión. Las operaciones fallidas no se repiten. Las ediciones conservan la validación y las copias de recuperación. La importación y colocación en Godot siguen requiriendo revisión. Detener, los conflictos o los fallos de ejecución pausan la automatización; una sesión nueva, el modo Plan, reconectar o recargar eliminan el permiso."
+
+msgid "Resume live Auto apply"
+msgstr "Reanudar aplicación automática en vivo"
+
+msgid "Resume live Auto apply…"
+msgstr "Reanudar aplicación automática en vivo…"
+
+msgid "Resume workspace Auto apply"
+msgstr "Reanudar aplicación automática del espacio"
+
+msgid "Resume workspace Auto apply…"
+msgstr "Reanudar aplicación automática del espacio…"
+
+msgid "Live Blender Auto apply paused: %s"
+msgstr "Aplicación automática de Blender en vivo pausada: %s"
+
+msgid "Workspace Auto apply paused: %s"
+msgstr "Aplicación automática del espacio pausada: %s"
+
+msgid "Auto apply paused"
+msgstr "Aplicación automática pausada"
+
+msgid "Auto apply · Blender paused"
+msgstr "Aplicación automática · Blender pausado"
+
+msgid "Script Auto apply is enabled."
+msgstr "La aplicación automática de scripts está activada."
+
+msgid "Project scripts still require review."
+msgstr "Los scripts del proyecto siguen requiriendo revisión."
+
 msgid "Blender Asset Studio"
 msgstr "Blender Asset Studio"
 

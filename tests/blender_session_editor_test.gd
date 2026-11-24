@@ -104,6 +104,7 @@ func _run() -> void:
 	await _call({"operation": "edit", "commands": JSON.stringify([{"op": "transform", "name": "LiveProp", "location": [2, 0, 0]}])}, false)
 	_check(session.current == after, "Reject preserves live state")
 	await _exercise_live_auto_apply(session, host)
+	await _exercise_cloud_command_correction(session)
 	var escaped := []
 	for index in 16:
 		escaped.append({"op": "primitive", "kind": "cube", "name": "Escaped_%02d_" % index + "\"\\".repeat(20), "location": [index, 0, 0]})
@@ -211,11 +212,13 @@ func _check_confirmation_layout(dialog, owner: Window) -> void:
 func _exercise_live_auto_apply(session, owner: Window) -> void:
 	var count: int = client.requests.size()
 	var original: Dictionary = session.current.duplicate(true)
+	var resuming: bool = not controller.live_auto_apply_pause_reason(config["id"]).is_empty()
 	controller.send_user_message("Automate this connected Blender session")
-	var call := _tool({"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "AutomaticLive_" + str(call_serial), "kind": "cube"}])})
+	var call := _tool({"operation": "inspect"} if resuming else {"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "AutomaticLive_" + str(call_serial), "kind": "cube"}])})
 	client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
 	for frame in 3: await process_frame
 	var card = view._tool_cards[call["id"]]
+	if resuming: _check(card._auto_button.text == Localization.message("Resume live Auto apply…") and card._pause_note.visible, "paused live review names the cause and offers one explicit inspection/resume decision")
 	card._auto_button.pressed.emit()
 	var action: Dictionary = view._live_auto_action.duplicate(true)
 	view._live_auto_dialog.canceled.emit()
@@ -234,14 +237,94 @@ func _exercise_live_auto_apply(session, owner: Window) -> void:
 	await _check_confirmation_layout(view._live_auto_dialog, owner)
 	view._live_auto_dialog.confirmed.emit()
 	_check(await _wait(func(): return client.requests.size() >= count + 2), "confirmed live grant applies original pending operation")
-	_check(controller.live_auto_apply_enabled(config["id"]) and session.current["revision"] == original["revision"] + 1 and _receipts(call["id"]).size() == 1, "exact live confirmation grants bounded session automation")
+	_check(controller.live_auto_apply_enabled(config["id"]) and session.current["revision"] == original["revision"] + (0 if resuming else 1) and _receipts(call["id"]).size() == 1, "exact live confirmation grants bounded session automation")
 	card = view._tool_cards[call["id"]]
 	_check(card._automatic and not card._allow.visible and not card._reject.visible, "automatic live card has no repeated Apply controls")
+	_check(controller.live_auto_apply_pause_reason(config["id"]).is_empty() and (card._pause_note == null or not card._pause_note.visible), "successful explicit inspection/resume clears the pause qualification")
 	_check(JSON.stringify(client.requests.back()["messages"]).contains("LIVE BLENDER PERMISSION: Auto apply is enabled"), "follow-up prompt refreshes live automation permission")
 	client.complete({"role": "assistant", "content": "Live automation enabled"})
 	for frame in 3: await process_frame
 	await _call({"operation": "help"})
 	await _call({"operation": "inspect"})
+
+
+func _exercise_cloud_command_correction(session) -> void:
+	var settings := EditorInterface.get_editor_settings()
+	var workspace_enabled: bool = controller.blender_auto_apply_enabled()
+	controller._set_edit_permission_state(false)
+	controller.apply_project_edit_default()
+	_check(controller.live_auto_apply_enabled(config["id"]) and controller.blender_auto_apply_enabled() == workspace_enabled, "script-only default refresh cannot clear a separate live/workspace session grant")
+	var account = Component.BlenderCloudAccount.new()
+	root.add_child(account)
+	var previous_account = controller.account_service
+	controller.account_service = account
+	settings.set_setting("orca/providers/selected", "orca_cloud")
+	settings.set_setting("orca/providers/orca_cloud/model", Component.BlenderCloudAccount.MODEL)
+	_check(controller.send_user_message("Create a model with the hosted live Blender workflow."), "start strict hosted live turn")
+	_check(client.requests.back()["profile"].get("hosted_blender_sessions") == true and client.requests.back()["tools"].any(func(tool): return tool["function"]["name"] == "blender_session"), "authenticated normalized Cloud vocabulary reaches real controller dispatch")
+	var original: Dictionary = session.current.duplicate(true)
+	var dispatch_serial: int = service._clients[config["id"]]._serial
+	var grant: Dictionary = controller._live_auto_grants[config["id"]].duplicate(true)
+	for arguments in [
+		{"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "CloudCorrected", "kind": "cube", "radius": 0}])},
+		{"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "CloudCorrected", "kind": "cube", "scale": [1, 0, 1]}])},
+		{"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "CloudCorrected", "kind": "cube", "segments": 3.5}])},
+		{"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "UnsentFirstCommand", "kind": "cube"}, {"op": "material", "name": "CloudCorrected", "material": "Invalid", "color": [1, 2, 0, 1]}])},
+		{"operation": "help", "commands": "[]"},
+		{"operation": "help", "destination": ""},
+	]:
+		var call := _tool(arguments)
+		client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
+		for frame in 3: await process_frame
+		_check(_receipts(call["id"]).size() == 1 and controller._pending_mcp_read.is_empty(), "hosted invalid command produces one result without an approval")
+		_check(session.current == original and service._clients[config["id"]]._serial == dispatch_serial, "local numeric/help rejection never contacts Blender or changes the scene")
+		_check(controller.live_auto_apply_enabled(config["id"]) and controller._live_auto_grants.get(config["id"], {}) == grant, "locally rejected Cloud call preserves the exact confirmed live grant")
+		_check(view._tool_cards[call["id"]]._validation_note.text == Localization.message("Command rejected locally; Auto apply remains enabled."), "collapsed failed call explains that Blender was not contacted and permission remains active")
+		if arguments["operation"] == "edit":
+			var text: String = _receipts(call["id"])[0]["content"]
+			_check(text.contains("commands[") and text.contains("finite") and text.contains("["), "numeric rejection identifies its field, supplied value, type and bounds")
+		if not controller.live_auto_apply_enabled(config["id"]):
+			# Fail cleanly on the regression rather than hanging on the next Apply.
+			client.complete({"role": "assistant", "content": "Local command rejected."})
+			controller.account_service = previous_account
+			settings.set_setting("orca/providers/selected", "openai")
+			account.queue_free()
+			return
+	for wrong_id in ["", "unknown-live-session"]:
+		var invalid := _tool({"operation": "help"})
+		var arguments: Dictionary = JSON.parse_string(invalid["function"]["arguments"])
+		if wrong_id.is_empty(): arguments.erase("server_id")
+		else: arguments["server_id"] = wrong_id
+		invalid["function"]["arguments"] = JSON.stringify(arguments)
+		client.complete({"role": "assistant", "content": "", "tool_calls": [invalid]})
+		for frame in 3: await process_frame
+		_check(_receipts(invalid["id"]).size() == 1 and controller._live_auto_grants.get(config["id"], {}) == grant and service._clients[config["id"]]._serial == dispatch_serial, "missing/unknown server ID cannot revoke another confirmed session or dispatch")
+	var call := _tool({"operation": "edit", "commands": JSON.stringify([{"op": "primitive", "name": "CloudCorrected", "kind": "cube", "radius": 1}])})
+	var count: int = client.requests.size()
+	client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
+	_check(await _wait(func(): return client.requests.size() > count), "corrected hosted command continues without another Apply click")
+	_check(session.current["revision"] == original["revision"] + 1 and controller.live_auto_apply_enabled(config["id"]) and view._tool_cards[call["id"]]._automatic, "valid correction uses the retained live grant exactly once")
+	client.complete({"role": "assistant", "content": "Hosted correction complete."})
+	for frame in 3: await process_frame
+	await _call({"operation": "help"})
+	await _call({"operation": "inspect"})
+	await _call({"operation": "preview", "objects": ["CloudCorrected"]})
+	await _call({"operation": "export", "objects": ["CloudCorrected"]})
+	_check(controller.live_auto_apply_enabled(config["id"]), "hosted live permission survives delayed follow-up help/edit/preview/export")
+	account.profile["hosted_blender_sessions"] = false
+	controller.send_user_message("Deny unavailable hosted Blender vocabulary")
+	call = _tool({"operation": "help"})
+	_check(not client.requests.back()["tools"].any(func(tool): return tool["function"]["name"] == "blender_session"), "older Cloud capability snapshot still omits live authoring")
+	dispatch_serial = service._clients[config["id"]]._serial
+	client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
+	for frame in 3: await process_frame
+	_check(_receipts(call["id"]).size() == 1 and service._clients[config["id"]]._serial == dispatch_serial, "live grant never bypasses the fixed hosted vocabulary gate")
+	client.complete({"role": "assistant", "content": "Unavailable hosted tool denied."})
+	controller.account_service = previous_account
+	settings.set_setting("orca/providers/selected", "openai")
+	account.queue_free()
+	_check(controller.set_auto_apply_enabled(true), "restore independent script fixture scope")
+	session.artifacts.clear() # Later handoff assertions own their fresh export.
 
 
 func _exercise_automatic_conflict(session) -> void:
@@ -254,6 +337,8 @@ func _exercise_automatic_conflict(session) -> void:
 	client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
 	_check(await _wait(func(): return client.requests.size() >= count + 2), "automatic conflict returns a matching provider result")
 	_check(_receipts(call["id"]).size() == 1 and not controller.live_auto_apply_enabled(), "failed automatic operation revokes its exact grant")
+	_check(client.requests.back()["tools"].is_empty() and controller._loop_final_trigger_reason == controller.LOOP_TRIGGER_BLENDER_PAUSE and controller._pending_mcp_read.is_empty(), "genuine pause finalizes once without subsequent approval churn")
+	_check(view._tool_cards[call["id"]]._pause_note.visible and view._edit_permission_status.tooltip_text.contains("Live Blender Auto apply paused"), "failed card and combined header identify the paused live scope even when other grants remain active")
 	session.current = before
 	client.complete({"role": "assistant", "content": "Live automation paused after conflict"})
 	for frame in 3: await process_frame
@@ -265,6 +350,9 @@ func _call(arguments: Dictionary, approve: bool = true, inspect_card: Callable =
 	_check(controller.send_user_message("Fixture live " + arguments["operation"]), "start live turn")
 	_check(client.requests.back()["tools"].any(func(tool): return tool["function"]["name"] == "blender_session"), "enabled Work offers live tool")
 	var call := _tool(arguments)
+	var executions := []
+	controller.tool_execution_completed.connect(func(_turn, id, _name, execution, _duration):
+		if id == call["id"]: executions.append(execution.duplicate(true)), CONNECT_ONE_SHOT)
 	client.complete({"role": "assistant", "content": "", "tool_calls": [call]})
 	for frame in 3: await process_frame
 	var card = view._tool_cards.get(call["id"])
@@ -283,7 +371,7 @@ func _call(arguments: Dictionary, approve: bool = true, inspect_card: Callable =
 	_check(await _wait(func(): return client.requests.size() >= count + 2), "live operation returns a provider continuation")
 	var receipts := _receipts(call["id"])
 	_check(receipts.size() == 1, "exactly one matching live receipt")
-	if approve and not receipts.is_empty(): _check(not str(receipts[0]["content"]).contains("failed") and not str(receipts[0]["content"]).contains("changed"), "live operation completed: " + str(receipts[0]["content"]))
+	if approve: _check(executions.size() == 1 and executions[0]["success"], "live operation completed: " + str(receipts[0]["content"]) if not receipts.is_empty() else "live receipt missing")
 	var history: Array = view._session["events"].filter(func(event): return event.get("name") == "blender_session")
 	_check(history.all(func(event): return event.get("arguments", {}).is_empty() and not event.has("open_path")), "history keeps no code/live references/artifact authority")
 	client.complete({"role": "assistant", "content": "Fixture operation complete"})

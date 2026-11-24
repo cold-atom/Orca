@@ -2364,6 +2364,54 @@ msgstr "预览 · 所选对象 · 修订版 %d"
 msgid "Export · Selected objects · Revision %d"
 msgstr "导出 · 所选对象 · 修订版 %d"
 
+msgid "Command rejected before sending to Blender."
+msgstr "命令在发送给 Blender 前已被拒绝。"
+
+msgid "Command rejected locally; Auto apply remains enabled."
+msgstr "命令已在本地被拒绝；自动应用仍然启用。"
+
+msgid "Inspect and resume"
+msgstr "检查并恢复"
+
+msgid "Inspect the live scene before resuming Auto apply."
+msgstr "恢复自动应用前，请先检查实时场景。"
+
+msgid "Resume Auto apply"
+msgstr "恢复自动应用"
+
+msgid "Resume automatic operations through %s?\n\nDocument: %s\nScene: %s\nPaused: %s\n\nThis decision approves a fresh inspection of the current live scene, then resumes help, editing, preview and export for this session. Failed operations are not replayed. Edits retain validation and recovery copies. Godot import and placement still require review. Stop, conflicts or execution failures pause automation; New Session, Plan, reconnect and reload clear it."
+msgstr "通过 %s 恢复自动操作？\n\n文档：%s\n场景：%s\n暂停原因：%s\n\n此决定批准重新检查当前实时场景，然后恢复本会话的帮助、编辑、预览和导出。失败的操作不会重放。编辑仍需验证并保留恢复副本。Godot 导入和放置仍需审核。停止、冲突或执行失败会暂停自动化；新会话、计划模式、重新连接和重新加载会清除权限。"
+
+msgid "Resume live Auto apply"
+msgstr "恢复实时自动应用"
+
+msgid "Resume live Auto apply…"
+msgstr "恢复实时自动应用…"
+
+msgid "Resume workspace Auto apply"
+msgstr "恢复工作区自动应用"
+
+msgid "Resume workspace Auto apply…"
+msgstr "恢复工作区自动应用…"
+
+msgid "Live Blender Auto apply paused: %s"
+msgstr "Blender 实时自动应用已暂停：%s"
+
+msgid "Workspace Auto apply paused: %s"
+msgstr "工作区自动应用已暂停：%s"
+
+msgid "Auto apply paused"
+msgstr "自动应用已暂停"
+
+msgid "Auto apply · Blender paused"
+msgstr "自动应用 · Blender 已暂停"
+
+msgid "Script Auto apply is enabled."
+msgstr "脚本自动应用已启用。"
+
+msgid "Project scripts still require review."
+msgstr "项目脚本仍需审核。"
+
 msgid "Blender Asset Studio"
 msgstr "Blender 资源工作室"
 

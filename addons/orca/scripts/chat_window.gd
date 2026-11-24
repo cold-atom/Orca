@@ -1839,6 +1839,13 @@ func _show_live_auto_apply_confirmation(call_id: String, turn_id: int) -> void:
 	if not _session_resumable: return
 	_live_auto_action = agent_controller.prepare_live_auto_apply_confirmation(call_id, turn_id)
 	if _live_auto_action.is_empty(): return
+	if _live_auto_action["resuming"]:
+		_live_auto_dialog.title = "Resume live Auto apply"
+		_live_auto_dialog.ok_button_text = "Inspect and resume"
+		_live_auto_dialog.popup_message("Resume automatic operations through %s?\n\nDocument: %s\nScene: %s\nPaused: %s\n\nThis decision approves a fresh inspection of the current live scene, then resumes help, editing, preview and export for this session. Failed operations are not replayed. Edits retain validation and recovery copies. Godot import and placement still require review. Stop, conflicts or execution failures pause automation; New Session, Plan, reconnect and reload clear it.", [_live_auto_action["name"], _live_auto_action["document"], _live_auto_action["scene"], _live_auto_action["pause_reason"]])
+		return
+	_live_auto_dialog.title = "Allow automatic live Blender operations"
+	_live_auto_dialog.ok_button_text = "Allow live operations"
 	_live_auto_dialog.popup_message("Allow Orca to inspect, create, edit, preview and export automatically through %s?\n\nDocument: %s\nScene: %s\n\nThis permission is only for this live session. Edits still validate the current scene and create recovery copies. Conflicts, failures or Stop pause automation. New Session, Plan, reconnect and reload clear it.\n\nGodot import and placement always require review. This does not authorize script edits, other Blender sessions or arbitrary Python. Click the green edit icon beside ORCA to revoke Auto apply.", [_live_auto_action["name"], _live_auto_action["document"], _live_auto_action["scene"]])
 
 
@@ -1878,6 +1885,13 @@ func _on_edit_permission_pressed() -> void:
 	if agent_controller.auto_apply_enabled() or agent_controller.blender_auto_apply_enabled() or agent_controller.live_auto_apply_enabled():
 		agent_controller.set_auto_apply_enabled(false)
 		_clear_project_edit_default()
+		return
+	if not agent_controller.blender_auto_apply_pause_reason().is_empty():
+		_show_blender_permission_confirmation()
+		return
+	if not agent_controller.live_auto_apply_pause_reason().is_empty() and not agent_controller.is_busy():
+		_open_settings(false)
+		settings_view._show_section("extensions")
 		return
 	_show_edit_permission_confirmation(false, false)
 
@@ -1922,6 +1936,8 @@ func _show_edit_permission_confirmation(remember: bool, default_only: bool) -> v
 	_edit_permission_blender.show()
 	_edit_permission_blender.set_pressed_no_signal(agent_controller.blender_auto_apply_enabled() or Config.project_blender_edit_preference()["enabled"])
 	_edit_permission_dialog.title = "Allow automatic script edits"
+	_edit_permission_dialog.ok_button_text = "Allow edits"
+	Localization.clear(_edit_permission_dialog_body, &"text")
 	_edit_permission_dialog_body.text = "Orca can create and edit eligible project .gd scripts automatically in Work mode. Every edit is validated, shown in the feed, and checkpointed before writing.\n\nScene/configuration changes and script-execution trust still require approval. Unsaved files and conflicts remain protected.\n\nWithout remembering, permission is for this session only. Remembering enables Auto apply for new Work conversations and editor restarts in this project. Plan stays read-only.\n\nClick the green edit icon beside ORCA in the header to revoke permission and clear any remembered default."
 	_edit_permission_default_only = default_only
 	_edit_permission_remember.set_pressed_no_signal(remember)
@@ -1951,7 +1967,14 @@ func _show_blender_permission_confirmation(call_id: String = "", turn_id: int = 
 	_edit_permission_remember.set_pressed_no_signal(true)
 	_edit_permission_remember.disabled = _edit_permission_default_only
 	_edit_permission_dialog.title = "Allow automatic Blender operations"
+	_edit_permission_dialog.ok_button_text = "Allow edits"
+	Localization.clear(_edit_permission_dialog_body, &"text")
 	_edit_permission_dialog_body.text = "Orca can inspect, model, preview and export assets automatically in your connected dedicated Blender workspace in Work mode. Edits are validated and saved as immutable recovery revisions.\n\nProject imports and scene placement still require their exact approval. This permission covers only Orca's fixed workspace commands. It does not start Blender or authorize arbitrary code or other MCP servers.\n\nRemember for this project enables this scope in future Work conversations and editor restarts. Plan stays read-only. Click the green edit icon beside ORCA to revoke automation and clear the remembered defaults."
+	var pause_reason: String = agent_controller.blender_auto_apply_pause_reason()
+	if not pause_reason.is_empty():
+		_edit_permission_dialog.title = "Resume workspace Auto apply"
+		_edit_permission_dialog.ok_button_text = "Resume Auto apply"
+		Localization.bind_parts(_edit_permission_dialog_body, &"text", [["Workspace Auto apply paused: %s", [pause_reason]], ["\n\n", []], [_edit_permission_dialog_body.text, []]])
 	_edit_permission_dialog.popup_centered(_edit_permission_dialog_size())
 
 
@@ -2032,11 +2055,15 @@ func _sync_edit_permission_ui(_enabled: bool = false) -> void:
 	if _edit_permission_button == null or _edit_permission_status == null or agent_controller == null or not agent_controller.has_method("auto_apply_enabled"):
 		return
 	var enabled: bool = agent_controller.auto_apply_enabled() or agent_controller.blender_auto_apply_enabled() or agent_controller.live_auto_apply_enabled()
+	var workspace_pause: String = agent_controller.blender_auto_apply_pause_reason()
+	var live_pause: String = agent_controller.live_auto_apply_pause_reason()
+	var paused := not workspace_pause.is_empty() or not live_pause.is_empty()
 	var work: bool = agent_controller.get_mode() == AgentController.AgentMode.BUILD
 	var compact := enabled or _has_session_content or not empty_state.visible
 	_edit_permission_button.visible = not compact
 	_edit_permission_status.visible = compact
 	var caption := "Auto apply" if enabled else "Review edits"
+	if paused: caption = "Auto apply · Blender paused" if enabled else "Auto apply paused"
 	var disabled: bool = not enabled and ((_request_active and not agent_controller.can_authorize_pending_script_edits()) or not _session_resumable or not work)
 	var parts: Array
 	if enabled:
@@ -2044,16 +2071,21 @@ func _sync_edit_permission_ui(_enabled: bool = false) -> void:
 		var scope := "Remembered for this project: new Work conversations and editor restarts use Auto apply." if remembered else "Auto apply is enabled for this session only."
 		parts = [[scope, []], [" Click to revoke before the next write and clear the remembered default. Stop keeps completed edits; Revert is a separate action.", []]]
 		parts.append([" Blender workspace Auto apply is enabled." if agent_controller.blender_auto_apply_enabled() else " Blender workspace operations still require review.", []])
+		parts.append([" ", []])
+		parts.append(["Script Auto apply is enabled." if agent_controller.auto_apply_enabled() else "Project scripts still require review.", []])
 		if agent_controller.live_auto_apply_enabled(): parts.append([" Live Blender Auto apply is enabled for the confirmed session only; import and placement still require review.", []])
 	else:
-		parts = [["Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval.", []]]
-		if Config.project_script_edit_preference()["enabled"]:
+		parts = [["Auto apply paused", []]] if paused else [["Review edits is active. Click in idle Work or while reviewing a project script to allow session Auto apply, optionally remembered for this project. Scene/configuration proposals still require approval.", []]]
+		if Config.project_script_edit_preference()["enabled"] or Config.project_blender_edit_preference()["enabled"]:
 			parts.append([" The project default remains saved; Auto apply is paused here or unavailable in this mode/session.", []])
+	if not workspace_pause.is_empty(): parts.append_array([[" ", []], ["Workspace Auto apply paused: %s", [workspace_pause]]])
+	if not live_pause.is_empty(): parts.append_array([[" ", []], ["Live Blender Auto apply paused: %s", [live_pause]]])
 	for control in [_edit_permission_button, _edit_permission_status]:
 		Localization.bind(control, &"accessibility_name", "Script edit permission: %s", [Localization.source(caption)])
 		control.disabled = disabled
 		Localization.bind_parts(control, &"tooltip_text", parts)
 		var color := Color(0.68, 0.9, 0.72) if enabled else Color(0.58, 0.61, 0.66) if control == _edit_permission_status else Color(0.7, 0.73, 0.78)
+		if paused: color = Color(0.93, 0.73, 0.42)
 		for key in ["font_color", "icon_normal_color"]:
 			control.add_theme_color_override(key, color)
 		for key in ["font_hover_color", "font_pressed_color", "font_focus_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:

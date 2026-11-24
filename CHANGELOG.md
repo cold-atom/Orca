@@ -4,6 +4,13 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+- Blender Auto apply survives locally rejected numeric/JSON/help calls and invalid
+  live server IDs, with field/value/range corrections and explicit retained-permission
+  feedback. Script-only default/checkpoint handling preserves separate Blender grants.
+- Genuine Blender automation pauses show a scope-specific reason and amber header,
+  finish with one summary, and offer explicit workspace/live inspection-resume review
+  without replaying failed operations. Cloud-profile and native Linux regressions cover
+  correction, continuation, boundaries and import/placement approvals.
 - Choose whether to continue an existing Blender workspace, start a separate asset or chat without Asset Studio before sending. Preview/export cards identify the scope and revision.
 - Blender help/edit errors give operation-specific corrections. GLB handoff validates supported punctual lights; blocked required extensions are named on the failed card.
 
