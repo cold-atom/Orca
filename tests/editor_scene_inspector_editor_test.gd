@@ -1,4 +1,5 @@
-extends SceneTree
+@tool
+extends "res://tests/editor_test_case.gd"
 
 const Tools = preload("res://addons/orca/scripts/tools.gd")
 const EditorContext = preload("res://addons/orca/scripts/editor_context.gd")
@@ -18,7 +19,7 @@ func _init() -> void:
 
 func _run() -> void:
 	_expect(Engine.is_editor_hint(), "this suite requires --editor")
-	# Editor-script execution begins before startup scanning has completed.
+	# The test plugin starts before startup scanning has completed.
 	# Let the real editor finish acquisition before opening/removing fixtures.
 	for _frame in range(8):
 		await process_frame

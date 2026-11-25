@@ -274,7 +274,7 @@ Set `GODOT_BIN` to Godot 4.7.2 and use isolated tests:
 export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
 "$GODOT_BIN" --headless --editor --path . --quit
 "$GODOT_BIN" --headless --path . --script res://tests/native_helper_service_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/native_helper_editor_test.gd
+python3 tests/run_editor_test.py native_helper_editor_test.gd
 python3 -m unittest discover -s tests -p native_helper_packaging_test.py -v
 python3 -m unittest discover -s tests -p native_helper_download_test.py -v
 "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd

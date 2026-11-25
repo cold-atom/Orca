@@ -1798,7 +1798,9 @@ func _sync_agent_compatibility() -> void:
 	if agent_status_label == null:
 		return
 	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
-	var required := bool(definition.get("custom_url", false)) or not bool(definition.get("agent_tools", true))
+	# Managed readiness comes from the authenticated account catalog, not a
+	# user-run probe or the official BYOK opt-out preference.
+	var required := not bool(definition.get("managed_auth", false)) and (bool(definition.get("custom_url", false)) or not bool(definition.get("agent_tools", true)))
 	for control in [agent_heading_label, agent_status_label, agent_probe_button, agent_enable_toggle, agent_warning_label]:
 		control.visible = required
 	if not required:
@@ -1816,8 +1818,6 @@ func _sync_agent_compatibility() -> void:
 	var passed := bool(status.get("passed", false))
 	var enabled := bool(status.get("enabled", false))
 	agent_probe_button.disabled = _agent_probe != null and _agent_probe.is_running()
-	if _current_provider == "orca_cloud" and (account_service == null or not account_service.connected() or not account_service.model_record(_selected_model).get("allowed", false) or not account_service.model_record(_selected_model).get("tools", false)):
-		agent_probe_button.disabled = true
 	agent_enable_toggle.disabled = not passed or agent_probe_button.disabled
 	agent_enable_toggle.set_pressed_no_signal(enabled)
 	if not agent_probe_button.disabled:

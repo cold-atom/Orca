@@ -1,5 +1,5 @@
 @tool
-extends SceneTree
+extends "res://tests/editor_test_case.gd"
 
 const Settings = preload("res://addons/orca/scripts/settings_view.gd")
 const Account = preload("res://addons/orca/scripts/account_service.gd")

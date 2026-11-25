@@ -1,5 +1,5 @@
 @tool
-extends SceneTree
+extends "res://tests/editor_test_case.gd"
 
 const ChatScene = preload("res://addons/orca/scenes/chat_window.tscn")
 const Config = preload("res://addons/orca/scripts/config.gd")

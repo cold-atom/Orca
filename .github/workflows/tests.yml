@@ -132,13 +132,13 @@ jobs:
           python3 tests/run_editor_test.py localization_editor_test.gd
           python3 tests/run_editor_test.py support_reminder_editor_test.gd
           python3 tests/run_editor_test.py project_inspection_editor_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_scene_inspector_editor_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/diagnostics_editor_integration_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/plugin_lifecycle_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/managed_settings_editor_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/onboarding_editor_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/native_helper_editor_test.gd
+          python3 tests/run_editor_test.py editor_unsaved_state_test.gd
+          python3 tests/run_editor_test.py editor_scene_inspector_editor_test.gd
+          python3 tests/run_editor_test.py diagnostics_editor_integration_test.gd
+          python3 tests/run_editor_test.py plugin_lifecycle_test.gd
+          python3 tests/run_editor_test.py managed_settings_editor_test.gd
+          python3 tests/run_editor_test.py onboarding_editor_test.gd
+          python3 tests/run_editor_test.py native_helper_editor_test.gd
 
       - name: Run local transport integration
         shell: bash

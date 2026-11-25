@@ -55,6 +55,13 @@ Source copies omit generated `.import` sidecars and Python bytecode, so a locall
 imported checkout cannot mask clean-install startup failures. Project/settings/cache
 roots remain disposable and isolated.
 
+All editor integration cases in Tests CI now use this runner, including managed
+settings, onboarding, native-helper UI, dirty buffers, live scene inspection,
+diagnostics and plugin lifecycle. Release preparation uses the same native-helper
+UI entry point. These cases extend `editor_test_case.gd` in the existing editor
+tree; do not launch them with `--editor --script`. Every case must report its
+completion marker and exit without errors/warnings, including shutdown leaks.
+
 CI's initial full-checkout import uses `run_editor_test.import_ci_project` to
 temporarily remove the `editor_plugins` section, restoring the original
 `project.godot` bytes in `finally` after success, failure or exceptions. This helper
@@ -498,7 +505,7 @@ an upstream Godot limitation. Diagnosis and exact source references are in
 ```bash
 export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
 "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/onboarding_editor_test.gd
+python3 tests/run_editor_test.py onboarding_editor_test.gd
 ```
 
 The controller rejects missing credentials/account/model before any accepted turn.
@@ -519,9 +526,9 @@ They cover conversation-only bounds, wrapped actions, heading/close containment,
 hidden initialization, restoration waiting, first-visible-open, configured-user
 suppression and Close/Escape/Later/hide/reopen. The plugin lifecycle suite also
 uses actual dock opening notifications after settled startup and re-enable.
-The fixture can also run without `--headless` using
-`--rendering-method gl_compatibility` on a display. Editor startup/deferred cleanup are settled before
-exit; documented editor-harness progress/RID/ObjectDB diagnostics may remain.
+Use `python3 tests/run_editor_test.py onboarding_editor_test.gd --graphical`
+for Linux/X11/OpenGL. Editor startup/deferred cleanup are settled before exit;
+the runner rejects RID/ObjectDB diagnostics rather than accepting a printed pass.
 Manual acceptance: a fresh installation, real browser pairing/provider setup,
 draft Send after returning, light themes and other native platforms.
 
@@ -615,7 +622,8 @@ single-flight refresh, account/capability drift denial, chat-only gating, and St
 during auth without orphan inference. CI runs this component suite and a separate
 four-platform native-helper workflow. `hosted_defaults_test.gd` uses the actual root guide and full Work
 schemas; `managed_settings_editor_test.gd` checks automatic included-model selection
-and the absence of subscriber compatibility/reasoning controls. Use all three
+and the absence of subscriber compatibility/reasoning controls after sign-in,
+switching from an editable provider, catalog refresh and sign-out. Use all three
 startup-suppression flags during ordinary editor tests.
 
 Production-origin regressions verify `https://cloud.aiorca.dev` pairing/Console
@@ -643,6 +651,7 @@ subsequent controller usage signal. This does not change production signal wirin
 
 ```bash
 "$GODOT_BIN" --headless --path . --script res://tests/account_service_test.gd
+python3 tests/run_editor_test.py managed_settings_editor_test.gd
 ```
 
 Run the credential-store fixture through the isolated Python runner, which supplies
@@ -653,7 +662,7 @@ python3 scripts/build_native_helper.py
 GODOT_BIN=/path/to/Godot python3 scripts/test_native_credentials.py
 python3 -m unittest discover -s tests -p native_helper_packaging_test.py -v
 "$GODOT_BIN" --headless --path . --script res://tests/native_helper_service_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/native_helper_editor_test.gd
+python3 tests/run_editor_test.py native_helper_editor_test.gd
 python3 -m unittest discover -s tests -p native_helper_download_test.py -v
 ```
 
@@ -748,7 +757,7 @@ export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_
 "$GODOT_BIN" --headless --path . --script res://tests/tool_activity_group_test.gd
 "$GODOT_BIN" --headless --path . --script res://tests/chat_window_test.gd
 "$GODOT_BIN" --headless --path . --script res://tests/session_store_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
+python3 tests/run_editor_test.py editor_unsaved_state_test.gd
 python3 tests/run_editor_test.py editor_ui_scale_test.gd
 ```
 
@@ -943,19 +952,19 @@ This graphical fixture temporarily warps the pointer into its own review window.
 Run real editor dirty-script and dirty-scene conflict checks, including unsaved source provenance and patch/run/revert protection:
 
 ```bash
-"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_unsaved_state_test.gd
+python3 tests/run_editor_test.py editor_unsaved_state_test.gd
 ```
 
 Run editor logger capture, shared registration, and duplicate-record prevention checks:
 
 ```bash
-"$GODOT_BIN" --headless --editor --path . --script res://tests/diagnostics_editor_integration_test.gd
+python3 tests/run_editor_test.py diagnostics_editor_integration_test.gd
 ```
 
 Run actual plugin enable, disable, re-enable, service ownership, dock, and toolbar lifecycle checks:
 
 ```bash
-"$GODOT_BIN" --headless --editor --path . --script res://tests/plugin_lifecycle_test.gd
+python3 tests/run_editor_test.py plugin_lifecycle_test.gd
 ```
 
 Run isolated local-provider URL, model, optional-key, and reasoning persistence checks against real EditorSettings:
@@ -1013,10 +1022,10 @@ Run live scene/selection/subtree native layout and transform checks, getter/call
 Run actual editor unsaved hierarchy/layout/2D/3D state, selection preservation, expected-scene switching, saved mutation guards, and the menu inspect/save/review/Apply/reinspect/Revert workflow:
 
 ```bash
-"$GODOT_BIN" --headless --editor --path . --script res://tests/editor_scene_inspector_editor_test.gd
+python3 tests/run_editor_test.py editor_scene_inspector_editor_test.gd
 ```
 
-The editor harness owns and removes only its uniquely named scene fixtures. It waits for startup/deferred scene work, clears fixture selection before closing, saves fixture scenes without thumbnail previews, and waits before teardown. Early rapid scene-switch/cleanup runs crashed; settled runs pass with the existing headless RID/ObjectDB shutdown diagnostics. Node3D values are inspected in the actual editor tree by subtree, avoiding the dummy renderer's 3D workspace. These tests do not send provider requests. Unnamed roots are component fixtures rather than a real New Scene UI interaction.
+The isolated editor harness owns and removes only its uniquely named scene fixtures. It waits for startup/deferred scene work, clears fixture selection before closing, saves fixture scenes without thumbnail previews, and waits before teardown. Early rapid scene-switch/cleanup runs crashed; the normal-editor runner now requires clean shutdown without RID/ObjectDB diagnostics. Node3D values are inspected in the actual editor tree by subtree, avoiding the dummy renderer's 3D workspace. These tests do not send provider requests. Unnamed roots are component fixtures rather than a real New Scene UI interaction.
 
 Manual live-inspection acceptance: select a Control in a real menu, change anchors/offsets/size flags without saving, and ask Orca to explain the layout. Check selected nodes versus scene/subtree scope, Container parents, an unnamed scene, 2D/3D selections, stale scene identity, and narrow grouped activity. Confirm reads preserve dirty state; save explicitly before a normally reviewed correction. Restart/restore activity and confirm historical summaries do not imply current values. Live provider behavior, actual New Scene UI, non-headless 3D selection, and other platforms remain manual gates.
 

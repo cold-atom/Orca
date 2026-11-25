@@ -1,4 +1,5 @@
-extends SceneTree
+@tool
+extends "res://tests/editor_test_case.gd"
 
 const EditorContext = preload("res://addons/orca/scripts/editor_context.gd")
 const GameProcessService = preload("res://addons/orca/scripts/game_process_service.gd")
@@ -21,6 +22,11 @@ func _init() -> void:
 
 func _run() -> void:
 	_expect(Engine.is_editor_hint(), "this test must run with --editor")
+	# Opening fixtures and patch-triggered scans must not race editor startup.
+	for frame in 60:
+		await process_frame
+	var filesystem := EditorInterface.get_resource_filesystem()
+	_expect(await _wait_until(func(): return not filesystem.is_scanning()), "editor startup filesystem scan should finish")
 	_fixture_directory = "res://.orca_editor_unsaved_test_%d" % Time.get_ticks_usec()
 	_script_path = _fixture_directory.path_join("dirty_script.gd")
 	_other_script_path = _fixture_directory.path_join("other_script.gd")
@@ -35,6 +41,8 @@ func _run() -> void:
 	await _cleanup_editor_state()
 	_remove_tree(ProjectSettings.globalize_path(_fixture_directory))
 	_expect(not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(_fixture_directory)), "fixture directory should be removed")
+	await create_timer(0.5).timeout
+	_expect(await _wait_until(func(): return not filesystem.is_scanning()), "editor filesystem work must finish before teardown")
 	_finish()
 
 

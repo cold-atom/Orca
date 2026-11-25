@@ -65,6 +65,12 @@ checks. No silent paid Connect/probe path is added. Plan/Work, original Apply/Re
 script Trust, separate Auto apply scopes, checkpoints/conflicts/Revert and private
 continuation ownership retain their runtime checks.
 
+Managed-auth profiles remain outside these BYOK compatibility controls. Cloud's
+`agent_tools=false` definition delegates readiness to the authenticated catalog;
+it must not expose a probe, status, warning or local enable toggle. The managed
+editor regression checks sign-in, switching from an editable provider, catalog
+refresh and sign-out, alongside fixed-origin, entitlement and vision behavior.
+
 Contracts rechecked 2026-11-25: [Model Studio regions](https://www.alibabacloud.com/help/en/model-studio/regions),
 [Qwen function calling](https://www.alibabacloud.com/help/en/model-studio/qwen-function-calling),
 [Claude models](https://platform.claude.com/docs/en/models/overview) and
@@ -1939,7 +1945,7 @@ A committed automated suite exists under `tests/`:
 - `task_list_panel_test.gd` verifies status presentation, bounded height, collapse/expand behavior, clearing, and the 300 px width constraint.
 - `scene_inspector_test.gd` verifies saved hierarchy, serialized properties, groups, instances, signal connections, JSON-safe Variant summaries, structural-only reads, bounds, invalid targets, and navigation metadata.
 - `editor_scene_inspector_test.gd` verifies live native layout/transforms, selection/subtree behavior, unnamed roots, callback/getter isolation, strict arguments, canonical/expected scene identity, path/symlink/instance/resource/internal-node boundaries, and selection/depth/node/property/output/time limits.
-- `editor_scene_inspector_editor_test.gd` verifies actual unsaved node/layout/2D/3D changes, public selection, Container context, getter isolation, unchanged project bytes/editor state, stale-scene rejection, and a canonical menu inspect/save/hash-bound review/Apply/reinspect/exact-Revert workflow. The harness settles deferred editor work between scene switches/closing and disables fixture-save thumbnail previews before cleanup. Early rapid-switch/teardown attempts crashed; settled runs pass with the existing headless RID/ObjectDB shutdown diagnostics. Headless Node3D data is inspected through subtree scope rather than opening the dummy renderer's 3D workspace.
+- `editor_scene_inspector_editor_test.gd` verifies actual unsaved node/layout/2D/3D changes, public selection, Container context, getter isolation, unchanged project bytes/editor state, stale-scene rejection, and a canonical menu inspect/save/hash-bound review/Apply/reinspect/exact-Revert workflow. The isolated normal-editor harness settles deferred editor work between scene switches/closing and disables fixture-save thumbnail previews before cleanup. Early rapid-switch/teardown attempts crashed; the current runner requires clean shutdown without RID/ObjectDB diagnostics. Headless Node3D data is inspected through subtree scope rather than opening the dummy renderer's 3D workspace.
 - `project_settings_inspector_test.gd` verifies bounded overviews, explicit typed values, feature overrides, input actions, output limits, allowlists, privacy rejections, and navigation metadata.
 - `project_instructions_test.gd` verifies optional root loading, exact content/hash metadata, safety wrapping, byte/line/NUL bounds, and symlink rejection.
 - `project_skills_test.gd` verifies deterministic immediate-directory metadata discovery, exact-name body loading, frontmatter/slug/body bounds, non-recursive safety wrapping, truncation, and symlink rejection.
@@ -2015,8 +2021,16 @@ disabled; a one-script minimal editor exited normally. The focused normal-editor
 fixture lifecycle is corrected and the migrated cases pass from fresh isolated
 state. Godot itself has not been patched: arbitrary large-project/early-quit
 documentation generation remains an upstream engine limitation, not accepted
-plugin-test coverage. Other legacy SceneTree editor cases retain their historical
-entry points pending a separate migration.
+plugin-test coverage.
+
+On 2026-11-25 the remaining seven Tests CI editor cases were migrated to this same
+lifecycle: dirty script/scene state, live scene inspection, diagnostics capture,
+plugin enable/disable, managed settings, onboarding and native-helper UI. The
+release workflow also uses the isolated native-helper entry point. Their existing
+assertions are retained; dirty-buffer fixtures now settle startup and final
+filesystem work before teardown. Runner orchestration regressions additionally
+check these cases' import ordering, existing-tree launch, private XDG roots and all
+three startup-suppression flags. Shutdown warnings/errors remain failures.
 
 ### Manual Smoke Matrix
 
@@ -2245,6 +2259,25 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-25 — Managed-settings CI regression and remaining editor-fixture migration
+
+- Reproduced the failing managed-settings assertion from push `c91030d` in the
+  normal editor. The new BYOK visibility condition included Cloud's
+  `agent_tools=false` definition; managed-auth profiles now hide all compatibility
+  controls before that evaluation. Existing account/catalog runtime readiness
+  remains authoritative. Regression coverage includes provider switching, catalog
+  refresh and sign-out as well as the original sign-in/entitlement/vision checks.
+- Migrated the seven remaining Tests CI editor cases to the isolated existing-tree
+  runner, including the release workflow's native-helper UI case. Dirty-buffer
+  startup/final scan settlement removes its early-shutdown warning; leaked
+  initial-editor trees are no longer accepted as successful test runs.
+- Godot 4.7.2: all seven migrated cases and both provider-settings/readiness cases
+  pass with clean headless shutdown. Eight Python runner tests, Settings,
+  dedicated-provider and hosted-default components, and actual-project headless
+  editor/plugin initialization pass. Hosted compact finalization remains
+  **24562/24576**. Diff/artifact checks pass. A fresh remote Actions run and
+  graphical/other-platform acceptance have not been exercised for this revision.
 
 ### 2026-11-25 — Official-provider Agent readiness correction (unreleased)
 
@@ -3337,7 +3370,7 @@ ORCA_DISABLE_ACCOUNT_RESTORE=1 "$GODOT_BIN" --headless --path . --script res://t
 ORCA_DISABLE_ACCOUNT_RESTORE=1 "$GODOT_BIN" --headless --path . --script res://tests/provider_test.gd
 ORCA_DISABLE_ACCOUNT_RESTORE=1 "$GODOT_BIN" --headless --path . --script res://tests/api_client_test.gd
 ORCA_DISABLE_ACCOUNT_RESTORE=1 "$GODOT_BIN" --headless --path . --script res://tests/hosted_defaults_test.gd
-ORCA_DISABLE_ACCOUNT_RESTORE=1 "$GODOT_BIN" --headless --editor --path . --script res://tests/managed_settings_editor_test.gd
+python3 tests/run_editor_test.py managed_settings_editor_test.gd
 ```
 
 From the backend repository, set `TEST_DATABASE_URL` to a disposable PostgreSQL database ending in `_test`, `GODOT_BIN`, and `ORCA_GODOT_PLUGIN_PATH` to this plugin repository, then run:

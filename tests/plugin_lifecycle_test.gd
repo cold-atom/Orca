@@ -1,4 +1,5 @@
-extends SceneTree
+@tool
+extends "res://tests/editor_test_case.gd"
 
 const DiagnosticsService = preload("res://addons/orca/scripts/diagnostics_service.gd")
 const PLUGIN_NAME := "orca"

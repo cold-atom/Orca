@@ -1,4 +1,5 @@
-extends SceneTree
+@tool
+extends "res://tests/editor_test_case.gd"
 
 const Settings = preload("res://addons/orca/scripts/settings_view.gd")
 const Account = preload("res://addons/orca/scripts/account_service.gd")
@@ -50,11 +51,22 @@ func _run() -> void:
 	check(Config.get_provider() == "orca_cloud" and Config.get_model() == "managed-ready-fixture", "sign-in activates an included recommended model without setup")
 	check(Config.get_api_url() == "https://cloud.aiorca.dev/v1" and Config.get_active_provider_config()["base_url"] == Cloud.BASE_URL, "active managed configuration uses production with stale saved settings")
 	check(Config.get_reasoning_effort() == "default" and Config.get_api_key("orca_cloud").is_empty(), "managed defaults override stale effort and never save account credentials")
-	check(not view.agent_heading_label.visible and not view.agent_probe_button.visible and not view.agent_enable_toggle.visible and not view.agent_warning_label.visible, "managed models have no compatibility controls")
+	_check_managed_controls_hidden(view, "sign-in")
 	check(not view.effort_selector.visible and not view.effort_label.visible, "managed models have no reasoning configuration")
 	check(view.model_selector.is_item_disabled(1) and not view.model_selector.is_item_disabled(0), "model choices follow account entitlement")
 	view._on_agent_probe_pressed()
 	check(not view._agent_probe.is_running(), "hidden managed probe cannot be started")
+	view._select_provider("custom")
+	check(view.agent_heading_label.visible and view.agent_probe_button.visible and view.agent_enable_toggle.visible, "editable providers retain compatibility controls")
+	view._select_provider("orca_cloud")
+	_check_managed_controls_hidden(view, "switching back from an editable provider")
+	account.changed.emit()
+	_check_managed_controls_hidden(view, "catalog refresh")
+	account.state = "signed_out"
+	account.changed.emit()
+	_check_managed_controls_hidden(view, "signed-out account")
+	account.state = "connected"
+	account.changed.emit()
 	var chat = ChatScene.instantiate()
 	chat.account_service = account
 	chat.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -80,3 +92,6 @@ func _run() -> void:
 		editor.set_setting(key, originals[key]["value"] if originals[key]["exists"] else null)
 	print("Managed settings editor: " + ("PASS" if failures == 0 else "FAIL"))
 	quit(0 if failures == 0 else 1)
+
+func _check_managed_controls_hidden(view, stage: String) -> void:
+	check(not view.agent_heading_label.visible and not view.agent_status_label.visible and not view.agent_probe_button.visible and not view.agent_enable_toggle.visible and not view.agent_warning_label.visible, "managed models have no compatibility controls after " + stage)

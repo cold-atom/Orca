@@ -69,7 +69,14 @@ class EditorTestRunnerTest(unittest.TestCase):
     def test_clean_source_fixtures_import_before_enabling_all_project_plugins(self):
         # Exercise the actual primary/secondary-project orchestration against a
         # tiny source tree that includes deliberately stale local import metadata.
-        for case in ("card_status_editor_test.gd", "blender_workspace_editor_test.gd", "remembered_edit_editor_test.gd"):
+        multi_project_cases = {"blender_workspace_editor_test.gd", "remembered_edit_editor_test.gd"}
+        for case in (
+            "card_status_editor_test.gd", *sorted(multi_project_cases),
+            "editor_unsaved_state_test.gd", "editor_scene_inspector_editor_test.gd",
+            "diagnostics_editor_integration_test.gd", "plugin_lifecycle_test.gd",
+            "managed_settings_editor_test.gd", "onboarding_editor_test.gd",
+            "native_helper_editor_test.gd",
+        ):
             with self.subTest(case=case), tempfile.TemporaryDirectory(dir=os.environ.get("ORCA_TEST_TMPDIR")) as folder:
                 root = Path(folder)
                 addon = root / "addons/orca"
@@ -88,6 +95,11 @@ class EditorTestRunnerTest(unittest.TestCase):
                 def execute(command, env, marker=""):
                     project = Path(command[command.index("--path") + 1])
                     settings = (project / "project.godot").read_text()
+                    self.assertNotIn("--script", command)
+                    for key in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"):
+                        self.assertTrue(Path(env[key]).is_relative_to(project.parent))
+                    for key in ("ORCA_DISABLE_ACCOUNT_RESTORE", "ORCA_DISABLE_UPDATE_CHECKS", "ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS"):
+                        self.assertEqual(env[key], "1")
                     if "--import" in command:
                         self.assertNotIn("[editor_plugins]", settings)
                         self.assertNotIn("ORCA_EDITOR_TEST_CASE", env)
@@ -107,7 +119,7 @@ class EditorTestRunnerTest(unittest.TestCase):
                      mock.patch("sys.argv", ["run_editor_test.py", case, "--godot", "godot", "--temp-parent", folder]), \
                      contextlib.redirect_stdout(io.StringIO()):
                     self.assertEqual(runner.main(), 0)
-                self.assertEqual(len(imports), 1 if case == "card_status_editor_test.gd" else 2)
+                self.assertEqual(len(imports), 2 if case in multi_project_cases else 1)
                 self.assertEqual(set(runs), set(imports))
                 self.assertTrue(all(not project.exists() for project in imports))
 

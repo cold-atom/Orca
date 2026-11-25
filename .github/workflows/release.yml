@@ -70,7 +70,7 @@ jobs:
           python3 -m unittest discover -s tests -p native_helper_packaging_test.py
           "$GODOT_BIN" --headless --path . --script res://tests/native_helper_service_test.gd
           python3 -m unittest discover -s tests -p native_helper_download_test.py
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/native_helper_editor_test.gd
+          python3 tests/run_editor_test.py native_helper_editor_test.gd
       - name: Build addon-only archive
         run: python3 scripts/package_release.py --version "${RELEASE_TAG#v}" --require-platform-helpers --helper-assets dist --output "dist/orca-${RELEASE_TAG}.zip"
       - uses: actions/upload-artifact@v4

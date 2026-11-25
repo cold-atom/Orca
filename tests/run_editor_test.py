@@ -34,6 +34,13 @@ CASES = {
     "localization_editor_test.gd": [],
     "support_reminder_editor_test.gd": [],
     "project_inspection_editor_test.gd": ["fixtures/project_inspection_editor_scene.tscn", "fixtures/animation_inspector_fixture.tscn"],
+    "editor_unsaved_state_test.gd": [],
+    "editor_scene_inspector_editor_test.gd": ["editor_scene_inspector_test.gd", "fixtures/editor_scene_getter_fixture.gd"],
+    "diagnostics_editor_integration_test.gd": [],
+    "plugin_lifecycle_test.gd": [],
+    "managed_settings_editor_test.gd": [],
+    "onboarding_editor_test.gd": [],
+    "native_helper_editor_test.gd": [],
 }
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 DIAGNOSTIC = re.compile(r"(?m)^(?:ERROR:|SCRIPT ERROR:|WARNING:|handle_crash:)")
@@ -305,6 +312,13 @@ def main() -> int:
             "update_editor_test.gd": "Update editor: PASS",
             "project_inspection_editor_test.gd": "project_inspection_editor_test: PASS",
             "support_reminder_editor_test.gd": "support_reminder_editor_test: PASS",
+            "editor_unsaved_state_test.gd": "editor_unsaved_state_test: PASS",
+            "editor_scene_inspector_editor_test.gd": "editor_scene_inspector_editor_test: PASS",
+            "diagnostics_editor_integration_test.gd": "diagnostics_editor_integration_test: PASS",
+            "plugin_lifecycle_test.gd": "plugin_lifecycle_test: PASS",
+            "managed_settings_editor_test.gd": "Managed settings editor: PASS",
+            "onboarding_editor_test.gd": "Onboarding editor: PASS",
+            "native_helper_editor_test.gd": "Native helper seamless startup UI tests: PASS",
         }[args.case]
         if not execute(command, env, marker):
             return 1
