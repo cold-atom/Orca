@@ -17,6 +17,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    "provider_settings_editor_test.gd": [],
+    "provider_adapter_editor_test.gd": [],
     "blender_session_editor_test.gd": ["auto_apply_test.gd", "blender_live_fixture.py", "blender_live_server.py", "fixtures/blender_workspace_scene.tscn"],
     "blender_workspace_editor_test.gd": ["auto_apply_test.gd", "blender_workspace_fixture.py", "fixtures/blender_workspace_scene.tscn"],
     "mcp_editor_test.gd": ["auto_apply_test.gd", "mcp_fixture.py"],
@@ -207,6 +209,13 @@ def main() -> int:
         enable_plugins(project)
         env["ORCA_EDITOR_TEST_CASE"] = args.case
         display = ["--display-driver", "x11", "--rendering-method", "gl_compatibility"] if args.graphical else ["--headless"]
+        if args.case == "provider_adapter_editor_test.gd":
+            for phase in ["exercise", "restart"]:
+                env["ORCA_PROVIDER_EDITOR_PHASE"] = phase
+                if not execute([*common, *display], env, "provider_adapter_editor_test: PASS"):
+                    return 1
+            print(f"run_editor_test: PASS {args.case} (two clean editor processes; {'X11/OpenGL' if args.graphical else 'headless'})")
+            return 0
         if args.case == "blender_workspace_editor_test.gd":
             other_project = state / "other-project"
             other_project.mkdir()
@@ -281,6 +290,8 @@ def main() -> int:
         if args.ui_only:
             command += ["--", "--ui-only"]
         marker = {
+            "provider_settings_editor_test.gd": "provider_settings_editor_test: PASS",
+            "provider_adapter_editor_test.gd": "provider_adapter_editor_test: PASS",
             "blender_session_editor_test.gd": "blender_session_editor_test: PASS",
             "blender_workspace_editor_test.gd": "blender_workspace_editor_test: PASS",
             "mcp_editor_test.gd": "mcp_editor_test: PASS",

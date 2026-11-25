@@ -6,6 +6,49 @@ restores owner credentials nor sends update checks/background component download
 
 ## Normal-editor fixture runner
 
+### Dedicated Qwen and Anthropic providers (unreleased)
+
+```bash
+"$GODOT_BIN" --headless --path . --script res://tests/dedicated_provider_test.gd
+python3 -m unittest discover -s tests -p dedicated_provider_transport_test.py -v
+python3 tests/run_editor_test.py provider_adapter_editor_test.gd
+python3 tests/run_editor_test.py provider_adapter_editor_test.gd --graphical
+python3 tests/run_editor_test.py provider_settings_editor_test.gd
+```
+
+The transport unittest requires `GODOT_BIN` and creates a disposable addon/project,
+isolated XDG state and an owned random-port localhost server. Its 22 requests use only
+synthetic keys/replies. It covers Qwen fragmented tool calls, refreshed leading context,
+two-step probe and Stop; native Anthropic signed/redacted thinking, parallel tool results,
+probe/acknowledgement, image continuation, cumulative usage, model discovery, JSON fallback,
+malformed/duplicate/unsupported/incomplete/hidden-only/max-token results and cancellation.
+Component tests also deny changed/mismatched envelopes, missing results and bad block order.
+Component/controller regressions verify automatic readiness at exact supported official
+routes, unknown/options/copied-record denial, active-turn opt-out/model isolation,
+terminal/session sanitation, Plan denial and original Work Apply/Reject boundaries.
+Existing transport/provider/context/Cloud/image/
+session/Auto apply suites remain regression requirements.
+
+The two-process normal-editor case checks actual restart persistence and official opt-out,
+all three fixed regional save/discovery/active-snapshot paths, workspace URL construction
+without network contact, exact consent/probe success/failure/cancellation/duplicate/drift,
+custom URL preservation, independent native/profile settings and five-language narrow
+layouts at 1×/1.5×/2× fonts. The legacy provider-settings case also runs through the
+normal-editor runner, preserving existing configuration, one-click and timeout coverage.
+Use `--graphical` for actual Linux editor-scale
+acceptance. All state is disposable; startup suppression does not replace isolation.
+
+Live acceptance before release: configure a region-matched Model Studio key/workspace
+and an Anthropic API key, verify discovery/manual fallback and automatic supported
+official readiness (exact consent/probe for workspace/custom/unlisted profiles),
+then exercise Plan read/continuation, Work Apply/Reject, Stop, images and a new turn
+after provider switching. Verify supported thinking modes in fresh turns; workspace/
+custom profiles require a matching new probe after those changes.
+Record actual model IDs/API region; synthetic fixtures do not establish model quality,
+regional availability, real vision, or Windows/macOS interactive acceptance.
+
+### Fixture isolation and import ordering
+
 Source and ZIP fixtures import their assets **before enabling Orca and the test
 plugin**, including every secondary project used for restart/cross-project cases.
 Source copies omit generated `.import` sidecars and Python bytecode, so a locally
@@ -489,7 +532,7 @@ export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_
 "$GODOT_BIN" --headless --path . --script res://tests/api_client_test.gd
 "$GODOT_BIN" --headless --path . --script res://tests/agent_compatibility_probe_test.gd
 "$GODOT_BIN" --headless --path . --script res://tests/agent_controller_test.gd
-"$GODOT_BIN" --headless --editor --path . --script res://tests/provider_settings_editor_test.gd
+python3 tests/run_editor_test.py provider_settings_editor_test.gd
 python3 tests/run_editor_test.py editor_ui_scale_test.gd
 ```
 
@@ -918,7 +961,7 @@ Run actual plugin enable, disable, re-enable, service ownership, dock, and toolb
 Run isolated local-provider URL, model, optional-key, and reasoning persistence checks against real EditorSettings:
 
 ```bash
-"$GODOT_BIN" --headless --editor --path . --script res://tests/provider_settings_editor_test.gd
+python3 tests/run_editor_test.py provider_settings_editor_test.gd
 ```
 
 This suite also connects Settings to a synthetic probe and verifies one-click enablement for all five editable provider types, exact persisted enabled state, manual disable/reopening, duplicate/stale outcomes, failure/cancellation, model/credential/API/style drift, and unchanged/cancelled origin confirmation. It restores its owned settings and makes no live provider requests. Azure API/style settings must survive provider switches. Headless Settings tests verify the combined action's disclosure and narrow layout; controller/probe tests retain exact-binding runtime enforcement. Manual acceptance: restart, click **Test & Enable Agent tools**, observe the toggle turn on after a live pass, click Done, and exercise a Plan read. Turn tools off, reopen Settings, and confirm the opt-out is retained.

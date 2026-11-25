@@ -112,6 +112,8 @@ func _provider_url(provider: String) -> String:
 			return "https://api.openai.com"
 		"deepseek":
 			return "https://api.deepseek.com"
+		"anthropic":
+			return "https://api.anthropic.com/v1"
 		"openrouter":
 			return "https://openrouter.ai"
 		"groq":

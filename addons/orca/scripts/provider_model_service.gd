@@ -32,6 +32,10 @@ func fetch_models(provider_id: String, config: Dictionary) -> void:
 		return
 	config = authorization.get("config", config)
 	var provider = ProviderRegistry.get_provider(provider_id)
+	var config_error: String = provider.validate_config(config)
+	if not config_error.is_empty():
+		models_failed.emit(provider_id, config_error)
+		return
 	var models_url: String = provider.models_url(config)
 	var generated_endpoint := EndpointPolicy.validate_generated_endpoint(models_url, str(authorization.get("origin", "")))
 	if not generated_endpoint.get("success", false):
@@ -104,6 +108,12 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 
 
 func _merge_public_metadata(provider_id: String, models: Array[Dictionary], api_url: String) -> void:
+	if provider_id in ["qwen", "anthropic"]:
+		for model in models:
+			ModelMetadata.set_endpoint_context(provider_id, api_url, str(model.get("id", "")), int(model.get("context_window", 0)))
+		# Editable/discovery evidence stays endpoint-scoped. It cannot become
+		# canonical public vision/pricing metadata for another origin or region.
+		if provider_id == "qwen" or api_url.trim_suffix("/") != str(ProviderRegistry.get_provider(provider_id).definition()["base_url"]): return
 	var metadata_provider := ModelMetadata.infer_provider(api_url)
 	if metadata_provider.is_empty():
 		metadata_provider = provider_id

@@ -385,6 +385,7 @@ func _run() -> void:
 	await _test_response_attribution()
 	await _test_timeout_snapshot()
 	await _test_responses_continuation()
+	await _test_anthropic_continuation()
 	await _test_support_request_metadata()
 	await _test_reentrant_request_lifecycle()
 	await _test_synchronous_tool_and_approval_boundaries()
@@ -2272,6 +2273,66 @@ func _new_controller(profile: Dictionary = {}) -> Dictionary:
 	controller.tools_script = fake_tools
 	controller.game_process_service = fake_game
 	return {"controller": controller, "api": fake_api, "tools": fake_tools, "game": fake_game}
+
+
+func _test_anthropic_continuation() -> void:
+	var protocol = preload("res://addons/orca/scripts/anthropic_messages.gd")
+	var profile := {"provider": "anthropic", "base_url": "https://api.anthropic.com/v1", "model": "claude-sonnet-4-6", "api_key": "synthetic-native-key", "api_mode": "anthropic_messages", "reasoning_effort": "high"}
+	for outcome in ["completed", "failed", "cancelled"]:
+		var fixture := await _new_controller(profile)
+		var controller = fixture["controller"]
+		var api: FakeApiClient = fixture["api"]
+		controller.set_mode(AgentController.AgentMode.PLAN)
+		controller.send_user_message("Native read")
+		_expect(not api.requests[0]["tools"].is_empty() and not controller.auto_apply_enabled() and not controller.blender_auto_apply_enabled(), "official native readiness offers Plan reads without acquiring edit grants")
+		var raw := {"type": "message", "id": "msg_native", "model": profile["model"], "role": "assistant", "stop_reason": "tool_use", "content": [{"type": "thinking", "thinking": "private-native-thinking", "signature": "private-native-signature"}, {"type": "tool_use", "id": "native-read", "name": "read_file", "input": {}}]}
+		api.complete(protocol.completion(raw, profile)["response"])
+		await process_frame
+		_expect(api.requests.size() == 2 and JSON.stringify(api.requests[-1]["messages"]).contains("private-native-signature"), "native state survives the actual controller tool continuation")
+		_expect(protocol.request_body(api.requests[-1]["messages"], api.requests[-1]["tools"], profile).get("success", false), "controller follow-up is valid native Messages input")
+		_expect(not JSON.stringify(controller.snapshot_session_state()).contains("private-native-signature"), "active native continuation never enters persistence")
+		controller.profile["model"] = "claude-opus-4-6"
+		controller.profile["official_agent_enabled"] = false
+		_expect(controller._turn_allows_tools(), "active native tool turn retains its captured readiness after profile/opt-out changes")
+		_expect(api.requests[-1]["provider_config"].get("model") == "claude-sonnet-4-6", "native profile stays fixed through a tool turn")
+		if outcome == "completed": api.complete({"choices": [{"message": {"content": "done"}}]})
+		elif outcome == "failed": api.fail({"message": "synthetic native failure", "category": "connection"})
+		else: controller.cancel_current_request()
+		_expect(not JSON.stringify(controller.message_history).contains("private-native-signature"), "native continuation clears on " + outcome)
+		_expect(fixture["tools"].execute_calls == 1 and fixture["tools"].prepare_calls == 0, "native Plan retains read-only execution")
+		await _free_controller(controller)
+	var qwen_profile := {"provider": "qwen", "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1", "model": "qwen3-coder-plus", "api_key": "synthetic-qwen-key"}
+	for accept in [true, false]:
+		var fixture := await _new_controller(qwen_profile)
+		var controller = fixture["controller"]
+		var api: FakeApiClient = fixture["api"]
+		controller.set_mode(AgentController.AgentMode.PLAN)
+		controller.send_user_message("Official Qwen cannot mutate in Plan")
+		api.complete(_tool_response([_patch_call("qwen-plan-patch")]))
+		await process_frame
+		_expect(fixture["tools"].prepare_calls == 0 and fixture["tools"].apply_calls == 0, "official readiness cannot authorize a Plan mutation")
+		controller.cancel_current_request()
+		controller.set_mode(AgentController.AgentMode.BUILD)
+		controller.edit_proposed.connect(func(turn_id, proposal): controller.call_deferred("resolve_edit", proposal["id"], turn_id, accept))
+		controller.send_user_message("Reviewed official Qwen edit")
+		api.complete(_tool_response([_patch_call("qwen-work-patch")]))
+		for frame in 8: await process_frame
+		_expect(fixture["tools"].apply_calls == (1 if accept else 0), "fixed regional Qwen retains original Work Apply/Reject")
+		controller.cancel_current_request()
+		_expect(_protocol_is_valid(controller.message_history), "Stop keeps official Qwen results protocol-valid without replay")
+		await _free_controller(controller)
+	for accept in [true, false]:
+		var fixture := await _new_controller(profile)
+		var controller = fixture["controller"]
+		var api: FakeApiClient = fixture["api"]
+		controller.edit_proposed.connect(func(turn_id, proposal): controller.call_deferred("resolve_edit", proposal["id"], turn_id, accept))
+		controller.send_user_message("Reviewed native edit")
+		api.complete(_tool_response([_patch_call("native-patch")]))
+		for frame in 8: await process_frame
+		_expect(fixture["tools"].apply_calls == (1 if accept else 0), "Anthropic Work still requires the original Apply/Reject decision")
+		_expect(_tool_result_count(controller.message_history, "native-patch") == 1 and _protocol_is_valid(controller.message_history), "native review produces exactly one matching tool result")
+		controller.cancel_current_request()
+		await _free_controller(controller)
 
 
 func _free_controller(controller) -> void:

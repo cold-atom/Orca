@@ -15,11 +15,14 @@ const MODELS := {
 }
 
 static var _runtime_metadata: Dictionary = {}
+static var _endpoint_context: Dictionary = {}
 
 
 static func resolve(model: String, api_url: String = "", fallback_model: String = "") -> Dictionary:
 	var provider := infer_provider(api_url, model)
+	var scoped: Dictionary = _endpoint_context.get(_endpoint_context_key(api_url, model), {})
 	if provider.is_empty():
+		if not scoped.is_empty(): return _with_identity({"context_window": scoped["context_window"], "source": "Provider model discovery"}, model, scoped["provider"])
 		return {"model": model, "provider": provider, "source": "unavailable"}
 	var candidates := _metadata_candidates(provider, model, fallback_model)
 	var metadata: Dictionary = {}
@@ -37,7 +40,19 @@ static func resolve(model: String, api_url: String = "", fallback_model: String 
 			break
 	if metadata.is_empty():
 		metadata["source"] = "unavailable"
+	if not scoped.is_empty(): metadata["context_window"] = scoped["context_window"]
 	return _with_identity(metadata, model, provider)
+
+
+static func set_endpoint_context(provider: String, api_url: String, model: String, context_window: int) -> void:
+	if provider not in ["qwen", "anthropic"] or api_url.is_empty() or api_url.length() > 4096 or model.is_empty() or model.length() > 256 or context_window <= 0 or context_window > 64000000: return
+	var key := _endpoint_context_key(api_url, model)
+	if _endpoint_context.size() >= 256 and not _endpoint_context.has(key): _endpoint_context.erase(_endpoint_context.keys()[0])
+	_endpoint_context[key] = {"provider": provider, "context_window": context_window}
+
+
+static func _endpoint_context_key(api_url: String, model: String) -> String:
+	return JSON.stringify([api_url.trim_suffix("/"), model]).sha256_text()
 
 
 static func set_runtime_metadata(provider: String, model: String, metadata: Dictionary) -> void:
@@ -105,6 +120,8 @@ static func infer_provider(api_url: String, model: String = "") -> String:
 		return "openai"
 	if host == "api.deepseek.com":
 		return "deepseek"
+	if host == "api.anthropic.com":
+		return "anthropic"
 	if host == "api.groq.com":
 		return "groq"
 	if host == "api.together.xyz":

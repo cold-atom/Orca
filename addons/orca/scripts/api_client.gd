@@ -7,6 +7,7 @@ const ImageCapability = preload("res://addons/orca/scripts/image_capability.gd")
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const ResponsesProtocol = preload("res://addons/orca/scripts/responses_protocol.gd")
+const AnthropicMessages = preload("res://addons/orca/scripts/anthropic_messages.gd")
 const DeepSeekCompatibility = preload("res://addons/orca/scripts/deepseek_response_compatibility.gd")
 const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 
@@ -85,6 +86,8 @@ var _configured_api_mode := "chat_completions"
 var _request_config_snapshot: Dictionary = {}
 var _responses_reply: Dictionary = {}
 var _responses_arguments: Dictionary = {}
+var _anthropic_stream
+var _anthropic_reply: Dictionary = {}
 var _deepseek_prefix_filter
 var account_service
 var _cloud_metadata: Dictionary = {}
@@ -124,6 +127,10 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 		request_failed.emit(lifecycle_request_id, _make_error(str(timeouts["error"]), "configuration", false))
 		return
 	var provider = ProviderRegistry.get_provider(provider_id)
+	var config_error: String = provider.validate_config(request_config)
+	if not config_error.is_empty():
+		request_failed.emit(lifecycle_request_id, _make_error(config_error, "configuration", false))
+		return
 	_configured_api_mode = provider.api_mode(request_config)
 	var api_key = str(request_config.get("api_key", "")).strip_edges()
 	if provider_id == "orca_cloud" and (api_key.length() > 8192 or api_key.contains("\r") or api_key.contains("\n") or api_key.contains(" ")):
@@ -210,6 +217,12 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 			request_failed.emit(lifecycle_request_id, _make_error(str(converted.get("error", "Invalid Responses request.")), "configuration", false))
 			return
 		body = converted["body"]
+	elif _configured_api_mode == "anthropic_messages":
+		var converted := AnthropicMessages.request_body(projected, tools, request_config, serial_tools)
+		if not converted.get("success", false):
+			request_failed.emit(lifecycle_request_id, _make_error(str(converted.get("error", "Invalid Anthropic request.")), "configuration", false))
+			return
+		body = converted["body"]
 	else:
 		body = {"model": request_config.get("model", ""), "messages": provider.prepare_messages(projected, request_config), "stream": true, "stream_options": {"include_usage": true}}
 		if not tools.is_empty():
@@ -222,6 +235,7 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 		for message in body["messages"]:
 			if typeof(message) == TYPE_DICTIONARY:
 				message.erase(ResponsesProtocol.PRIVATE_FIELD)
+				message.erase(AnthropicMessages.PRIVATE_FIELD)
 	if JSON.stringify(body).to_utf8_buffer().size() > ImageAttachments.MAX_REQUEST_BYTES:
 		request_failed.emit(lifecycle_request_id, _make_error("The request exceeds the 16 MiB request limit. Start a new conversation or reduce attachments.", "configuration", false))
 		return
@@ -265,7 +279,7 @@ func send_chat_completion(messages: Array, tools: Array = [], provider_config: D
 		for tool in tools:
 			if typeof(tool) == TYPE_DICTIONARY and typeof(tool.get("function")) == TYPE_DICTIONARY:
 				_cloud_tool_names.append(str(tool["function"].get("name", "")))
-	_perform_request(_request_serial, endpoint, headers, body, provider_id != "orca_cloud" and bool(request_options.get("allow_stream_options_retry", true)), MAX_CONNECT_RETRIES)
+	_perform_request(_request_serial, endpoint, headers, body, provider_id != "orca_cloud" and _configured_api_mode != "anthropic_messages" and bool(request_options.get("allow_stream_options_retry", true)), MAX_CONNECT_RETRIES)
 
 
 func cancel_request() -> void:
@@ -580,7 +594,7 @@ func _dispatch_sse_event() -> void:
 		return
 	var data = json.get_data()
 	if typeof(data) != TYPE_DICTIONARY:
-		if _configured_provider == "orca_cloud":
+		if _configured_provider == "orca_cloud" or _configured_api_mode == "anthropic_messages":
 			_stream_error = "Invalid hosted stream event."
 			_stream_done = true
 		return
@@ -591,6 +605,9 @@ func _dispatch_sse_event() -> void:
 		return
 	if _configured_api_mode == "responses":
 		_consume_responses_event(data)
+		return
+	if _configured_api_mode == "anthropic_messages":
+		_consume_anthropic_event(data)
 		return
 	if data.has("model"):
 		_request_model = str(data["model"])
@@ -751,6 +768,36 @@ func _consume_responses_event(data: Dictionary) -> void:
 	_stream_done = true
 
 
+func _consume_anthropic_event(data: Dictionary) -> void:
+	if _cloud_event_error and data.get("type") != "error":
+		_stream_error = "Anthropic returned a malformed error event."
+		_stream_done = true
+		return
+	if _anthropic_stream == null: _anthropic_stream = AnthropicMessages.new()
+	var converted: Dictionary = _anthropic_stream.consume(data, _request_config_snapshot)
+	if not converted.get("success", false):
+		_stream_error = str(converted.get("error", "Invalid Anthropic streaming event."))
+		if data.get("type") == "error" and typeof(data.get("error")) == TYPE_DICTIONARY:
+			# Native errors can quote supplied signed blocks. Never render those
+			# provider-controlled messages into the conversation or diagnostic UI.
+			var messages := {"overloaded_error": "Anthropic is temporarily overloaded.", "rate_limit_error": "Anthropic rate-limited this request.", "authentication_error": "Anthropic rejected the API credentials."}
+			_stream_error = messages.get(str(data["error"].get("type", "")), "Anthropic returned a streaming error.")
+		_stream_done = true
+		return
+	_partial_response_detected = _partial_response_detected or converted.get("partial", false)
+	var text: String = converted.get("text", "")
+	if not text.is_empty():
+		_assistant_content += text
+		_assistant_content_bytes += text.to_utf8_buffer().size()
+		var generation := _request_serial
+		_emit_visible_delta(text)
+		if generation != _request_serial: return
+	if converted.has("response"):
+		_anthropic_reply = converted["response"]
+		_anthropic_reply["usage"] = _normalize_usage(_anthropic_reply.get("usage", {}))
+		_stream_done = true
+
+
 func _emit_visible_delta(content: String) -> void:
 	var visible := content
 	if DeepSeekCompatibility.enabled(_request_config_snapshot):
@@ -890,6 +937,14 @@ func _complete_stream(request_id: int) -> void:
 		if _finish_request(request_id):
 			request_completed.emit(_lifecycle_request_id, response)
 		return
+	if _configured_api_mode == "anthropic_messages":
+		if _anthropic_reply.is_empty():
+			_fail_request(request_id, "Anthropic stream ended without message_stop and a valid completion.", "malformed_response", false)
+			return
+		var response := _anthropic_reply.duplicate(true)
+		_add_request_identity(response)
+		if _finish_request(request_id): request_completed.emit(_lifecycle_request_id, response)
+		return
 	var completed_tool_calls := _stream_tool_calls()
 	var visible_content := DeepSeekCompatibility.normalize(_assistant_content) if DeepSeekCompatibility.enabled(_request_config_snapshot) else _assistant_content
 	var completion_error := _validate_completion(visible_content, completed_tool_calls, _finish_reason)
@@ -957,6 +1012,14 @@ func _complete_json_response(request_id: int) -> void:
 			return
 		data = converted["response"]
 		data["usage"] = _normalize_usage(data.get("usage", {}))
+	elif _configured_api_mode == "anthropic_messages":
+		_partial_response_detected = typeof(data.get("content")) == TYPE_ARRAY and not data["content"].is_empty()
+		var converted := AnthropicMessages.completion(data, _request_config_snapshot)
+		if not converted.get("success", false):
+			_fail_request(request_id, str(converted.get("error", "Invalid Anthropic completion.")), "malformed_response", false)
+			return
+		data = converted["response"]
+		data["usage"] = _normalize_usage(data.get("usage", {}))
 	elif DeepSeekCompatibility.enabled(_request_config_snapshot):
 		var choices = data.get("choices", [])
 		if typeof(choices) == TYPE_ARRAY and not choices.is_empty() and typeof(choices[0]) == TYPE_DICTIONARY:
@@ -974,6 +1037,8 @@ func _complete_json_response(request_id: int) -> void:
 		return
 	if _configured_api_mode != "responses":
 		data["choices"][0]["message"].erase(ResponsesProtocol.PRIVATE_FIELD)
+	if _configured_api_mode != "anthropic_messages":
+		data["choices"][0]["message"].erase(AnthropicMessages.PRIVATE_FIELD)
 	data["requested_model"] = _configured_request_model
 	data["requested_api_url"] = _configured_api_url
 	data["requested_provider"] = _configured_provider
@@ -1044,9 +1109,9 @@ func _is_current_request(request_id: int) -> bool:
 
 
 func _valid_cloud_utf8_line() -> bool:
-	if _configured_provider != "orca_cloud" or _line_buffer.get_string_from_utf8().to_utf8_buffer() == _line_buffer:
+	if (_configured_provider != "orca_cloud" and _configured_api_mode != "anthropic_messages") or _line_buffer.get_string_from_utf8().to_utf8_buffer() == _line_buffer:
 		return true
-	_stream_error = "The hosted stream contained invalid UTF-8."
+	_stream_error = "The Anthropic stream contained invalid UTF-8." if _configured_api_mode == "anthropic_messages" else "The hosted stream contained invalid UTF-8."
 	_stream_done = true
 	return false
 
@@ -1087,6 +1152,8 @@ func _cancel_cloud_operation() -> void:
 
 
 func _reset_stream_state() -> void:
+	_anthropic_stream = null
+	_anthropic_reply.clear()
 	_cloud_metadata.clear()
 	_cloud_error.clear()
 	_cloud_tool_names.clear()
@@ -1334,6 +1401,9 @@ func _parse_url(url: String) -> Dictionary:
 
 func _format_http_error(response_code: int, error_body: String) -> String:
 	var provider_message := ""
+	if _configured_api_mode == "anthropic_messages":
+		var messages := {400: "Check the selected model and its API settings.", 401: "Check the Anthropic API key.", 403: "Check this account's API access and billing.", 404: "Check the exact Anthropic model ID.", 429: "The Anthropic rate or usage limit was reached.", 529: "Anthropic is temporarily overloaded."}
+		return "HTTP %d: %s" % [response_code, messages.get(response_code, "Anthropic could not complete the request.")]
 	var parsed = JSON.parse_string(error_body) if error_body.begins_with("{") else null
 	if typeof(parsed) == TYPE_DICTIONARY:
 		var error = parsed.get("error", null)

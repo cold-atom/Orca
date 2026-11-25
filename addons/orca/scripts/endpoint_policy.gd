@@ -19,6 +19,17 @@ static func authorize_profile(provider_id: String, config: Dictionary) -> Dictio
 		return _failure("Orca account credentials can only be sent to the configured Orca Cloud endpoint.")
 	if provider_id == "azure" and (provider.api_mode(config) not in ["responses", "chat_completions"] or config.get("continuation_style", "standard") not in ["standard", "deepseek"]):
 		return _failure("Select a supported Azure API and continuation style.")
+	if not provider.official_base_urls().is_empty():
+		# Dedicated adapters distinguish exact fixed routes from editable/overridden
+		# routes. Never canonicalize a different path or trust workspace host patterns.
+		var route := inspect_base_url(str(config.get("base_url", definition.get("base_url", ""))))
+		if not route.get("success", false): return route
+		var official: bool = str(route["base_url"]) in provider.official_base_urls()
+		if not official and route["requires_confirmation"] and config.get("confirmed_origin", "") != route["origin"]:
+			return {"success": false, "error": "This endpoint must be explicitly trusted for its exact scheme, host, and port before Orca can send credentials or project context.", "endpoint": route}
+		var route_config := config.duplicate(true)
+		route_config["base_url"] = route["base_url"]
+		return {"success": true, "config": route_config, "origin": route["origin"], "scope": "fixed" if official else route["scope"], "requires_confirmation": not official and route["requires_confirmation"], "endpoint": route}
 	if not bool(definition.get("custom_url", false)):
 		var canonical := inspect_base_url(str(definition.get("base_url", "")))
 		if not canonical.get("success", false):

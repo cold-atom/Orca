@@ -1388,7 +1388,7 @@ func _on_api_request_completed(request_id: int, response: Dictionary) -> void:
 			"role": "assistant",
 			"content": message.get("content", "") if message.get("content") != null else ""
 		}
-		for continuation_field in ["reasoning_content", "reasoning", "reasoning_details", "_orca_responses"]:
+		for continuation_field in ["reasoning_content", "reasoning", "reasoning_details", "_orca_responses", "_orca_anthropic"]:
 			if message.has(continuation_field):
 				assistant_message[continuation_field] = message[continuation_field]
 		
@@ -2212,6 +2212,7 @@ func _set_running(value: bool, turn_id: int = -1) -> void:
 		for message in message_history:
 			if typeof(message) == TYPE_DICTIONARY:
 				message.erase("_orca_responses")
+				message.erase("_orca_anthropic")
 				if _turn_provider_config.get("provider") == "orca_cloud":
 					message.erase("reasoning_content")
 		_turn_provider_config.clear()
@@ -2434,6 +2435,11 @@ func _profile_allows_tools(profile: Dictionary) -> bool:
 		# each subscriber. Authentication, fixed origin, exact capability revision
 		# and local Plan/Work/approval checks remain independent runtime boundaries.
 		return account_service != null and account_service.connected() and account_service.identity() == str(profile.get("hosted_identity", "")) and profile.get("hosted_agent_ready") == true and not str(profile.get("capability_version", "")).is_empty() and profile.get("hosted_verified_capability") == profile.get("capability_version") and profile.get("hosted_tools") == true and profile.get("hosted_allowed") == true and profile.get("hosted_available") == true and profile.get("hosted_context_policy", {}).get("version") == "utf8-conservative-v2" and EndpointPolicy.authorize_profile("orca_cloud", profile).get("success", false)
+	if not provider.official_base_urls().is_empty():
+		var official := Config.official_agent_status(str(profile.get("provider", "")), profile)
+		if official.get("automatic", false): return official.get("enabled", false)
+		# Unknown models, workspace/custom routes and overrides keep exact probing.
+		return bool(Config.agent_compatibility_status(str(profile.get("provider", "")), profile).get("enabled", false))
 	if not bool(definition.get("agent_tools", true)):
 		return bool(Config.agent_compatibility_status(str(profile.get("provider", "custom")), profile).get("enabled", false))
 	var configured := EndpointPolicy.inspect_base_url(str(profile.get("base_url", "")))

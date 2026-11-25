@@ -10,6 +10,7 @@ const ApiClient = preload("res://addons/orca/scripts/api_client.gd")
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
 const ProviderRegistry = preload("res://addons/orca/scripts/provider_registry.gd")
 const DeepSeekCompatibility = preload("res://addons/orca/scripts/deepseek_response_compatibility.gd")
+const AnthropicMessages = preload("res://addons/orca/scripts/anthropic_messages.gd")
 const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
 
 const PROBE_VERSION := 2
@@ -99,6 +100,9 @@ static func create_binding(provider_config: Dictionary) -> Dictionary:
 	if model.is_empty() or model != model.strip_edges():
 		return {"success": false, "error": "Select an exact model before testing Agent compatibility."}
 	var provider = ProviderRegistry.get_provider(provider_id)
+	var config_error: String = provider.validate_config(normalized_config)
+	if not config_error.is_empty():
+		return {"success": false, "error": config_error}
 	var endpoint := EndpointPolicy.validate_generated_endpoint(provider.chat_url(normalized_config), str(authorization.get("origin", "")))
 	if not endpoint.get("success", false):
 		return endpoint
@@ -113,6 +117,8 @@ static func create_binding(provider_config: Dictionary) -> Dictionary:
 		"api_mode": provider.api_mode(normalized_config),
 		"continuation_style": str(normalized_config.get("continuation_style", "standard")),
 		"deepseek_format_version": DeepSeekCompatibility.FORMAT_VERSION if DeepSeekCompatibility.enabled(normalized_config) else 0,
+		"anthropic_format_version": AnthropicMessages.FORMAT_VERSION if provider_id == "anthropic" else 0,
+		"anthropic_api_version": preload("res://addons/orca/scripts/providers/anthropic_provider.gd").API_VERSION if provider_id == "anthropic" else "",
 		"hosted_identity": str(normalized_config.get("hosted_identity", "")),
 		"capability_version": str(normalized_config.get("capability_version", ""))
 	}}
@@ -127,6 +133,8 @@ static func record_matches_binding(record: Dictionary, binding: Dictionary) -> b
 	if record.get("api_mode", "chat_completions") != binding.get("api_mode", "chat_completions") or record.get("continuation_style", "standard") != binding.get("continuation_style", "standard"):
 		return false
 	if record.get("deepseek_format_version", 0) != binding.get("deepseek_format_version", 0):
+		return false
+	if record.get("anthropic_format_version", 0) != binding.get("anthropic_format_version", 0) or record.get("anthropic_api_version", "") != binding.get("anthropic_api_version", ""):
 		return false
 	for key in ["hosted_identity", "capability_version"]:
 		if record.get(key, "") != binding.get(key, ""):

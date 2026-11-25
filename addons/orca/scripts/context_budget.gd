@@ -8,6 +8,7 @@ const TOOL_OVERHEAD_TOKENS := 24
 const ImageAttachments = preload("res://addons/orca/scripts/image_attachments.gd")
 const ScriptReferences = preload("res://addons/orca/scripts/script_references.gd")
 const ResponsesProtocol = preload("res://addons/orca/scripts/responses_protocol.gd")
+const AnthropicMessages = preload("res://addons/orca/scripts/anthropic_messages.gd")
 
 
 static func prepare(messages: Array, tools: Array, context_window: int, include_history_images: bool = true, hosted_output_tokens: int = 0, context_policy: Dictionary = {}, request_config: Dictionary = {}) -> Dictionary:
@@ -72,6 +73,9 @@ static func estimate_tokens(messages: Array, tools: Array, include_history_image
 		var projected := ResponsesProtocol.request_body(text_messages, tools, request_config)
 		if projected.get("success", false):
 			serialized = JSON.stringify(projected["body"])
+	elif not hosted and request_config.get("api_mode") == "anthropic_messages":
+		var projected := AnthropicMessages.request_body(text_messages, tools, request_config)
+		if projected.get("success", false): serialized = JSON.stringify(projected["body"])
 	var byte_count := serialized.to_utf8_buffer().size()
 	if hosted:
 		# Match the gateway's contextual estimate, not its separate byte-upper-bound

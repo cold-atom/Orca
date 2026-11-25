@@ -6,6 +6,75 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "Model Studio region"
+msgstr "Model Studio のリージョン"
+
+msgid "Workspace ID"
+msgstr "ワークスペース ID"
+
+msgid "From Model Studio's workspace API Host"
+msgstr "Model Studio ワークスペースの API Host"
+
+msgid "Custom endpoint"
+msgstr "カスタムエンドポイント"
+
+msgid "Singapore"
+msgstr "シンガポール"
+
+msgid "US (Virginia)"
+msgstr "米国（バージニア）"
+
+msgid "China (Beijing)"
+msgstr "中国（北京）"
+
+msgid "China (Hong Kong)"
+msgstr "中国（香港）"
+
+msgid "Germany (Frankfurt)"
+msgstr "ドイツ（フランクフルト）"
+
+msgid "Japan (Tokyo)"
+msgstr "日本（東京）"
+
+msgid "Model Studio API Key"
+msgstr "Model Studio API キー"
+
+msgid "Anthropic API Key"
+msgstr "Anthropic API キー"
+
+msgid "Use a Model Studio API key from the same region. Workspace-specific endpoints are recommended. Qwen chat website access is separate."
+msgstr "同じリージョンの Model Studio API キーを使用してください。ワークスペース専用エンドポイントを推奨します。Qwen のチャットサイトへのアクセスとは別です。"
+
+msgid "Use an Anthropic API key. API billing is separate from Claude subscriptions. Orca uses the native Messages API."
+msgstr "Anthropic API キーを使用してください。API の料金は Claude のサブスクリプションとは別です。Orca はネイティブの Messages API を使用します。"
+
+msgid "Enter a workspace ID or paste its complete base URL."
+msgstr "ワークスペース ID を入力するか、完全なベース URL を貼り付けてください。"
+
+msgid "On and Off control thinking on supported Qwen models. Provider default follows the model's default. Workspace and custom profiles need a matching check after changes."
+msgstr "対応する Qwen モデルではオンとオフで思考を切り替えます。プロバイダーの既定値はモデルの既定値に従います。ワークスペースとカスタム設定は変更後に対応する互換性チェックが必要です。"
+
+msgid "Official regional endpoint."
+msgstr "公式リージョンエンドポイント。"
+
+msgid "Enter an API key to use Agent tools."
+msgstr "エージェントツールを使うには API キーを入力してください。"
+
+msgid "Agent tools ready for this supported official profile."
+msgstr "この対応する公式設定ではエージェントツールを利用できます。"
+
+msgid "Agent tools are off for this official profile."
+msgstr "この公式設定のエージェントツールはオフです。"
+
+msgid "Thinking options depend on the selected Claude model. Signed thinking is private and retained only during the active tool turn."
+msgstr "思考の設定は選択した Claude モデルに依存します。署名付きの思考は非公開で、進行中のツールターン中のみ保持されます。"
+
+msgid "On"
+msgstr "オン"
+
+msgid "Off"
+msgstr "オフ"
+
 msgid "Include Blender workspace operations"
 msgstr "Blender ワークスペースの操作も含める"
 

@@ -1,4 +1,5 @@
-extends SceneTree
+@tool
+extends "res://tests/editor_test_case.gd"
 
 const Config = preload("res://addons/orca/scripts/config.gd")
 const EndpointPolicy = preload("res://addons/orca/scripts/endpoint_policy.gd")
@@ -48,7 +49,7 @@ func _init() -> void:
 
 
 func _run() -> void:
-	_expect(Engine.is_editor_hint(), "this test must run with --editor")
+	_expect(Engine.is_editor_hint(), "this test must run through the isolated normal-editor runner")
 	var settings := EditorInterface.get_editor_settings()
 	var keys := PackedStringArray([Config.SETTING_PROVIDER, Config.SETTING_PROVIDER_MODEL_CACHE])
 	for provider_id in ["ollama", "lmstudio", "local_openai", "custom", "azure", "openai", "gemini", "deepseek", "orca_cloud"]:
@@ -224,6 +225,10 @@ func _test_one_click_enablement() -> void:
 	view._on_endpoint_trust_confirmed()
 	fake.pass_check()
 	_expect(fake.starts == starts + 1 and view.agent_enable_toggle.button_pressed, "unchanged explicit intent should survive origin confirmation and enable only on pass")
+	starts = fake.starts
+	view._selected_api_mode = "invalid"
+	view._on_agent_probe_pressed()
+	_expect(fake.starts == starts and view._agent_enable_intent.is_empty(), "locally invalid endpoint/API authorization must discard probe intent without a request")
 	view.queue_free()
 	await process_frame
 

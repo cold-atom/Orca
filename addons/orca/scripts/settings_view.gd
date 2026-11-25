@@ -17,6 +17,8 @@ const Localization = preload("res://addons/orca/scripts/localization.gd")
 const UpdatePanel = preload("res://addons/orca/scripts/update_panel.gd")
 const ImageCapability = preload("res://addons/orca/scripts/image_capability.gd")
 const RequestTimeouts = preload("res://addons/orca/scripts/request_timeouts.gd")
+const QwenProvider = preload("res://addons/orca/scripts/providers/qwen_provider.gd")
+const AnthropicProvider = preload("res://addons/orca/scripts/providers/anthropic_provider.gd")
 const PLUGIN_CONFIG_PATH := "res://addons/orca/plugin.cfg"
 const ABOUT_LOGO_PATH := "res://addons/orca/assets/orca.svg"
 const PROVIDER_ICON = preload("res://addons/orca/assets/providerconfig.svg")
@@ -36,6 +38,10 @@ var model_selector: OptionButton
 var custom_url_label: Label
 var custom_url_input: LineEdit
 var endpoint_status_label: Label
+var qwen_endpoint_fields: VBoxContainer
+var qwen_region_selector: OptionButton
+var qwen_workspace_input: LineEdit
+var provider_setup_help: Label
 var custom_model_input: LineEdit
 var api_mode_label: Label
 var api_mode_selector: OptionButton
@@ -333,6 +339,28 @@ func _build_ui() -> void:
 	key_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	key_help.add_theme_color_override("font_color", Color(0.58, 0.61, 0.67))
 	content.add_child(key_help)
+	provider_setup_help = Label.new()
+	provider_setup_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	provider_setup_help.add_theme_color_override("font_color", Color(0.58, 0.61, 0.67))
+	content.add_child(provider_setup_help)
+	qwen_endpoint_fields = VBoxContainer.new()
+	content.add_child(qwen_endpoint_fields)
+	qwen_endpoint_fields.add_child(_field_label("Model Studio region"))
+	qwen_region_selector = OptionButton.new()
+	qwen_region_selector.fit_to_longest_item = false
+	qwen_region_selector.clip_text = true
+	for region in QwenProvider.REGIONS:
+		qwen_region_selector.add_item(QwenProvider.REGIONS[region])
+		qwen_region_selector.set_item_metadata(qwen_region_selector.item_count - 1, region)
+	qwen_region_selector.add_item("Custom endpoint")
+	qwen_region_selector.set_item_metadata(qwen_region_selector.item_count - 1, "")
+	qwen_region_selector.item_selected.connect(_on_qwen_region_selected)
+	qwen_endpoint_fields.add_child(qwen_region_selector)
+	qwen_endpoint_fields.add_child(_field_label("Workspace ID"))
+	qwen_workspace_input = LineEdit.new()
+	qwen_workspace_input.placeholder_text = "From Model Studio's workspace API Host"
+	qwen_workspace_input.text_changed.connect(_on_qwen_workspace_changed)
+	qwen_endpoint_fields.add_child(qwen_workspace_input)
 
 	custom_url_label = _field_label("Base URL")
 	content.add_child(custom_url_label)
@@ -1200,10 +1228,12 @@ func _load_provider(provider_id: String) -> void:
 	api_key_label.text = str(definition.get("key_label", "API Key"))
 	api_key_input.text = str(config.get("api_key", ""))
 	key_link.visible = not str(definition.get("key_url", "")).is_empty()
-	custom_url_label.visible = bool(definition.get("custom_url", false))
+	custom_url_label.visible = bool(definition.get("custom_url", false)) or (not provider.official_base_urls().is_empty() and str(config.get("base_url", "")) not in provider.official_base_urls())
 	custom_url_input.visible = custom_url_label.visible
+	custom_url_input.editable = true
 	endpoint_status_label.visible = custom_url_label.visible
 	custom_url_input.text = str(config.get("base_url", definition.get("base_url", "")))
+	_sync_qwen_endpoint_fields()
 	_update_endpoint_status()
 	var supports_discovery := bool(definition.get("model_discovery", provider_id != "custom"))
 	var supports_manual_model := bool(definition.get("manual_model", provider_id == "custom"))
@@ -1254,11 +1284,15 @@ func _on_api_key_changed(_text: String) -> void:
 	status_label.text = "Waiting to load models..." if auth_optional or not api_key_input.text.is_empty() else "Enter an API key to load models."
 	if not bool(definition.get("local", false)) and (auth_optional or not api_key_input.text.is_empty()):
 		_key_timer.start()
+	_sync_agent_compatibility()
 
 
 func _on_custom_url_changed(_text: String) -> void:
 	if _loading_provider:
 		return
+	if _current_provider == "qwen":
+		_key_timer.stop()
+		_sync_qwen_endpoint_fields()
 	_update_endpoint_status()
 	_cancel_agent_probe_for_change()
 	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
@@ -1272,6 +1306,57 @@ func _on_custom_url_changed(_text: String) -> void:
 		status_label.text = "Endpoint changed. Select Refresh to contact it."
 	_sync_image_support()
 	_sync_agent_compatibility()
+
+
+func _sync_qwen_endpoint_fields() -> void:
+	qwen_endpoint_fields.visible = _current_provider == "qwen"
+	provider_setup_help.visible = _current_provider in ["qwen", "anthropic"]
+	if _current_provider == "anthropic":
+		provider_setup_help.text = "Use an Anthropic API key. API billing is separate from Claude subscriptions. Orca uses the native Messages API."
+	if _current_provider != "qwen": return
+	provider_setup_help.text = "Use a Model Studio API key from the same region. Workspace-specific endpoints are recommended. Qwen chat website access is separate."
+	var selection := QwenProvider.endpoint_selection(custom_url_input.text)
+	var region: String = selection.get("region", "")
+	for index in range(qwen_region_selector.item_count):
+		if qwen_region_selector.get_item_metadata(index) == region: qwen_region_selector.select(index)
+	qwen_workspace_input.set_text(str(selection.get("workspace", "")))
+	qwen_workspace_input.editable = not region.is_empty()
+	custom_url_input.editable = region.is_empty()
+
+
+func _on_qwen_region_selected(index: int) -> void:
+	if _loading_provider or _current_provider != "qwen": return
+	var region: String = qwen_region_selector.get_item_metadata(index)
+	qwen_workspace_input.editable = not region.is_empty()
+	custom_url_input.editable = region.is_empty()
+	if region.is_empty(): return
+	_set_qwen_endpoint(region, qwen_workspace_input.text)
+
+
+func _on_qwen_workspace_changed(workspace: String) -> void:
+	if _loading_provider or _current_provider != "qwen": return
+	_set_qwen_endpoint(str(qwen_region_selector.get_selected_metadata()), workspace)
+
+
+func _set_qwen_endpoint(region: String, workspace: String) -> void:
+	_key_timer.stop()
+	var url := QwenProvider.endpoint(region, workspace)
+	_loading_provider = true
+	custom_url_input.text = url
+	custom_url_input.editable = false
+	_loading_provider = false
+	# Preserve the user's incomplete workspace draft while refreshing endpoint gates.
+	_update_endpoint_status()
+	_cancel_agent_probe_for_change()
+	_model_service.cancel()
+	_current_models.clear()
+	_clear_model_choices()
+	metadata_label.text = ""
+	model_selector.disabled = false
+	refresh_button.disabled = false
+	status_label.text = "Enter a workspace ID or paste its complete base URL." if url.is_empty() else "Endpoint changed. Select Refresh to contact it."
+	_sync_agent_compatibility()
+	_sync_image_support()
 
 
 func _on_manual_model_changed(text: String) -> void:
@@ -1297,23 +1382,12 @@ func _refresh_models() -> void:
 	var definition: Dictionary = provider.definition()
 	if not bool(definition.get("model_discovery", _current_provider != "custom")):
 		return
-	if bool(definition.get("custom_url", false)):
-		var inspected := EndpointPolicy.inspect_base_url(custom_url_input.text)
-		if not inspected.get("success", false):
-			status_label.text = str(inspected.get("error", "Invalid endpoint."))
-			return
-		if inspected.get("requires_confirmation", false) and Config.get_confirmed_origin(_current_provider) != str(inspected.get("origin", "")):
-			_request_endpoint_trust("refresh", inspected)
-			return
-		_set_normalized_url(str(inspected["base_url"]))
+	if bool(definition.get("custom_url", false)) or not provider.official_base_urls().is_empty():
+		if not _authorize_form_endpoint("refresh"): return
 	status_label.text = "Loading models..."
 	model_selector.disabled = true
 	refresh_button.disabled = true
-	_model_service.fetch_models(_current_provider, {
-		"api_key": api_key_input.text.strip_edges(),
-		"base_url": custom_url_input.text.strip_edges() if bool(definition.get("custom_url", false)) else definition.get("base_url", ""),
-		"confirmed_origin": Config.get_confirmed_origin(_current_provider)
-	})
+	_model_service.fetch_models(_current_provider, _current_form_config())
 
 
 func _on_models_loaded(provider_id: String, models: Array, from_cache: bool) -> void:
@@ -1410,6 +1484,8 @@ func _on_model_selected(index: int) -> void:
 
 
 func _set_efforts(efforts, selected_effort: String) -> void:
+	if _current_provider == "qwen": efforts = QwenProvider.efforts_for_model(_selected_model)
+	if _current_provider == "anthropic": efforts = AnthropicProvider.efforts_for_model(_selected_model)
 	if _current_provider == "orca_cloud":
 		efforts = PackedStringArray()
 		selected_effort = "default" # The managed profile supplies its tested default.
@@ -1432,6 +1508,8 @@ func _set_efforts(efforts, selected_effort: String) -> void:
 	effort_selector.visible = has_efforts
 	effort_help.visible = has_efforts
 	effort_help.text = "Supported levels depend on your deployment. Provider default does not disable reasoning. For GPT reasoning with tools, prefer Responses; use None on Chat only if the deployment supports it." if _current_provider in ["azure", "custom"] else "Higher effort can improve difficult planning and debugging, but may use more tokens."
+	if _current_provider == "qwen": effort_help.text = "On and Off control thinking on supported Qwen models. Provider default follows the model's default. Workspace and custom profiles need a matching check after changes."
+	if _current_provider == "anthropic": effort_help.text = "Thinking options depend on the selected Claude model. Signed thinking is private and retained only during the active tool turn."
 
 
 func _sync_api_controls() -> void:
@@ -1495,9 +1573,16 @@ func _on_show_key_toggled(pressed: bool) -> void:
 
 
 func _on_key_link_pressed() -> void:
-	var url := str(ProviderRegistry.get_provider(_current_provider).definition().get("key_url", ""))
+	var url := _provider_key_url()
 	if not url.is_empty():
 		OS.shell_open(url)
+
+
+func _provider_key_url() -> String:
+	if _current_provider == "qwen":
+		var region: String = qwen_region_selector.get_selected_metadata()
+		if QwenProvider.REGIONS.has(region): return "https://modelstudio.console.alibabacloud.com/" + region + "/model/settings/api-key"
+	return str(ProviderRegistry.get_provider(_current_provider).definition().get("key_url", ""))
 
 
 func _on_done_pressed() -> void:
@@ -1507,16 +1592,9 @@ func _on_done_pressed() -> void:
 		done_requested.emit()
 		return
 	_commit_timeout_inputs()
-	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
-	if bool(definition.get("custom_url", false)):
-		var inspected := EndpointPolicy.inspect_base_url(custom_url_input.text)
-		if not inspected.get("success", false):
-			status_label.text = str(inspected.get("error", "Invalid endpoint."))
-			return
-		if inspected.get("requires_confirmation", false) and Config.get_confirmed_origin(_current_provider) != str(inspected.get("origin", "")):
-			_request_endpoint_trust("done", inspected)
-			return
-		_set_normalized_url(str(inspected["base_url"]))
+	var provider = ProviderRegistry.get_provider(_current_provider)
+	if bool(provider.definition().get("custom_url", false)) or not provider.official_base_urls().is_empty():
+		if not _authorize_form_endpoint("done"): return
 	var model := _selected_model
 	var effort := "default"
 	if effort_selector.visible and effort_selector.selected >= 0:
@@ -1564,6 +1642,9 @@ func _update_endpoint_status() -> void:
 	if not inspected.get("success", false):
 		Localization.bind(endpoint_status_label, &"text", "Invalid endpoint: %s", [Localization.source(str(inspected.get("error", "Unknown error")))])
 		return
+	if str(inspected["base_url"]) in ProviderRegistry.get_provider(_current_provider).official_base_urls():
+		endpoint_status_label.text = "Official regional endpoint."
+		return
 	var scope := str(inspected.get("scope", "remote")).capitalize()
 	if inspected.get("is_loopback", false):
 		endpoint_status_label.text = "Loopback endpoint. Requests stay addressed to this machine."
@@ -1571,6 +1652,22 @@ func _update_endpoint_status() -> void:
 	var warning := " HTTP is unencrypted." if inspected.get("uses_plaintext", false) else ""
 	var trusted := Config.get_confirmed_origin(_current_provider) == str(inspected.get("origin", ""))
 	Localization.bind(endpoint_status_label, &"text", "%s endpoint%s %s", [Localization.source(scope), Localization.source(warning), Localization.source("Trusted for this exact origin." if trusted else "Confirmation is required before sending data.")])
+
+
+func _authorize_form_endpoint(action: String) -> bool:
+	var authorization := EndpointPolicy.authorize_profile(_current_provider, _current_form_config())
+	if not authorization.get("success", false):
+		if authorization.has("endpoint"):
+			_request_endpoint_trust(action, authorization["endpoint"])
+		else:
+			if action == "probe":
+				_agent_enable_intent = ""
+				agent_status_label.text = str(authorization.get("error", "Invalid endpoint."))
+			else:
+				status_label.text = str(authorization.get("error", "Invalid endpoint."))
+		return false
+	_set_normalized_url(str(authorization["config"]["base_url"]))
+	return true
 
 
 func _request_endpoint_trust(action: String, inspected: Dictionary) -> void:
@@ -1630,16 +1727,7 @@ func _on_agent_probe_pressed() -> void:
 	_commit_timeout_inputs()
 	var config := _current_form_config()
 	_agent_enable_intent = _agent_profile_key(config)
-	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
-	if bool(definition.get("custom_url", false)):
-		var inspected := EndpointPolicy.inspect_base_url(str(config.get("base_url", "")))
-		if not inspected.get("success", false):
-			_agent_enable_intent = ""
-			agent_status_label.text = str(inspected.get("error", "Invalid endpoint."))
-			return
-		if inspected.get("requires_confirmation", false) and Config.get_confirmed_origin(_current_provider) != str(inspected.get("origin", "")):
-			_request_endpoint_trust("probe", inspected)
-			return
+	if not _authorize_form_endpoint("probe"): return
 	_start_agent_probe()
 
 
@@ -1710,12 +1798,21 @@ func _sync_agent_compatibility() -> void:
 	if agent_status_label == null:
 		return
 	var definition: Dictionary = ProviderRegistry.get_provider(_current_provider).definition()
-	var required := bool(definition.get("custom_url", false))
+	var required := bool(definition.get("custom_url", false)) or not bool(definition.get("agent_tools", true))
 	for control in [agent_heading_label, agent_status_label, agent_probe_button, agent_enable_toggle, agent_warning_label]:
 		control.visible = required
 	if not required:
 		return
-	var status := Config.agent_compatibility_status(_current_provider, _current_form_config())
+	var config := _current_form_config()
+	var official := Config.official_agent_status(_current_provider, config)
+	if official.get("automatic", false):
+		agent_probe_button.visible = false
+		agent_warning_label.visible = false
+		agent_enable_toggle.disabled = not official.get("can_enable", false)
+		agent_enable_toggle.set_pressed_no_signal(official.get("enabled", false))
+		agent_status_label.text = str(official["reason"])
+		return
+	var status := Config.agent_compatibility_status(_current_provider, config)
 	var passed := bool(status.get("passed", false))
 	var enabled := bool(status.get("enabled", false))
 	agent_probe_button.disabled = _agent_probe != null and _agent_probe.is_running()
@@ -1729,6 +1826,9 @@ func _sync_agent_compatibility() -> void:
 
 func _cancel_agent_probe_for_change() -> void:
 	_agent_enable_intent = ""
+	if not _pending_trust_action.is_empty():
+		_clear_pending_trust()
+		_trust_dialog.hide()
 	if _agent_probe != null and _agent_probe.is_running():
 		_agent_probe.cancel()
 
@@ -1749,11 +1849,12 @@ func _current_form_config() -> Dictionary:
 	return {
 		"provider": _current_provider,
 		"api_key": api_key_input.text.strip_edges(),
-		"base_url": custom_url_input.text.strip_edges() if bool(definition.get("custom_url", false)) else definition.get("base_url", ""),
+		"base_url": custom_url_input.text.strip_edges() if bool(definition.get("custom_url", false)) or not ProviderRegistry.get_provider(_current_provider).official_base_urls().is_empty() else definition.get("base_url", ""),
 		"model": _selected_model,
 		"reasoning_effort": _selected_effort,
 		"api_mode": _selected_api_mode,
 		"continuation_style": _continuation_style,
 		"confirmed_origin": Config.get_confirmed_origin(_current_provider),
-		"agent_compatibility": Config.get_agent_compatibility(_current_provider)
+		"agent_compatibility": Config.get_agent_compatibility(_current_provider),
+		"official_agent_enabled": Config.get_provider_config(_current_provider).get("official_agent_enabled", true)
 	}.merged(_form_request_timeouts())

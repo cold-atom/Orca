@@ -6,6 +6,75 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Model Studio region"
+msgstr "Región de Model Studio"
+
+msgid "Workspace ID"
+msgstr "ID del espacio de trabajo"
+
+msgid "From Model Studio's workspace API Host"
+msgstr "Del API Host del espacio de Model Studio"
+
+msgid "Custom endpoint"
+msgstr "Endpoint personalizado"
+
+msgid "Singapore"
+msgstr "Singapur"
+
+msgid "US (Virginia)"
+msgstr "EE. UU. (Virginia)"
+
+msgid "China (Beijing)"
+msgstr "China (Pekín)"
+
+msgid "China (Hong Kong)"
+msgstr "China (Hong Kong)"
+
+msgid "Germany (Frankfurt)"
+msgstr "Alemania (Fráncfort)"
+
+msgid "Japan (Tokyo)"
+msgstr "Japón (Tokio)"
+
+msgid "Model Studio API Key"
+msgstr "Clave API de Model Studio"
+
+msgid "Anthropic API Key"
+msgstr "Clave API de Anthropic"
+
+msgid "Use a Model Studio API key from the same region. Workspace-specific endpoints are recommended. Qwen chat website access is separate."
+msgstr "Usa una clave API de Model Studio de la misma región. Se recomiendan endpoints específicos del espacio de trabajo. El acceso al chat web de Qwen es independiente."
+
+msgid "Use an Anthropic API key. API billing is separate from Claude subscriptions. Orca uses the native Messages API."
+msgstr "Usa una clave API de Anthropic. La facturación de la API es independiente de las suscripciones de Claude. Orca usa la API nativa Messages."
+
+msgid "Enter a workspace ID or paste its complete base URL."
+msgstr "Introduce un ID de espacio o pega su URL base completa."
+
+msgid "On and Off control thinking on supported Qwen models. Provider default follows the model's default. Workspace and custom profiles need a matching check after changes."
+msgstr "Activado y Desactivado controlan el razonamiento en los modelos Qwen compatibles. El valor del proveedor sigue el predeterminado del modelo. Los perfiles de espacio de trabajo y personalizados necesitan una comprobación correspondiente tras los cambios."
+
+msgid "Official regional endpoint."
+msgstr "Endpoint regional oficial."
+
+msgid "Enter an API key to use Agent tools."
+msgstr "Introduce una clave API para usar las herramientas del agente."
+
+msgid "Agent tools ready for this supported official profile."
+msgstr "Herramientas del agente listas para este perfil oficial compatible."
+
+msgid "Agent tools are off for this official profile."
+msgstr "Las herramientas del agente están desactivadas para este perfil oficial."
+
+msgid "Thinking options depend on the selected Claude model. Signed thinking is private and retained only during the active tool turn."
+msgstr "Las opciones de razonamiento dependen del modelo Claude seleccionado. El razonamiento firmado es privado y se conserva solo durante el turno activo de herramientas."
+
+msgid "On"
+msgstr "Activado"
+
+msgid "Off"
+msgstr "Desactivado"
+
 msgid "BLENDER ASSET STUDIO"
 msgstr "ESTUDIO DE RECURSOS BLENDER"
 

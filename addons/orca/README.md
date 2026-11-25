@@ -2,9 +2,10 @@
 
 Orca is a safety-first AI development assistant integrated into the Godot editor.
 
-This checkout prepares **Orca 1.9.0 — Blender Asset Studio & Live Authoring**
-for Godot 4.7.2. Publication is pending; **1.8.0 remains the latest published release**.
-The candidate adds guided Blender workspaces, reviewed asset creation/editing,
+**Orca 1.9.0 — Blender Asset Studio & Live Authoring** is the latest published
+release for Godot 4.7.2. This development checkout includes unreleased dedicated
+Qwen/Anthropic providers and Blender reliability improvements.
+1.9.0 adds guided Blender workspaces, reviewed asset creation/editing,
 interactive previews, GLB export/import/recovery and native scene placement.
 Optional official Blender Lab connections can separately enable live authoring
 in an already open document. Workspace and live Auto apply have distinct explicit
@@ -14,13 +15,13 @@ platform's credential helper from the matching official GitHub Release if missin
 Helpers are cached outside the project, with no install prompt or update notice.
 Early Cloud sign-in waits in the existing Account page; BYOK/local providers stay
 usable. The feature Tests/native Blender/credential-helper package run at `d799e05`
-passed; the final 1.9.0 revision requires fresh CI/package acceptance. Interactive
+passed, followed by passing 1.9.0 release-tag CI. New development revisions require their own CI/package acceptance. Interactive
 live-authoring/Godot handoff is verified on Linux; Windows/macOS UI, clean-machine
 setup, real-model quality and Asset Store moderation remain separate. See the
 [1.9.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#190---2026-11-17)
-for the candidate and the
+for the published release and the
 [1.8.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#180---2026-11-13)
-for the latest published release. See the
+for earlier in-editor workflows. See the
 [1.7.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#170---2026-11-06)
 for languages and focused inspection, the
 [1.6.0 changelog entry](https://github.com/cold-atom/Orca/blob/main/CHANGELOG.md#160---2026-11-05)
@@ -37,7 +38,7 @@ for the earlier full feature list.
 3. Enable **Orca** in **Project > Project Settings > Plugins**.
 4. Open the Orca dock and connect an account or provider.
 
-### Blender setup (1.9.0 candidate)
+### Blender setup (1.9.0)
 
 Open **Settings → Extensions → Blender Asset Studio**, click **Set up Blender**,
 choose a detected Blender 5.2+ installation and confirm **Start workspace**.
@@ -247,6 +248,40 @@ remaining/reserved allowance is visible in Account/Console. Backend sessions
 currently have an absolute lifetime, so expiry/revocation can require reauthentication.
 
 Orca supports managed Orca Cloud accounts and BYOK/local OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, Local OpenAI-compatible, and custom OpenAI-compatible endpoints through Chat Completions, plus Microsoft Foundry / Azure Responses support. Editable profiles start in Chat mode. Click **Test & Enable Agent tools** to run the project-free compatibility probe and automatically enable tools after a matching pass. Users can turn tools off with the toggle; failures, cancellation, and changed profiles do not enable them.
+
+### Qwen (unreleased)
+
+1. Select **Qwen** under Settings → Provider. This connects to **Alibaba Cloud Model Studio**; Qwen's consumer chat website account is separate.
+2. Select the region of your Model Studio API key: Singapore, US (Virginia), China (Beijing), China (Hong Kong), Germany (Frankfurt), or Japan (Tokyo). **Get an API key** opens the selected region's key-management page.
+3. Prefer a workspace-specific endpoint. Copy the workspace ID from Model Studio's **API Host**, or choose **Custom endpoint** to paste its complete OpenAI-compatible **Base URL**, ending in `/compatible-mode/v1`. For example: `https://llm-example.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`. The workspace field accepts only a bounded host label. It never grants endpoint trust.
+4. Singapore, Beijing and Hong Kong also have fixed existing DashScope endpoints; their generated URLs are read-only. Virginia, Frankfurt and Tokyo require a workspace ID or a supplied base URL. Region/workspace edits do not send requests. Keys and model availability are region-specific.
+5. Enter the API key and select **Refresh**, or enter a **Model ID** manually if discovery is unavailable. The initial coding model is `qwen3-coder-plus`; availability depends on the account/region. Known incompatible media/embedding families are filtered from discovery.
+6. Supported hybrid models expose **On / Off** thinking; unknown/coder/thinking-only variants keep Provider default. Output is capped at 8192 tokens; supported hybrid thinking also receives a 4096-token thinking budget.
+7. Supported models at the fixed Singapore/Beijing/Hong Kong endpoints have **Agent tools ready** automatically. Use the toggle to opt out, or click **Done** to select and save the profile. Workspace/custom endpoints and unlisted models require exact-origin confirmation and **Test & Enable Agent tools**; changed endpoint/model/thinking settings need a matching check there.
+
+Automatic readiness uses an explicit shipped model list, including `qwen3-coder-plus`,
+`qwen3-coder-flash`, `qwen-plus`, `qwen-flash` and their supported listed variants.
+It does not infer readiness from model discovery or thinking support. An official
+opt-out survives supported model/effort changes and editor restarts. Readiness does
+not confirm that an account/region offers the selected model.
+
+Streaming function calls, matching results, refreshed system context and Stop are covered by synthetic HTTP/SSE/editor fixtures. Live Model Studio discovery, each regional endpoint, model quality and vision require actual API acceptance. Discovery failure preserves manual entry. No existing Custom, OpenAI, DeepSeek or Cloud credentials/passes are migrated.
+
+### Anthropic / Claude (unreleased)
+
+1. Select **Anthropic (Claude)**, then enter an **Anthropic API key**. API billing is separate from Claude consumer subscriptions.
+2. Select **Refresh** to fetch a bounded first page of available models from Anthropic's native `/v1/models`, or enter an exact Model ID. The initial model is `claude-sonnet-4-6`; account availability may differ. Manual entry also covers models outside the first page.
+3. Known Claude models expose documented thinking settings. Adaptive models use Low/Medium/High; supported manual-thinking models use On/Off. Always-thinking models do not receive an unsupported Off switch. Unknown models retain Provider default. The output cap is 8192 tokens, including thinking.
+4. Supported models at `https://api.anthropic.com/v1` have **Agent tools ready** automatically; no compatibility test is needed. Click **Done**, or use the toggle to opt out. Unlisted manual IDs and endpoint overrides still require an exact matching **Test & Enable Agent tools** check. Chat, Plan/Work tools, reviewed changes, image references and Stop use the existing Orca workflow.
+
+Automatic readiness covers the explicitly listed Sonnet/Opus 4.6–5.5 and Haiku 5.5
+models, plus Sonnet/Opus/Haiku 4.5 aliases and their documented dated IDs. Arbitrary
+snapshot suffixes and future models do not inherit this policy. Supported thinking
+changes need no new official-profile test, and saved opt-outs remain effective.
+
+This provider uses **native Messages**, `x-api-key` and a pinned `anthropic-version`, with local bounded conversion of Orca's function schemas, `tool_use` and grouped `tool_result` blocks. Signed/redacted thinking stays private, exact-profile and active-turn-only; history never stores it. Only Orca client functions are offered. Context budgeting and complete tool-result groups remain local. Native provider-side agents/server tools and server-managed compaction are outside this integration.
+
+Synthetic fixtures cover signed thinking, parallel results, images, cumulative usage, JSON fallback, truncation/errors and Stop. Live Anthropic API/model acceptance, Windows/macOS UI and final-revision CI remain separate checks.
 
 ### Microsoft Foundry / Azure
 

@@ -72,6 +72,75 @@ msgstr " Blender 工作区操作仍需审阅。"
 msgid "BLENDER ASSET STUDIO"
 msgstr "BLENDER 资产工作室"
 
+msgid "Model Studio region"
+msgstr "Model Studio 地区"
+
+msgid "Workspace ID"
+msgstr "工作空间 ID"
+
+msgid "From Model Studio's workspace API Host"
+msgstr "来自 Model Studio 工作空间的 API Host"
+
+msgid "Custom endpoint"
+msgstr "自定义端点"
+
+msgid "Singapore"
+msgstr "新加坡"
+
+msgid "US (Virginia)"
+msgstr "美国（弗吉尼亚）"
+
+msgid "China (Beijing)"
+msgstr "中国（北京）"
+
+msgid "China (Hong Kong)"
+msgstr "中国（香港）"
+
+msgid "Germany (Frankfurt)"
+msgstr "德国（法兰克福）"
+
+msgid "Japan (Tokyo)"
+msgstr "日本（东京）"
+
+msgid "Model Studio API Key"
+msgstr "Model Studio API 密钥"
+
+msgid "Anthropic API Key"
+msgstr "Anthropic API 密钥"
+
+msgid "Use a Model Studio API key from the same region. Workspace-specific endpoints are recommended. Qwen chat website access is separate."
+msgstr "使用同一地区的 Model Studio API 密钥。建议使用工作空间专属端点。Qwen 网页聊天的访问权限与此独立。"
+
+msgid "Use an Anthropic API key. API billing is separate from Claude subscriptions. Orca uses the native Messages API."
+msgstr "使用 Anthropic API 密钥。API 计费与 Claude 订阅独立。Orca 使用原生 Messages API。"
+
+msgid "Enter a workspace ID or paste its complete base URL."
+msgstr "输入工作空间 ID，或粘贴其完整基础 URL。"
+
+msgid "On and Off control thinking on supported Qwen models. Provider default follows the model's default. Workspace and custom profiles need a matching check after changes."
+msgstr "开启和关闭可控制受支持 Qwen 模型的思考。提供商默认遵循模型的默认设置。工作空间和自定义配置修改后需要匹配的兼容性检查。"
+
+msgid "Official regional endpoint."
+msgstr "官方区域端点。"
+
+msgid "Enter an API key to use Agent tools."
+msgstr "输入 API 密钥以使用智能体工具。"
+
+msgid "Agent tools ready for this supported official profile."
+msgstr "此受支持的官方配置已可使用智能体工具。"
+
+msgid "Agent tools are off for this official profile."
+msgstr "此官方配置的智能体工具已关闭。"
+
+msgid "Thinking options depend on the selected Claude model. Signed thinking is private and retained only during the active tool turn."
+msgstr "思考选项取决于所选 Claude 模型。带签名的思考保持私密，仅在当前工具回合中保留。"
+
+msgid "On"
+msgstr "开启"
+
+msgid "Off"
+msgstr "关闭"
+
 msgid "Create game assets in a dedicated Blender workspace. Setup uses Blender's built-in Python; no commands, JSON or separate Python installation are needed."
 msgstr "在专用 Blender 工作区中创建游戏资产。使用 Blender 内置的 Python，无需输入命令、JSON 或另行安装 Python。"
 

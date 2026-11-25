@@ -138,7 +138,7 @@ static func get_api_key(provider_id: String = "") -> String:
 static func get_api_url() -> String:
 	var provider_id := get_provider()
 	var definition: Dictionary = ProviderRegistry.get_provider(provider_id).definition()
-	if bool(definition.get("custom_url", false)):
+	if bool(definition.get("custom_url", false)) or not ProviderRegistry.get_provider(provider_id).official_base_urls().is_empty():
 		return str(_get_provider_value(provider_id, "base_url", definition.get("base_url", "")))
 	return str(definition.get("base_url", ""))
 
@@ -163,6 +163,7 @@ static func get_active_provider_config() -> Dictionary:
 		"continuation_style": _get_provider_value(get_provider(), "continuation_style", "standard"),
 		"confirmed_origin": get_confirmed_origin(get_provider()),
 		"agent_compatibility": get_agent_compatibility(get_provider()),
+		"official_agent_enabled": _get_provider_value(get_provider(), "official_agent_enabled", true),
 		"image_input_override": _get_provider_value(get_provider(), "image_input_override", {})
 	}.merged(get_request_timeouts(get_provider()))
 
@@ -180,6 +181,7 @@ static func get_provider_config(provider_id: String) -> Dictionary:
 		"continuation_style": _get_provider_value(provider_id, "continuation_style", "standard"),
 		"confirmed_origin": get_confirmed_origin(provider_id),
 		"agent_compatibility": get_agent_compatibility(provider_id),
+		"official_agent_enabled": _get_provider_value(provider_id, "official_agent_enabled", true),
 		"image_input_override": _get_provider_value(provider_id, "image_input_override", {})
 	}.merged(get_request_timeouts(provider_id))
 
@@ -222,14 +224,16 @@ static func save_provider_profile(provider_id: String, api_key: String, model: S
 		base_url = str(definition.get("base_url", ""))
 		continuation_style = "standard" # Effective continuation comes from the live catalog.
 	api_mode = str(definition.get("default_api_mode", "chat_completions")) if api_mode.is_empty() else api_mode
-	if api_mode not in ["chat_completions", "responses"] or continuation_style not in ["standard", "deepseek"] or (provider_id != "azure" and (api_mode != "chat_completions" or continuation_style != "standard")):
+	if api_mode not in ["chat_completions", "responses", "anthropic_messages"] or continuation_style not in ["standard", "deepseek"] or (provider_id == "anthropic" and (api_mode != "anthropic_messages" or continuation_style != "standard")) or (provider_id not in ["azure", "anthropic"] and (api_mode != "chat_completions" or continuation_style != "standard")) or (provider_id == "azure" and api_mode == "anthropic_messages"):
 		return false
 	var resolved := RequestTimeouts.resolve(get_request_timeouts(provider_id).merged(request_timeouts, true).merged({"provider": provider_id}, true))
 	if not resolved.get("success", false):
 		return false
 	var normalized_base := base_url
-	if bool(definition.get("custom_url", false)):
-		var inspected := EndpointPolicy.inspect_base_url(base_url)
+	var stores_base: bool = bool(definition.get("custom_url", false)) or not ProviderRegistry.get_provider(provider_id).official_base_urls().is_empty()
+	if stores_base:
+		if normalized_base.is_empty() and not bool(definition.get("custom_url", false)): normalized_base = str(definition.get("base_url", ""))
+		var inspected := EndpointPolicy.inspect_base_url(normalized_base)
 		if not inspected.get("success", false):
 			return false
 		normalized_base = str(inspected["base_url"])
@@ -238,7 +242,7 @@ static func save_provider_profile(provider_id: String, api_key: String, model: S
 	settings.set_setting(_provider_setting(provider_id, "reasoning_effort"), reasoning_effort)
 	settings.set_setting(_provider_setting(provider_id, "api_mode"), api_mode)
 	settings.set_setting(_provider_setting(provider_id, "continuation_style"), continuation_style)
-	if bool(definition.get("custom_url", false)):
+	if stores_base:
 		settings.set_setting(_provider_setting(provider_id, "base_url"), normalized_base)
 	if not request_timeouts.is_empty() and not bool(definition.get("managed_auth", false)):
 		for field in resolved["values"]:
@@ -289,6 +293,16 @@ static func set_agent_enabled(provider_id: String, config: Dictionary, enabled: 
 	if not binding_result.get("success", false):
 		return false
 	var record := get_agent_compatibility(provider_id)
+	var provider = ProviderRegistry.get_provider(provider_id)
+	if not provider.official_base_urls().is_empty() and binding_result["config"].get("base_url") in provider.official_base_urls() and provider.supports_official_agent(binding_result["config"]):
+		var settings := _get_editor_settings()
+		if settings == null or provider_id != config.get("provider"): return false
+		# A local user opt-out, never an editable-route compatibility grant.
+		settings.set_setting(_provider_setting(provider_id, "official_agent_enabled"), enabled)
+		if AgentCompatibilityProbe.record_matches_binding(record, binding_result["binding"]):
+			record["enabled"] = enabled
+			settings.set_setting(_provider_setting(provider_id, "agent_compatibility"), record)
+		return true
 	if not AgentCompatibilityProbe.record_matches_binding(record, binding_result["binding"]):
 		return false
 	record["enabled"] = enabled
@@ -306,6 +320,30 @@ static func agent_compatibility_status(provider_id: String, config: Dictionary) 
 	var record := config.get("agent_compatibility", get_agent_compatibility(provider_id))
 	var passed := typeof(record) == TYPE_DICTIONARY and AgentCompatibilityProbe.record_matches_binding(record, binding_result["binding"])
 	return {"passed": passed, "enabled": passed and bool(record.get("enabled", false)), "binding": binding_result["binding"], "reason": "" if passed else "Run the compatibility probe for this exact endpoint and model."}
+
+
+static func official_agent_status(provider_id: String, config: Dictionary) -> Dictionary:
+	# Pure local evaluation shared by UI and runtime, using the captured profile.
+	# No request, synthetic pass, discovery flag or saved positive capability grant.
+	var result := {"automatic": false, "enabled": false, "can_enable": false, "reason": ""}
+	var provider = ProviderRegistry.get_provider(provider_id)
+	if provider.official_base_urls().is_empty() or config.get("provider") != provider_id: return result
+	var binding := AgentCompatibilityProbe.create_binding(config)
+	if not binding.get("success", false):
+		result["reason"] = str(binding.get("error", "Invalid provider profile."))
+		return result
+	var normalized: Dictionary = binding["config"]
+	if normalized.get("base_url") not in provider.official_base_urls() or not provider.supports_official_agent(normalized): return result
+	result["automatic"] = true
+	if str(normalized.get("api_key", "")).strip_edges().is_empty():
+		result["reason"] = "Enter an API key to use Agent tools."
+		return result
+	result["can_enable"] = true
+	var record = config.get("agent_compatibility", {})
+	var opted_out: bool = typeof(record) == TYPE_DICTIONARY and AgentCompatibilityProbe.record_matches_binding(record, binding["binding"]) and (typeof(record.get("enabled")) != TYPE_BOOL or not record["enabled"])
+	result["enabled"] = typeof(config.get("official_agent_enabled", true)) == TYPE_BOOL and config.get("official_agent_enabled", true) and not opted_out
+	result["reason"] = "Agent tools ready for this supported official profile." if result["enabled"] else "Agent tools are off for this official profile."
+	return result
 
 
 static func get_cached_model_metadata(provider: String, model: String) -> Dictionary:

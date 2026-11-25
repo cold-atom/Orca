@@ -45,6 +45,20 @@ func apply_chat_options(body: Dictionary, effort: String) -> void:
 	pass
 
 
+func validate_config(config: Dictionary) -> String:
+	return ""
+
+
+func official_base_urls() -> PackedStringArray:
+	# Opt-in release-owned fixed routes. Empty retains the existing endpoint policy.
+	return PackedStringArray()
+
+
+func supports_official_agent(config: Dictionary) -> bool:
+	# Parameter support/discovery metadata alone never establishes Agent readiness.
+	return false
+
+
 func apply_serial_tool_options(body: Dictionary, config: Dictionary) -> void:
 	# Optional provider-specific generation control, never tool authorization.
 	# Unknown/custom/managed contracts do not inherit OpenAI-only wire fields.
@@ -98,6 +112,7 @@ func sanitize_messages(messages: Array) -> Array:
 	for message in sanitized:
 		if typeof(message) == TYPE_DICTIONARY:
 			message.erase("_orca_responses")
+			message.erase("_orca_anthropic")
 			message.erase("reasoning_content")
 			message.erase("reasoning")
 			message.erase("reasoning_details")

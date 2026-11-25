@@ -4,6 +4,11 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+- Dedicated **Qwen** provider with Model Studio regional/workspace setup, manual model fallback, native thinking options and exact-profile Agent compatibility checks.
+- Dedicated **Anthropic (Claude)** provider using native Messages, bounded streaming/function conversion, private signed-thinking continuation, images, model discovery and the existing Orca approval workflow. API billing is separate from Claude subscriptions.
+- Supported canonical Anthropic and fixed regional Qwen profiles have automatic Agent readiness with a persistent user opt-out. Workspace/custom endpoints, overrides and unlisted models retain exact consent and compatibility checks; provider readiness does not grant edit permissions.
+- Synthetic native/HTTP/editor regressions and localized setup. Live API/model and regional acceptance remain pending; existing provider profiles retain their own settings and permissions.
+
 - Blender Auto apply survives locally rejected numeric/JSON/help calls and invalid
   live server IDs, with field/value/range corrections and explicit retained-permission
   feedback. Script-only default/checkpoint handling preserves separate Blender grants.

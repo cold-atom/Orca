@@ -8,6 +8,136 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
+## Unreleased: dedicated Qwen and native Anthropic providers
+
+Dedicated provider profiles extend the existing boundary; the controller, canonical
+conversation, tool schemas, Plan/Work checks, reviews, checkpoints and local execution
+retain their contracts. New `providers/qwen_provider.gd` and
+`providers/anthropic_provider.gd` register isolated settings/defaults without migrating
+credentials or compatibility records from existing profiles. Supported official
+profiles now have automatic Agent readiness; workspace/custom/overridden routes and
+unknown model IDs retain a passed, explicitly enabled exact-profile Agent check.
+Provider-local `validate_config` is called
+before chat headers or a probe binding are created; existing adapters default to the
+previous behavior.
+
+### Official-provider Agent readiness correction
+
+`ProviderBase.official_base_urls()` defaults to empty, preserving every existing
+adapter's endpoint/readiness behavior. Qwen declares three exact fixed DashScope
+bases (Singapore, Beijing, Hong Kong); Anthropic declares only
+`https://api.anthropic.com/v1`. `EndpointPolicy.authorize_profile()` validates and
+normalizes the complete URL before comparing these release-owned routes. It preserves
+the selected regional base for chat, discovery and persistence. Other paths, ports,
+schemes, origins and all workspace-generated hosts stay under exact-origin consent
+and probe rules; no suffix/wildcard trust or same-origin path canonicalization.
+Qwen preset/generated URLs are read-only in the form; Custom endpoint enables manual
+URL entry. Regions without a fixed base require workspace identity and never fall
+back to Singapore. Anthropic overrides are preserved as overrides, including in
+active snapshots, and expose the endpoint field when restored.
+
+Both adapters independently declare exact `AGENT_MODELS`, distinct from thinking
+families and discovery metadata. Qwen covers the two Qwen3 Coder aliases, Plus/Flash
+and their latest aliases, Qwen3 Max and the explicitly listed 3.5–4 Plus/Flash/Max
+IDs. Anthropic covers the explicitly listed Sonnet/Opus 4.6–5.5 and Haiku 5.5 IDs,
+plus the three 4.5 aliases and their documented dated IDs. Arbitrary dated IDs,
+fine-tunes, preview/media/future models and unlisted aliases require the normal probe.
+Protocol/style/effort validation applies even with a copied enabled record.
+The API version and native continuation format remain release-owned.
+
+`Config.official_agent_status()` is a pure local UI/runtime evaluation, using the
+same endpoint/config binding checks without sending a request or inventing a probe
+pass. Supported official profiles with credentials are ready automatically. Missing
+keys/models retain normal setup guidance. The visible toggle writes a provider-local
+`official_agent_enabled` EditorSettings preference, copied into the fixed turn
+snapshot; it can only disable/re-enable an already eligible official contract and
+never authorizes another route/model. Missing preference defaults to automatic;
+malformed preferences fail closed. Matching historical disabled probe records retain
+their opt-out until an explicit toggle action. Supported model/effort changes do not
+silently erase the official preference. No session, model metadata, prompt or caption
+grants readiness or edit authority. Active turns retain their captured readiness.
+
+The probe warning/action hides only for an eligible official contract; status and
+opt-out remain visible. Workspace/custom/unknown-model checks use the existing disclosed
+**Test & Enable Agent tools** action, one-use intent, exact confirmation and two-step
+project-free exchange. Profile edits dismiss stale pending origin dialogs and cancel
+checks. No silent paid Connect/probe path is added. Plan/Work, original Apply/Reject,
+script Trust, separate Auto apply scopes, checkpoints/conflicts/Revert and private
+continuation ownership retain their runtime checks.
+
+Contracts rechecked 2026-11-25: [Model Studio regions](https://www.alibabacloud.com/help/en/model-studio/regions),
+[Qwen function calling](https://www.alibabacloud.com/help/en/model-studio/qwen-function-calling),
+[Claude models](https://platform.claude.com/docs/en/models/overview) and
+[Claude thinking/tools](https://platform.claude.com/docs/en/build-with-claude/thinking).
+Readiness describes supported protocol setup, not account/region availability or
+live task-quality verification. Paid live acceptance remains a pre-release gate,
+not a recurring setup task for supported official users.
+
+Qwen uses Chat Completions. Six-region setup derives selection from the exact saved
+base URL, supports bounded workspace host labels and editable custom URLs, and opens
+the selected region's key page. Existing Singapore/Beijing/Hong Kong DashScope endpoints
+remain available; other presets require workspace identity. Region/workspace edits
+cancel pending discovery/probes without contacting the new endpoint. Exact-origin
+confirmation and endpoint/model/effort-bound compatibility remain separate. Outgoing
+system sections combine into one leading message while canonical context/tool ordering
+stays intact. Known hybrid models use `enable_thinking` and bounded `thinking_budget`;
+unknown and coder variants receive no inferred thinking fields. Discovery is bounded,
+filters incompatible Qwen families and retains manual model entry on failure. Regional
+pricing is not inferred from another region or from the model name.
+Positive discovery context limits use a bounded 256-record exact-base/model runtime
+cache. Qwen and noncanonical Anthropic discovery do not populate canonical public
+vision/pricing metadata. Image capability retains the existing credential/endpoint-bound
+discovery cache; unknown context limits remain explicitly unavailable.
+
+Anthropic uses native `/v1/messages`, `x-api-key`, and pinned API version `2026-10-21`.
+`anthropic_messages.gd` is a bounded protocol projector/decoder analogous to the existing
+Responses boundary. It moves request-scoped system context to top-level `system`, maps
+Orca function schemas to `input_schema`, preserves native block order and combines all
+matching tool results in one user block before continuation. It accepts only client
+function tools, text, validated inline still images and signed/redacted thinking.
+Unsupported native blocks, incomplete/refused/contradictory completion, unmatched or
+duplicate IDs, malformed JSON, bad ordering and missing stream completion fail before
+dispatch. JSON fallback follows the same normalizer. SSE retains existing network,
+aggregate-response, request identity, timeout and cancellation ownership. Native line
+UTF-8, block ordering and byte counters are checked separately.
+
+Limits: 64 blocks, 16 calls/response, 2 MiB each for text/thinking/arguments, 16-level /
+8192-item tool-input work, 2048 messages, 128 tool schemas and the existing 16 MiB
+request/transport bounds. `max_tokens=8192` includes thinking. Known model families expose
+only documented controls; always-thinking variants do not inherit Off. Model discovery
+reads a bounded first page, typed image capability and input context limits; manual IDs
+cover omissions. Pricing continues through exact canonical public metadata when present.
+
+The `_orca_anthropic` envelope binds format/API version, provider/base/model/effort and
+an exact block digest. It is revalidated against visible text and canonical calls at
+projection, retained only through the active tool turn and cleared on every controller
+terminal. Session sanitation remains strict-allowlist. Other transports remove the
+envelope from outgoing copies.
+Native HTTP/SSE errors use fixed status/type guidance, because provider error messages
+can echo supplied signed blocks; opaque reasoning never becomes error-card evidence.
+Native compatibility records additionally bind the
+Messages format and API version without invalidating unrelated historical passes.
+Context estimation uses validated native projection (image pixels replaced by the
+existing conservative image reserves), while compaction retains canonical complete
+turns. Native cumulative usage/cache counters feed the existing cost accounting.
+
+Permanent acceptance: `dedicated_provider_test.gd`, the real HTTP/SSE
+`dedicated_provider_transport_test.py` / `dedicated_provider_integration_test.gd`, the
+normal-editor `provider_adapter_editor_test.gd`, and native controller continuation /
+review additions in `agent_controller_test.gd`. CI registers all new cases. Fixtures
+use synthetic replies/keys and disposable project/XDG state; normal-editor cases cover
+two-process restart persistence/isolation, endpoint assistance and five-language 1×/1.5×/2× narrow
+layout. Existing Chat/Responses/local/Cloud, context, image, session and permission
+regressions remain required. Paid API/model and regional discovery/vision acceptance,
+Windows/macOS UI, independent translation review and fresh remote CI remain release
+gates. See [setup](addons/orca/README.md#qwen-unreleased) and [tests](tests/README.md).
+Readiness regressions cover official-positive/custom-negative cases, unknown/options/
+copied-record denial, all fixed regional persistence/discovery paths, opt-out/restart,
+one-use consent/probe drift/failure/cancellation and five-language narrow layouts.
+The existing `provider_settings_editor_test.gd` now uses the isolated normal-editor
+runner, retaining its full legacy one-click/config/timing assertions with strict
+completion/diagnostic checking.
+
 ## Unreleased: Blender workspace scope and Cloud tool reliability
 
 - New/restored chat and reconnection require a pre-submit scope decision for an existing dedicated workspace. The controller captures either the selected connection or no workspace for the whole turn; omitted tools are also denied at dispatch. Choice is in memory, bound to chat epoch, workspace/generation, revision/hash and installation; it grants no edit authority. An empty workspace needs no extra decision. The setup confirmation creates a separate empty workspace only on user action and keeps the draft and prior revisions. Unrelated chat and live Blender remain available independently.
@@ -1978,13 +2108,13 @@ entry points pending a separate migration.
 
 - First-class OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, and Local OpenAI-compatible profiles use the shared Chat Completions transport. Local profiles support optional authentication, editable endpoints, explicit keyless model discovery, manual model fallback, and endpoint-aware discovery caches.
 - Custom OpenAI-compatible endpoints remain available, but their model capabilities cannot always be discovered.
-- Native Anthropic Messages and Gemini `generateContent` adapters are absent. Foundry supports stateless Responses; the other hosted providers still use Chat Completions. Responses phase/opaque reasoning records are active-turn-only and not restored from session history. Azure model discovery and live deployment acceptance remain outstanding.
+- Native Anthropic Messages is implemented in this unreleased checkout with bounded protocol conversion and active-turn-only signed continuation. Native Gemini `generateContent` remains absent. Foundry supports stateless Responses; the other hosted providers use Chat Completions. Private native continuation is not restored from session history. Live Anthropic and Azure deployment acceptance remain outstanding.
 - Gemini's OpenAI-compatibility surface is beta, and Gemini/xAI have not been exercised against live credentials in the permanent automated suite.
 - GitHub issue #2 reports LM Studio 0.4.26 / llama.cpp 2.60.0 rejecting later system messages with a Qwen-labeled 27B IQ2_S model. A user-run Qwen3-4B-Instruct-2507 chat test did not reproduce the error, and that model's Agent probe failed exact challenge arguments. The leading-system fix is verified against a deterministic strict-template transport fixture; the reporter's exact GGUF/template and live Agent continuation remain an acceptance gate.
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
 - BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Plugin metadata targets the 1.9.0 release candidate; 1.8.0 remains the latest published baseline. The feature revision at `d799e05` passed complete Godot/native Blender/helper-package CI, while the final 1.9.0 revision requires fresh CI/package acceptance. Native Blender workspace cases cover Linux/Windows/macOS; interactive live-authoring/Godot handoff is Linux-only. Real-model quality, native-speaker translation review, Windows/macOS interactive UI, clean-machine setup, Store moderation and third-party asset attribution remain separate. Historical milestones retain their original verification state.
+- Orca 1.9.0 is published with passing release-tag CI. Dedicated Qwen/native Anthropic and subsequent Blender reliability work remain unreleased and require final-revision CI/package and live-provider acceptance. Native Blender workspace cases cover Linux/Windows/macOS; interactive live-authoring/Godot handoff is Linux-only. Real-model quality, native-speaker translation review, Windows/macOS interactive UI, clean-machine setup, Store moderation and third-party asset attribution remain separate. Historical milestones retain their original verification state.
 
 ## Roadmap
 
@@ -2032,7 +2162,7 @@ entry points pending a separate migration.
 
 ### P2: Providers And Privacy
 
-- Expand the implemented Foundry Responses transport to additional compatible providers only with dedicated capability/continuation coverage; add native Anthropic Messages and Gemini `generateContent` where Chat Completions is insufficient.
+- Dedicated Qwen Chat Completions and native Anthropic Messages are implemented; complete live-provider and release acceptance. Expand Foundry Responses and add native Gemini `generateContent` only with dedicated capability/continuation coverage.
 - Expand provider capability detection and add more community-maintained provider adapters.
 - Support explicitly keyless local endpoints.
 - Continue refining endpoint trust presentation from real user feedback without weakening exact-origin transport enforcement.
@@ -2115,6 +2245,58 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-25 — Official-provider Agent readiness correction (unreleased)
+
+- Supported exact canonical Anthropic and fixed Singapore/Beijing/Hong Kong Qwen
+  configurations are ready automatically. Release-owned endpoint/model contracts
+  and config validation are shared by UI/runtime; discovery/thinking family labels
+  never grant readiness. Workspace/custom/overridden routes and unlisted IDs retain
+  exact consent and an enabled matching probe. Regional bases and native overrides
+  survive persistence and active snapshots without canonical-origin/path fallback.
+- Official opt-out is local/provider-scoped and turn-snapshotted; matching old
+  disabled passes remain off until an explicit user action. Settings removes the
+  unnecessary test task only for supported official profiles and cancels stale
+  origin dialogs on edits. All four catalogs and current setup/test guides agree.
+  Plan/Work, reviews, Trust, edit grants, recovery and native private state retain
+  their contracts. No paid automatic probe or new model tool is introduced.
+- Godot 4.7.2 clean-source and actual-workspace initialization, dedicated/controller and sixteen existing
+  components, 22 native/Qwen HTTP fixture requests and seven existing transport
+  suites pass. Provider readiness/persistence and legacy provider-settings cases
+  pass in normal editors headlessly and on Linux/X11/OpenGL; five locales and
+  1×/1.5×/2× narrow layouts pass. Auto apply, five-process remembered grants and
+  three-process localization cases pass headlessly. The legacy settings fixture
+  now uses the same strict isolated normal-editor runner. Three catalog and eight
+  runner cases pass; hosted compact finalization remains **24562/24576**.
+- Exact contracts were rechecked against official regional/function-calling and
+  Claude model/thinking docs. Live keys/models, regional availability/discovery,
+  vision/task quality, Windows/macOS UI, independent translation review and remote
+  final-revision CI/package acceptance remain release gates. Changes remain local
+  and unreleased; no owner credentials, paid inference or release operations were used.
+
+### 2026-11-25 — Dedicated Qwen and native Anthropic providers (unreleased)
+
+- Added isolated Qwen Model Studio regional/workspace setup and Anthropic native
+  Messages profiles. Shared controller, tools, approval/recovery, canonical history
+  and managed Cloud contracts retain their behavior. New profiles initially started
+  Chat-only; the subsequent readiness correction above replaces that default.
+- Native protocol conversion retains signed/redacted thinking only in an exact-profile
+  active-turn envelope; preserves grouped tool results and image context; rejects
+  malformed/incomplete/oversized native output and model substitution. Provider error
+  text cannot echo private signed blocks. Discovery context is endpoint-scoped.
+- Verified Godot 4.7.2 clean-source and actual-workspace headless initialization;
+  dedicated components and 22 real synthetic HTTP requests; controller Plan/Work
+  Apply/Reject/terminal isolation; seven existing transport suites and relevant
+  provider/API/context/Cloud/image/session/Auto apply regressions. The Auto apply
+  component retains its deliberate invalid-source parser control with zero failures.
+- Two-process provider settings/restart case passes headlessly and Linux/X11/OpenGL
+  across five locales and 1×/1.5×/2× fonts. Existing Auto apply, five-process remembered
+  grants and three-process localization editor cases pass. Three catalog and eight
+  runner regressions pass. Hosted compact finalization remains **24562/24576**.
+- CI includes the new permanent cases. Live Qwen/Anthropic keys/models, regional
+  discovery/vision, Windows/macOS UI, independent language review and final-revision
+  remote CI/package acceptance remain gates. Source is local/uncommitted; metadata
+  remains 1.9.0 and no release or paid inference was performed.
 
 ### 2026-11-25 — Blender Auto apply continuity and explicit recovery
 

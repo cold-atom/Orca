@@ -6,6 +6,75 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "Model Studio region"
+msgstr "Model Studio 지역"
+
+msgid "Workspace ID"
+msgstr "작업 공간 ID"
+
+msgid "From Model Studio's workspace API Host"
+msgstr "Model Studio 작업 공간의 API Host"
+
+msgid "Custom endpoint"
+msgstr "사용자 지정 엔드포인트"
+
+msgid "Singapore"
+msgstr "싱가포르"
+
+msgid "US (Virginia)"
+msgstr "미국(버지니아)"
+
+msgid "China (Beijing)"
+msgstr "중국(베이징)"
+
+msgid "China (Hong Kong)"
+msgstr "중국(홍콩)"
+
+msgid "Germany (Frankfurt)"
+msgstr "독일(프랑크푸르트)"
+
+msgid "Japan (Tokyo)"
+msgstr "일본(도쿄)"
+
+msgid "Model Studio API Key"
+msgstr "Model Studio API 키"
+
+msgid "Anthropic API Key"
+msgstr "Anthropic API 키"
+
+msgid "Use a Model Studio API key from the same region. Workspace-specific endpoints are recommended. Qwen chat website access is separate."
+msgstr "같은 지역의 Model Studio API 키를 사용하세요. 작업 공간 전용 엔드포인트를 권장합니다. Qwen 웹 채팅 이용 권한과는 별개입니다."
+
+msgid "Use an Anthropic API key. API billing is separate from Claude subscriptions. Orca uses the native Messages API."
+msgstr "Anthropic API 키를 사용하세요. API 요금은 Claude 구독과 별개입니다. Orca는 기본 Messages API를 사용합니다."
+
+msgid "Enter a workspace ID or paste its complete base URL."
+msgstr "작업 공간 ID를 입력하거나 전체 기본 URL을 붙여넣으세요."
+
+msgid "On and Off control thinking on supported Qwen models. Provider default follows the model's default. Workspace and custom profiles need a matching check after changes."
+msgstr "지원되는 Qwen 모델의 사고 기능을 켜거나 끕니다. 공급자 기본값은 모델의 기본 설정을 따릅니다. 작업 공간 및 사용자 지정 프로필을 변경하면 해당 설정의 호환성을 확인해야 합니다."
+
+msgid "Official regional endpoint."
+msgstr "공식 지역 엔드포인트입니다."
+
+msgid "Enter an API key to use Agent tools."
+msgstr "에이전트 도구를 사용하려면 API 키를 입력하세요."
+
+msgid "Agent tools ready for this supported official profile."
+msgstr "지원되는 이 공식 프로필에서 에이전트 도구를 사용할 수 있습니다."
+
+msgid "Agent tools are off for this official profile."
+msgstr "이 공식 프로필의 에이전트 도구가 꺼져 있습니다."
+
+msgid "Thinking options depend on the selected Claude model. Signed thinking is private and retained only during the active tool turn."
+msgstr "사고 옵션은 선택한 Claude 모델에 따라 다릅니다. 서명된 사고는 비공개이며 진행 중인 도구 턴에서만 유지됩니다."
+
+msgid "On"
+msgstr "켜기"
+
+msgid "Off"
+msgstr "끄기"
+
 msgid "Include Blender workspace operations"
 msgstr "Blender 작업 공간 작업 포함"
 

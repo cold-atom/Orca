@@ -11,9 +11,12 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-This checkout prepares **Orca 1.9.0 — Blender Asset Studio & Live Authoring**
-for Godot 4.7.2. Publication is pending; 1.8.0 is the latest published release.
-The candidate provides **Blender Asset Studio**:
+**Orca 1.9.0 — Blender Asset Studio & Live Authoring** is published for Godot 4.7.2.
+This checkout also includes unreleased dedicated Qwen and native Anthropic providers,
+with automatic supported official-profile Agent readiness, exact-profile checks for
+workspace/custom/unlisted configurations and synthetic transport/editor coverage.
+See the [provider setup guide](addons/orca/README.md#qwen-unreleased).
+1.9.0 provides **Blender Asset Studio**:
 guided setup, dedicated native asset workspaces, reviewed modeling/material/rig/
 animation operations, previews, staged GLB export/import/recovery and native scene
 placement. A separately confirmed, project-remembered workspace Auto apply scope
@@ -32,7 +35,7 @@ matching backend API vocabulary and catalog refresh. See
 [1.9.0](CHANGELOG.md#190---2026-11-17), [Blender workflows](docs/BLENDER.md) and
 [Extensions](docs/EXTENSIONS.md). Broader API/isolation and Skills library work remain planned.
 
-The published baseline is **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
+The earlier published baseline is **Orca 1.8.0 — In-Editor Changes & Workflow Reliability**
 for **Godot 4.7.2**. It adds readable card layouts, 24-round/192-call
 bounded turns, same-conversation task Resume, reviewed current-scene non-tool
 script attachment and native property editing. Node2D transforms use live values,
@@ -41,7 +44,7 @@ native Undo and explicit save-pending receipts remain central to the workflow.
 The owner confirmed the Platformer Node2D move workflow works.
 It builds on 1.7.0's five interface languages, focused scene/animation exploration
 and community invitation.
-See [1.8.0](CHANGELOG.md#180---2026-11-13) for the latest release,
+See [1.8.0](CHANGELOG.md#180---2026-11-13) for these editor changes,
 [localization](docs/LOCALIZATION.md),
 [1.7.0](CHANGELOG.md#170---2026-11-06) for languages and focused inspection,
 [1.6.0](CHANGELOG.md#160---2026-11-05) for Auto apply/recovery,
@@ -52,8 +55,8 @@ The [final Tests run at `dc0e315`](https://github.com/cold-atom/Orca/actions/run
 passed, including four-platform native packaging. The
 [feature Tests run at `d799e05`](https://github.com/cold-atom/Orca/actions/runs/43898813111)
 also passed, including native Blender workspaces on Linux/Windows/macOS and Linux
-interactive live-authoring/Godot handoff. The final 1.9.0 revision needs its own
-CI/package acceptance. Independent language review, real-model quality,
+interactive live-authoring/Godot handoff. The 1.9.0 release-tag CI subsequently
+passed; new provider/reliability revisions need their own CI/package acceptance. Independent language review, real-model quality,
 Windows/macOS interactive UI, clean-machine setup and Store acceptance remain separate.
 
 ### Key Features & Components

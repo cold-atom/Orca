@@ -57,6 +57,8 @@ jobs:
         shell: bash
         run: |
           python3 -m unittest discover -s tests -p translation_catalog_test.py -v
+          "$GODOT_BIN" --headless --path . --script res://tests/dedicated_provider_test.gd
+          python3 -m unittest discover -s tests -p dedicated_provider_transport_test.py -v
           "$GODOT_BIN" --headless --path . --script res://tests/blender_asset_validator_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/mcp_test.gd
           "$GODOT_BIN" --headless --path . --script res://tests/api_client_test.gd
@@ -113,6 +115,8 @@ jobs:
         shell: bash
         run: |
           python3 -m unittest discover -s tests -p editor_test_runner_test.py -v
+          python3 tests/run_editor_test.py provider_adapter_editor_test.gd
+          python3 tests/run_editor_test.py provider_settings_editor_test.gd
           python3 tests/run_editor_test.py mcp_editor_test.gd
           python3 tests/run_editor_test.py blender_session_editor_test.gd
           python3 tests/run_editor_test.py blender_workspace_editor_test.gd
@@ -132,7 +136,6 @@ jobs:
           "$GODOT_BIN" --headless --editor --path . --script res://tests/editor_scene_inspector_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/diagnostics_editor_integration_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/plugin_lifecycle_test.gd
-          "$GODOT_BIN" --headless --editor --path . --script res://tests/provider_settings_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/managed_settings_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/onboarding_editor_test.gd
           "$GODOT_BIN" --headless --editor --path . --script res://tests/native_helper_editor_test.gd
