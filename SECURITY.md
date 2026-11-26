@@ -80,8 +80,8 @@ cancellation and supported versions.
 
 ## Supported Version
 
-Security work targets the latest published **Orca 1.9.0** and the **1.10.0 release
-candidate** for Godot 4.7.2. The candidate adds dedicated Qwen/native Anthropic
+Security work targets the latest published **Orca 1.10.0** for Godot 4.7.2.
+The release adds dedicated Qwen/native Anthropic
 providers and supported official-profile readiness; endpoint/model readiness never
 grants edit authority. Native signed/redacted thinking remains exact-profile,
 active-turn-only and excluded from history, support reports and error evidence.
@@ -90,11 +90,11 @@ plugin validation proves no dispatch. Genuine failures pause the affected scope
 and require explicit resume; accepted work is never replayed.
 Plan/Work, original-proposal approval, conflict checks and execution trust remain
 enforced. Packaging remains binary-free and requires complete shipped Blender
-runtime source. The pre-version-bump
-[Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694)
+runtime source. The [1.10.0 release-tag Tests run](https://github.com/cold-atom/Orca/actions/runs/45853541730)
 passed Godot, three-platform native Blender and four-platform credential-helper/
-package CI. Final 1.10.0 revision CI/package and live-provider acceptance remain
-pending; real-model quality, Windows/macOS interactive UI and Asset Store acceptance
+package CI. [Release preparation/publication](https://github.com/cold-atom/Orca/actions/runs/45856141644)
+also passed. Live-provider/downloaded-package acceptance, real-model quality,
+Windows/macOS interactive UI and Asset Store acceptance
 remain separate.
 
 ## Reporting A Vulnerability

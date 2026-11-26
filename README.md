@@ -82,11 +82,12 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
-## Orca 1.10.0 Release Candidate: Qwen, Claude & Blender Reliability
+## Orca 1.10.0: Qwen, Claude & Blender Reliability
 
-This checkout prepares **1.10.0** for Godot 4.7.2. **1.9.0 remains the latest
-published release.** See the [1.10.0 candidate changelog](CHANGELOG.md#1100---unreleased)
-and [published 1.9.0 changelog](CHANGELOG.md#190---2026-11-17).
+**1.10.0 is the latest published release** for Godot 4.7.2. See the
+[published release](https://github.com/cold-atom/Orca/releases/tag/v1.10.0),
+[1.10.0 changelog](CHANGELOG.md#1100---2026-11-26) and
+[earlier 1.9.0 changelog](CHANGELOG.md#190---2026-11-17).
 
 - Dedicated **Qwen** setup supports regional/workspace Model Studio endpoints,
   discovery, manual model entry and supported thinking controls.
@@ -100,7 +101,8 @@ and [published 1.9.0 changelog](CHANGELOG.md#190---2026-11-17).
   Preview/export cards identify scope/revision; GLB handoff supports validated lights.
 - Cloud settings and isolated editor-test lifecycle regressions are corrected.
 
-Live provider acceptance and final version-matched CI/package checks are pending.
+Release-tag tests and release packaging/publication passed. Live provider and broader
+platform acceptance remain separate from the synthetic fixtures.
 
 ### Blender Asset Studio and live authoring
 
@@ -376,8 +378,8 @@ Orca does not install models, bundle inference, or start and manage Ollama or LM
 - Google Gemini
 - xAI
 - DeepSeek
-- Qwen / Alibaba Cloud Model Studio (1.10.0 release candidate)
-- Anthropic / Claude native Messages API (1.10.0 release candidate)
+- Qwen / Alibaba Cloud Model Studio
+- Anthropic / Claude native Messages API
 - OpenRouter
 - Microsoft Foundry / Azure
 - Ollama
@@ -441,8 +443,8 @@ See [SECURITY.md](SECURITY.md) for the complete security and operational model.
 
 ## Current Limits
 
-- The Orca 1.10.0 candidate targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
-- The pre-version-bump [Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694) passed Godot editor/transport checks, native Blender workspaces on Linux/Windows/macOS and four-platform credential-helper packaging. The final 1.10.0 revision requires fresh CI and version-matched ZIP/helper acceptance. Provider transport fixtures are synthetic; live Qwen/Claude acceptance remains pending. Interactive live-authoring/Godot handoff is verified on Linux; Windows/macOS UI, clean-machine setup, real-model quality and independent language review remain separate.
+- Orca 1.10.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
+- The [1.10.0 release-tag Tests run](https://github.com/cold-atom/Orca/actions/runs/45853541730) and [release preparation/publication](https://github.com/cold-atom/Orca/actions/runs/45856141644) passed, including Godot editor/transport checks, native Blender workspaces on Linux/Windows/macOS and four-platform credential-helper packaging. Provider transport fixtures are synthetic; live Qwen/Claude acceptance remains pending. Interactive live-authoring/Godot handoff is verified on Linux; Windows/macOS UI, clean-machine/downloaded-package setup, real-model quality and independent language review remain separate.
 - Blender operations use a fixed typed command catalog and bounded assets. Unrestricted generated Python/add-ons are outside this workflow. Godot import and placement require review; live-session Auto apply is never remembered.
 - Native attachment drops were verified on Linux/X11/Vulkan; other platforms/renderers and detached editor windows need acceptance testing.
 - Runtime verification uses bounded process output and predeclared startup or exit criteria. It cannot prove visual or gameplay correctness.
@@ -456,12 +458,11 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the full architecture, tool contracts, 
 
 ## Project Status
 
-**Orca 1.10.0 — Qwen, Claude & Blender Reliability** is being prepared for
-**Godot 4.7.2**. **1.9.0 — Blender Asset Studio & Live Authoring** remains the latest
-published release. The provider/reliability implementation is committed at `94329d3`
-with passing CI; this version/documentation preparation requires its own final-revision
-CI and exact ZIP/helper acceptance. Provider fixtures use synthetic replies; live
-API/model acceptance remains a release gate.
+**Orca 1.10.0 — Qwen, Claude & Blender Reliability** is published for
+**Godot 4.7.2** at `5ad8441`, with passing release-tag CI and release preparation/
+publication. The ZIP, checksum and four native helpers are available on GitHub.
+Provider fixtures use synthetic replies; live API/model and broader-platform
+acceptance remain separate checks.
 Godot Asset Store moderation remains an owner check.
 Orca is a functional development-stage agent
 with permanent automated tests and CI, but it is still evolving. Review proposals

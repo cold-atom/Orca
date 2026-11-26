@@ -727,19 +727,19 @@ checks retain 1.5.0/1.6.0/1.7.0/1.8.0/1.9.0 coverage and verify 1.10.0 upgrades 
 1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0/1.8.0/1.9.0, exact official asset naming,
 same-version suppression and no downgrade from 1.10.0. Actual-source
 packaging reads the current version from `plugin.cfg`.
-For this release preparation, run the version-sensitive settings/support/MCP checks, updater
+For release regression checks, run the version-sensitive settings/support/MCP checks, updater
 component/editor/package tests, native helper packaging/service checks and clean initialization
 with all three startup suppressions and isolated editor configuration/data/cache.
 Run the updater editor case through `python3 tests/run_editor_test.py update_editor_test.gd`,
 as both Tests and Prepare Orca release now do. Both workflows also import clean
 assets with plugins disabled, restore exact project settings and strictly check
-normal initialization through `run_editor_test.py` helpers. The pre-version-bump
-[Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694)
+normal initialization through `run_editor_test.py` helpers. The
+[1.10.0 release-tag Tests run](https://github.com/cold-atom/Orca/actions/runs/45853541730)
 passed Godot editor/transport cases, native Blender workspaces on Linux/Windows/macOS,
 Linux interactive live-authoring/Godot handoff and all four credential-helper
-platforms/binary-free packaging. The final 1.10.0 metadata/documentation revision requires
-fresh complete CI and same-revision helper/package acceptance before release;
-1.9.0 remains the latest published release. Relevant candidate regressions include
+platforms/binary-free packaging. [Prepare Orca release](https://github.com/cold-atom/Orca/actions/runs/45856141644)
+also passed and published the ZIP/checksum and four helpers at `5ad8441`.
+**1.10.0 is the latest published release.** Relevant release regressions include
 dedicated Qwen/native Anthropic transport/private continuation/readiness, managed
 settings, isolated editor lifecycle, workspace scope/Auto apply correction/pause/
 resume and punctual-light GLB import. MCP protocol/cancellation, interactive previews,
@@ -748,7 +748,7 @@ Existing Godot workflows retain their permanent suites. Real-model asset quality
 Windows/macOS interactive UI and actual downloaded-helper/Store acceptance remain
 separate from metadata and automated fixtures. Live Qwen/Anthropic regional discovery,
 vision, thinking/tool continuation, Plan reads, reviewed Work edits, Stop and switching
-are pre-release acceptance, not a recurring official-user setup requirement.
+remain separate live acceptance checks, not a recurring official-user setup requirement.
 
 ## Project code navigation (1.5.0)
 

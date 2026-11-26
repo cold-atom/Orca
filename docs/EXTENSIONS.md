@@ -18,11 +18,11 @@ connection, not verification of an open Blender listener. Official Blender Lab c
 separately enable reviewed live authoring, changing its role to **Create & edit**.
 
 Published **Orca 1.9.0 — Blender Asset Studio & Live Authoring** introduced
-**Settings → Extensions**, using the supplied puzzle-piece icon. This checkout
-prepares **1.10.0 — Qwen, Claude & Blender Reliability**, including workspace scope
-selection, clearer input correction and explicit automation pause/resume. **1.9.0
-remains the latest published release.** See the
-[candidate changelog](../CHANGELOG.md#1100---unreleased) and
+**Settings → Extensions**, using the supplied puzzle-piece icon. Published
+**1.10.0 — Qwen, Claude & Blender Reliability** adds workspace scope
+selection, clearer input correction and explicit automation pause/resume. **1.10.0
+is the latest published release.** See the
+[1.10.0 changelog](../CHANGELOG.md#1100---2026-11-26) and
 [1.9.0 changelog](../CHANGELOG.md#190---2026-11-17).
 
 ## Connect a local server

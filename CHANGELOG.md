@@ -4,12 +4,14 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
-## 1.10.0 - Unreleased
+## 1.10.0 - 2026-11-26
 
 **Qwen, Claude & Blender Reliability** for Godot 4.7.2.
 
-Release candidate; publication date and final release acceptance are pending.
-**1.9.0 remains the latest published release.**
+[Published release](https://github.com/cold-atom/Orca/releases/tag/v1.10.0) ·
+[release-tag tests](https://github.com/cold-atom/Orca/actions/runs/45853541730) ·
+[release preparation/publication](https://github.com/cold-atom/Orca/actions/runs/45856141644).
+Published at `5ad8441`; date uses GitHub's UTC publication timestamp.
 
 ### Added
 
@@ -38,9 +40,9 @@ Release candidate; publication date and final release acceptance are pending.
 
 ### Verification And Known Limits
 
-- The pre-version-bump [Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694) passed Godot component/editor/transport checks, native Blender workspaces on Linux/Windows/macOS, Linux interactive authoring/Godot handoff and four-platform credential-helper packaging.
-- Provider fixtures use synthetic replies and keys. Live Qwen/Anthropic regional connectivity, discovery, vision and task quality remain release acceptance checks. API access/billing is separate from consumer subscriptions.
-- Final 1.10.0 revision CI and exact version-matched ZIP/helper acceptance are required. Windows/macOS interactive UI, independent translation review, clean-machine setup and Store acceptance remain separate checks. Cloud Blender tools require the matching backend rollout and authenticated catalog refresh.
+- The release-tag Tests run passed Godot component/editor/transport checks, native Blender workspaces on Linux/Windows/macOS, Linux interactive authoring/Godot handoff and four-platform credential-helper packaging. Prepare Orca release passed and published the version-matched ZIP, checksum and four helpers.
+- Provider fixtures use synthetic replies and keys. Live Qwen/Anthropic regional connectivity, discovery, vision and task quality remain unverified by these fixtures. API access/billing is separate from consumer subscriptions.
+- Windows/macOS interactive UI, independent translation review, clean-machine/downloaded-package and Store acceptance remain separate checks. Cloud Blender tools require the matching backend rollout and authenticated catalog refresh.
 - Plan/Work, original Apply/Reject, script Trust, separate Auto apply scopes, checkpoints, conflict checks and explicit Revert retain their contracts. The full Skills library is still planned.
 
 ## 1.9.0 - 2026-11-17

@@ -11,15 +11,14 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-This checkout prepares **Orca 1.10.0 — Qwen, Claude & Blender Reliability** for
-Godot 4.7.2. **1.9.0 — Blender Asset Studio & Live Authoring** remains the latest
-published release. The candidate includes dedicated Qwen and native Anthropic providers,
+**Orca 1.10.0 — Qwen, Claude & Blender Reliability** is the latest published release
+for Godot 4.7.2. It includes dedicated Qwen and native Anthropic providers,
 with automatic supported official-profile Agent readiness, exact-profile checks for
 workspace/custom/unlisted configurations and synthetic transport/editor coverage.
 It also improves Blender workspace selection, local-input error correction,
 Auto apply continuity/explicit pauses and validated GLB light handoff, and fixes
 Cloud settings and isolated editor-test lifecycle regressions. See the
-[candidate changelog](CHANGELOG.md#1100---unreleased) and
+[1.10.0 changelog](CHANGELOG.md#1100---2026-11-26) and
 [provider setup guide](addons/orca/README.md#qwen).
 1.9.0 provides **Blender Asset Studio**:
 guided setup, dedicated native asset workspaces, reviewed modeling/material/rig/
@@ -56,11 +55,12 @@ See [1.8.0](CHANGELOG.md#180---2026-11-13) for these editor changes,
 [1.5.0](CHANGELOG.md#150---2026-11-02) for saved project code navigation and
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
-The pre-version-bump [Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694)
+The [1.10.0 release-tag Tests run](https://github.com/cold-atom/Orca/actions/runs/45853541730)
 passed Godot component/editor/transport checks, native Blender workspaces on
 Linux/Windows/macOS, Linux interactive authoring/Godot handoff and four-platform
-credential-helper packaging. Final 1.10.0 revision CI and exact ZIP/helper acceptance,
-live Qwen/Claude acceptance, independent language review, real-model quality,
+credential-helper packaging. [Release preparation/publication](https://github.com/cold-atom/Orca/actions/runs/45856141644)
+also passed, publishing the ZIP/checksum and four helpers at `5ad8441`.
+Live Qwen/Claude acceptance, independent language review, real-model quality,
 Windows/macOS interactive UI, clean-machine setup and Store acceptance remain separate.
 
 ### Key Features & Components

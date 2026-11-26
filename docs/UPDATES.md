@@ -5,18 +5,18 @@ precede Asset Store moderation. Updating and native-helper installation are
 user-owned maintenance, never agent tools, and their public downloads require no
 Orca account or GitHub token.
 
-This checkout prepares **1.10.0 — Qwen, Claude & Blender Reliability** for Godot
+The latest published release is **1.10.0 — Qwen, Claude & Blender Reliability** for Godot
 4.7.2. It adds dedicated Qwen/native Anthropic providers, supported official-profile
 Agent readiness and Blender scope/error/Auto apply/GLB reliability improvements.
-Publication is pending; **1.9.0 — Blender Asset Studio & Live Authoring** remains
-the latest published release. The pre-version-bump
-[Tests/native Blender/helper-package run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694)
-passed. Final 1.10.0 metadata/documentation changes require fresh CI and
-version-matched ZIP/helper acceptance; live Qwen/Anthropic acceptance is pending.
+It shipped at `5ad8441` after passing
+[release-tag Tests](https://github.com/cold-atom/Orca/actions/runs/45853541730) and
+[Prepare Orca release](https://github.com/cold-atom/Orca/actions/runs/45856141644).
+The version-matched ZIP, checksum and four helpers are published; live Qwen/Anthropic
+and clean-machine/downloaded-package acceptance remain separate checks.
 Updater checks cover direct upgrades from
 1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0/1.8.0/1.9.0, same-version suppression and
-downgrade prevention. See [1.10.0](../CHANGELOG.md#1100---unreleased) for the candidate
-and [1.9.0](../CHANGELOG.md#190---2026-11-17) for the latest published release.
+downgrade prevention. See [1.10.0](../CHANGELOG.md#1100---2026-11-26) for the latest release
+and [1.9.0](../CHANGELOG.md#190---2026-11-17) for earlier Blender features.
 See [1.8.0](../CHANGELOG.md#180---2026-11-13) for earlier in-editor changes,
 [1.7.0](../CHANGELOG.md#170---2026-11-06) for languages/focused inspection
 and [1.6.0](../CHANGELOG.md#160---2026-11-05) for Auto apply/recovery.
@@ -202,6 +202,13 @@ not commit, tag, push or submit to Godot.
 Published release notes link **Full Changelog** directly to `CHANGELOG.md` at the
 selected release tag. Finalize that version's changelog before tagging so the link
 retains the correct release history as the default branch advances.
+
+For 1.10.0, the published tag still contains the preparation-era `Unreleased`
+heading. This post-release documentation cleanup corrects the default branch.
+After its commit is pushed, update the release description's changelog link to that
+exact commit URL. Keep the existing tag, ZIP, checksum and helper assets intact.
+Do not regenerate a published package to fold in documentation-only corrections;
+source addon README edits on the default branch no longer match that frozen ZIP.
 
 For local development, build the current machine's helper and explicitly generate
 a partial catalog/manifests:

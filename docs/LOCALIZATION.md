@@ -6,12 +6,12 @@ Published Orca **1.7.0** added **English**, **简体中文 (Simplified Chinese)*
 card layouts, task Resume, current-scene reviews and live-baseline disclosures.
 Published **1.9.0** adds localized Extensions/Blender setup, asset review,
 interactive preview controls and bounded live-authoring/Auto apply confirmations.
-The **1.10.0 release candidate** adds localized Qwen/Anthropic setup and official
+Published **1.10.0** adds localized Qwen/Anthropic setup and official
 Agent readiness, plus Blender scope/error/automation pause/resume feedback.
 See the [1.7.0 changelog](../CHANGELOG.md#170---2026-11-06) for the published
 language feature, [1.8.0](../CHANGELOG.md#180---2026-11-13) for the published workflow
 updates, [1.9.0](../CHANGELOG.md#190---2026-11-17) for published Blender workflows
-and [1.10.0](../CHANGELOG.md#1100---unreleased) for the candidate. Independent
+and [1.10.0](../CHANGELOG.md#1100---2026-11-26) for the latest release. Independent
 translation review remains separate from catalog and synthetic layout checks.
 
 ## User behavior
