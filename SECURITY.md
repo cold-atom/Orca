@@ -1,6 +1,6 @@
 # Security Policy
 
-## Blender Asset Studio (1.9.0 candidate)
+## Blender Asset Studio (since 1.9.0)
 
 The shipped independent native toolkit runs inside a user-selected Blender process
 and accepts fixed declarative commands, never model Python, executable/environment
@@ -36,7 +36,7 @@ remain excluded from automatic replay/replacement by the workspace lease.
 
 See [Blender workflows](docs/BLENDER.md) for limits and platform acceptance.
 
-## Live Blender authoring (1.9.0 candidate)
+## Live Blender authoring (since 1.9.0)
 
 The official Blender Lab connection optionally enables authoring through a sealed,
 single-use Work confirmation bound to the project/configuration/process/live-session
@@ -55,7 +55,7 @@ preview/export uses a bounded native worker on a private copy. A user-trusted
 Blender environment is not a sandbox; scripted/linked and unsupported documents
 remain outside this contract. See [Blender workflows](docs/BLENDER.md).
 
-## MCP inspection (1.9.0 candidate)
+## MCP inspection (since 1.9.0)
 
 MCP live connections remain exact-project and user-started, while descriptions are
 canonical computer-local EditorSettings. Bounded automatic legacy migration reads
@@ -80,15 +80,22 @@ cancellation and supported versions.
 
 ## Supported Version
 
-Security work covers published Orca 1.8.0 and the **1.9.0 release candidate**.
-The candidate adds constrained Blender workspace/live authoring, separate automation
-scopes, bounded native previews and reviewed binary import/Undo placement. Plan/Work,
-original-proposal approval, conflict checks and execution trust remain enforced.
-Packaging remains binary-free and requires complete shipped Blender runtime source.
-The feature revision at `d799e05` passed Godot, three-platform native Blender and
-four-platform credential-helper/package CI. The final 1.9.0 candidate requires
-fresh final-revision CI/package acceptance before publication; real-model quality,
-Windows/macOS interactive UI and Asset Store acceptance remain separate.
+Security work targets the latest published **Orca 1.9.0** and the **1.10.0 release
+candidate** for Godot 4.7.2. The candidate adds dedicated Qwen/native Anthropic
+providers and supported official-profile readiness; endpoint/model readiness never
+grants edit authority. Native signed/redacted thinking remains exact-profile,
+active-turn-only and excluded from history, support reports and error evidence.
+Blender local argument rejection preserves only an otherwise valid grant when
+plugin validation proves no dispatch. Genuine failures pause the affected scope
+and require explicit resume; accepted work is never replayed.
+Plan/Work, original-proposal approval, conflict checks and execution trust remain
+enforced. Packaging remains binary-free and requires complete shipped Blender
+runtime source. The pre-version-bump
+[Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694)
+passed Godot, three-platform native Blender and four-platform credential-helper/
+package CI. Final 1.10.0 revision CI/package and live-provider acceptance remain
+pending; real-model quality, Windows/macOS interactive UI and Asset Store acceptance
+remain separate.
 
 ## Reporting A Vulnerability
 

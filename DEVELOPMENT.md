@@ -1,6 +1,6 @@
 # Orca Development Guide
 
-Last updated: 2026-11-25
+Last updated: 2026-11-26
 
 ## Purpose
 
@@ -8,7 +8,51 @@ This document is the living technical source of truth for Orca. It records what 
 
 Read `AGENTS.md` first for mandatory repository rules, `HANDOVER.md` for the current continuation state, and `ORCA.md` for the shorter product overview.
 
-## Unreleased: dedicated Qwen and native Anthropic providers
+## 1.10.0 Release Preparation: Qwen, Claude & Blender Reliability
+
+The owner selected **1.10.0 — Qwen, Claude & Blender Reliability** for Godot
+4.7.2. `addons/orca/plugin.cfg`, MCP client identity and version-sensitive About/
+support tests target 1.10.0. The [candidate changelog](CHANGELOG.md#1100---unreleased)
+groups dedicated providers, official readiness, Blender reliability and managed
+settings/editor-fixture fixes; its publication date is pending. **1.9.0 remains
+the latest published release.** Current product/setup/security/release/test docs
+distinguish the candidate from that published baseline.
+
+Provider and Blender corrections are committed through `94329d3`; the
+[pre-version-bump full Tests run](https://github.com/cold-atom/Orca/actions/runs/45620675694)
+passed Godot component/editor/transport checks, native Blender workspaces on
+Linux/Windows/macOS, Linux interactive authoring/Godot handoff, all four native
+credential-helper targets and binary-free packaging. Historical milestone notes
+retain their at-the-time local/uncommitted and pending-CI state; that state is
+superseded here, not a claim that this final preparation has remote CI.
+
+Updater metadata checks retain historical cases and add direct upgrades from
+1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0/1.8.0/1.9.0 to 1.10.0, exact official ZIP
+selection, same-version suppression and no downgrade. Actual-source packaging
+derives metadata from `plugin.cfg`; final helper catalogs/manifests must be generated
+from the exact accepted helper bytes and addon revision, not hand-edited or reused
+from a different build. Publication uses the existing explicit stable-tag workflow.
+
+Remaining acceptance: bounded live Qwen/Anthropic region/model/discovery/vision/tool
+checks; Cloud Blender backend rollout/catalog refresh and actual managed-model
+workflows; fresh final-revision CI and exact version-matched ZIP/helper acceptance.
+Windows/macOS interactive UI, independent language review, clean-machine setup and
+Store acceptance remain separate. Finalize the changelog publication date and its
+incoming heading links before tagging. See [release operations](docs/UPDATES.md)
+and [release regression checks](tests/README.md#1100-release-regression-verification).
+
+Local preparation checks on 2026-11-26 passed: Godot 4.7.2 clean-source and actual
+workspace headless initialization; Settings/support/update/native-helper/dedicated-
+provider/MCP components; hosted defaults with the real root guidance; isolated
+normal-editor updater, two-process provider readiness and managed settings; ten
+updater-package and eight native-helper assembly cases. An actual-source 1.10.0
+smoke ZIP had matching manifest version/hashes, required provider/Blender files and
+non-executable binary-free entries, and its extracted addon initialized cleanly.
+The smoke ZIP is not the final four-platform release asset set. Temporary projects,
+ZIPs and runners are removed after verification. Hosted compact finalization remains
+**24562/24576**, with the 64k continuation intact.
+
+## 1.10.0 Candidate: Dedicated Qwen and native Anthropic providers
 
 Dedicated provider profiles extend the existing boundary; the controller, canonical
 conversation, tool schemas, Plan/Work checks, reviews, checkpoints and local execution
@@ -136,7 +180,7 @@ two-process restart persistence/isolation, endpoint assistance and five-language
 layout. Existing Chat/Responses/local/Cloud, context, image, session and permission
 regressions remain required. Paid API/model and regional discovery/vision acceptance,
 Windows/macOS UI, independent translation review and fresh remote CI remain release
-gates. See [setup](addons/orca/README.md#qwen-unreleased) and [tests](tests/README.md).
+gates. See [setup](addons/orca/README.md#qwen) and [tests](tests/README.md).
 Readiness regressions cover official-positive/custom-negative cases, unknown/options/
 copied-record denial, all fixed regional persistence/discovery paths, opt-out/restart,
 one-use consent/probe drift/failure/cancellation and five-language narrow layouts.
@@ -144,7 +188,7 @@ The existing `provider_settings_editor_test.gd` now uses the isolated normal-edi
 runner, retaining its full legacy one-click/config/timing assertions with strict
 completion/diagnostic checking.
 
-## Unreleased: Blender workspace scope and Cloud tool reliability
+## 1.10.0 Candidate: Blender workspace scope and Cloud tool reliability
 
 - New/restored chat and reconnection require a pre-submit scope decision for an existing dedicated workspace. The controller captures either the selected connection or no workspace for the whole turn; omitted tools are also denied at dispatch. Choice is in memory, bound to chat epoch, workspace/generation, revision/hash and installation; it grants no edit authority. An empty workspace needs no extra decision. The setup confirmation creates a separate empty workspace only on user action and keeps the draft and prior revisions. Unrelated chat and live Blender remain available independently.
 - Workspace and live help now provide minimal valid catalog calls and distinguish malformed, empty, oversized and unknown command selections. No rejected operation is replayed. In the companion Cloud backend the Responses adapter explicitly defaults to non-strict function generation, preserving optional arguments while local validation remains authoritative. Its API change requires rollout.
@@ -201,9 +245,10 @@ interactive acceptance remain separate. Hosted compact finalization remains
 
 Historical preparation notes below; [v1.9.0 subsequently shipped](https://github.com/cold-atom/Orca/releases/tag/v1.9.0) at `e566b73` after [release-tag CI](https://github.com/cold-atom/Orca/actions/runs/43927177883).
 
-Plugin metadata and MCP client identity now target **1.9.0** for Godot 4.7.2.
-Publication is pending; **1.8.0** remains the latest published release. This
-candidate groups the Extensions/MCP, dedicated Blender workspace, interactive
+At preparation, plugin metadata and MCP client identity targeted **1.9.0** for
+Godot 4.7.2. The release subsequently shipped and remains the latest published
+version; the current checkout prepares 1.10.0 above. The 1.9.0 candidate grouped
+the Extensions/MCP, dedicated Blender workspace, interactive
 preview, reviewed live-authoring and separate Auto apply work described below.
 The feature revision at `d799e05` passed
 [complete Tests/native Blender/helper-package CI](https://github.com/cold-atom/Orca/actions/runs/43898813111):
@@ -747,8 +792,8 @@ was published on November 6 at `29fc480`. Its
 [release-commit Tests](https://github.com/cold-atom/Orca/actions/runs/42226616493)
 and [release preparation](https://github.com/cold-atom/Orca/actions/runs/42230762190)
 passed, including all four native-helper platforms and binary-free packaging.
-The ZIP/checksum and four helpers are published. The later 1.8.0 release above is
-also published; the 1.9.0 candidate needs its own final-revision CI/build acceptance.
+The ZIP/checksum and four helpers are published. Later 1.8.0 and 1.9.0 releases
+are also published; the current 1.10.0 candidate needs final-revision CI/build acceptance.
 Extended Cloud inspection still requires the matching backend API rollout and
 authenticated catalog refresh. Native-speaker review, real-model usefulness,
 broader themes/platforms and Store moderation remain separate acceptance.
@@ -1007,7 +1052,7 @@ The plugin has public GitHub releases and remains a functional development-stage
 - The trusted copied `update_runner.gd` runs under the current Godot executable in `res://.orca-update/runner/`, a private minimal project outside the loaded addon. It waits for the initiating editor's exit before transactional directory replacement, retains one verified rollback copy and reopens the same project. Unix uses a fixed signal-0 process-existence probe because Godot's process API only tracks child PIDs, and a fixed positional-argument `exec` wrapper detaches closed installer pipes. Windows uses native Godot process APIs. This is never exposed as executable/argument/PID authority to the model.
 - Handoff snapshots the public active display backend (`DisplayServer.get_name()`), preserving headless relaunch even without an available desktop. Godot consumes `--headless` before returning `OS.get_cmdline_args()`, so command-line membership cannot determine this state. The independent restart fixture removes inherited X11/Wayland display variables and verifies the new editor's headless backend.
 - `res://.orca-update/` is import-isolated (`.gdignore`), Git-ignored and protected from agent reads/search/mutations/dependencies/script references. Its bounded ownership, lock, transaction and result records preserve recovery information. Verified rollback is explicit; a retained standalone launcher can restore the original even if the addon directory is absent. Modified/unknown bytes and locks are preserved for manual review.
-- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox; its updater editor case uses `run_editor_test.py` in the isolated normal-editor lifecycle. Initial release import disables plugins and restores exact project settings, then normal initialization uses the strict bounded diagnostic runner. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.8.0 is published after complete CI; this source checkout prepares 1.9.0 and requires final-version CI/package acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
+- `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox; its updater editor case uses `run_editor_test.py` in the isolated normal-editor lifecycle. Initial release import disables plugins and restores exact project settings, then normal initialization uses the strict bounded diagnostic runner. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.9.0 is published after release-tag CI; this source checkout prepares 1.10.0 and requires final-version CI/package acceptance. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
 - Release preparation retains all four native build/real-test jobs from the selected tag, but packaging now uses `--require-platform-helpers --helper-assets <directory>` to emit a **binary-free** plugin ZIP/checksum plus four separate raw helper assets. The generated `native_helpers.json` pins those exact bytes to the plugin version; the unchanged updater manifest records it as an ordinary non-executable addon file. Known helper build products are excluded from the ZIP; unexpected ELF/PE/Mach-O or compiled-library filenames elsewhere are refused. Native workflow outputs are `orca-package`, `orca-native-release-assets` and a local-preparation tar.gz. Publication attaches the ZIP/checksum and matching raw helpers; downloading Actions artifacts never publishes them. Compiled helpers are Git-ignored/export-excluded and the formerly tracked Linux executable is removed. Explicit `--write-manifest` writes both catalog and update manifest into source; source snapshots must match the accepted ZIP and separately published helpers. A pinned source catalog cannot silently change during a rebuild. Workflow permissions/publication ownership remain unchanged. Exact steps are in `docs/UPDATES.md`.
 - The package artifact explicitly includes hidden files for its narrowly scoped `.ci/orca-v*.zip*` upload pattern; otherwise Actions excludes the hidden `.ci` directory during wildcard discovery, even after successful packaging. All four native build/vault/protocol/locking/cross-Godot-process jobs passed in [Tests run #42](https://github.com/cold-atom/Orca/actions/runs/40904709816); its aggregate upload and display-free updater test exposed these two subsequent failures. A new complete CI run and downloaded-package/platform updater acceptance remain required.
 - Release publication supplies an explicit **Full Changelog** link to `CHANGELOG.md` at the selected release tag. The changelog must be finalized before tagging; the version-bound link stays stable as the default branch advances.
@@ -1811,7 +1856,7 @@ Only requested `[display]` assignments are materialized, preserving unrelated va
 
 ### `propose_scene_changes`
 
-The unreleased current-scene strategies described above are explicit exceptions
+The published current-scene strategies described above are explicit exceptions
 to the closed-tab disk-replacement contract below. Script attach/detach retains
 two approvals; allowlisted native property changes use exact Apply without script
 trust in scriptless/resource-free/connection-free scenes. Both require a user save.
@@ -2122,13 +2167,13 @@ three startup-suppression flags. Shutdown warnings/errors remain failures.
 
 - First-class OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Ollama, LM Studio, and Local OpenAI-compatible profiles use the shared Chat Completions transport. Local profiles support optional authentication, editable endpoints, explicit keyless model discovery, manual model fallback, and endpoint-aware discovery caches.
 - Custom OpenAI-compatible endpoints remain available, but their model capabilities cannot always be discovered.
-- Native Anthropic Messages is implemented in this unreleased checkout with bounded protocol conversion and active-turn-only signed continuation. Native Gemini `generateContent` remains absent. Foundry supports stateless Responses; the other hosted providers use Chat Completions. Private native continuation is not restored from session history. Live Anthropic and Azure deployment acceptance remain outstanding.
+- Native Anthropic Messages is implemented in the 1.10.0 release candidate with bounded protocol conversion and active-turn-only signed continuation. Native Gemini `generateContent` remains absent. Foundry supports stateless Responses; the other hosted providers use Chat Completions. Private native continuation is not restored from session history. Live Anthropic and Azure deployment acceptance remain outstanding.
 - Gemini's OpenAI-compatibility surface is beta, and Gemini/xAI have not been exercised against live credentials in the permanent automated suite.
 - GitHub issue #2 reports LM Studio 0.4.26 / llama.cpp 2.60.0 rejecting later system messages with a Qwen-labeled 27B IQ2_S model. A user-run Qwen3-4B-Instruct-2507 chat test did not reproduce the error, and that model's Agent probe failed exact challenge arguments. The leading-system fix is verified against a deterministic strict-template transport fixture; the reporter's exact GGUF/template and live Agent continuation remain an acceptance gate.
 - Editable profiles and fixed-provider origin overrides start Chat-only. Tools are exposed and runtime-permitted only when the request-scoped profile contains a persisted compatibility pass and explicit enablement matching the exact provider, origin, base/chat endpoint, case-sensitive model, reasoning effort, API mode, continuation style, and probe version. The disclosed Test & Enable action supplies enablement intent before the check and enables only after a matching pass; restoring a disabled pass does not enable it.
 - BYOK provider credentials remain in EditorSettings. Managed Orca account refresh/session records use the OS vault; access tokens stay in memory. Complete 1.4.1 CI/native acceptance passed; real browser/downloaded-helper and graphical platform updater acceptance remain separate. New code-navigation schemas stay absent from old Cloud catalogs until backend rollout/refresh.
 - Cost is an estimate unless directly reported by the provider. Catalog prices may become stale, provider markups may differ, and unknown custom models may show unavailable cost or context limits.
-- Orca 1.9.0 is published with passing release-tag CI. Dedicated Qwen/native Anthropic and subsequent Blender reliability work remain unreleased and require final-revision CI/package and live-provider acceptance. Native Blender workspace cases cover Linux/Windows/macOS; interactive live-authoring/Godot handoff is Linux-only. Real-model quality, native-speaker translation review, Windows/macOS interactive UI, clean-machine setup, Store moderation and third-party asset attribution remain separate. Historical milestones retain their original verification state.
+- Orca 1.9.0 is published with passing release-tag CI. The 1.10.0 candidate contains dedicated Qwen/native Anthropic, Blender reliability and managed-settings/editor-fixture fixes. Pre-version-bump `94329d3` full CI passed; final 1.10.0 revision CI/package and live-provider acceptance remain required. Native Blender workspace cases cover Linux/Windows/macOS; interactive live-authoring/Godot handoff is Linux-only. Real-model quality, native-speaker translation review, Windows/macOS interactive UI, clean-machine setup, Store moderation and third-party asset attribution remain separate. Historical milestones retain their original verification state.
 
 ## Roadmap
 
@@ -2259,6 +2304,30 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-26 — Orca 1.10.0 release preparation
+
+- Owner selected **1.10.0 — Qwen, Claude & Blender Reliability** for Godot 4.7.2.
+  Plugin metadata, MCP identity and About/support-report expectations now target
+  1.10.0. Added version-bound updater upgrade/same-version/downgrade checks while
+  retaining historical fixtures.
+- Organized the candidate changelog into Added/Changed/Fixed and verification/
+  limitations. Updated product/setup/security/localization/Blender/Extensions/
+  release/test docs and provider heading links; corrected stale 1.9.0 candidate
+  and provider-uncommitted claims in current guidance. Historical milestones retain
+  their recorded state. Published 1.9.0 and the candidate's pending publication date
+  remain explicit; `94329d3` pre-bump full CI passed.
+- Seven focused components, three isolated normal-editor cases (provider readiness
+  uses two processes), ten updater-package and eight native-helper packaging cases
+  pass. Clean-source, actual-workspace and freshly extracted actual-source smoke ZIP
+  initialization pass without diagnostics. ZIP metadata, hashes, provider/Blender
+  runtime completeness and binary-free modes pass. Hosted defaults were rechecked
+  against the actual root guidance: compact finalization **24562/24576**, 64k
+  continuation **33753/55296**.
+- Tests used disposable projects/XDG state and all three startup suppressions.
+  Final revision remote CI, exact four-helper release packaging and live-provider/
+  broader-platform acceptance remain pending. Preparation has not committed,
+  pushed, tagged, published, deployed or used paid inference.
 
 ### 2026-11-25 — Managed-settings CI regression and remaining editor-fixture migration
 

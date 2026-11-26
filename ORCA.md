@@ -11,11 +11,16 @@ Instead of just answering questions, Orca uses **Function Calling** to actively 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) contains the current implementation state, architecture, tool contracts, safety model, testing process, limitations, decisions, roadmap, and milestone log.
 
 ## What We Have (Current State)
-**Orca 1.9.0 — Blender Asset Studio & Live Authoring** is published for Godot 4.7.2.
-This checkout also includes unreleased dedicated Qwen and native Anthropic providers,
+This checkout prepares **Orca 1.10.0 — Qwen, Claude & Blender Reliability** for
+Godot 4.7.2. **1.9.0 — Blender Asset Studio & Live Authoring** remains the latest
+published release. The candidate includes dedicated Qwen and native Anthropic providers,
 with automatic supported official-profile Agent readiness, exact-profile checks for
 workspace/custom/unlisted configurations and synthetic transport/editor coverage.
-See the [provider setup guide](addons/orca/README.md#qwen-unreleased).
+It also improves Blender workspace selection, local-input error correction,
+Auto apply continuity/explicit pauses and validated GLB light handoff, and fixes
+Cloud settings and isolated editor-test lifecycle regressions. See the
+[candidate changelog](CHANGELOG.md#1100---unreleased) and
+[provider setup guide](addons/orca/README.md#qwen).
 1.9.0 provides **Blender Asset Studio**:
 guided setup, dedicated native asset workspaces, reviewed modeling/material/rig/
 animation operations, previews, staged GLB export/import/recovery and native scene
@@ -51,12 +56,11 @@ See [1.8.0](CHANGELOG.md#180---2026-11-13) for these editor changes,
 [1.5.0](CHANGELOG.md#150---2026-11-02) for saved project code navigation and
 [1.4.0](CHANGELOG.md#140---2026-10-29) for the earlier full feature list. Plugin ZIPs
 remain binary-free, with separately tested and version-pinned native helpers.
-The [final Tests run at `dc0e315`](https://github.com/cold-atom/Orca/actions/runs/43282971040)
-passed, including four-platform native packaging. The
-[feature Tests run at `d799e05`](https://github.com/cold-atom/Orca/actions/runs/43898813111)
-also passed, including native Blender workspaces on Linux/Windows/macOS and Linux
-interactive live-authoring/Godot handoff. The 1.9.0 release-tag CI subsequently
-passed; new provider/reliability revisions need their own CI/package acceptance. Independent language review, real-model quality,
+The pre-version-bump [Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694)
+passed Godot component/editor/transport checks, native Blender workspaces on
+Linux/Windows/macOS, Linux interactive authoring/Godot handoff and four-platform
+credential-helper packaging. Final 1.10.0 revision CI and exact ZIP/helper acceptance,
+live Qwen/Claude acceptance, independent language review, real-model quality,
 Windows/macOS interactive UI, clean-machine setup and Store acceptance remain separate.
 
 ### Key Features & Components
@@ -75,7 +79,7 @@ Orca's read-only context and reviewed-edit architecture. See `DEVELOPMENT.md`.
    - Manages the conversational context (message history) and system prompts.
    - Acts as the orchestrator, intercepting tool call requests from the AI, executing them, and sending the results back to the LLM to continue its thought process.
 3. **API Client (`api_client.gd`)**
-   - Handles streamed `HTTPClient` communication with OpenAI-compatible APIs, including OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, and compatible local servers.
+   - Handles streamed `HTTPClient` communication with OpenAI-compatible APIs, including OpenAI, Google Gemini, xAI, DeepSeek, Qwen, OpenRouter and compatible local servers, plus Foundry Responses and native Anthropic Messages.
    - Streams text and tool calls incrementally and supports cancellation.
    - Uses request-scoped provider profiles so one turn cannot switch endpoint, model, or reasoning configuration during tool follow-ups.
    - Binds every transport event to a controller-owned provider request ID and every request-scoped UI event to one turn ID, preventing delayed callbacks from changing a newer turn.
@@ -131,7 +135,7 @@ Orca's read-only context and reviewed-edit architecture. See `DEVELOPMENT.md`.
      - Orca prefers provider-reported cost, then automatically resolves public model context and pricing metadata from a cached `models.dev` catalog with built-in offline fallbacks.
     - Multi-step work can maintain a bounded persistent checklist with pending, active, completed, blocked, and cancelled states.
 7. **Configuration (`config.gd`, `settings_view.gd`)**
-    - Provides an in-dock settings page for managed Orca Cloud accounts and BYOK/local OpenAI, Google Gemini, xAI, DeepSeek, OpenRouter, Microsoft Foundry / Azure, Ollama, LM Studio, Local OpenAI-compatible, and custom OpenAI-compatible endpoints.
+    - Provides an in-dock settings page for managed Orca Cloud accounts and BYOK/local OpenAI, Google Gemini, xAI, DeepSeek, Qwen, Anthropic, OpenRouter, Microsoft Foundry / Azure, Ollama, LM Studio, Local OpenAI-compatible and custom OpenAI-compatible endpoints.
    - Stores separate API key, endpoint, model, and reasoning-effort selections per provider and discovers bounded model lists from provider APIs. Editable profiles start in Chat mode; **Test & Enable Agent tools** runs the isolated synthetic function-call probe and enables only after an exact matching pass. The toggle preserves manual opt-out, including when reopening Settings.
    - The version 2 compatibility probe includes synthetic refreshed system context after its tool result. Older passes require retesting and explicit tool enablement; no project context is used by the probe.
    - Uses Ollama `/api/tags` and LM Studio `/api/v1/models` metadata to hide known embedding models, with a conservative name fallback and unrestricted manual Model ID override.

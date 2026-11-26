@@ -5,22 +5,24 @@ precede Asset Store moderation. Updating and native-helper installation are
 user-owned maintenance, never agent tools, and their public downloads require no
 Orca account or GitHub token.
 
-This checkout prepares **1.9.0 — Blender Asset Studio & Live Authoring**
-for Godot 4.7.2. It adds guided Blender workspaces, interactive previews,
-reviewed GLB handoff, optional live Blender authoring and separate workspace/live
-Auto apply scopes. Publication is pending; **1.8.0 — In-Editor Changes & Workflow
-Reliability** remains the latest published release. The
-[feature Tests/native Blender/helper-package run at `d799e05`](https://github.com/cold-atom/Orca/actions/runs/43898813111)
-passed. Final 1.9.0 metadata and release-workflow changes require fresh CI and
-version-matched ZIP/helper acceptance. Updater checks cover direct upgrades from
-1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0/1.8.0, same-version suppression and downgrade
-prevention. See [1.9.0](../CHANGELOG.md#190---2026-11-17) for the candidate.
-See [1.8.0](../CHANGELOG.md#180---2026-11-13) for the latest published release,
+This checkout prepares **1.10.0 — Qwen, Claude & Blender Reliability** for Godot
+4.7.2. It adds dedicated Qwen/native Anthropic providers, supported official-profile
+Agent readiness and Blender scope/error/Auto apply/GLB reliability improvements.
+Publication is pending; **1.9.0 — Blender Asset Studio & Live Authoring** remains
+the latest published release. The pre-version-bump
+[Tests/native Blender/helper-package run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694)
+passed. Final 1.10.0 metadata/documentation changes require fresh CI and
+version-matched ZIP/helper acceptance; live Qwen/Anthropic acceptance is pending.
+Updater checks cover direct upgrades from
+1.3.0/1.4.0/1.4.1/1.5.0/1.6.0/1.7.0/1.8.0/1.9.0, same-version suppression and
+downgrade prevention. See [1.10.0](../CHANGELOG.md#1100---unreleased) for the candidate
+and [1.9.0](../CHANGELOG.md#190---2026-11-17) for the latest published release.
+See [1.8.0](../CHANGELOG.md#180---2026-11-13) for earlier in-editor changes,
 [1.7.0](../CHANGELOG.md#170---2026-11-06) for languages/focused inspection
 and [1.6.0](../CHANGELOG.md#160---2026-11-05) for Auto apply/recovery.
 See [1.5.0](../CHANGELOG.md#150---2026-11-02) for code navigation and
 [1.4.1](../CHANGELOG.md#141---2026-10-30) for the earlier packaging fixes.
-Store moderation remains separate. The new MCP/workspace/live-session Cloud tools
+Store moderation remains separate. MCP/workspace/live-session Cloud tools
 require their matching backend API vocabulary deployment and authenticated catalog
 refresh. Existing navigation/extended inspection retain their own capability gates.
 Prior Store downloads and the thumbnail
@@ -100,16 +102,20 @@ visibly and are separate from a missing helper.
 
 ## Release contract
 
-1. Bump `addons/orca/plugin.cfg` and release notes to the intended stable
-   `major.minor.patch`. Use a new release tag; do not replace older published assets
-   with different bytes under an existing catalog hash.
+1. Bump `addons/orca/plugin.cfg`, MCP `clientInfo.version` in
+   `addons/orca/scripts/mcp_stdio_client.gd`, version-sensitive tests and current
+   docs to the intended stable `major.minor.patch`. Prepare that version's changelog
+   as a candidate; finalize its publication date and incoming heading links before
+   tagging. Distinguish the candidate from the latest published release and retain
+   historical versions. Use a new release tag; do not replace older published
+   assets with different bytes under an existing catalog hash.
 2. Build/test all four helpers from the selected source revision. Keep the native
    compilation, real isolated vault/protocol/locking and separate-Godot-process
    acceptance jobs. Initialize Godot so required script UIDs are present.
 3. Package the binary-free addon and separate helpers together:
 
    ```bash
-   python3 scripts/package_release.py --version 1.9.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.9.0.zip
+   python3 scripts/package_release.py --version 1.10.0 --require-platform-helpers --helper-assets dist --output dist/orca-v1.10.0.zip
    ```
 
    Substitute the actual new version. The script refuses version mismatches,
@@ -157,7 +163,7 @@ python3 scripts/package_release.py --output dist/orca-test.zip
 The version is read from `plugin.cfg`. A test filename does not change metadata
 or publish a release. The packager refuses existing output files and produces a
 checksum without modifying source manifests. A raw
-`git ls-files -c -o --exclude-standard addons/orca | zip orca-v1.9.0-test.zip -@`
+`git ls-files -c -o --exclude-standard addons/orca | zip orca-v1.10.0-test.zip -@`
 includes existing non-ignored untracked files but cannot detect absent runtime
 dependencies; `zip` also updates an existing archive. Test the freshly extracted
 complete addon, importing its assets before enabling the plugin as on a new install.

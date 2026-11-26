@@ -4,10 +4,27 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+## 1.10.0 - Unreleased
+
+**Qwen, Claude & Blender Reliability** for Godot 4.7.2.
+
+Release candidate; publication date and final release acceptance are pending.
+**1.9.0 remains the latest published release.**
+
+### Added
+
 - Dedicated **Qwen** provider with Model Studio regional/workspace setup, manual model fallback, native thinking options and exact-profile Agent compatibility checks.
 - Dedicated **Anthropic (Claude)** provider using native Messages, bounded streaming/function conversion, private signed-thinking continuation, images, model discovery and the existing Orca approval workflow. API billing is separate from Claude subscriptions.
+- Synthetic native/HTTP/editor regressions and localized provider setup, including restart persistence and five-language narrow/large-font layouts.
+
+### Changed
+
 - Supported canonical Anthropic and fixed regional Qwen profiles have automatic Agent readiness with a persistent user opt-out. Workspace/custom endpoints, overrides and unlisted models retain exact consent and compatibility checks; provider readiness does not grant edit permissions.
-- Synthetic native/HTTP/editor regressions and localized setup. Live API/model and regional acceptance remain pending; existing provider profiles retain their own settings and permissions.
+- Choose whether to continue an existing Blender workspace, start a separate asset or chat without Asset Studio before sending. Preview/export cards identify the scope and revision.
+- Plugin/About/support-report metadata and MCP client identity target **1.10.0**. Updater checks include direct upgrades from 1.3.0 through 1.9.0, exact official ZIP selection, same-version suppression and downgrade prevention.
+- Remaining CI editor fixtures use the isolated normal-editor runner, with clean import-before-enable ordering and strict shutdown/diagnostic checks.
+
+### Fixed
 
 - Blender Auto apply survives locally rejected numeric/JSON/help calls and invalid
   live server IDs, with field/value/range corrections and explicit retained-permission
@@ -16,8 +33,15 @@ All notable changes to Orca are documented in this file.
   finish with one summary, and offer explicit workspace/live inspection-resume review
   without replaying failed operations. Cloud-profile and native Linux regressions cover
   correction, continuation, boundaries and import/placement approvals.
-- Choose whether to continue an existing Blender workspace, start a separate asset or chat without Asset Studio before sending. Preview/export cards identify the scope and revision.
 - Blender help/edit errors give operation-specific corrections. GLB handoff validates supported punctual lights; blocked required extensions are named on the failed card.
+- Orca Cloud settings hide BYOK compatibility controls; authenticated account/catalog readiness remains authoritative across provider switching, refresh and sign-out.
+
+### Verification And Known Limits
+
+- The pre-version-bump [Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694) passed Godot component/editor/transport checks, native Blender workspaces on Linux/Windows/macOS, Linux interactive authoring/Godot handoff and four-platform credential-helper packaging.
+- Provider fixtures use synthetic replies and keys. Live Qwen/Anthropic regional connectivity, discovery, vision and task quality remain release acceptance checks. API access/billing is separate from consumer subscriptions.
+- Final 1.10.0 revision CI and exact version-matched ZIP/helper acceptance are required. Windows/macOS interactive UI, independent translation review, clean-machine setup and Store acceptance remain separate checks. Cloud Blender tools require the matching backend rollout and authenticated catalog refresh.
+- Plan/Work, original Apply/Reject, script Trust, separate Auto apply scopes, checkpoints, conflict checks and explicit Revert retain their contracts. The full Skills library is still planned.
 
 ## 1.9.0 - 2026-11-17
 

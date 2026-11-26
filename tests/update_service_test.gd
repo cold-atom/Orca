@@ -70,6 +70,12 @@ func _run() -> void:
 		check(blender.get("release", {}).get("url") == Service.DOWNLOAD_ROOT + "v1.9.0/orca-v1.9.0.zip", "Blender update must select its exact version-bound official ZIP")
 		check(Service.normalize_release(release(installed), "1.9.0").get("release", {"bad": true}).is_empty(), "older release " + installed + " must not downgrade installed 1.9.0")
 	check(Service.normalize_release(release("1.9.0"), "1.9.0").get("release", {"bad": true}).is_empty(), "installed Blender release gives no same-version update")
+	for installed in ["1.3.0", "1.4.0", "1.4.1", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0"]:
+		var providers := Service.normalize_release(release("1.10.0"), installed)
+		check(providers.get("success", false) and providers.get("release", {}).get("version") == "1.10.0", "provider release is newer than installed " + installed)
+		check(providers.get("release", {}).get("url") == Service.DOWNLOAD_ROOT + "v1.10.0/orca-v1.10.0.zip", "provider update must select its exact version-bound official ZIP")
+		check(Service.normalize_release(release(installed), "1.10.0").get("release", {"bad": true}).is_empty(), "older release " + installed + " must not downgrade installed 1.10.0")
+	check(Service.normalize_release(release("1.10.0"), "1.10.0").get("release", {"bad": true}).is_empty(), "installed provider release gives no same-version update")
 	check(Service.normalize_release(release("1.3.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "same version gives no update")
 	check(Service.normalize_release(release("1.2.0"), "1.3.0").get("release", {"bad": true}).is_empty(), "older release never downgrades")
 	for field in ["draft", "prerelease"]:

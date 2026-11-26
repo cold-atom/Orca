@@ -82,13 +82,29 @@ Orca is released under the [MIT License](LICENSE). Its source, tool contracts, s
 - Context-window and session-cost visibility when provider metadata is available.
 - Request-scoped project instructions and explicitly loaded project skills.
 
-## Orca 1.9.0: Blender Asset Studio & Live Authoring
+## Orca 1.10.0 Release Candidate: Qwen, Claude & Blender Reliability
 
-**1.9.0 is the latest published release** for Godot 4.7.2. This development
-checkout also contains unreleased provider and Blender reliability improvements. See the
-[1.9.0 changelog](CHANGELOG.md#190---2026-11-17).
+This checkout prepares **1.10.0** for Godot 4.7.2. **1.9.0 remains the latest
+published release.** See the [1.10.0 candidate changelog](CHANGELOG.md#1100---unreleased)
+and [published 1.9.0 changelog](CHANGELOG.md#190---2026-11-17).
+
+- Dedicated **Qwen** setup supports regional/workspace Model Studio endpoints,
+  discovery, manual model entry and supported thinking controls.
+- Dedicated **Anthropic (Claude)** uses native Messages with streaming, function
+  calls, images and private active-turn thinking continuation.
+- Supported official profiles are Agent-ready automatically, with a persistent
+  opt-out. Workspace/custom/overridden endpoints and unlisted models retain exact
+  compatibility checks. Provider readiness does not approve project changes.
+- Blender workspace selection, field-specific error feedback, retained Auto apply
+  after local input rejection and explicit pause/resume improve asset workflows.
+  Preview/export cards identify scope/revision; GLB handoff supports validated lights.
+- Cloud settings and isolated editor-test lifecycle regressions are corrected.
+
+Live provider acceptance and final version-matched CI/package checks are pending.
 
 ### Blender Asset Studio and live authoring
+
+Introduced in [1.9.0](CHANGELOG.md#190---2026-11-17):
 
 - **Settings → Extensions → Blender Asset Studio** detects Blender 5.2+ and starts
   a dedicated background asset workspace after exact startup confirmation. Orca
@@ -110,7 +126,7 @@ checkout also contains unreleased provider and Blender reliability improvements.
 
 See [Blender workflows](docs/BLENDER.md) and [Extensions](docs/EXTENSIONS.md).
 Cloud availability requires the matching API rollout and model-catalog refresh;
-BYOK uses the existing exact-profile Agent-tool checks.
+BYOK uses the selected provider's official readiness or exact-profile Agent-tool checks.
 
 ## What's New In 1.8.0: In-Editor Changes & Workflow Reliability
 
@@ -360,8 +376,8 @@ Orca does not install models, bundle inference, or start and manage Ollama or LM
 - Google Gemini
 - xAI
 - DeepSeek
-- Qwen / Alibaba Cloud Model Studio (development checkout; unreleased)
-- Anthropic / Claude native Messages API (development checkout; unreleased)
+- Qwen / Alibaba Cloud Model Studio (1.10.0 release candidate)
+- Anthropic / Claude native Messages API (1.10.0 release candidate)
 - OpenRouter
 - Microsoft Foundry / Azure
 - Ollama
@@ -369,7 +385,7 @@ Orca does not install models, bundle inference, or start and manage Ollama or LM
 - Local OpenAI-compatible servers
 - Custom OpenAI-compatible endpoints
 
-Orca uses streamed Chat Completions, stateless Responses through the Foundry / Azure profile, and native Messages for the unreleased Anthropic provider. BYOK credentials, endpoint, model, and reasoning-effort settings are retained per provider; managed Orca Cloud models use account-eligible catalog settings and server defaults. Qwen offers regional/workspace setup; Anthropic uses an API key with separate API billing. Supported canonical Anthropic and fixed regional Qwen profiles have automatic Agent readiness with a persistent opt-out. Workspace/custom endpoints, overrides and unlisted model IDs retain exact-profile **Test & Enable Agent tools** checks. See [Qwen setup](addons/orca/README.md#qwen-unreleased) and [Anthropic setup](addons/orca/README.md#anthropic--claude-unreleased).
+Orca uses streamed Chat Completions, stateless Responses through the Foundry / Azure profile, and native Messages for the 1.10.0 Anthropic provider. BYOK credentials, endpoint, model, and reasoning-effort settings are retained per provider; managed Orca Cloud models use account-eligible catalog settings and server defaults. Qwen offers regional/workspace setup; Anthropic uses an API key with separate API billing. Supported canonical Anthropic and fixed regional Qwen profiles have automatic Agent readiness with a persistent opt-out. Workspace/custom endpoints, overrides and unlisted model IDs retain exact-profile **Test & Enable Agent tools** checks. See [Qwen setup](addons/orca/README.md#qwen) and [Anthropic setup](addons/orca/README.md#anthropic--claude).
 
 ## How Safety Works
 
@@ -425,8 +441,8 @@ See [SECURITY.md](SECURITY.md) for the complete security and operational model.
 
 ## Current Limits
 
-- Orca 1.9.0 targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
-- The [1.9.0 release-tag Tests run](https://github.com/cold-atom/Orca/actions/runs/43927177883) passed, including Godot editor/transport checks, native Blender workspaces on Linux/Windows/macOS and four-platform credential-helper packaging. New development revisions require their own CI/package acceptance. Interactive live-authoring/Godot handoff is verified on Linux; Windows/macOS UI, clean-machine setup, real-model quality and independent language review remain separate.
+- The Orca 1.10.0 candidate targets Godot **4.7.2**. Broader Godot compatibility is not currently claimed.
+- The pre-version-bump [Tests run at `94329d3`](https://github.com/cold-atom/Orca/actions/runs/45620675694) passed Godot editor/transport checks, native Blender workspaces on Linux/Windows/macOS and four-platform credential-helper packaging. The final 1.10.0 revision requires fresh CI and version-matched ZIP/helper acceptance. Provider transport fixtures are synthetic; live Qwen/Claude acceptance remains pending. Interactive live-authoring/Godot handoff is verified on Linux; Windows/macOS UI, clean-machine setup, real-model quality and independent language review remain separate.
 - Blender operations use a fixed typed command catalog and bounded assets. Unrestricted generated Python/add-ons are outside this workflow. Godot import and placement require review; live-session Auto apply is never remembered.
 - Native attachment drops were verified on Linux/X11/Vulkan; other platforms/renderers and detached editor windows need acceptance testing.
 - Runtime verification uses bounded process output and predeclared startup or exit criteria. It cannot prove visual or gameplay correctness.
@@ -440,10 +456,12 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the full architecture, tool contracts, 
 
 ## Project Status
 
-**Orca 1.9.0 — Blender Asset Studio & Live Authoring** is published for
-**Godot 4.7.2**. This checkout contains unreleased dedicated Qwen/Anthropic providers
-and Blender reliability fixes. Provider fixtures use synthetic replies; live API/model
-acceptance and fresh final-revision CI remain release gates.
+**Orca 1.10.0 — Qwen, Claude & Blender Reliability** is being prepared for
+**Godot 4.7.2**. **1.9.0 — Blender Asset Studio & Live Authoring** remains the latest
+published release. The provider/reliability implementation is committed at `94329d3`
+with passing CI; this version/documentation preparation requires its own final-revision
+CI and exact ZIP/helper acceptance. Provider fixtures use synthetic replies; live
+API/model acceptance remains a release gate.
 Godot Asset Store moderation remains an owner check.
 Orca is a functional development-stage agent
 with permanent automated tests and CI, but it is still evolving. Review proposals

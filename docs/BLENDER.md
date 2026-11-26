@@ -4,6 +4,11 @@ The **Orca 1.9.0 — Blender Asset Studio & Live Authoring** release includes
 guided Blender setup, reviewed game-asset workspaces and optional authoring in an
 already open Blender document. See the [published release](https://github.com/cold-atom/Orca/releases/tag/v1.9.0).
 
+This checkout prepares **1.10.0 — Qwen, Claude & Blender Reliability**, including
+workspace selection, field-specific error feedback, Auto apply continuity/explicit
+pause/resume and validated punctual-light GLB handoff. **1.9.0 remains the latest
+published release.** See the [candidate changelog](../CHANGELOG.md#1100---unreleased).
+
 ## Few-click setup
 
 1. Restart Godot and open **Orca → Settings → Extensions**. **Blender Asset Studio**
@@ -87,7 +92,7 @@ revision files rather than overwriting that file. Changed saved revision bytes
 invalidate the baseline. **Restore previous asset revision** is an explicit idle
 Work action that saves a new revision, rather than overwriting the old one.
 
-**After 1.9.0 (development build):** New Session starts a conversation, not a new
+**In the 1.10.0 release candidate:** New Session starts a conversation, not a new
 Blender file. Before the first Work submission with an existing asset and a capable
 provider, choose **Continue this workspace**, **Start a separate asset…**, or
 **Chat without Asset Studio**. Continue sends the draft with the existing workspace;
