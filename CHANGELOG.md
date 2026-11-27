@@ -4,6 +4,10 @@ All notable changes to Orca are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- [#13](https://github.com/cold-atom/Orca/issues/13): After an update, Orca waits for Godot to import its icons and logo before opening the chat UI. If an asset cannot be imported, the dock names it and retries after repair instead of opening blank.
+
 ## 1.10.0 - 2026-11-26
 
 **Qwen, Claude & Blender Reliability** for Godot 4.7.2.

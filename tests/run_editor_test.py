@@ -148,6 +148,7 @@ def main() -> int:
     parser.add_argument("--graphical", action="store_true", help="Use Linux/X11/OpenGL")
     parser.add_argument("--temp-parent", type=Path, default=os.environ.get("ORCA_TEST_TMPDIR"))
     parser.add_argument("--ui-only", action="store_true", help="Auto-apply layout subset")
+    parser.add_argument("--post-update", action="store_true", help="Exercise the first editor restart after a packaged addon swap")
     parser.add_argument("--blender-lab-executable", type=Path, help="Opt-in MCP acceptance against an installed official server and an already open default Blender scene")
     parser.add_argument("--blender-workspace-executable", type=Path, help="Opt-in owned Blender workspace acceptance; starts only a disposable workspace")
     parser.add_argument("--blender-session-executable", type=Path, help="Opt-in live-authoring acceptance in an owned disposable interactive Blender")
@@ -158,6 +159,8 @@ def main() -> int:
         parser.error("This runner currently isolates Linux XDG editor state only")
     if args.ui_only and args.case != "auto_apply_editor_test.gd":
         parser.error("--ui-only is supported only by auto_apply_editor_test.gd")
+    if args.post_update and args.case != "plugin_lifecycle_test.gd":
+        parser.error("--post-update requires plugin_lifecycle_test.gd")
     if args.blender_session_executable is not None:
         if args.case != "blender_session_editor_test.gd" or args.blender_lab_executable is None or not args.graphical:
             parser.error("Live authoring requires its editor case, --graphical and explicit Blender/MCP executables")
@@ -181,7 +184,7 @@ def main() -> int:
         project = state / "project"
         project.mkdir()
         addon_archive = None
-        if args.case == "mcp_editor_test.gd":
+        if args.case == "mcp_editor_test.gd" or args.post_update:
             spec = importlib.util.spec_from_file_location("package_release", ROOT / "scripts/package_release.py")
             packaging = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(packaging)
@@ -322,6 +325,25 @@ def main() -> int:
         }[args.case]
         if not execute(command, env, marker):
             return 1
+        if args.post_update:
+            # Reproduce the updater's directory swap. The two releases in #13
+            # shipped identical image sources: reuse the ZIP to isolate ordering.
+            # Keep the warm .godot cache and project/plugin settings throughout.
+            installed = project / "addons/orca"
+            if not (installed / "assets/orca.svg.import").is_file():
+                raise RuntimeError("Expected a previously imported addon")
+            installed.rename(state / "previous-addon")
+            with zipfile.ZipFile(addon_archive) as archive:
+                archive.extractall(project)
+            if any(installed.rglob("*.import")):
+                raise RuntimeError("Release package unexpectedly contained import sidecars")
+            if not execute([*command, "--", "--post-update"], env, marker):
+                return 1
+            # Missing required art after an otherwise successful update. Let the
+            # running editor observe its restoration and complete the same startup.
+            (installed / "assets/orca.svg").rename(project / ".fixture-held-logo")
+            if not execute([*command, "--", "--restore-fixture-logo"], env, marker):
+                return 1
         print(f"run_editor_test: PASS {args.case} ({'X11/OpenGL' if args.graphical else 'headless'}; clean exit)")
     return 0
 

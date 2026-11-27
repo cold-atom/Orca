@@ -46,6 +46,21 @@ packages without manifests and locally modified addons use manual installation.
 Public dirty-state checks cover only the current editor; save other resource-editor
 work too. Other editors of the same project must be closed.
 
+### Blank dock on the first restart
+
+If an update to **1.10.0** leaves only the Orca heading and **Review edits** button,
+close the editor. Using the same Godot executable, run the [reporter-verified
+workaround](https://github.com/cold-atom/Orca/issues/13), then reopen the project:
+
+```bash
+"$GODOT_BIN" --headless --editor --quit --path "/absolute/path/to/project"
+```
+
+The **next release** waits for the editor to import Orca's textures before loading
+chat. The toolbar still opens a status message while imports are in progress. If
+the dock names a missing or failed asset, restore it or reimport it in Godot's
+FileSystem dock. Orca retries when the editor detects the change.
+
 ## Native credential helper
 
 Plugin ZIPs contain **no compiled executables**. Cloud account connections use a

@@ -107,6 +107,7 @@ const GROUPABLE_TOOL_NAMES := {
 @onready var plan_mode_icon: TextureRect = $ModeOverlay/ModeMenu/MenuMargin/Content/PlanOption/RowMargin/Row/Icon
 
 var agent_controller
+var startup_complete := false
 var settings_view
 var diagnostics_service
 var account_service
@@ -365,6 +366,7 @@ func _ready() -> void:
 	_refresh_model_metadata()
 	call_deferred("_restore_active_session")
 	_setup_support_reminder()
+	startup_complete = true
 
 
 func _process(_delta: float) -> void:

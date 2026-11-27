@@ -55,6 +55,9 @@ Source copies omit generated `.import` sidecars and Python bytecode, so a locall
 imported checkout cannot mask clean-install startup failures. Project/settings/cache
 roots remain disposable and isolated.
 
+The post-update lifecycle case additionally reopens the project with Orca already
+enabled and its addon directory freshly replaced (see [Plugin updater](#plugin-updater)).
+
 All editor integration cases in Tests CI now use this runner, including managed
 settings, onboarding, native-helper UI, dirty buffers, live scene inspection,
 diagnostics and plugin lifecycle. Release preparation uses the same native-helper
@@ -582,8 +585,17 @@ live Agent-tool usefulness, light themes and additional native platforms.
 export ORCA_DISABLE_ACCOUNT_RESTORE=1 ORCA_DISABLE_UPDATE_CHECKS=1 ORCA_DISABLE_NATIVE_HELPER_DOWNLOADS=1
 "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
 python3 tests/run_editor_test.py update_editor_test.gd
+python3 tests/run_editor_test.py plugin_lifecycle_test.gd --post-update
 python3 -m unittest discover -s tests -p update_package_test.py -v
 ```
+
+The `--post-update` case warms a real packaged addon, swaps its directory for a
+fresh extraction, and keeps the existing `.godot` cache and enabled-plugin settings.
+The first restart must open Settings, accept a composer draft, and load the actual
+toolbar and animated logos without another import-only pass. A separate startup with
+a missing logo verifies visible recovery guidance, disable/re-enable while waiting,
+and same-process recovery after restoring the file. The original 1.10.0 startup
+failed this swap on Linux/Godot 4.7.2 with the errors reported on macOS/4.8 beta.
 
 The service fixture covers numeric stable versions, exact official asset/digest
 metadata, bounded CDN redirects, daily preferences, dismissal and stale/cancelled

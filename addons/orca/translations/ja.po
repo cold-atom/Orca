@@ -756,6 +756,15 @@ msgstr "利用不可"
 msgid "Signed out."
 msgstr "ログアウトしました。"
 
+msgid "Waiting for Godot to import Orca assets. If progress stops, check the editor Output."
+msgstr "Godot が Orca のアセットをインポートするのを待っています。進行が止まった場合は、エディターの「出力」パネルを確認してください。"
+
+msgid "Godot could not import %s. Restore or reimport this asset in the FileSystem dock. Orca will retry when it changes."
+msgstr "Godot は %s をインポートできませんでした。ファイルシステムドックでこのアセットを復元するか、再インポートしてください。変更を検出すると Orca が再試行します。"
+
+msgid "Orca could not initialize the chat dock. Check the editor Output, then disable and re-enable Orca in Project Settings."
+msgstr "Orca のチャットドックを初期化できませんでした。エディターの「出力」を確認してから、プロジェクト設定で Orca を一度無効にし、再度有効にしてください。"
+
 msgid "Preparing connection…"
 msgstr "接続を準備中…"
 

@@ -66,6 +66,7 @@ jobs:
           PY
           "$GODOT_BIN" --headless --path . --script res://tests/update_service_test.gd
           python3 tests/run_editor_test.py update_editor_test.gd
+          python3 tests/run_editor_test.py plugin_lifecycle_test.gd --post-update
           python3 -m unittest discover -s tests -p update_package_test.py
           python3 -m unittest discover -s tests -p native_helper_packaging_test.py
           "$GODOT_BIN" --headless --path . --script res://tests/native_helper_service_test.gd

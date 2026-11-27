@@ -7,6 +7,13 @@ const GameProcessService = preload("res://addons/orca/scripts/game_process_servi
 const UiMetrics = preload("res://addons/orca/scripts/ui_metrics.gd")
 const AccountService = preload("res://addons/orca/scripts/account_service.gd")
 const UpdateService = preload("res://addons/orca/scripts/update_service.gd")
+const Localization = preload("res://addons/orca/scripts/localization.gd")
+const ASSETS := "res://addons/orca/assets"
+# Only textures used by the toolbar, chat scene and their script preloads.
+const UI_TEXTURES := [
+	"orca.svg", "settings.svg", "send-alt.svg", "history.svg", "new_session.svg", "image.svg", "check.svg",
+	"orca-animated-sheet.png", "providerconfig.svg", "systems.svg", "about.svg", "profile.svg", "extension.svg", "chevron_down.svg",
+]
 
 var toolbar
 var chat_window
@@ -15,6 +22,11 @@ var game_process_service
 var account_service
 var update_service
 var _updating := false
+var _dock_root: Control
+var _startup_message: Label
+var _filesystem: EditorFileSystem
+var _check_queued := false
+var _open_requested := false
 
 func _enable_plugin():
 	# Add autoloads here.
@@ -27,7 +39,70 @@ func _disable_plugin():
 
 
 func _enter_tree():
-	# Initialization of the plugin goes here.
+	if not Engine.is_editor_hint():
+		return
+	# Register the same dock through import, success and failure so Godot can
+	# restore its layout and the toolbar can open it even on a cold start.
+	_dock_root = Control.new()
+	_dock_root.name = "Orca"
+	_dock_root.custom_minimum_size = Vector2(UiMetrics.scaled(300), 0)
+	_startup_message = Label.new()
+	_startup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_startup_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_startup_message.text = "Waiting for Godot to import Orca assets. If progress stops, check the editor Output."
+	_dock_root.add_child(_startup_message)
+	_startup_message.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	Localization.attach(_dock_root)
+	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, _dock_root)
+	# This small toolbar scene uses only native controls/scripts before import.
+	toolbar = preload("res://addons/orca/scenes/orca.tscn").instantiate()
+	toolbar.custom_minimum_size = UiMetrics.scaled_vector(Vector2(24, 24))
+	var button: TextureButton = toolbar.get_node("TextureButton")
+	button.texture_normal = EditorInterface.get_editor_theme().get_icon("Node", "EditorIcons")
+	button.tooltip_text = "Orca"
+	button.pressed.connect(_toggle_chat_window)
+	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, toolbar)
+	call_deferred("_hide_unopened_dock")
+	_filesystem = EditorInterface.get_resource_filesystem()
+	_filesystem.filesystem_changed.connect(_queue_import_check)
+	_filesystem.resources_reimported.connect(_queue_import_check)
+	_check_imports()
+
+
+func _queue_import_check(_resources = null) -> void:
+	if not _check_queued:
+		_check_queued = true
+		call_deferred("_check_imports")
+
+
+func _check_imports() -> void:
+	_check_queued = false
+	if _filesystem == null or _filesystem.is_scanning() or _filesystem.is_importing():
+		return # Startup must return to Godot for the first scan/import to finish.
+	var directory := _filesystem.get_filesystem_path(ASSETS)
+	var textures := {} # Hold until scene load; Godot reuses cached textures.
+	for filename: String in UI_TEXTURES:
+		var path := ASSETS.path_join(filename)
+		var index := directory.find_file_index(filename) if directory != null else -1
+		var texture: Texture2D
+		if index >= 0 and directory.get_file_import_is_valid(index) and ResourceLoader.exists(path, "Texture2D"):
+			texture = ResourceLoader.load(path, "Texture2D") as Texture2D
+		if texture == null:
+			Localization.bind(_startup_message, &"text", "Godot could not import %s. Restore or reimport this asset in the FileSystem dock. Orca will retry when it changes.", [path])
+			return
+		textures[filename] = texture
+	_stop_import_checks()
+	toolbar.get_node("TextureButton").texture_normal = textures["orca.svg"]
+	_start_chat()
+
+
+func _start_chat() -> void:
+	# preload() here would still compile the chat UI before _enter_tree().
+	var scene := ResourceLoader.load("res://addons/orca/scenes/chat_window.tscn", "PackedScene") as PackedScene
+	chat_window = scene.instantiate() if scene != null and scene.can_instantiate() else null
+	if chat_window == null or not chat_window.has_method("notify_dock_opened"):
+		_show_startup_failure()
+		return
 	SceneProposal.cleanup_stale_scratch(60)
 	var config_script = preload("res://addons/orca/scripts/config.gd").new()
 	config_script._init_settings()
@@ -41,30 +116,44 @@ func _enter_tree():
 	update_service = UpdateService.new()
 	add_child(update_service)
 	update_service.install_requested.connect(_on_install_requested)
-	
-	toolbar = preload("res://addons/orca/scenes/orca.tscn").instantiate()
-	chat_window = preload("res://addons/orca/scenes/chat_window.tscn").instantiate()
-	toolbar.custom_minimum_size = UiMetrics.scaled_vector(Vector2(24, 24))
 	chat_window.diagnostics_service = diagnostics_service
 	chat_window.game_process_service = game_process_service
 	chat_window.account_service = account_service
 	chat_window.update_service = update_service
-	chat_window.set_custom_minimum_size(Vector2(UiMetrics.scaled(300), 0))
-	
-	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, toolbar)
-	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, chat_window)
+	_dock_root.add_child(chat_window)
+	if chat_window.get("startup_complete") != true:
+		_show_startup_failure()
+		return
+	_startup_message.free()
+	_startup_message = null
 	if not scene_saved.is_connected(_on_scene_saved):
 		scene_saved.connect(_on_scene_saved)
 		scene_changed.connect(_on_scene_state_changed)
 		scene_closed.connect(_on_scene_state_changed)
 	if not EditorInterface.get_editor_undo_redo().version_changed.is_connected(_on_scene_history_changed):
 		EditorInterface.get_editor_undo_redo().version_changed.connect(_on_scene_history_changed)
-	
-	call_deferred("_set_chat_window_open", false)
-	
-	var button = toolbar.get_node("TextureButton")
-	if button:
-		button.pressed.connect(_toggle_chat_window)
+	if _open_requested:
+		chat_window.notify_dock_opened()
+
+
+func _hide_unopened_dock() -> void:
+	if _dock_root != null and not _open_requested:
+		_set_chat_window_open(false)
+
+
+func _stop_import_checks() -> void:
+	if _filesystem != null:
+		_filesystem.filesystem_changed.disconnect(_queue_import_check)
+		_filesystem.resources_reimported.disconnect(_queue_import_check)
+		_filesystem = null
+
+
+func _show_startup_failure() -> void:
+	if chat_window != null:
+		chat_window.free()
+		chat_window = null
+	_free_services()
+	_startup_message.text = "Orca could not initialize the chat dock. Check the editor Output, then disable and re-enable Orca in Project Settings."
 
 
 func _on_scene_saved(path: String) -> void:
@@ -83,18 +172,26 @@ func _on_scene_history_changed() -> void:
 
 
 func _exit_tree():
+	_stop_import_checks()
+	if not Engine.is_editor_hint():
+		return
 	if EditorInterface.get_editor_undo_redo().version_changed.is_connected(_on_scene_history_changed):
 		EditorInterface.get_editor_undo_redo().version_changed.disconnect(_on_scene_history_changed)
-	# Clean-up of the plugin goes here.
-	if chat_window:
-		remove_control_from_docks(chat_window)
-		chat_window.free()
+	if _dock_root:
+		remove_control_from_docks(_dock_root)
+		_dock_root.free()
+		_dock_root = null
+		_startup_message = null
 		chat_window = null
 		
 	if toolbar:
 		remove_control_from_container(EditorPlugin.CONTAINER_TOOLBAR, toolbar)
 		toolbar.free()
 		toolbar = null
+	_free_services()
+
+
+func _free_services() -> void:
 	if game_process_service:
 		if not game_process_service.shutdown():
 			push_warning("Orca is unloading while its owned game process may still be running.")
@@ -157,7 +254,7 @@ func _on_install_requested(operation: String) -> void:
 	get_tree().quit()
 		
 func _toggle_chat_window():
-	if not chat_window:
+	if not _dock_root:
 		return
 
 	var dock := _get_dock()
@@ -170,10 +267,11 @@ func _toggle_chat_window():
 
 
 func _set_chat_window_open(is_open: bool) -> void:
+	_open_requested = is_open
 	var dock := _get_dock()
 	if not dock:
-		chat_window.visible = is_open
-		if is_open:
+		_dock_root.visible = is_open
+		if is_open and chat_window != null:
 			chat_window.notify_dock_opened()
 		return
 
@@ -187,7 +285,8 @@ func _set_chat_window_open(is_open: bool) -> void:
 		dock_tabs.set_tab_hidden(orca_tab, false)
 		dock_control.show()
 		dock_tabs.current_tab = orca_tab
-		chat_window.notify_dock_opened()
+		if chat_window != null:
+			chat_window.notify_dock_opened()
 	else:
 		if dock_tabs.current_tab == orca_tab:
 			_select_another_dock_tab(dock_tabs)
@@ -196,7 +295,7 @@ func _set_chat_window_open(is_open: bool) -> void:
 
 
 func _get_dock() -> Dictionary:
-	var control: Control = chat_window
+	var control: Control = _dock_root
 	var parent = control.get_parent()
 	while parent:
 		if parent is TabContainer:

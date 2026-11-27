@@ -135,7 +135,7 @@ jobs:
           python3 tests/run_editor_test.py editor_unsaved_state_test.gd
           python3 tests/run_editor_test.py editor_scene_inspector_editor_test.gd
           python3 tests/run_editor_test.py diagnostics_editor_integration_test.gd
-          python3 tests/run_editor_test.py plugin_lifecycle_test.gd
+          python3 tests/run_editor_test.py plugin_lifecycle_test.gd --post-update
           python3 tests/run_editor_test.py managed_settings_editor_test.gd
           python3 tests/run_editor_test.py onboarding_editor_test.gd
           python3 tests/run_editor_test.py native_helper_editor_test.gd

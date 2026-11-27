@@ -56,6 +56,19 @@ The smoke ZIP is not the final four-platform release asset set. Temporary projec
 ZIPs and runners are removed after verification. Hosted compact finalization remains
 **24562/24576**, with the 64k continuation intact.
 
+## Next release: Cloud failure guidance hardening
+
+Owner-selected on 2026-11-27 after sequential conversations stopped with generic
+Cloud busy/rate guidance. A compatible Cloud request-budget adjustment was activated
+for current 1.10.0 clients; it does not require a plugin hotfix. The plugin still
+maps every HTTP 429 to one generic message and does not display its captured
+`Retry-After`. For the next release, preserve validated Cloud reason codes, show
+bounded wait/cooldown state, retain strict-allowlist failure correlation and keep
+recovery checkpoints. Test account/global capacity, rate exhaustion, Free-capacity
+errors, initial/tool-continuation failures, cancellation and session boundaries.
+Never automatically replay accepted/ambiguous inference requests or completed
+actions. These UI/diagnostic changes are planned, not implemented in 1.10.0.
+
 ## 1.10.0: Dedicated Qwen and native Anthropic providers
 
 Dedicated provider profiles extend the existing boundary; the controller, canonical
@@ -1055,6 +1068,7 @@ The plugin has public GitHub releases and remains a functional development-stage
 - `update_package.gd` verifies the official SHA-256 ZIP, bounded central/local headers and file spans before decompression, a strict version/Godot/file manifest, per-file hashes, native helper permissions and complete installed/staged/backup file sets. Local changes, unknown files, symlinks, stale hashes and unsafe/unsupported archives block installation. Read-only checks and staged extraction never load downloaded scripts. Primary hashing/extraction runs on a background thread.
 - Explicit confirmation precedes download/install. The current editor must have no dirty scenes/scripts, active Orca requests/approvals, game run, account transition or composer draft, and conversation saving must succeed before handoff. A project-scoped lock serializes cooperating updater instances. Other editors of the same project must be closed; public dirty-state checks cover only the current editor.
 - The trusted copied `update_runner.gd` runs under the current Godot executable in `res://.orca-update/runner/`, a private minimal project outside the loaded addon. It waits for the initiating editor's exit before transactional directory replacement, retains one verified rollback copy and reopens the same project. Unix uses a fixed signal-0 process-existence probe because Godot's process API only tracks child PIDs, and a fixed positional-argument `exec` wrapper detaches closed installer pipes. Windows uses native Godot process APIs. This is never exposed as executable/argument/PID authority to the model.
+- **Unreleased, [#13](https://github.com/cold-atom/Orca/issues/13):** the incoming `orca.gd` registers a dock and toolbar independent of imported textures. After `EditorFileSystem` is idle it checks only the fixed UI texture paths for valid, loadable imports, then loads the chat scene at runtime. Coalesced filesystem notifications retry after repair. Missing assets get localized path-specific guidance; incomplete `chat_window._ready()` leaves guidance instead of a partial UI. The dock preserves explicit opens while waiting. No extra editor process, forced project scan or updater format change is needed, including when the previous release performs the swap. Tests and release preparation exercise the first post-swap launch with a real enabled, ZIP-installed addon (`plugin_lifecycle_test.gd --post-update`).
 - Handoff snapshots the public active display backend (`DisplayServer.get_name()`), preserving headless relaunch even without an available desktop. Godot consumes `--headless` before returning `OS.get_cmdline_args()`, so command-line membership cannot determine this state. The independent restart fixture removes inherited X11/Wayland display variables and verifies the new editor's headless backend.
 - `res://.orca-update/` is import-isolated (`.gdignore`), Git-ignored and protected from agent reads/search/mutations/dependencies/script references. Its bounded ownership, lock, transaction and result records preserve recovery information. Verified rollback is explicit; a retained standalone launcher can restore the original even if the addon directory is absent. Modified/unknown bytes and locks are preserved for manual review.
 - `scripts/package_release.py` produces deterministic addon-only ZIPs with an embedded `update_manifest.json` and checksum sidecar. `.github/workflows/release.yml` prepares an existing stable tag on manual dispatch and publishes only with its explicit checkbox; its updater editor case uses `run_editor_test.py` in the isolated normal-editor lifecycle. Initial release import disables plugins and restores exact project settings, then normal initialization uses the strict bounded diagnostic runner. The first updater-equipped package is installed manually once; developer checkouts and older packages without manifests cannot auto-replace themselves. Version 1.10.0 is published after passing release-tag CI and Prepare Orca release. Contract, operations, bounds and exact manual recovery command: [`docs/UPDATES.md`](docs/UPDATES.md).
@@ -2028,7 +2042,8 @@ Run instructions are in `tests/README.md`. `.github/workflows/tests.yml` runs th
 
 Expected result: project scan, plugin initialization, and editor layout complete without script or initialization errors.
 
-Clean initial asset imports must run before plugins are enabled. Tests and release
+Ordinary component fixtures import assets before enabling plugins. The post-update
+lifecycle case deliberately tests the opposite order after replacing the addon. Tests and release
 preparation use `tests/run_editor_test.py`'s `import_ci_project` on a disposable checkout: it
 temporarily removes only the `editor_plugins` section and restores exact original
 `project.godot` bytes in `finally`, including failure/exception paths. Godot 4.7.2
@@ -2309,6 +2324,17 @@ Decision: use public `Logger`, validation, and play-state APIs. Do not scrape pr
 Decision: use a compact unified diff in the narrow dock and an expanded side-by-side Previous/Proposed viewer. This preserves readability without requiring a wide dock.
 
 ## Milestone Log
+
+### 2026-11-27 — First restart after replacing the addon (#13, unreleased)
+
+- Reproduced the blank Settings/dock on Linux/Godot 4.7.2 with a warm project
+  cache and a fresh copy of the same ZIP. With the import-aware startup, the
+  first-restart and missing-asset repair cases pass on 4.7.2 headless and X11,
+  and on X11 with the reporter's Godot revision (`4.8.beta5.a661dfdbc`).
+- In a separate disposable project, the SHA-256-verified published 1.9.0 addon
+  staged the local candidate and launched its original installer. The restarted
+  editor loaded both logos, accepted a composer draft and opened Settings;
+  the verified 1.9.0 backup remained available. Actual macOS acceptance is pending.
 
 ### 2026-11-27 — 1.10.0 publication record and post-release documentation cleanup
 

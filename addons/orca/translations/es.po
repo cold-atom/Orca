@@ -756,6 +756,15 @@ msgstr "no disponible"
 msgid "Signed out."
 msgstr "Sesión cerrada."
 
+msgid "Waiting for Godot to import Orca assets. If progress stops, check the editor Output."
+msgstr "Esperando a que Godot importe los recursos de Orca. Si se detiene el progreso, consulta el panel Salida del editor."
+
+msgid "Godot could not import %s. Restore or reimport this asset in the FileSystem dock. Orca will retry when it changes."
+msgstr "Godot no pudo importar %s. Restaura o vuelve a importar este recurso en el panel Sistema de archivos. Orca volverá a intentarlo cuando cambie."
+
+msgid "Orca could not initialize the chat dock. Check the editor Output, then disable and re-enable Orca in Project Settings."
+msgstr "Orca no pudo iniciar el panel de chat. Consulta el panel Salida del editor y, después, desactiva y vuelve a activar Orca en los ajustes del proyecto."
+
 msgid "Preparing connection…"
 msgstr "Preparando conexión…"
 

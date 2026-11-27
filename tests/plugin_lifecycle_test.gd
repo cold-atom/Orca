@@ -10,6 +10,7 @@ const GAME_PROCESS_SCRIPT := "res://addons/orca/scripts/game_process_service.gd"
 const ACCOUNT_SCRIPT := "res://addons/orca/scripts/account_service.gd"
 const UPDATE_SCRIPT := "res://addons/orca/scripts/update_service.gd"
 const TOOLBAR_SCRIPT := "res://addons/orca/scenes/open_close.gd"
+const LOGO_PATH := "res://addons/orca/assets/orca.svg"
 const WAIT_TIMEOUT_MS := 8000
 
 var _failures := PackedStringArray()
@@ -28,14 +29,24 @@ func _run() -> void:
 		await process_frame
 	while EditorInterface.get_resource_filesystem().is_scanning():
 		await process_frame
+	if "--restore-fixture-logo" in OS.get_cmdline_user_args():
+		await _test_asset_recovery()
+		_finish()
+		return
 	_originally_enabled = EditorInterface.is_plugin_enabled(PLUGIN_NAME)
+	if "--post-update" in OS.get_cmdline_user_args() and not _originally_enabled:
+		_expect(false, "first post-update startup must work without manually re-enabling Orca")
+		_finish()
+		return
 	if not _originally_enabled:
 		EditorInterface.set_plugin_enabled(PLUGIN_NAME, true)
 	var started := await _wait_until(func(): return _nodes_with_script(PLUGIN_SCRIPT).size() == 1)
 	_expect(started, "Orca should initialize exactly one plugin instance")
 	if started:
 		_assert_active_plugin("initial activation")
-		await _test_dock_open_notifications()
+		if _failures.is_empty():
+			await _test_dock_open_notifications()
+			_test_dock_controls()
 
 	EditorInterface.set_plugin_enabled(PLUGIN_NAME, false)
 	var stopped := await _wait_until(func(): return _nodes_with_script(PLUGIN_SCRIPT).is_empty())
@@ -57,7 +68,8 @@ func _run() -> void:
 	_expect(restarted, "re-enabling Orca should create exactly one fresh plugin instance")
 	if restarted:
 		_assert_active_plugin("re-activation")
-		await _test_dock_open_notifications()
+		if _failures.is_empty():
+			await _test_dock_open_notifications()
 		DiagnosticsService.clear()
 		var restarted_marker := "orca-restarted-logger-%d" % Time.get_ticks_usec()
 		printerr(restarted_marker)
@@ -91,8 +103,10 @@ func _assert_active_plugin(stage: String) -> void:
 	if chats.size() == 1:
 		_expect(chats[0].diagnostics_service == plugin.diagnostics_service, stage + " should inject the plugin diagnostics service into the dock")
 		_expect(chats[0].game_process_service == plugin.game_process_service, stage + " should inject the plugin game service into the dock")
-		_expect(chats[0].account_service == plugin.account_service and chats[0].settings_view.account_service == plugin.account_service and chats[0].agent_controller.account_service == plugin.account_service, stage + " should share plugin-owned account state")
-		_expect(chats[0].update_service == plugin.update_service and chats[0].settings_view.update_service == plugin.update_service, stage + " should share one plugin-owned updater")
+		_expect(is_instance_valid(chats[0].settings_view), stage + " should finish building Settings")
+		if is_instance_valid(chats[0].settings_view):
+			_expect(chats[0].account_service == plugin.account_service and chats[0].settings_view.account_service == plugin.account_service and chats[0].agent_controller.account_service == plugin.account_service, stage + " should share plugin-owned account state")
+			_expect(chats[0].update_service == plugin.update_service and chats[0].settings_view.update_service == plugin.update_service, stage + " should share one plugin-owned updater")
 	_expect(not plugin._get_dock().is_empty(), stage + " should register the chat window in an editor dock")
 
 
@@ -118,6 +132,51 @@ func _nodes_with_script(script_path: String) -> Array:
 	var matches := []
 	_collect_nodes(get_root(), script_path, matches)
 	return matches
+
+
+func _test_dock_controls() -> void:
+	var plugin = _nodes_with_script(PLUGIN_SCRIPT)[0]
+	var chat = plugin.chat_window
+	plugin.toolbar.get_node("TextureButton").pressed.emit()
+	_expect(chat.is_visible_in_tree(), "toolbar opens the initialized dock")
+	var logo: Texture2D = plugin.toolbar.get_node("TextureButton").texture_normal
+	_expect(logo != null and logo.resource_path == LOGO_PATH, "toolbar uses the imported Orca logo")
+	_expect(chat.empty_logo.texture is AtlasTexture and chat.empty_logo.texture.atlas != null, "animated logo uses imported artwork")
+	chat.prompt_input.insert_text_at_caret("fixture draft")
+	chat.settings_button.pressed.emit()
+	_expect(chat.settings_view.is_visible_in_tree() and chat.prompt_input.text == "fixture draft", "composer accepts text and Settings opens with the draft intact")
+
+
+func _test_asset_recovery() -> void:
+	var plugins := _nodes_with_script(PLUGIN_SCRIPT)
+	_expect(plugins.size() == 1, "the bootstrap remains enabled with a missing asset")
+	if plugins.size() != 1: return
+	var plugin = plugins[0]
+	var fs := EditorInterface.get_resource_filesystem()
+	plugin.toolbar.get_node("TextureButton").pressed.emit()
+	_expect(plugin._startup_message != null and plugin._startup_message.is_visible_in_tree() and LOGO_PATH in plugin._startup_message.text, "the toolbar opens recovery guidance naming the missing asset")
+	_expect(plugin.chat_window == null and plugin.account_service == null and plugin.update_service == null, "no partial chat or background services while waiting")
+	# Disable with a filesystem notification already queued; only the fresh
+	# plugin may react when the real asset is imported later.
+	fs.filesystem_changed.emit()
+	EditorInterface.set_plugin_enabled(PLUGIN_NAME, false)
+	await process_frame
+	_expect(_nodes_with_script(PLUGIN_SCRIPT).is_empty() and _nodes_with_script(TOOLBAR_SCRIPT).is_empty(), "disable while waiting cleans up the shell")
+	EditorInterface.set_plugin_enabled(PLUGIN_NAME, true)
+	await process_frame
+	plugins = _nodes_with_script(PLUGIN_SCRIPT)
+	if plugins.size() != 1:
+		_expect(false, "re-enable while waiting recreates one plugin")
+		return
+	plugin = plugins[0]
+	plugin._set_chat_window_open(true)
+	if not FileAccess.file_exists("res://addons/editor_fixture/plugin.cfg") or FileAccess.file_exists(LOGO_PATH) or DirAccess.rename_absolute("res://.fixture-held-logo", LOGO_PATH) != OK:
+		_expect(false, "only restore a held fixture logo to its empty slot")
+		return
+	fs.scan()
+	_expect(await _wait_until(func(): return plugin.chat_window != null and plugin.chat_window.startup_complete), "a real import notification recovers without another restart")
+	_assert_active_plugin("repaired asset")
+	_expect(plugin.chat_window != null and plugin.chat_window.is_visible_in_tree(), "dock opened during import stays open when ready")
 
 
 func _collect_nodes(node: Node, script_path: String, matches: Array) -> void:
